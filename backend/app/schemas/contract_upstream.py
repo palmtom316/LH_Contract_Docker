@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import date, datetime
 from decimal import Decimal
-from app.models.contract_upstream import ContractCategory, ReceivableCategory, CompanyCategory, PricingMode, ManagementMode
+from app.models.enums import ContractCategory, PaymentCategory, PricingMode, ManagementMode
 
 
 # ===== Contract Upstream Schemas =====
@@ -18,7 +18,7 @@ class ContractUpstreamBase(BaseModel):
     
     # Classification
     category: Optional[ContractCategory] = None
-    company_category: Optional[CompanyCategory] = None
+    company_category: Optional[str] = None 
     pricing_mode: Optional[PricingMode] = None
     management_mode: Optional[ManagementMode] = None
     
@@ -52,7 +52,7 @@ class ContractUpstreamUpdate(BaseModel):
     party_b_name: Optional[str] = Field(None, max_length=200)
     
     category: Optional[ContractCategory] = None
-    company_category: Optional[CompanyCategory] = None
+    company_category: Optional[str] = None
     pricing_mode: Optional[PricingMode] = None
     management_mode: Optional[ManagementMode] = None
     responsible_person: Optional[str] = Field(None, max_length=100)
@@ -82,6 +82,7 @@ class ContractUpstreamResponse(ContractUpstreamBase):
     total_receivable: Optional[Decimal] = None
     total_invoiced: Optional[Decimal] = None
     total_received: Optional[Decimal] = None
+    total_settlement: Optional[Decimal] = None
 
     class Config:
         from_attributes = True
@@ -98,7 +99,7 @@ class ContractUpstreamListResponse(BaseModel):
 # ===== Receivable Schemas =====
 class ReceivableBase(BaseModel):
     """Base receivable schema"""
-    category: ReceivableCategory
+    category: PaymentCategory
     amount: Decimal = Field(..., ge=0)
     description: Optional[str] = Field(None, max_length=300)
     expected_date: Optional[date] = None

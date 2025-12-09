@@ -1,0 +1,30 @@
+
+> lh-contract-frontend@1.0.0 build
+> vite build
+
+[36mvite v7.2.7 [32mbuilding client environment for production...[36m[39m
+transforming...
+src/views/contracts/ManagementDetail.vue (29:2): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+[32m鉁?[39m 2087 modules transformed.
+鉁?[39m Build failed in 3.25s
+error during build:
+src/views/contracts/ManagementDetail.vue (29:2): "getSettlements" is not exported by "src/api/contractManagement.js", imported by "src/views/contracts/ManagementDetail.vue".
+file: D:/LH_Contract_Docker/frontend/src/views/contracts/ManagementDetail.vue:29:2
+
+27:   getPayments,
+28:   createPayment,
+29:   getSettlements,
+      ^
+30:   createSettlement
+31: } from "@/api/contractManagement";
+
+    at getRollupError (file:///D:/LH_Contract_Docker/frontend/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+    at error (file:///D:/LH_Contract_Docker/frontend/node_modules/rollup/dist/es/shared/parseAst.js:397:42)
+    at Module.error (file:///D:/LH_Contract_Docker/frontend/node_modules/rollup/dist/es/shared/node-entry.js:16956:16)
+    at Module.traceVariable (file:///D:/LH_Contract_Docker/frontend/node_modules/rollup/dist/es/shared/node-entry.js:17412:29)
+    at ModuleScope.findVariable (file:///D:/LH_Contract_Docker/frontend/node_modules/rollup/dist/es/shared/node-entry.js:15076:39)
+    at ChildScope.findVariable (file:///D:/LH_Contract_Docker/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5649:38)
+    at FunctionScope.findVariable (file:///D:/LH_Contract_Docker/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5649:38)
+    at FunctionBodyScope.findVariable (file:///D:/LH_Contract_Docker/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5649:38)
+    at ReturnValueScope.findVariable (file:///D:/LH_Contract_Docker/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5649:38)
+    at FunctionBodyScope.findVariable (file:///D:/LH_Contract_Docker/frontend/node_modules/rollup/dist/es/shared/node-entry.js:5649:38)

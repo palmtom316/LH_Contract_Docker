@@ -1,0 +1,51 @@
+lh_contract_backend  | INFO:     Will watch for changes in these directories: ['/app']
+lh_contract_backend  | INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+lh_contract_backend  | INFO:     Started reloader process [1] using WatchFiles
+lh_contract_backend  | Process SpawnProcess-1:
+lh_contract_backend  | Traceback (most recent call last):
+lh_contract_backend  |   File "/usr/local/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+lh_contract_backend  |     self.run()
+lh_contract_backend  |   File "/usr/local/lib/python3.11/multiprocessing/process.py", line 108, in run
+lh_contract_backend  |     self._target(*self._args, **self._kwargs)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/uvicorn/_subprocess.py", line 78, in subprocess_started
+lh_contract_backend  |     target(sockets=sockets)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/uvicorn/server.py", line 62, in run
+lh_contract_backend  |     return asyncio.run(self.serve(sockets=sockets))
+lh_contract_backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/asyncio/runners.py", line 190, in run
+lh_contract_backend  |     return runner.run(main)
+lh_contract_backend  |            ^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/asyncio/runners.py", line 118, in run
+lh_contract_backend  |     return self._loop.run_until_complete(task)
+lh_contract_backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "uvloop/loop.pyx", line 1518, in uvloop.loop.Loop.run_until_complete
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/uvicorn/server.py", line 69, in serve
+lh_contract_backend  |     config.load()
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/uvicorn/config.py", line 458, in load
+lh_contract_backend  |     self.loaded_app = import_from_string(self.app)
+lh_contract_backend  |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/uvicorn/importer.py", line 21, in import_from_string
+lh_contract_backend  |     module = importlib.import_module(module_str)
+lh_contract_backend  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+lh_contract_backend  |     return _bootstrap._gcd_import(name[level:], package, level)
+lh_contract_backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+lh_contract_backend  |   File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+lh_contract_backend  |   File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+lh_contract_backend  |   File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+lh_contract_backend  |   File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+lh_contract_backend  |   File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+lh_contract_backend  |   File "/app/app/main.py", line 12, in <module>
+lh_contract_backend  |     from app.init_data import init_data
+lh_contract_backend  |   File "/app/app/init_data.py", line 3, in <module>
+lh_contract_backend  |     from app.services.auth import get_password_hash
+lh_contract_backend  |   File "/app/app/services/__init__.py", line 4, in <module>
+lh_contract_backend  |     from app.services.auth import (
+lh_contract_backend  |   File "/app/app/services/auth.py", line 16, in <module>
+lh_contract_backend  |     from app.schemas.user import TokenData
+lh_contract_backend  |   File "/app/app/schemas/__init__.py", line 7, in <module>
+lh_contract_backend  |     from app.schemas.contract_upstream import (
+lh_contract_backend  |   File "/app/app/schemas/contract_upstream.py", line 8, in <module>
+lh_contract_backend  |     from app.models.enums import ContractCategory, PaymentCategory, CompanyCategory, PricingMode, ManagementMode
+lh_contract_backend  | ImportError: cannot import name 'CompanyCategory' from 'app.models.enums' (/app/app/models/enums.py)

@@ -25,6 +25,18 @@ const routes = [
                 meta: { title: '上游合同详情', hidden: true }
             },
             {
+                path: 'contracts/management',
+                name: 'ManagementList',
+                component: () => import('@/views/contracts/ManagementList.vue'),
+                meta: { title: '管理合同', icon: 'FolderChecked' }
+            },
+            {
+                path: 'contracts/management/:id',
+                name: 'ManagementDetail',
+                component: () => import('@/views/contracts/ManagementDetail.vue'),
+                meta: { title: '管理合同详情', hidden: true }
+            },
+            {
                 path: 'contracts/downstream',
                 name: 'DownstreamContracts',
                 component: () => import('@/views/contracts/DownstreamList.vue'),

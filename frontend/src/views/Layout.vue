@@ -37,6 +37,11 @@
           <template #title>下游合同 (乙方)</template>
         </el-menu-item>
         
+        <el-menu-item index="/contracts/management">
+          <el-icon><FolderChecked /></el-icon>
+          <template #title>管理合同 (无合同)</template>
+        </el-menu-item>
+        
         <el-menu-item index="/expenses">
           <el-icon><Money /></el-icon>
           <template #title>费用管理</template>

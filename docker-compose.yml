@@ -72,3 +72,4 @@ networks:
 
 volumes:
   postgres_data:
+  lh_frontend_node_modules:

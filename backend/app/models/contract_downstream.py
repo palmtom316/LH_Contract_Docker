@@ -4,19 +4,9 @@ Downstream Contract Models (下游合同 - 乙方/供应商合同)
 from sqlalchemy import Column, Integer, String, Text, Numeric, Date, DateTime, ForeignKey, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-import enum
 
 from app.database import Base
-
-
-class PayableCategory(str, enum.Enum):
-    """Payable category enumeration"""
-    ADVANCE_PAYMENT = "预付款"           # 预付款
-    PROGRESS_PAYMENT = "进度款"          # 进度款
-    SETTLEMENT_PAYMENT = "结算款"        # 结算款
-    RETENTION_MONEY = "质保金"           # 质保金
-    OTHER = "其他"                       # 其他
-
+from app.models.enums import ContractCategory, PricingMode, ManagementMode, PaymentCategory
 
 class ContractDownstream(Base):
     """
@@ -29,28 +19,38 @@ class ContractDownstream(Base):
     contract_code = Column(String(50), unique=True, nullable=False, index=True)  # 合同编号
     contract_name = Column(String(200), nullable=False)                           # 合同名称
     
-    # Link to upstream contract (optional)
+    # Parties
+    party_a_name = Column(String(200), nullable=False)    # 甲方 (Usually Us)
+    party_b_name = Column(String(200), nullable=False)    # 乙方 (Supplier/Subcontractor)
+    
+    # Link to upstream contract
     upstream_contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="SET NULL"), nullable=True, index=True)
+    upstream_contract_name_snapshot = Column(String(200), nullable=True) # 上游合同名称快照
     
-    # Supplier/Subcontractor information
-    supplier_name = Column(String(200), nullable=False)       # 供应商/分包商名称
-    supplier_contact = Column(String(100), nullable=True)     # 联系人
-    supplier_phone = Column(String(20), nullable=True)        # 电话
-    supplier_address = Column(String(300), nullable=True)     # 地址
+    # Classification (Matching Upstream structure as per Req 3.3)
+    category = Column(SQLEnum(ContractCategory), nullable=True)
+    company_category = Column(String(50), nullable=True)
+    pricing_mode = Column(SQLEnum(PricingMode), nullable=True)
+    management_mode = Column(SQLEnum(ManagementMode), nullable=True)
     
-    # Contract type
-    contract_type = Column(String(50), nullable=True)         # 合同类型 (分包/材料/设备/租赁等)
+    # Details
+    responsible_person = Column(String(100), nullable=True) # 负责人
     
-    # Contract details
+    party_a_contact = Column(String(100), nullable=True)
+    party_a_phone = Column(String(20), nullable=True)
+    
+    party_b_contact = Column(String(100), nullable=True) # Supplier Contact
+    party_b_phone = Column(String(20), nullable=True)
+    
     contract_amount = Column(Numeric(15, 2), nullable=False, default=0)  # 合同金额
     
-    # Contract dates
+    # Dates
     sign_date = Column(Date, nullable=True)                   # 签订日期
     start_date = Column(Date, nullable=True)                  # 开始日期
     end_date = Column(Date, nullable=True)                    # 结束日期
     
     # File attachments
-    contract_file_path = Column(String(500), nullable=True)   # 合同文件路径
+    contract_file_path = Column(String(500), nullable=True)   # 合同文件路径 (PDF Only)
     
     # Status and notes
     status = Column(String(50), default="进行中")              # 合同状态
@@ -68,7 +68,7 @@ class ContractDownstream(Base):
     settlements = relationship("DownstreamSettlement", back_populates="contract", cascade="all, delete-orphan")
     
     def __repr__(self):
-        return f"<ContractDownstream(id={self.id}, code={self.contract_code}, supplier={self.supplier_name})>"
+        return f"<ContractDownstream(id={self.id}, code={self.contract_code}, party_b={self.party_b_name})>"
 
 
 class FinanceDownstreamPayable(Base):
@@ -81,7 +81,7 @@ class FinanceDownstreamPayable(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     contract_id = Column(Integer, ForeignKey("contracts_downstream.id", ondelete="CASCADE"), nullable=False, index=True)
     
-    category = Column(SQLEnum(PayableCategory), nullable=False)  # 款项类别
+    category = Column(SQLEnum(PaymentCategory), nullable=False)  # 款项类别
     amount = Column(Numeric(15, 2), nullable=False, default=0)   # 应付金额
     description = Column(String(300), nullable=True)             # 说明
     expected_date = Column(Date, nullable=True)                  # 预计付款日期
@@ -99,7 +99,7 @@ class FinanceDownstreamPayable(Base):
 
 class FinanceDownstreamInvoice(Base):
     """
-    Downstream invoices received (下游收票记录)
+    Downstream invoices received (下游收票 - 挂账)
     Represents invoices received from suppliers/subcontractors
     """
     __tablename__ = "finance_downstream_invoices"
@@ -110,6 +110,7 @@ class FinanceDownstreamInvoice(Base):
     invoice_number = Column(String(50), nullable=False)              # 发票号码
     invoice_date = Column(Date, nullable=False)                      # 发票日期
     amount = Column(Numeric(15, 2), nullable=False, default=0)       # 发票金额
+    
     tax_rate = Column(Numeric(5, 2), nullable=True)                  # 税率
     tax_amount = Column(Numeric(15, 2), nullable=True)               # 税额
     
@@ -131,7 +132,7 @@ class FinanceDownstreamInvoice(Base):
 
 class FinanceDownstreamPayment(Base):
     """
-    Downstream payments (下游付款记录)
+    Downstream payments (下游付款记录 - 实付)
     Represents payments made to suppliers/subcontractors
     """
     __tablename__ = "finance_downstream_payments"
@@ -141,6 +142,7 @@ class FinanceDownstreamPayment(Base):
     
     payment_date = Column(Date, nullable=False)                      # 付款日期
     amount = Column(Numeric(15, 2), nullable=False, default=0)       # 付款金额
+    
     payment_method = Column(String(50), nullable=True)               # 付款方式
     payee_name = Column(String(200), nullable=True)                  # 收款方名称
     payee_account = Column(String(100), nullable=True)               # 收款方账号

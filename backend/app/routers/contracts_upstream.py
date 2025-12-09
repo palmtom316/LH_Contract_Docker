@@ -18,6 +18,9 @@ from app.models.contract_upstream import (
     ContractUpstream, FinanceUpstreamReceivable, FinanceUpstreamInvoice,
     FinanceUpstreamReceipt, ProjectSettlement
 )
+# We import Enums for type checking or specific logic if needed
+from app.models.enums import ContractCategory, PaymentCategory
+
 from app.schemas.contract_upstream import (
     ContractUpstreamCreate, ContractUpstreamUpdate, ContractUpstreamResponse, ContractUpstreamListResponse,
     ReceivableCreate, ReceivableResponse,
@@ -48,7 +51,8 @@ async def list_contracts(
         query = query.where(
             (ContractUpstream.contract_name.ilike(f"%{keyword}%")) | 
             (ContractUpstream.contract_code.ilike(f"%{keyword}%")) |
-            (ContractUpstream.party_a_name.ilike(f"%{keyword}%"))
+            (ContractUpstream.party_a_name.ilike(f"%{keyword}%")) |
+            (ContractUpstream.party_b_name.ilike(f"%{keyword}%"))
         )
     
     if status:
@@ -78,7 +82,7 @@ async def create_contract(
     db: AsyncSession = Depends(get_db)
 ):
     """Create new upstream contract"""
-    # Check uniquely code
+    # Check unique code
     existing = await db.execute(select(ContractUpstream).where(ContractUpstream.contract_code == contract_in.contract_code))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="合同编号已存在")
@@ -103,11 +107,6 @@ async def get_contract(
     if not contract:
         raise HTTPException(status_code=404, detail="合同不存在")
         
-    # Add calculated fields context
-    # In a real app, these might be loaded via query or separate endpoints for performance
-    # Here we rely on simple properties or additional queries if needed.
-    # For MVP, we'll implement simple aggregation if schema requires it.
-    
     return contract
 
 
@@ -304,7 +303,8 @@ async def export_contracts(
         query = query.where(
             (ContractUpstream.contract_name.ilike(f"%{keyword}%")) | 
             (ContractUpstream.contract_code.ilike(f"%{keyword}%")) |
-            (ContractUpstream.party_a_name.ilike(f"%{keyword}%"))
+            (ContractUpstream.party_a_name.ilike(f"%{keyword}%")) |
+            (ContractUpstream.party_b_name.ilike(f"%{keyword}%"))
         )
     
     if status:
@@ -320,15 +320,15 @@ async def export_contracts(
         data.append({
             "合同编号": c.contract_code,
             "合同名称": c.contract_name,
-            "甲方名称": c.party_a_name,
-            "联系人": c.party_a_contact,
-            "联系电话": c.party_a_phone,
-            "项目名称": c.project_name,
-            "合同分类": c.category.value if c.category else "",
+            "甲方单位": c.party_a_name,
+            "乙方单位": c.party_b_name,
+            "合同类别": c.category.value if hasattr(c.category, 'value') else c.category,
+            "公司分类": c.company_category,
+            "计价模式": c.pricing_mode.value if hasattr(c.pricing_mode, 'value') else c.pricing_mode,
+            "管理模式": c.management_mode.value if hasattr(c.management_mode, 'value') else c.management_mode,
+            "负责人": c.responsible_person,
             "合同金额": float(c.contract_amount) if c.contract_amount else 0,
-            "签订日期": c.sign_date,
-            "开始日期": c.start_date,
-            "结束日期": c.end_date,
+            "签约日期": c.sign_date,
             "状态": c.status,
             "备注": c.notes
         })

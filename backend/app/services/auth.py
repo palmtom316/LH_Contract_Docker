@@ -56,11 +56,18 @@ async def get_current_user(
     )
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        user_id: int = payload.get("sub")
+        sub = payload.get("sub")
         username: str = payload.get("username")
         
-        if user_id is None:
+        if sub is None:
             raise credentials_exception
+        
+        # Convert sub to int (it's stored as string in the token)
+        try:
+            user_id = int(sub)
+        except (ValueError, TypeError):
+            raise credentials_exception
+            
         token_data = TokenData(user_id=user_id, username=username)
     except JWTError:
         raise credentials_exception

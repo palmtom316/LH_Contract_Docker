@@ -18,6 +18,13 @@ from app.schemas.contract_downstream import (
     PaymentBase, PaymentCreate, PaymentResponse,
     DownstreamSettlementBase, DownstreamSettlementCreate, DownstreamSettlementResponse
 )
+from app.schemas.contract_management import (
+    ContractManagementBase, ContractManagementCreate, ContractManagementUpdate, ContractManagementResponse,
+    ManagementPayableBase, ManagementPayableCreate, ManagementPayableResponse,
+    ManagementInvoiceBase, ManagementInvoiceCreate, ManagementInvoiceResponse,
+    ManagementPaymentBase, ManagementPaymentCreate, ManagementPaymentResponse,
+    ManagementSettlementBase, ManagementSettlementCreate, ManagementSettlementResponse
+)
 from app.schemas.expense import (
     ExpenseBase, ExpenseCreate, ExpenseUpdate, ExpenseResponse
 )
@@ -37,6 +44,12 @@ __all__ = [
     "InvoiceDownstreamBase", "InvoiceDownstreamCreate", "InvoiceDownstreamResponse",
     "PaymentBase", "PaymentCreate", "PaymentResponse",
     "DownstreamSettlementBase", "DownstreamSettlementCreate", "DownstreamSettlementResponse",
+    # Management
+    "ContractManagementBase", "ContractManagementCreate", "ContractManagementUpdate", "ContractManagementResponse",
+    "ManagementPayableBase", "ManagementPayableCreate", "ManagementPayableResponse",
+    "ManagementInvoiceBase", "ManagementInvoiceCreate", "ManagementInvoiceResponse",
+    "ManagementPaymentBase", "ManagementPaymentCreate", "ManagementPaymentResponse",
+    "ManagementSettlementBase", "ManagementSettlementCreate", "ManagementSettlementResponse",
     # Expense
     "ExpenseBase", "ExpenseCreate", "ExpenseUpdate", "ExpenseResponse",
 ]

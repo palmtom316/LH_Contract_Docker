@@ -1,0 +1,101 @@
+time="2025-12-09T16:38:51+08:00" level=warning msg="D:\\LH_Contract_Docker\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+lh_contract_backend  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+lh_contract_backend  | WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+lh_contract_backend  | 2025-12-09 08:37:25,779 INFO sqlalchemy.engine.Engine [cached since 0.01013s ago] ('management_settlements', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+lh_contract_backend  | 2025-12-09 08:37:25,780 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_class.relname 
+lh_contract_backend  | FROM pg_catalog.pg_class JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_class.relnamespace 
+lh_contract_backend  | WHERE pg_catalog.pg_class.relname = $1::VARCHAR AND pg_catalog.pg_class.relkind = ANY (ARRAY[$2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR]) AND pg_catalog.pg_table_is_visible(pg_catalog.pg_class.oid) AND pg_catalog.pg_namespace.nspname != $7::VARCHAR
+lh_contract_backend  | 2025-12-09 08:37:25,780 INFO sqlalchemy.engine.Engine [cached since 0.0105s ago] ('expenses_non_contract', 'r', 'p', 'f', 'v', 'm', 'pg_catalog')
+lh_contract_backend  | 2025-12-09 08:37:25,781 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+lh_contract_backend  | FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+lh_contract_backend  | WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+lh_contract_backend  | 2025-12-09 08:37:25,781 INFO sqlalchemy.engine.Engine [generated in 0.00011s] ('userrole', 'pg_catalog')
+lh_contract_backend  | 2025-12-09 08:37:25,782 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+lh_contract_backend  | FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+lh_contract_backend  | WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+lh_contract_backend  | 2025-12-09 08:37:25,783 INFO sqlalchemy.engine.Engine [cached since 0.001462s ago] ('contractcategory', 'pg_catalog')
+lh_contract_backend  | 2025-12-09 08:37:25,783 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+lh_contract_backend  | FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+lh_contract_backend  | WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+lh_contract_backend  | 2025-12-09 08:37:25,783 INFO sqlalchemy.engine.Engine [cached since 0.002218s ago] ('pricingmode', 'pg_catalog')
+lh_contract_backend  | 2025-12-09 08:37:25,784 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+lh_contract_backend  | FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+lh_contract_backend  | WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+lh_contract_backend  | 2025-12-09 08:37:25,784 INFO sqlalchemy.engine.Engine [cached since 0.002866s ago] ('managementmode', 'pg_catalog')
+lh_contract_backend  | 2025-12-09 08:37:25,784 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+lh_contract_backend  | FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+lh_contract_backend  | WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+lh_contract_backend  | 2025-12-09 08:37:25,785 INFO sqlalchemy.engine.Engine [cached since 0.003498s ago] ('paymentcategory', 'pg_catalog')
+lh_contract_backend  | 2025-12-09 08:37:25,785 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+lh_contract_backend  | FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+lh_contract_backend  | WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+lh_contract_backend  | 2025-12-09 08:37:25,785 INFO sqlalchemy.engine.Engine [cached since 0.004372s ago] ('expensecategory', 'pg_catalog')
+lh_contract_backend  | 2025-12-09 08:37:25,786 INFO sqlalchemy.engine.Engine SELECT pg_catalog.pg_type.typname 
+lh_contract_backend  | FROM pg_catalog.pg_type JOIN pg_catalog.pg_namespace ON pg_catalog.pg_namespace.oid = pg_catalog.pg_type.typnamespace 
+lh_contract_backend  | WHERE pg_catalog.pg_type.typname = $1::VARCHAR AND pg_catalog.pg_type_is_visible(pg_catalog.pg_type.oid) AND pg_catalog.pg_namespace.nspname != $2::VARCHAR
+lh_contract_backend  | 2025-12-09 08:37:25,786 INFO sqlalchemy.engine.Engine [cached since 0.005014s ago] ('expensetype', 'pg_catalog')
+lh_contract_backend  | 2025-12-09 08:37:25,787 INFO sqlalchemy.engine.Engine COMMIT
+lh_contract_backend  | 鉁?Database tables initialized
+lh_contract_backend  | 2025-12-09 08:37:25,809 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+lh_contract_backend  | 2025-12-09 08:37:25,832 INFO sqlalchemy.engine.Engine SELECT users.id, users.username, users.email, users.hashed_password, users.full_name, users.role, users.is_active, users.is_superuser, users.created_at, users.updated_at, users.last_login 
+lh_contract_backend  | FROM users 
+lh_contract_backend  | WHERE users.username = $1::VARCHAR
+lh_contract_backend  | 2025-12-09 08:37:25,832 INFO sqlalchemy.engine.Engine [generated in 0.00022s] ('admin',)
+lh_contract_backend  | 馃憣 Admin user already exists.
+lh_contract_backend  | 2025-12-09 08:37:25,849 INFO sqlalchemy.engine.Engine ROLLBACK
+lh_contract_backend  | INFO:     Application startup complete.
+lh_contract_backend  | INFO:     172.18.0.1:45780 - "GET /health HTTP/1.1" 200 OK
+lh_contract_backend  | DEBUG LOGIN: username=admin, password_len=8
+lh_contract_backend  | DEBUG LOGIN: password_preview=admin123...
+lh_contract_backend  | 2025-12-09 08:38:03,903 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+lh_contract_backend  | 2025-12-09 08:38:03,903 INFO sqlalchemy.engine.Engine SELECT users.id, users.username, users.email, users.hashed_password, users.full_name, users.role, users.is_active, users.is_superuser, users.created_at, users.updated_at, users.last_login 
+lh_contract_backend  | FROM users 
+lh_contract_backend  | WHERE users.username = $1::VARCHAR
+lh_contract_backend  | 2025-12-09 08:38:03,903 INFO sqlalchemy.engine.Engine [cached since 38.07s ago] ('admin',)
+lh_contract_backend  | (trapped) error reading bcrypt version
+lh_contract_backend  | Traceback (most recent call last):
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/passlib/handlers/bcrypt.py", line 620, in _load_backend_mixin
+lh_contract_backend  |     version = _bcrypt.__about__.__version__
+lh_contract_backend  |               ^^^^^^^^^^^^^^^^^
+lh_contract_backend  | AttributeError: module 'bcrypt' has no attribute '__about__'
+lh_contract_backend  | 2025-12-09 08:38:04,154 INFO sqlalchemy.engine.Engine UPDATE users SET updated_at=now(), last_login=$1::TIMESTAMP WITH TIME ZONE WHERE users.id = $2::INTEGER
+lh_contract_backend  | 2025-12-09 08:38:04,154 INFO sqlalchemy.engine.Engine [generated in 0.00019s] (datetime.datetime(2025, 12, 9, 8, 38, 4, 153096), 1)
+lh_contract_backend  | 2025-12-09 08:38:04,156 INFO sqlalchemy.engine.Engine COMMIT
+lh_contract_backend  | 2025-12-09 08:38:04,186 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+lh_contract_backend  | 2025-12-09 08:38:04,186 INFO sqlalchemy.engine.Engine SELECT users.id, users.username, users.email, users.hashed_password, users.full_name, users.role, users.is_active, users.is_superuser, users.created_at, users.updated_at, users.last_login 
+lh_contract_backend  | FROM users 
+lh_contract_backend  | WHERE users.id = $1::INTEGER
+lh_contract_backend  | 2025-12-09 08:38:04,187 INFO sqlalchemy.engine.Engine [generated in 0.00013s] (1,)
+lh_contract_backend  | 2025-12-09 08:38:04,205 INFO sqlalchemy.engine.Engine COMMIT
+lh_contract_backend  | INFO:     172.18.0.1:54908 - "POST /api/v1/auth/login/json HTTP/1.1" 200 OK
+lh_contract_backend  | 2025-12-09 08:38:04,799 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+lh_contract_backend  | 2025-12-09 08:38:04,800 INFO sqlalchemy.engine.Engine SELECT users.id, users.username, users.email, users.hashed_password, users.full_name, users.role, users.is_active, users.is_superuser, users.created_at, users.updated_at, users.last_login 
+lh_contract_backend  | FROM users 
+lh_contract_backend  | WHERE users.id = $1::INTEGER
+lh_contract_backend  | 2025-12-09 08:38:04,800 INFO sqlalchemy.engine.Engine [generated in 0.00013s] (1,)
+lh_contract_backend  | 2025-12-09 08:38:04,814 INFO sqlalchemy.engine.Engine SELECT sum(contracts_upstream.contract_amount) AS sum_1 
+lh_contract_backend  | FROM contracts_upstream
+lh_contract_backend  | 2025-12-09 08:38:04,815 INFO sqlalchemy.engine.Engine [generated in 0.00021s] ()
+lh_contract_backend  | 2025-12-09 08:38:04,817 INFO sqlalchemy.engine.Engine SELECT sum(finance_upstream_receipts.amount) AS sum_1 
+lh_contract_backend  | FROM finance_upstream_receipts
+lh_contract_backend  | 2025-12-09 08:38:04,817 INFO sqlalchemy.engine.Engine [generated in 0.00014s] ()
+lh_contract_backend  | 2025-12-09 08:38:04,819 INFO sqlalchemy.engine.Engine SELECT sum(finance_downstream_payments.amount) AS sum_1 
+lh_contract_backend  | FROM finance_downstream_payments
+lh_contract_backend  | 2025-12-09 08:38:04,819 INFO sqlalchemy.engine.Engine [generated in 0.00012s] ()
+lh_contract_backend  | 2025-12-09 08:38:04,821 INFO sqlalchemy.engine.Engine SELECT sum(expenses_non_contract.amount) AS sum_1 
+lh_contract_backend  | FROM expenses_non_contract
+lh_contract_backend  | 2025-12-09 08:38:04,821 INFO sqlalchemy.engine.Engine [generated in 0.00013s] ()
+lh_contract_backend  | 2025-12-09 08:38:04,824 INFO sqlalchemy.engine.Engine SELECT sum(contracts_downstream.contract_amount) AS sum_1 
+lh_contract_backend  | FROM contracts_downstream
+lh_contract_backend  | 2025-12-09 08:38:04,824 INFO sqlalchemy.engine.Engine [generated in 0.00014s] ()
+lh_contract_backend  | 2025-12-09 08:38:04,827 INFO sqlalchemy.engine.Engine SELECT contracts_upstream.category, count(contracts_upstream.id) AS count_1 
+lh_contract_backend  | FROM contracts_upstream GROUP BY contracts_upstream.category
+lh_contract_backend  | 2025-12-09 08:38:04,827 INFO sqlalchemy.engine.Engine [generated in 0.00021s] ()
+lh_contract_backend  | 2025-12-09 08:38:04,830 INFO sqlalchemy.engine.Engine SELECT sum(finance_upstream_receipts.amount) AS sum_1 
+lh_contract_backend  | FROM finance_upstream_receipts 
+lh_contract_backend  | WHERE EXTRACT(month FROM finance_upstream_receipts.receipt_date) = $1::INTEGER AND EXTRACT(year FROM finance_upstream_receipts.receipt_date) = $2::INTEGER
+lh_contract_backend  | 2025-12-09 08:38:04,830 INFO sqlalchemy.engine.Engine [generated in 0.00015s] (12, 2025)
+lh_contract_backend  | 2025-12-09 08:38:04,832 INFO sqlalchemy.engine.Engine COMMIT
+lh_contract_backend  | INFO:     172.18.0.1:54922 - "GET /api/v1/dashboard/stats HTTP/1.1" 200 OK
+lh_contract_backend  | INFO:     172.18.0.1:40656 - "GET /api/v1/contracts/upstream?page=1&page_size=10&keyword=&status= HTTP/1.1" 307 Temporary Redirect
+lh_contract_backend  | INFO:     172.18.0.1:40660 - "GET /api/v1/contracts/upstream/?page=1&page_size=10&keyword=&status= HTTP/1.1" 401 Unauthorized

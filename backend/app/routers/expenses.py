@@ -32,10 +32,12 @@ async def list_expenses(
     query = select(ExpenseNonContract)
     
     if keyword:
+        # Removed payee_name from search as it's not in the new Requirement 3.4
         query = query.where(
             (ExpenseNonContract.expense_code.ilike(f"%{keyword}%")) | 
             (ExpenseNonContract.description.ilike(f"%{keyword}%")) |
-            (ExpenseNonContract.payee_name.ilike(f"%{keyword}%"))
+            (ExpenseNonContract.handler.ilike(f"%{keyword}%")) |
+            (ExpenseNonContract.responsible_person.ilike(f"%{keyword}%"))
         )
     
     if category:

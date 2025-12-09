@@ -1,5 +1,5 @@
 """
-Downstream Contract Pydantic Schemas
+Management Contract Pydantic Schemas
 """
 from pydantic import BaseModel, Field
 from typing import Optional, List
@@ -7,19 +7,18 @@ from datetime import date, datetime
 from decimal import Decimal
 from app.models.enums import ContractCategory, PaymentCategory, PricingMode, ManagementMode
 
-# ===== Contract Downstream Schemas =====
-class ContractDownstreamBase(BaseModel):
-    """Base downstream contract schema"""
+# ===== Contract Management Schemas =====
+class ContractManagementBase(BaseModel):
+    """Base management contract schema"""
     contract_code: str = Field(..., max_length=50)
     contract_name: str = Field(..., max_length=200)
     
-    party_a_name: str = Field(..., max_length=200) # Added (Req 3.3)
-    party_b_name: str = Field(..., max_length=200) # Renamed from supplier_name
+    party_a_name: str = Field(..., max_length=200)
+    party_b_name: str = Field(..., max_length=200)
     
     upstream_contract_id: Optional[int] = None
-    upstream_contract_name_snapshot: Optional[str] = Field(None, max_length=200) # Added
+    upstream_contract_name_snapshot: Optional[str] = Field(None, max_length=200)
     
-    # Classification (Req 3.3: Same structure as Upstream)
     category: Optional[ContractCategory] = None
     company_category: Optional[str] = None
     pricing_mode: Optional[PricingMode] = None
@@ -30,7 +29,7 @@ class ContractDownstreamBase(BaseModel):
     party_a_contact: Optional[str] = Field(None, max_length=100)
     party_a_phone: Optional[str] = Field(None, max_length=20)
     
-    party_b_contact: Optional[str] = Field(None, max_length=100) # Renamed from supplier_contact
+    party_b_contact: Optional[str] = Field(None, max_length=100)
     party_b_phone: Optional[str] = Field(None, max_length=20)
     
     contract_amount: Decimal = Field(default=Decimal("0.00"), ge=0)
@@ -40,16 +39,14 @@ class ContractDownstreamBase(BaseModel):
     end_date: Optional[date] = None
     status: Optional[str] = Field(default="进行中", max_length=50)
     notes: Optional[str] = None
-    contract_file_path: Optional[str] = None # Added for PDF
+    contract_file_path: Optional[str] = None
 
 
-class ContractDownstreamCreate(ContractDownstreamBase):
-    """Schema for creating downstream contract"""
+class ContractManagementCreate(ContractManagementBase):
     pass
 
 
-class ContractDownstreamUpdate(BaseModel):
-    """Schema for updating downstream contract"""
+class ContractManagementUpdate(BaseModel):
     contract_name: Optional[str] = Field(None, max_length=200)
     party_a_name: Optional[str] = Field(None, max_length=200)
     party_b_name: Optional[str] = Field(None, max_length=200)
@@ -77,8 +74,7 @@ class ContractDownstreamUpdate(BaseModel):
     contract_file_path: Optional[str] = None
 
 
-class ContractDownstreamResponse(ContractDownstreamBase):
-    """Schema for downstream contract response"""
+class ContractManagementResponse(ContractManagementBase):
     id: int
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -93,30 +89,26 @@ class ContractDownstreamResponse(ContractDownstreamBase):
         from_attributes = True
 
 
-class ContractDownstreamListResponse(BaseModel):
-    """Schema for paginated downstream contracts list"""
-    items: List[ContractDownstreamResponse]
+class ContractManagementListResponse(BaseModel):
+    items: List[ContractManagementResponse]
     total: int
     page: int
     page_size: int
 
 
 # ===== Payable Schemas =====
-class PayableBase(BaseModel):
-    """Base payable schema"""
+class ManagementPayableBase(BaseModel):
     category: PaymentCategory
     amount: Decimal = Field(..., ge=0)
     description: Optional[str] = Field(None, max_length=300)
     expected_date: Optional[date] = None
 
 
-class PayableCreate(PayableBase):
-    """Schema for creating payable"""
+class ManagementPayableCreate(ManagementPayableBase):
     contract_id: int
 
 
-class PayableResponse(PayableBase):
-    """Schema for payable response"""
+class ManagementPayableResponse(ManagementPayableBase):
     id: int
     contract_id: int
     created_at: Optional[datetime] = None
@@ -126,27 +118,24 @@ class PayableResponse(PayableBase):
         from_attributes = True
 
 
-# ===== Invoice Downstream Schemas =====
-class InvoiceDownstreamBase(BaseModel):
-    """Base downstream invoice schema"""
+# ===== Invoice Management Schemas =====
+class ManagementInvoiceBase(BaseModel):
     invoice_number: str = Field(..., max_length=50)
     invoice_date: date
     amount: Decimal = Field(..., ge=0)
     tax_rate: Optional[Decimal] = Field(None, ge=0, le=100)
     tax_amount: Optional[Decimal] = Field(None, ge=0)
     invoice_type: Optional[str] = Field(None, max_length=50)
-    supplier_name: Optional[str] = Field(None, max_length=200) # Optional override or match party B
+    supplier_name: Optional[str] = Field(None, max_length=200)
     description: Optional[str] = Field(None, max_length=300)
     file_path: Optional[str] = None
 
 
-class InvoiceDownstreamCreate(InvoiceDownstreamBase):
-    """Schema for creating downstream invoice"""
+class ManagementInvoiceCreate(ManagementInvoiceBase):
     contract_id: int
 
 
-class InvoiceDownstreamResponse(InvoiceDownstreamBase):
-    """Schema for downstream invoice response"""
+class ManagementInvoiceResponse(ManagementInvoiceBase):
     id: int
     contract_id: int
     created_at: Optional[datetime] = None
@@ -157,8 +146,7 @@ class InvoiceDownstreamResponse(InvoiceDownstreamBase):
 
 
 # ===== Payment Schemas =====
-class PaymentBase(BaseModel):
-    """Base payment schema"""
+class ManagementPaymentBase(BaseModel):
     payment_date: date
     amount: Decimal = Field(..., ge=0)
     payment_method: Optional[str] = Field(None, max_length=50)
@@ -169,13 +157,11 @@ class PaymentBase(BaseModel):
     file_path: Optional[str] = None
 
 
-class PaymentCreate(PaymentBase):
-    """Schema for creating payment"""
+class ManagementPaymentCreate(ManagementPaymentBase):
     contract_id: int
 
 
-class PaymentResponse(PaymentBase):
-    """Schema for payment response"""
+class ManagementPaymentResponse(ManagementPaymentBase):
     id: int
     contract_id: int
     created_at: Optional[datetime] = None
@@ -185,9 +171,8 @@ class PaymentResponse(PaymentBase):
         from_attributes = True
 
 
-# ===== Downstream Settlement Schemas =====
-class DownstreamSettlementBase(BaseModel):
-    """Base downstream settlement schema"""
+# ===== Management Settlement Schemas =====
+class ManagementSettlementBase(BaseModel):
     settlement_code: str = Field(..., max_length=50)
     settlement_date: date
     settlement_amount: Decimal = Field(..., ge=0)
@@ -198,13 +183,11 @@ class DownstreamSettlementBase(BaseModel):
     file_path: Optional[str] = None
 
 
-class DownstreamSettlementCreate(DownstreamSettlementBase):
-    """Schema for creating downstream settlement"""
+class ManagementSettlementCreate(ManagementSettlementBase):
     contract_id: int
 
 
-class DownstreamSettlementResponse(DownstreamSettlementBase):
-    """Schema for downstream settlement response"""
+class ManagementSettlementResponse(ManagementSettlementBase):
     id: int
     contract_id: int
     created_at: Optional[datetime] = None
