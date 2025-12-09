@@ -1,0 +1,82 @@
+import { createRouter, createWebHistory } from 'vue-router'
+
+const routes = [
+    {
+        path: '/',
+        name: 'Layout',
+        component: () => import('@/views/Layout.vue'),
+        children: [
+            {
+                path: '',
+                name: 'Dashboard',
+                component: () => import('@/views/Dashboard.vue'),
+                meta: { title: '首页', icon: 'HomeFilled' }
+            },
+            {
+                path: 'contracts/upstream',
+                name: 'UpstreamList',
+                component: () => import('../views/contracts/UpstreamList.vue'),
+                meta: { title: '上游合同列表' }
+            },
+            {
+                path: 'contracts/upstream/:id',
+                name: 'UpstreamDetail',
+                component: () => import('../views/contracts/UpstreamDetail.vue'),
+                meta: { title: '上游合同详情', hidden: true }
+            },
+            {
+                path: 'contracts/downstream',
+                name: 'DownstreamContracts',
+                component: () => import('@/views/contracts/DownstreamList.vue'),
+                meta: { title: '下游合同', icon: 'DocumentCopy' }
+            },
+            {
+                path: 'expenses',
+                name: 'Expenses',
+                component: () => import('@/views/expenses/ExpenseList.vue'),
+                meta: { title: '费用管理', icon: 'Money' }
+            },
+            {
+                path: 'reports',
+                name: 'Reports',
+                component: () => import('@/views/reports/ReportDashboard.vue'),
+                meta: { title: '报表统计', icon: 'DataAnalysis' }
+            }
+        ]
+    },
+    {
+        path: '/login',
+        name: 'Login',
+        component: () => import('@/views/Login.vue'),
+        meta: { title: '登录' }
+    }
+]
+
+const router = createRouter({
+    history: createWebHistory(),
+    routes
+})
+
+// Navigation guards
+router.beforeEach((to, from, next) => {
+    // Set page title
+    document.title = to.meta.title ? `${to.meta.title} - 蓝海合同管理` : '蓝海合同管理系统'
+    const token = localStorage.getItem('token')
+    const whiteList = ['/login']
+
+    if (token) {
+        if (to.path === '/login') {
+            next('/')
+        } else {
+            next()
+        }
+    } else {
+        if (whiteList.includes(to.path)) {
+            next()
+        } else {
+            next('/login')
+        }
+    }
+})
+
+export default router

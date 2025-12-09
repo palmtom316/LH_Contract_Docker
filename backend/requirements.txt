@@ -1,0 +1,34 @@
+# FastAPI & Server
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# Database
+sqlalchemy[asyncio]==2.0.25
+asyncpg==0.29.0
+alembic==1.13.1
+
+# Authentication & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.1.2
+
+# Validation
+pydantic==2.5.3
+pydantic-settings==2.1.0
+email-validator==2.1.0
+
+# Data Processing
+pandas==2.1.4
+openpyxl==3.1.2
+xlsxwriter==3.1.9
+
+# PDF Processing (optional)
+reportlab==4.0.8
+
+# File handling
+aiofiles==23.2.1
+python-magic==0.4.27
+
+# Date/Time
+python-dateutil==2.8.2

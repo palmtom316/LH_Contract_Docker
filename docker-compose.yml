@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: lh_contract_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lh_admin
+      POSTGRES_PASSWORD: LanHai2024Secure!
+      POSTGRES_DB: lh_contract_db
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - lh_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U lh_admin -d lh_contract_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lh_contract_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://lh_admin:LanHai2024Secure!@db:5432/lh_contract_db
+      SECRET_KEY: your-super-secret-key-change-in-production-2024
+      CORS_ORIGINS: http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - ./backend/app:/app/app
+      - ./uploads:/app/uploads
+    ports:
+      - "8000:8000"
+    networks:
+      - lh_network
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Vue.js Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: lh_contract_frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000/api/v1
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    networks:
+      - lh_network
+    depends_on:
+      - backend
+
+networks:
+  lh_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
