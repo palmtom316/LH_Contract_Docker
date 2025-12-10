@@ -54,6 +54,11 @@
 
         <el-table-column prop="description" label="说明" min-width="200" show-overflow-tooltip />
         <el-table-column prop="payee_name" label="收款方" min-width="150" show-overflow-tooltip />
+        <el-table-column label="费用文件" width="100" align="center">
+          <template #default="scope">
+            <el-link v-if="scope.row.file_path" type="primary" :href="scope.row.file_path" target="_blank">查看</el-link>
+          </template>
+        </el-table-column>
         <el-table-column prop="amount" label="金额" width="140" align="right">
           <template #default="scope">
              ¥ {{ Number(scope.row.amount).toLocaleString() }}
