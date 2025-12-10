@@ -62,7 +62,7 @@ async def export_contracts(
             "合同名称": c.contract_name,
             "甲方": c.party_a_name,
             "乙方": c.party_b_name,
-            "合同类别": c.category.value if c.category else None,
+            "合同类别": c.category,
             "计价模式": c.pricing_mode.value if c.pricing_mode else None,
             "合同金额": float(c.contract_amount),
             "签订日期": c.sign_date,
