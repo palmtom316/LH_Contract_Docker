@@ -484,7 +484,7 @@ const openFinanceDialog = (type) => {
   if (type === 'payable') {
     financeDialog.title = '新增应付款'
     Object.assign(financeForm, {
-      category: '进度款', amount: 0, expected_date: '', description: '', file_path: ''
+      category: '进度款', amount: 0, expected_date: null, description: '', file_path: ''
     })
   } else if (type === 'invoice') {
     financeDialog.title = '新增收票记录'
