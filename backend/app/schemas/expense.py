@@ -11,6 +11,7 @@ from app.models.enums import ExpenseCategory, ExpenseType
 class ExpenseBase(BaseModel):
     """Base expense schema"""
     expense_code: str = Field(..., max_length=50)
+    attribution: Optional[str] = None
     category: str
     expense_type: Optional[str] = None
     amount: Decimal = Field(..., ge=0)
@@ -30,6 +31,7 @@ class ExpenseCreate(ExpenseBase):
 
 
 class ExpenseUpdate(BaseModel):
+    attribution: Optional[str] = None
     category: Optional[str] = None
     expense_type: Optional[str] = None
     amount: Optional[Decimal] = Field(None, ge=0)

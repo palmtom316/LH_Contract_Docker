@@ -129,7 +129,15 @@
         </el-row>
 
         <el-row :gutter="20">
-          <el-col :span="24">
+          <el-col :span="12">
+            <el-form-item label="费用归属" prop="attribution">
+              <el-select v-model="form.attribution" placeholder="请选择" style="width: 100%">
+                <el-option label="公司费用" value="公司费用" />
+                <el-option label="项目费用" value="项目费用" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
             <el-form-item label="费用分类" prop="category">
               <el-select v-model="form.category" placeholder="请选择" style="width: 100%">
             <el-option label="工资" value="工资" />
@@ -240,6 +248,7 @@ const formRef = ref(null)
 const form = reactive({
   id: undefined,
   expense_code: '',
+  attribution: '',
   category: '',
   amount: 0,
   tax_amount: 0,
@@ -253,6 +262,7 @@ const form = reactive({
 
 const rules = {
   expense_code: [{ required: true, message: '请输入编号', trigger: 'blur' }],
+  attribution: [{ required: true, message: '请选择费用归属', trigger: 'change' }],
   category: [{ required: true, message: '请选择费用分类', trigger: 'change' }],
   amount: [{ required: true, message: '请输入金额', trigger: 'blur' }],
   expense_date: [{ required: true, message: '请选择日期', trigger: 'change' }]
@@ -285,6 +295,7 @@ const resetQuery = () => {
 const resetForm = () => {
   form.id = undefined
   form.expense_code = 'FY' + new Date().getTime().toString().substr(-8) // Generate simple code
+  form.attribution = ''
   form.category = ''
   form.amount = 0
   form.tax_amount = 0

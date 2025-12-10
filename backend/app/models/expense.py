@@ -19,6 +19,7 @@ class ExpenseNonContract(Base):
     expense_code = Column(String(50), unique=True, nullable=False, index=True)  # 序号/编号
     
     # Classification
+    attribution = Column(String(50), nullable=True)  # 费用归属 (Company/Project)
     category = Column(String(50), nullable=False)  # 费用类别 (Company/Project)
     expense_type = Column(String(50), nullable=True)  # 费用分类 (Management, Training, etc.)
     
