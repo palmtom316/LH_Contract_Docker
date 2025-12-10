@@ -169,6 +169,30 @@
           </el-col>
         </el-row>
 
+        <el-row :gutter="20" v-if="form.attribution === '项目费用'">
+          <el-col :span="24">
+            <el-form-item label="关联上游" prop="upstream_contract_id">
+              <el-select
+                v-model="form.upstream_contract_id"
+                filterable
+                remote
+                clearable
+                placeholder="请输入合同序号/编号/名称搜索"
+                :remote-method="searchUpstreamContracts"
+                :loading="loadingContracts"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="item in upstreamContracts"
+                  :key="item.id"
+                  :label="item.contract_code + ' - ' + item.contract_name"
+                  :value="item.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
         <el-form-item label="金额" prop="amount">
           <el-input-number 
             v-model="form.amount" 
@@ -229,6 +253,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { getExpenses, createExpense, updateExpense, deleteExpense, approveExpense } from '@/api/expense'
+import { getContracts, getContract } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
 import { ElMessage } from 'element-plus'
 
@@ -236,6 +261,8 @@ const loading = ref(false)
 const total = ref(0)
 const expenseList = ref([])
 const fileList = ref([])
+const upstreamContracts = ref([])
+const loadingContracts = ref(false)
 
 const queryParams = reactive({
   page: 1,
@@ -257,6 +284,7 @@ const form = reactive({
   id: undefined,
   expense_code: '',
   attribution: '',
+  upstream_contract_id: undefined,
   category: '',
   amount: 0,
   tax_amount: 0,
@@ -305,6 +333,7 @@ const resetForm = () => {
   form.id = undefined
   form.expense_code = 'FY' + new Date().getTime().toString().substr(-8) // Generate simple code
   form.attribution = ''
+  form.upstream_contract_id = undefined
   form.category = ''
   form.amount = 0
   form.tax_amount = 0
@@ -324,10 +353,22 @@ const handleAdd = () => {
   dialog.visible = true
 }
 
-const handleEdit = (row) => {
+const handleEdit = async (row) => {
   resetForm()
   Object.assign(form, row)
   fileList.value = row.file_path ? [{ name: '费用文件', url: row.file_path }] : []
+  
+  if (row.upstream_contract_id) {
+    try {
+      const contract = await getContract(row.upstream_contract_id)
+      upstreamContracts.value = [contract]
+    } catch (e) {
+      console.error(e)
+    }
+  } else {
+    upstreamContracts.value = []
+  }
+  
   dialog.title = '编辑费用'
   dialog.isEdit = true
   dialog.visible = true
@@ -360,6 +401,20 @@ const handleApprove = async (row, approved) => {
   await approveExpense(row.id, approved)
   ElMessage.success(approved ? '审核通过' : '已驳回')
   getList()
+}
+
+const searchUpstreamContracts = async (query) => {
+  if (query) {
+    loadingContracts.value = true
+    try {
+      const res = await getContracts({ keyword: query, page: 1, page_size: 20 })
+      upstreamContracts.value = res.items
+    } finally {
+      loadingContracts.value = false
+    }
+  } else {
+    upstreamContracts.value = []
+  }
 }
 
 const handleUploadRequest = async (option) => {
