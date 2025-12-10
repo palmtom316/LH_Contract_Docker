@@ -2,7 +2,7 @@ import request from '@/utils/request'
 
 export function getExpenses(params) {
     return request({
-        url: '/expenses',
+        url: '/expenses/',
         method: 'get',
         params
     })
@@ -10,7 +10,7 @@ export function getExpenses(params) {
 
 export function createExpense(data) {
     return request({
-        url: '/expenses',
+        url: '/expenses/',
         method: 'post',
         data
     })
