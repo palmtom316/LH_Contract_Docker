@@ -91,11 +91,7 @@
           <template #default="scope">
             <el-button link type="primary" size="small" @click="handleEdit(scope.row)" :disabled="scope.row.status === '已审核'">编辑</el-button>
 
-            <el-popconfirm title="确定删除吗?" @confirm="handleDelete(scope.row)">
-              <template #reference>
-                <el-button link type="danger" size="small">删除</el-button>
-              </template>
-            </el-popconfirm>
+            <el-button link type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -262,7 +258,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { getExpenses, createExpense, updateExpense, deleteExpense, approveExpense } from '@/api/expense'
 import { getContracts, getContract } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const loading = ref(false)
 const total = ref(0)
@@ -398,10 +394,20 @@ const submitForm = async () => {
   })
 }
 
-const handleDelete = async (row) => {
-  await deleteExpense(row.id)
-  ElMessage.success('删除成功')
-  getList()
+const handleDelete = (row) => {
+  ElMessageBox.confirm('确定要删除这条费用记录吗?', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      await deleteExpense(row.id)
+      ElMessage.success('删除成功')
+      getList()
+    } catch (e) {
+      console.error(e)
+    }
+  })
 }
 
 const handleApprove = async (row, approved) => {
