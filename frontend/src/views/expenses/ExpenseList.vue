@@ -58,7 +58,7 @@
             <el-tag effect="plain">{{ scope.row.category }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="关联上游" min-width="150" show-overflow-tooltip>
+        <el-table-column label="上游合同名称" min-width="150" show-overflow-tooltip>
           <template #default="scope">
             <span v-if="scope.row.upstream_contract">
               {{ scope.row.upstream_contract.contract_name }}
