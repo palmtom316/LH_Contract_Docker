@@ -69,7 +69,7 @@ async def upload_file(
     if ext not in settings.ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"不支持的文件类型: {ext}")
     
-    # Generate unique filename
+    # Generate unique filename using UUID to avoid encoding issues
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     unique_id = str(uuid.uuid4())[:8]
     new_filename = f"{timestamp}_{unique_id}.{ext}"

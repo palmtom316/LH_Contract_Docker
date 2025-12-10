@@ -4,17 +4,11 @@
     <el-card class="filter-container" shadow="never">
       <el-form :inline="true" :model="queryParams" class="demo-form-inline">
         <el-form-item label="关键词">
-          <el-input v-model="queryParams.keyword" placeholder="合同名称/编号/乙方" clearable @keyup.enter="handleQuery" />
+          <el-input v-model="queryParams.keyword" placeholder="合同名称/编号/乙方" clearable @keyup.enter="handleSearch" />
         </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="queryParams.status" placeholder="合同状态" clearable style="width: 120px">
-            <el-option label="进行中" value="进行中" />
-            <el-option label="已完成" value="已完成" />
-            <el-option label="已终止" value="已终止" />
-          </el-select>
-        </el-form-item>
+
         <el-form-item>
-          <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+          <el-button type="primary" icon="Search" @click="handleSearch">搜索</el-button>
           <el-button icon="Refresh" @click="resetQuery">重置</el-button>
           <el-button type="success" icon="Plus" @click="handleAdd">新建合同</el-button>
         </el-form-item>
@@ -30,9 +24,12 @@
         border
         highlight-current-row
       >
+        <el-table-column prop="id" label="合同序号" width="100" fixed />
         <el-table-column prop="contract_code" label="合同编号" width="150" fixed />
         <el-table-column prop="contract_name" label="合同名称" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="supplier_name" label="乙方(供应商)" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="party_b_name" label="乙方(供应商)" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="category" label="合同类别" width="120" show-overflow-tooltip />
+        <el-table-column prop="pricing_mode" label="计价模式" width="120" show-overflow-tooltip />
         <el-table-column prop="contract_amount" label="合同金额" width="140" align="right">
           <template #default="scope">
             ¥ {{ Number(scope.row.contract_amount).toLocaleString() }}
@@ -42,6 +39,19 @@
         <el-table-column prop="status" label="状态" width="100">
           <template #default="scope">
             <el-tag :type="getStatusType(scope.row.status)">{{ scope.row.status }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="合同文件" width="100" align="center">
+          <template #default="scope">
+            <el-link 
+              v-if="scope.row.contract_file_path" 
+              :href="getFileUrl(scope.row.contract_file_path)" 
+              target="_blank" 
+              type="primary"
+            >
+              <el-icon><Document /></el-icon>
+            </el-link>
+            <span v-else>-</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="220" fixed="right">
@@ -114,7 +124,7 @@
             filterable
             remote
             reserve-keyword
-            placeholder="搜索关联的上游合同(编号/名称)"
+            placeholder="搜索关联的上游合同(序号/编号/名称)"
             :remote-method="searchUpstream"
             :loading="upstreamLoading"
             style="width: 100%"
@@ -124,9 +134,12 @@
             <el-option
               v-for="item in upstreamOptions"
               :key="item.id"
-              :label="item.contract_name + ' (' + item.contract_code + ')'"
+              :label="`[${item.id}] ${item.contract_name}`"
               :value="item.id"
-            />
+            >
+              <span style="float: left">[{{ item.id }}] {{ item.contract_name }}</span>
+              <span style="float: right; color: #8492a6; font-size: 12px">{{ item.contract_code }}</span>
+            </el-option>
           </el-select>
         </el-form-item>
 
@@ -168,23 +181,52 @@
           </el-col>
         </el-row>
         
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="合同类别" prop="category">
+              <el-select v-model="form.category" placeholder="请选择合同类别" style="width: 100%">
+                <el-option label="材料设备" value="材料设备" />
+                <el-option label="专业分包" value="专业分包" />
+                <el-option label="劳务分包" value="劳务分包" />
+                <el-option label="咨询服务" value="咨询服务" />
+                <el-option label="技术服务" value="技术服务" />
+                <el-option label="其他合同" value="其他合同" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="计价模式" prop="pricing_mode">
+              <el-select v-model="form.pricing_mode" placeholder="请选择计价模式" style="width: 100%">
+                <el-option label="总价包干" value="总价包干" />
+                <el-option label="单价包干" value="单价包干" />
+                <el-option label="工日单价" value="工日单价" />
+                <el-option label="费率下浮" value="费率下浮" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
         <el-form-item label="合同名称" prop="contract_name">
           <el-input v-model="form.contract_name" placeholder="请输入合同名称" />
         </el-form-item>
 
-        <el-form-item label="乙方名称" prop="supplier_name">
-          <SmartAutocomplete v-model="form.supplier_name" placeholder="输入乙方名称，支持自动补全" />
+        <el-form-item label="甲方名称" prop="party_a_name">
+          <el-input v-model="form.party_a_name" placeholder="一般为本公司名称" />
+        </el-form-item>
+
+        <el-form-item label="乙方名称" prop="party_b_name">
+          <SmartAutocomplete v-model="form.party_b_name" placeholder="输入乙方名称，支持自动补全" />
         </el-form-item>
 
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="联系人" prop="supplier_contact">
-              <el-input v-model="form.supplier_contact" />
+            <el-form-item label="乙方联系人" prop="party_b_contact">
+              <el-input v-model="form.party_b_contact" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="联系电话" prop="supplier_phone">
-              <el-input v-model="form.supplier_phone" />
+            <el-form-item label="乙方电话" prop="party_b_phone">
+              <el-input v-model="form.party_b_phone" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -195,25 +237,25 @@
             :precision="2" 
             :step="1000" 
             :min="0" 
+            :controls="false"
             style="width: 100%" 
           />
         </el-form-item>
 
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="开始日期" prop="start_date">
-              <el-date-picker v-model="form.start_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="结束日期" prop="end_date">
-              <el-date-picker v-model="form.end_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-form-item label="合同类别" prop="category">
-          <el-input v-model="form.category" placeholder="例如：材料采购、分包施工" />
+        <el-form-item label="合同文件">
+          <el-upload
+            class="upload-demo"
+            action="#"
+            :http-request="handleUpload"
+            :file-list="fileList"
+            :limit="1"
+            accept=".pdf"
+          >
+            <el-button type="primary" icon="Document">点击上传PDF</el-button>
+            <template #tip>
+              <div class="el-upload__tip">只能上传 PDF 文件</div>
+            </template>
+          </el-upload>
         </el-form-item>
 
         <el-form-item label="备注">
@@ -232,15 +274,21 @@
 
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
 import { getContracts, createContract, updateContract, deleteContract } from '@/api/contractDownstream'
 import { getContracts as getUpstreamContracts, getContractSummary } from '@/api/contractUpstream'
+import { uploadFile } from '@/api/common'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Document } from '@element-plus/icons-vue'
 import SmartAutocomplete from '@/components/SmartAutocomplete.vue'
+
+const router = useRouter()
 
 const loading = ref(false)
 const total = ref(0)
 const contractList = ref([])
 const isMobile = ref(false)
+const fileList = ref([])
 
 // Upstream Search
 const upstreamLoading = ref(false)
@@ -266,14 +314,15 @@ const form = reactive({
   upstream_contract_id: undefined,
   contract_code: '',
   contract_name: '',
-  supplier_name: '',
-  supplier_contact: '',
-  supplier_phone: '',
+  party_a_name: '蓝海建设集团',
+  party_b_name: '',
+  party_b_contact: '',
+  party_b_phone: '',
   contract_amount: 0,
   sign_date: '',
-  start_date: '',
-  end_date: '',
-  category: '',
+  category: '其他合同',
+  pricing_mode: '',
+  contract_file_path: '',
   notes: '',
   status: '进行中'
 })
@@ -281,8 +330,9 @@ const form = reactive({
 const rules = {
   contract_code: [{ required: true, message: '请输入合同编号', trigger: 'blur' }],
   contract_name: [{ required: true, message: '请输入合同名称', trigger: 'blur' }],
-  supplier_name: [{ required: true, message: '请输入乙方名称', trigger: 'blur' }],
-  contract_amount: [{ required: true, message: '请输入合同金额', trigger: 'blur' }]
+  party_b_name: [{ required: true, message: '请输入乙方名称', trigger: 'blur' }],
+  contract_amount: [{ required: true, message: '请输入合同金额', trigger: 'blur' }],
+  category: [{ required: true, message: '请选择合同类别', trigger: 'change' }]
 }
 
 // Check Is Mobile
@@ -297,12 +347,13 @@ const getList = async () => {
     const res = await getContracts(queryParams)
     contractList.value = res.items
     total.value = res.total
-  } finally {
-    loading.value = false
+  } catch (error) {
+    console.error(error)
   }
+  loading.value = false
 }
 
-const handleQuery = () => {
+const handleSearch = () => {
   queryParams.page = 1
   getList()
 }
@@ -310,7 +361,7 @@ const handleQuery = () => {
 const resetQuery = () => {
   queryParams.keyword = ''
   queryParams.status = ''
-  handleQuery()
+  handleSearch()
 }
 
 const getStatusType = (status) => {
@@ -330,15 +381,17 @@ const searchUpstream = async (query) => {
     try {
       const res = await getUpstreamContracts({ keyword: query, page_size: 20 })
       upstreamOptions.value = res.items
-    } finally {
-      upstreamLoading.value = false
+    } catch (e) {
+      console.error(e)
     }
+    upstreamLoading.value = false
   } else {
     upstreamOptions.value = []
   }
 }
 
 const handleUpstreamSelect = async (val) => {
+  form.upstream_contract_id = val
   if (val) {
     try {
       const summary = await getContractSummary(val)
@@ -351,23 +404,48 @@ const handleUpstreamSelect = async (val) => {
   }
 }
 
+const getFileUrl = (path) => {
+  if (!path) return ''
+  // If path starts with http, return as is
+  if (path.startsWith('http')) return path
+  // In dev environment, point to backend port 8000
+  // Use window.location.hostname to support access via IP
+  return `http://${window.location.hostname}:8000${path}`
+}
+
+// Upload
+const handleUpload = async (option) => {
+  try {
+    const result = await uploadFile(option.file)
+    form.contract_file_path = result.path
+    fileList.value = [{ name: option.file.name, url: result.path }]
+    option.onSuccess(result)
+    ElMessage.success('上传成功')
+  } catch (e) {
+    ElMessage.error('上传失败')
+    option.onError(e)
+  }
+}
+
 // Form handling
 const resetForm = () => {
   form.id = undefined
   form.upstream_contract_id = undefined
   form.contract_code = ''
   form.contract_name = ''
-  form.supplier_name = ''
-  form.supplier_contact = ''
-  form.supplier_phone = ''
+  form.party_a_name = '蓝海建设集团'
+  form.party_b_name = ''
+  form.party_b_contact = ''
+  form.party_b_phone = ''
   form.contract_amount = 0
   form.sign_date = new Date().toISOString().split('T')[0]
-  form.start_date = ''
-  form.end_date = ''
-  form.category = ''
+  form.category = '其他合同'
+  form.pricing_mode = ''
+  form.contract_file_path = ''
   form.notes = ''
   form.status = '进行中'
   
+  fileList.value = []
   upstreamOptions.value = []
   upstreamSummary.value = null
 }
@@ -383,14 +461,15 @@ const handleEdit = async (row) => {
   resetForm()
   Object.assign(form, row)
   
+  if (row.contract_file_path) {
+    fileList.value = [{ name: '合同文件', url: row.contract_file_path }]
+  } else {
+    fileList.value = []
+  }
+
   // Create mock option so the select displays the current stored ID correctly initially
-  // In a real app we might want to fetch the name of this upstream contract if only ID is in row
   if (form.upstream_contract_id) {
-    // Ideally we fetch the summary
     handleUpstreamSelect(form.upstream_contract_id)
-    // And Pre-fill the option list with at least the current one so it shows text not ID
-    // Simplification: we might need an API to get one specific contract by ID to fill the list
-    // Skipping for MVP stability
   }
   
   dialog.title = '编辑合同'
@@ -402,15 +481,27 @@ const submitForm = async () => {
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
     if (valid) {
-      if (dialog.isEdit) {
-        await updateContract(form.id, form)
-        ElMessage.success('更新成功')
-      } else {
-        await createContract(form)
-        ElMessage.success('创建成功')
+      try {
+        // Clean data
+        const submitData = { ...form }
+        if (!submitData.start_date) submitData.start_date = null
+        if (!submitData.end_date) submitData.end_date = null
+        if (!submitData.category) submitData.category = '其他合同'
+        if (!submitData.pricing_mode) submitData.pricing_mode = null
+        
+        if (dialog.isEdit) {
+          await updateContract(form.id, submitData)
+          ElMessage.success('更新成功')
+        } else {
+          await createContract(submitData)
+          ElMessage.success('创建成功')
+        }
+        dialog.visible = false
+        getList()
+      } catch (error) {
+        // Error is handled by request interceptor usually, but safe to log
+        console.error(error)
       }
-      dialog.visible = false
-      getList()
     }
   })
 }
@@ -428,7 +519,7 @@ const handleDelete = (row) => {
 }
 
 const handleDetail = (row) => {
-  ElMessage.info('详情页面开发中')
+  router.push(`/contracts/downstream/${row.id}`)
 }
 
 onMounted(() => {

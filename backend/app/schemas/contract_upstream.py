@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import date, datetime
 from decimal import Decimal
-from app.models.enums import ContractCategory, PaymentCategory, PricingMode, ManagementMode
+from app.models.enums import ContractCategory, PaymentCategory, ReceivableCategory, PricingMode, ManagementMode
 
 
 # ===== Contract Upstream Schemas =====
@@ -99,7 +99,7 @@ class ContractUpstreamListResponse(BaseModel):
 # ===== Receivable Schemas =====
 class ReceivableBase(BaseModel):
     """Base receivable schema"""
-    category: PaymentCategory
+    category: ReceivableCategory
     amount: Decimal = Field(..., ge=0)
     description: Optional[str] = Field(None, max_length=300)
     expected_date: Optional[date] = None
@@ -132,6 +132,7 @@ class InvoiceUpstreamBase(BaseModel):
     tax_amount: Optional[Decimal] = Field(None, ge=0)
     invoice_type: Optional[str] = Field(None, max_length=50)
     description: Optional[str] = Field(None, max_length=300)
+    file_path: Optional[str] = None
 
 
 class InvoiceUpstreamCreate(InvoiceUpstreamBase):
@@ -143,7 +144,6 @@ class InvoiceUpstreamResponse(InvoiceUpstreamBase):
     """Schema for upstream invoice response"""
     id: int
     contract_id: int
-    file_path: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -190,6 +190,10 @@ class SettlementBase(BaseModel):
     final_amount: Optional[Decimal] = Field(None, ge=0)
     status: Optional[str] = Field(default="待审核", max_length=50)
     description: Optional[str] = None
+    file_path: Optional[str] = None
+    audit_report_path: Optional[str] = None  # 结算审核报告
+    start_report_path: Optional[str] = None  # 开工报告
+    completion_report_path: Optional[str] = None  # 竣工报告
 
 
 class SettlementCreate(SettlementBase):
@@ -201,7 +205,6 @@ class SettlementResponse(SettlementBase):
     """Schema for settlement response"""
     id: int
     contract_id: int
-    file_path: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

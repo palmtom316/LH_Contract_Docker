@@ -9,7 +9,7 @@
         <el-tag :type="getStatusType(contract.status)">{{ contract.status }}</el-tag>
       </div>
       <div class="header-right">
-        <el-button type="primary" @click="handleEdit">编辑合同</el-button>
+        <!-- Edit button removed -->
       </div>
     </div>
 
@@ -31,8 +31,7 @@
       <el-col :span="6" :xs="12">
         <el-card shadow="hover">
           <template #header><span>累计回款</span></template>
-          <div class="amount-text success-text">¥ {{ formatMoney(totalReceipts) }}</div>
-          <el-progress :percentage="Number(receiptPercentage)" :status="Number(receiptPercentage) >= 100 ? 'success' : ''" />
+          <div class="amount-text success-text">¥ {{ formatMoney(totalReceipts) }} <span class="percentage-inline">({{ receiptPercentage }}%)</span></div>
         </el-card>
       </el-col>
       <el-col :span="6" :xs="12">
@@ -83,7 +82,9 @@
           <el-button type="primary" size="small" icon="Plus" @click="openFinanceDialog('receivable')">新增应收款</el-button>
         </div>
         <el-table :data="receivables" border style="width: 100%">
-          <el-table-column prop="category" label="应收款类别" width="120" />
+          <el-table-column prop="category" label="应收款类别" width="120">
+            <template #default="{ row }">{{ formatReceivableCategory(row.category) }}</template>
+          </el-table-column>
           <el-table-column prop="amount" label="金额" align="right">
             <template #default="{ row }">¥ {{ formatMoney(row.amount) }}</template>
           </el-table-column>
@@ -102,6 +103,12 @@
               </el-link>
             </template>
           </el-table-column>
+          <el-table-column label="操作" width="120" align="center" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" size="small" @click="openEditDialog('receivable', row)">编辑</el-button>
+              <el-button link type="danger" size="small" @click="handleDelete('receivable', row)">删除</el-button>
+            </template>
+          </el-table-column>
         </el-table>
       </el-tab-pane>
 
@@ -117,7 +124,30 @@
           </el-table-column>
           <el-table-column prop="invoice_date" label="开票日期" width="120" />
           <el-table-column prop="invoice_type" label="类型" width="100" />
+          <el-table-column prop="tax_rate" label="税率" width="80" align="center">
+            <template #default="{ row }">{{ row.tax_rate ? row.tax_rate + '%' : '-' }}</template>
+          </el-table-column>
           <el-table-column prop="description" label="说明" show-overflow-tooltip />
+          <el-table-column label="发票文件" width="120" align="center">
+            <template #default="{ row }">
+              <el-link 
+                v-if="row.file_path" 
+                type="primary" 
+                :href="getFileUrl(row.file_path)" 
+                target="_blank"
+                :underline="false"
+              >
+                <el-icon><Document /></el-icon> 查看文件
+              </el-link>
+              <span v-else style="color: #909399">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" align="center" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" size="small" @click="openEditDialog('invoice', row)">编辑</el-button>
+              <el-button link type="danger" size="small" @click="handleDelete('invoice', row)">删除</el-button>
+            </template>
+          </el-table-column>
         </el-table>
       </el-tab-pane>
 
@@ -133,6 +163,26 @@
           </el-table-column>
           <el-table-column prop="payment_method" label="方式" width="100" />
           <el-table-column prop="payer_name" label="付款单位" show-overflow-tooltip />
+          <el-table-column label="回款附件" width="120" align="center">
+            <template #default="{ row }">
+              <el-link 
+                v-if="row.file_path" 
+                type="primary" 
+                :href="getFileUrl(row.file_path)" 
+                target="_blank"
+                :underline="false"
+              >
+                <el-icon><Document /></el-icon> 查看文件
+              </el-link>
+              <span v-else style="color: #909399">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" align="center" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" size="small" @click="openEditDialog('receipt', row)">编辑</el-button>
+              <el-button link type="danger" size="small" @click="handleDelete('receipt', row)">删除</el-button>
+            </template>
+          </el-table-column>
         </el-table>
       </el-tab-pane>
       
@@ -147,8 +197,37 @@
             <template #default="{ row }">¥ {{ formatMoney(row.settlement_amount) }}</template>
           </el-table-column>
           <el-table-column prop="settlement_date" label="结算日期" width="120" />
-          <el-table-column prop="status" label="状态" width="100" />
           <el-table-column prop="description" label="说明" show-overflow-tooltip />
+          <el-table-column label="审核报告" width="100" align="center">
+            <template #default="{ row }">
+              <el-link v-if="row.audit_report_path" type="primary" :href="getFileUrl(row.audit_report_path)" target="_blank" :underline="false">
+                <el-icon><Document /></el-icon> 查看
+              </el-link>
+              <span v-else style="color: #909399">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="开工报告" width="100" align="center">
+            <template #default="{ row }">
+              <el-link v-if="row.start_report_path" type="primary" :href="getFileUrl(row.start_report_path)" target="_blank" :underline="false">
+                <el-icon><Document /></el-icon> 查看
+              </el-link>
+              <span v-else style="color: #909399">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="竣工报告" width="100" align="center">
+            <template #default="{ row }">
+              <el-link v-if="row.completion_report_path" type="primary" :href="getFileUrl(row.completion_report_path)" target="_blank" :underline="false">
+                <el-icon><Document /></el-icon> 查看
+              </el-link>
+              <span v-else style="color: #909399">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" align="center" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" size="small" @click="openEditDialog('settlement', row)">编辑</el-button>
+              <el-button link type="danger" size="small" @click="handleDelete('settlement', row)">删除</el-button>
+            </template>
+          </el-table-column>
         </el-table>
       </el-tab-pane>
     </el-tabs>
@@ -161,10 +240,11 @@
         <template v-if="financeDialog.type === 'receivable'">
           <el-form-item label="应收款类别">
              <el-select v-model="financeForm.category" style="width: 100%">
-              <el-option label="预付款" value="预付款" />
-              <el-option label="进度款" value="进度款" />
-              <el-option label="结算款" value="结算款" />
-              <el-option label="质保金" value="质保金" />
+              <el-option label="预付款" value="ADVANCE_PAYMENT" />
+              <el-option label="进度款" value="PROGRESS_PAYMENT" />
+              <el-option label="结算款" value="SETTLEMENT_PAYMENT" />
+              <el-option label="质保金" value="RETENTION_MONEY" />
+              <el-option label="其他" value="OTHER" />
             </el-select>
           </el-form-item>
           <el-form-item label="应收款金额">
@@ -198,7 +278,17 @@
             <el-input v-model="financeForm.invoice_number" />
           </el-form-item>
           <el-form-item label="开票金额">
-            <el-input-number v-model="financeForm.amount" :precision="2" :min="0" style="width: 100%" />
+            <el-input-number v-model="financeForm.amount" :precision="2" :min="0" :controls="false" class="amount-input-right" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="税率">
+            <el-select v-model="financeForm.tax_rate" style="width: 100%">
+              <el-option label="0%" value="0" />
+              <el-option label="1%" value="1" />
+              <el-option label="3%" value="3" />
+              <el-option label="6%" value="6" />
+              <el-option label="9%" value="9" />
+              <el-option label="13%" value="13" />
+            </el-select>
           </el-form-item>
           <el-form-item label="开票日期">
             <el-date-picker v-model="financeForm.invoice_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
@@ -209,12 +299,25 @@
               <el-option label="普票" value="普票" />
             </el-select>
           </el-form-item>
+          <el-form-item label="发票文件">
+            <el-upload
+              :show-file-list="true"
+              :file-list="invoiceFileList"
+              :http-request="handleInvoiceUpload"
+              accept=".pdf,.jpg,.jpeg,.png"
+              :limit="1"
+            >
+              <template #trigger>
+                <el-button type="primary">选择文件</el-button>
+              </template>
+            </el-upload>
+          </el-form-item>
         </template>
 
         <!-- Receipt Fields -->
         <template v-if="financeDialog.type === 'receipt'">
           <el-form-item label="回款金额">
-            <el-input-number v-model="financeForm.amount" :precision="2" :min="0" style="width: 100%" />
+            <el-input-number v-model="financeForm.amount" :precision="2" :min="0" :controls="false" style="width: 100%" />
           </el-form-item>
           <el-form-item label="到账日期">
             <el-date-picker v-model="financeForm.receipt_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
@@ -254,10 +357,49 @@
              <el-date-picker v-model="financeForm.settlement_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
           </el-form-item>
           <el-form-item label="结算金额">
-            <el-input-number v-model="financeForm.settlement_amount" :precision="2" :min="0" style="width: 100%" />
+            <el-input-number v-model="financeForm.settlement_amount" :precision="2" :min="0" :controls="false" style="width: 100%" />
           </el-form-item>
           <el-form-item label="说明">
             <el-input v-model="financeForm.description" type="textarea" />
+          </el-form-item>
+          <el-form-item label="结算审核报告">
+            <el-upload
+              action="#"
+              :http-request="(opt) => handleSettlementUpload(opt, 'audit_report_path')"
+              :limit="1"
+              :file-list="auditReportFileList"
+              accept=".pdf"
+            >
+              <template #trigger>
+                <el-button type="primary">选择文件 (PDF)</el-button>
+              </template>
+            </el-upload>
+          </el-form-item>
+          <el-form-item label="开工报告">
+            <el-upload
+              action="#"
+              :http-request="(opt) => handleSettlementUpload(opt, 'start_report_path')"
+              :limit="1"
+              :file-list="startReportFileList"
+              accept=".pdf"
+            >
+              <template #trigger>
+                <el-button type="primary">选择文件 (PDF)</el-button>
+              </template>
+            </el-upload>
+          </el-form-item>
+          <el-form-item label="竣工报告">
+            <el-upload
+              action="#"
+              :http-request="(opt) => handleSettlementUpload(opt, 'completion_report_path')"
+              :limit="1"
+              :file-list="completionReportFileList"
+              accept=".pdf"
+            >
+              <template #trigger>
+                <el-button type="primary">选择文件 (PDF)</el-button>
+              </template>
+            </el-upload>
           </el-form-item>
         </template>
 
@@ -277,13 +419,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { Document } from '@element-plus/icons-vue'
 import { 
   getContract, 
-  getReceivables, createReceivable,
-  getInvoices, createInvoice,
-  getReceipts, createReceipt,
-  getSettlements, createSettlement
+  getReceivables, createReceivable, updateReceivable, deleteReceivable,
+  getInvoices, createInvoice, updateInvoice, deleteInvoice,
+  getReceipts, createReceipt, updateReceipt, deleteReceipt,
+  getSettlements, createSettlement, updateSettlement, deleteSettlement
 } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
@@ -302,12 +444,19 @@ const invoices = ref([])
 const receipts = ref([])
 const settlements = ref([])
 const fileList = ref([]) // For dialog uploads
+const invoiceFileList = ref([]) // For invoice file uploads
+// Settlement report file lists
+const auditReportFileList = ref([])
+const startReportFileList = ref([])
+const completionReportFileList = ref([])
 
 // Dialog State
 const financeDialog = reactive({
   visible: false,
   title: '',
-  type: '' // 'receivable', 'invoice', 'receipt'
+  type: '', // 'receivable', 'invoice', 'receipt', 'settlement'
+  isEdit: false,
+  editingId: null
 })
 
 const financeForm = reactive({})
@@ -326,8 +475,8 @@ const totalInvoices = computed(() => {
 })
 
 const receiptPercentage = computed(() => {
-  if (!contract.value.contract_amount) return 0
-  const p = (totalReceipts.value / contract.value.contract_amount) * 100
+  if (!totalReceivables.value || totalReceivables.value === 0) return 0
+  const p = (totalReceipts.value / totalReceivables.value) * 100
   return Math.min(p, 100).toFixed(1)
 })
 
@@ -362,9 +511,9 @@ const formatMoney = (val) => {
 
 const getFileUrl = (path) => {
   if (!path) return ''
-  const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
-  const baseUrl = apiUrl.replace(/\/api\/v1\/?$/, '')
-  return `${baseUrl}${path}`
+  // Files are served from the backend server (localhost:8000 in development)
+  const backendUrl = 'http://localhost:8000'
+  return path.startsWith('http') ? path : `${backendUrl}${path}`
 }
 
 const getStatusType = (status) => {
@@ -372,11 +521,53 @@ const getStatusType = (status) => {
   return map[status] || ''
 }
 
+const formatReceivableCategory = (value) => {
+  const map = {
+    'ADVANCE_PAYMENT': '预付款',
+    'PROGRESS_PAYMENT': '进度款',
+    'SETTLEMENT_PAYMENT': '结算款',
+    'RETENTION_MONEY': '质保金',
+    'OTHER': '其他'
+  }
+  return map[value] || value
+}
+
 const handleUploadRequest = async (option) => {
   try {
     const res = await uploadFile(option.file)
     financeForm.file_path = res.path
     fileList.value = [{ name: option.file.name, url: res.path }]
+    ElMessage.success('上传成功')
+  } catch (e) {
+    ElMessage.error('上传失败')
+    option.onError(e)
+  }
+}
+
+const handleInvoiceUpload = async (option) => {
+  try {
+    const res = await uploadFile(option.file)
+    financeForm.file_path = res.path
+    invoiceFileList.value = [{ name: option.file.name, url: res.path }]
+    ElMessage.success('上传成功')
+  } catch (e) {
+    ElMessage.error('上传失败')
+    option.onError(e)
+  }
+}
+
+const handleSettlementUpload = async (option, fieldName) => {
+  try {
+    const res = await uploadFile(option.file)
+    financeForm[fieldName] = res.path
+    const fileData = [{ name: option.file.name, url: res.path }]
+    if (fieldName === 'audit_report_path') {
+      auditReportFileList.value = fileData
+    } else if (fieldName === 'start_report_path') {
+      startReportFileList.value = fileData
+    } else if (fieldName === 'completion_report_path') {
+      completionReportFileList.value = fileData
+    }
     ElMessage.success('上传成功')
   } catch (e) {
     ElMessage.error('上传失败')
@@ -393,6 +584,8 @@ const handleEdit = () => {
 const openFinanceDialog = (type) => {
   financeDialog.type = type
   financeDialog.visible = true
+  financeDialog.isEdit = false
+  financeDialog.editingId = null
   // Reset form
   Object.keys(financeForm).forEach(key => delete financeForm[key])
   fileList.value = [] // Reset file list
@@ -402,13 +595,14 @@ const openFinanceDialog = (type) => {
   if (type === 'receivable') {
     financeDialog.title = '新增应收款'
     Object.assign(financeForm, {
-      category: '进度款', amount: 0, expected_date: '', description: '',
+      category: 'PROGRESS_PAYMENT', amount: 0, expected_date: '', description: '',
       file_path: ''
     })
   } else if (type === 'invoice') {
     financeDialog.title = '新增开票记录'
+    invoiceFileList.value = [] // Reset invoice file list
     Object.assign(financeForm, {
-      invoice_number: '', amount: 0, invoice_date: new Date().toISOString().split('T')[0], invoice_type: '专票'
+      invoice_number: '', amount: 0, tax_rate: '13', invoice_date: new Date().toISOString().split('T')[0], invoice_type: '专票', file_path: ''
     })
   } else if (type === 'receipt') {
     financeDialog.title = '新增回款记录'
@@ -418,36 +612,153 @@ const openFinanceDialog = (type) => {
     })
   } else if (type === 'settlement') {
     financeDialog.title = '新增结算记录'
+    // Reset settlement report file lists
+    auditReportFileList.value = []
+    startReportFileList.value = []
+    completionReportFileList.value = []
     Object.assign(financeForm, {
       settlement_code: '',
       settlement_amount: 0,
       settlement_date: new Date().toISOString().split('T')[0],
       status: '待审核',
-      description: ''
+      description: '',
+      file_path: '',
+      audit_report_path: '',
+      start_report_path: '',
+      completion_report_path: ''
     })
+  }
+}
+
+const openEditDialog = (type, row) => {
+  financeDialog.type = type
+  financeDialog.visible = true
+  financeDialog.isEdit = true
+  financeDialog.editingId = row.id
+  // Reset form and populate with row data
+  Object.keys(financeForm).forEach(key => delete financeForm[key])
+  financeForm.contract_id = Number(contractId)
+  
+  if (type === 'receivable') {
+    financeDialog.title = '编辑应收款'
+    Object.assign(financeForm, {
+      category: row.category,
+      amount: row.amount,
+      expected_date: row.expected_date,
+      description: row.description,
+      file_path: row.file_path || ''
+    })
+    fileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
+  } else if (type === 'invoice') {
+    financeDialog.title = '编辑挂账记录'
+    Object.assign(financeForm, {
+      invoice_number: row.invoice_number,
+      amount: row.amount,
+      tax_rate: row.tax_rate,
+      invoice_date: row.invoice_date,
+      invoice_type: row.invoice_type,
+      description: row.description,
+      file_path: row.file_path || ''
+    })
+    invoiceFileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
+  } else if (type === 'receipt') {
+    financeDialog.title = '编辑回款记录'
+    Object.assign(financeForm, {
+      amount: row.amount,
+      receipt_date: row.receipt_date,
+      payment_method: row.payment_method,
+      payer_name: row.payer_name,
+      file_path: row.file_path || ''
+    })
+    fileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
+  } else if (type === 'settlement') {
+    financeDialog.title = '编辑结算记录'
+    Object.assign(financeForm, {
+      settlement_code: row.settlement_code,
+      settlement_amount: row.settlement_amount,
+      settlement_date: row.settlement_date,
+      status: row.status,
+      description: row.description,
+      file_path: row.file_path || '',
+      audit_report_path: row.audit_report_path || '',
+      start_report_path: row.start_report_path || '',
+      completion_report_path: row.completion_report_path || ''
+    })
+    auditReportFileList.value = row.audit_report_path ? [{ name: '审核报告', url: row.audit_report_path }] : []
+    startReportFileList.value = row.start_report_path ? [{ name: '开工报告', url: row.start_report_path }] : []
+    completionReportFileList.value = row.completion_report_path ? [{ name: '竣工报告', url: row.completion_report_path }] : []
   }
 }
 
 const submitFinance = async () => {
   try {
     if (financeDialog.type === 'receivable') {
-      await createReceivable(contractId, financeForm)
+      if (financeDialog.isEdit) {
+        await updateReceivable(contractId, financeDialog.editingId, financeForm)
+      } else {
+        await createReceivable(contractId, financeForm)
+      }
       await loadReceivables()
     } else if (financeDialog.type === 'invoice') {
-      await createInvoice(contractId, financeForm)
+      if (financeDialog.isEdit) {
+        await updateInvoice(contractId, financeDialog.editingId, financeForm)
+      } else {
+        await createInvoice(contractId, financeForm)
+      }
       await loadInvoices()
     } else if (financeDialog.type === 'receipt') {
-      await createReceipt(contractId, financeForm)
+      if (financeDialog.isEdit) {
+        await updateReceipt(contractId, financeDialog.editingId, financeForm)
+      } else {
+        await createReceipt(contractId, financeForm)
+      }
       await loadReceipts()
     } else if (financeDialog.type === 'settlement') {
-      await createSettlement(contractId, financeForm)
+      if (financeDialog.isEdit) {
+        await updateSettlement(contractId, financeDialog.editingId, financeForm)
+      } else {
+        await createSettlement(contractId, financeForm)
+      }
       await loadSettlements()
     }
-    ElMessage.success('保存成功')
+    ElMessage.success(financeDialog.isEdit ? '修改成功' : '保存成功')
     financeDialog.visible = false
   } catch (e) {
-    ElMessage.error('保存失败')
+    ElMessage.error(financeDialog.isEdit ? '修改失败' : '保存失败')
   }
+}
+
+const handleDelete = (type, row) => {
+  const typeNames = {
+    receivable: '应收款',
+    invoice: '挂账',
+    receipt: '回款',
+    settlement: '结算'
+  }
+  ElMessageBox.confirm(`确定删除该${typeNames[type]}记录吗？`, '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      if (type === 'receivable') {
+        await deleteReceivable(contractId, row.id)
+        await loadReceivables()
+      } else if (type === 'invoice') {
+        await deleteInvoice(contractId, row.id)
+        await loadInvoices()
+      } else if (type === 'receipt') {
+        await deleteReceipt(contractId, row.id)
+        await loadReceipts()
+      } else if (type === 'settlement') {
+        await deleteSettlement(contractId, row.id)
+        await loadSettlements()
+      }
+      ElMessage.success('删除成功')
+    } catch (e) {
+      ElMessage.error('删除失败')
+    }
+  }).catch(() => {})
 }
 
 onMounted(() => {
@@ -481,6 +792,11 @@ onMounted(() => {
     
     &.success-text { color: #67c23a; }
     &.info-text { color: #409eff; }
+  }
+  .percentage-inline {
+    font-size: 14px;
+    font-weight: normal;
+    color: #909399;
   }
 }
 

@@ -108,6 +108,7 @@ class PayableBase(BaseModel):
     amount: Decimal = Field(..., ge=0)
     description: Optional[str] = Field(None, max_length=300)
     expected_date: Optional[date] = None
+    file_path: Optional[str] = None
 
 
 class PayableCreate(PayableBase):

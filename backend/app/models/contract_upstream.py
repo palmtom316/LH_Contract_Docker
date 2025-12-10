@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.database import Base
-from app.models.enums import ContractCategory, PricingMode, ManagementMode, PaymentCategory
+from app.models.enums import ContractCategory, PricingMode, ManagementMode, PaymentCategory, ReceivableCategory
 
 class ContractUpstream(Base):
     """Upstream Contract Model"""
@@ -71,7 +71,7 @@ class FinanceUpstreamReceivable(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="CASCADE"), nullable=False, index=True)
     
-    category = Column(SQLEnum(PaymentCategory), nullable=False)  # 应收款类别
+    category = Column(SQLEnum(ReceivableCategory, name='receivablecategory', create_type=False), nullable=False)  # 应收款类别
     amount = Column(Numeric(15, 2), nullable=False, default=0)       # 应收金额
     description = Column(String(300), nullable=True)                 # 说明
     expected_date = Column(Date, nullable=True)                      # 形成/预计日期
@@ -105,6 +105,7 @@ class FinanceUpstreamInvoice(Base):
     # Optional extended fields
     tax_rate = Column(Numeric(5, 2), nullable=True)
     tax_amount = Column(Numeric(15, 2), nullable=True)
+    invoice_type = Column(String(50), nullable=True)  # 发票类型
     
     description = Column(String(300), nullable=True)
     file_path = Column(String(500), nullable=True)                    # 发票文件路径
@@ -134,6 +135,7 @@ class FinanceUpstreamReceipt(Base):
     
     payment_method = Column(String(50), nullable=True)
     payer_name = Column(String(200), nullable=True)
+    payer_account = Column(String(100), nullable=True)  # 付款方账号
     
     description = Column(String(300), nullable=True)
     file_path = Column(String(500), nullable=True)                   # 银行回单文件路径
@@ -158,21 +160,18 @@ class ProjectSettlement(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="CASCADE"), nullable=False, index=True)
     
-    # Dates
-    start_date = Column(Date, nullable=True)            # 开工时间
-    end_date = Column(Date, nullable=True)              # 竣工时间
-    submission_date = Column(Date, nullable=True)       # 报审日期
-    completion_date = Column(Date, nullable=True)       # 办结日期
-    
+    settlement_code = Column(String(50), nullable=True)    # 结算单号
+    settlement_date = Column(Date, nullable=True)          # 结算日期
     settlement_amount = Column(Numeric(15, 2), nullable=False, default=0)  # 结算金额
-    settlement_batch = Column(String(50), nullable=True) # 结算批次
+    audit_amount = Column(Numeric(15, 2), nullable=True)   # 审核金额
+    final_amount = Column(Numeric(15, 2), nullable=True)   # 最终金额
     
-    # Files
-    audit_report_path = Column(String(500), nullable=True) # 审核报告路径
-    start_report_path = Column(String(500), nullable=True) # 开工报告路径
-    finish_report_path = Column(String(500), nullable=True) # 竣工报告路径
-    
+    status = Column(String(50), default="待审核")            # 状态
     description = Column(Text, nullable=True)
+    file_path = Column(String(500), nullable=True)         # 结算文件路径
+    audit_report_path = Column(String(500), nullable=True)  # 结算审核报告
+    start_report_path = Column(String(500), nullable=True)  # 开工报告
+    completion_report_path = Column(String(500), nullable=True)  # 竣工报告
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -183,3 +182,4 @@ class ProjectSettlement(Base):
     
     def __repr__(self):
         return f"<ProjectSettlement(id={self.id}, amount={self.settlement_amount})>"
+

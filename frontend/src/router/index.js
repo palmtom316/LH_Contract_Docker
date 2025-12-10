@@ -43,6 +43,12 @@ const routes = [
                 meta: { title: '下游合同', icon: 'DocumentCopy' }
             },
             {
+                path: 'contracts/downstream/:id',
+                name: 'DownstreamDetail',
+                component: () => import('@/views/contracts/DownstreamDetail.vue'),
+                meta: { title: '下游合同详情', hidden: true }
+            },
+            {
                 path: 'expenses',
                 name: 'Expenses',
                 component: () => import('@/views/expenses/ExpenseList.vue'),

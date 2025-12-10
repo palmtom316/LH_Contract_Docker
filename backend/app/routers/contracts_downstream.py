@@ -172,6 +172,51 @@ async def list_payables(
     return result.scalars().all()
 
 
+@router.put("/{contract_id}/payables/{payable_id}", response_model=PayableResponse)
+async def update_payable(
+    contract_id: int,
+    payable_id: int,
+    payable_in: PayableCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(FinanceDownstreamPayable).where(
+        FinanceDownstreamPayable.id == payable_id,
+        FinanceDownstreamPayable.contract_id == contract_id
+    )
+    result = await db.execute(query)
+    payable = result.scalar_one_or_none()
+    if not payable:
+        raise HTTPException(status_code=404, detail="应付款记录不存在")
+    
+    for key, value in payable_in.model_dump(exclude={'contract_id'}).items():
+        setattr(payable, key, value)
+    await db.commit()
+    await db.refresh(payable)
+    return payable
+
+
+@router.delete("/{contract_id}/payables/{payable_id}")
+async def delete_payable(
+    contract_id: int,
+    payable_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(FinanceDownstreamPayable).where(
+        FinanceDownstreamPayable.id == payable_id,
+        FinanceDownstreamPayable.contract_id == contract_id
+    )
+    result = await db.execute(query)
+    payable = result.scalar_one_or_none()
+    if not payable:
+        raise HTTPException(status_code=404, detail="应付款记录不存在")
+    
+    await db.delete(payable)
+    await db.commit()
+    return {"message": "删除成功"}
+
+
 # 2. Invoices (收票)
 @router.post("/{contract_id}/invoices", response_model=InvoiceDownstreamResponse)
 async def create_invoice(
@@ -198,6 +243,51 @@ async def list_invoices(
     query = select(FinanceDownstreamInvoice).where(FinanceDownstreamInvoice.contract_id == contract_id)
     result = await db.execute(query)
     return result.scalars().all()
+
+
+@router.put("/{contract_id}/invoices/{invoice_id}", response_model=InvoiceDownstreamResponse)
+async def update_invoice(
+    contract_id: int,
+    invoice_id: int,
+    invoice_in: InvoiceDownstreamCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(FinanceDownstreamInvoice).where(
+        FinanceDownstreamInvoice.id == invoice_id,
+        FinanceDownstreamInvoice.contract_id == contract_id
+    )
+    result = await db.execute(query)
+    invoice = result.scalar_one_or_none()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="发票记录不存在")
+    
+    for key, value in invoice_in.model_dump(exclude={'contract_id'}).items():
+        setattr(invoice, key, value)
+    await db.commit()
+    await db.refresh(invoice)
+    return invoice
+
+
+@router.delete("/{contract_id}/invoices/{invoice_id}")
+async def delete_invoice(
+    contract_id: int,
+    invoice_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(FinanceDownstreamInvoice).where(
+        FinanceDownstreamInvoice.id == invoice_id,
+        FinanceDownstreamInvoice.contract_id == contract_id
+    )
+    result = await db.execute(query)
+    invoice = result.scalar_one_or_none()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="发票记录不存在")
+    
+    await db.delete(invoice)
+    await db.commit()
+    return {"message": "删除成功"}
 
 
 # 3. Payments (付款)
@@ -228,6 +318,51 @@ async def list_payments(
     return result.scalars().all()
 
 
+@router.put("/{contract_id}/payments/{payment_id}", response_model=PaymentResponse)
+async def update_payment(
+    contract_id: int,
+    payment_id: int,
+    payment_in: PaymentCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(FinanceDownstreamPayment).where(
+        FinanceDownstreamPayment.id == payment_id,
+        FinanceDownstreamPayment.contract_id == contract_id
+    )
+    result = await db.execute(query)
+    payment = result.scalar_one_or_none()
+    if not payment:
+        raise HTTPException(status_code=404, detail="付款记录不存在")
+    
+    for key, value in payment_in.model_dump(exclude={'contract_id'}).items():
+        setattr(payment, key, value)
+    await db.commit()
+    await db.refresh(payment)
+    return payment
+
+
+@router.delete("/{contract_id}/payments/{payment_id}")
+async def delete_payment(
+    contract_id: int,
+    payment_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(FinanceDownstreamPayment).where(
+        FinanceDownstreamPayment.id == payment_id,
+        FinanceDownstreamPayment.contract_id == contract_id
+    )
+    result = await db.execute(query)
+    payment = result.scalar_one_or_none()
+    if not payment:
+        raise HTTPException(status_code=404, detail="付款记录不存在")
+    
+    await db.delete(payment)
+    await db.commit()
+    return {"message": "删除成功"}
+
+
 # 4. Settlements (结算)
 @router.post("/{contract_id}/settlements", response_model=DownstreamSettlementResponse)
 async def create_settlement(
@@ -244,3 +379,58 @@ async def create_settlement(
     await db.commit()
     await db.refresh(settlement)
     return settlement
+
+
+@router.get("/{contract_id}/settlements", response_model=List[DownstreamSettlementResponse])
+async def list_settlements(
+    contract_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(DownstreamSettlement).where(DownstreamSettlement.contract_id == contract_id)
+    result = await db.execute(query)
+    return result.scalars().all()
+
+
+@router.put("/{contract_id}/settlements/{settlement_id}", response_model=DownstreamSettlementResponse)
+async def update_settlement(
+    contract_id: int,
+    settlement_id: int,
+    settlement_in: DownstreamSettlementCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(DownstreamSettlement).where(
+        DownstreamSettlement.id == settlement_id,
+        DownstreamSettlement.contract_id == contract_id
+    )
+    result = await db.execute(query)
+    settlement = result.scalar_one_or_none()
+    if not settlement:
+        raise HTTPException(status_code=404, detail="结算记录不存在")
+    
+    for key, value in settlement_in.model_dump(exclude={'contract_id'}).items():
+        setattr(settlement, key, value)
+    await db.commit()
+    await db.refresh(settlement)
+    return settlement
+
+
+@router.delete("/{contract_id}/settlements/{settlement_id}")
+async def delete_settlement(
+    contract_id: int,
+    settlement_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(DownstreamSettlement).where(
+        DownstreamSettlement.id == settlement_id,
+        DownstreamSettlement.contract_id == contract_id
+    )
+    result = await db.execute(query)
+    settlement = result.scalar_one_or_none()
+    if not settlement:
+        raise HTTPException(status_code=404, detail="结算记录不存在")
+    
+    await db.delete(settlement)
+    await db.commit()
+    return {"message": "删除成功"}

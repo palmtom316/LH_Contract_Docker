@@ -17,7 +17,18 @@
           <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
           <el-button icon="Refresh" @click="resetQuery">重置</el-button>
           <el-button type="warning" icon="Download" @click="handleExport">导出Excel</el-button>
-          <el-button type="success" icon="Plus" @click="handleAdd">新建合同</el-button>
+          <el-dropdown @command="handleImportCommand" style="margin-left: 10px;">
+            <el-button type="info" icon="Upload">
+              导入Excel<el-icon class="el-icon--right"><arrow-down /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="template">下载导入模板</el-dropdown-item>
+                <el-dropdown-item command="import">选择Excel文件导入</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+          <el-button type="success" icon="Plus" @click="handleAdd" style="margin-left: 10px;">新建合同</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -33,10 +44,26 @@
       >
         <el-table-column prop="id" label="合同序号" width="100" align="center" fixed="left" />
         <el-table-column prop="contract_name" label="合同名称" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="party_a_name" label="合同甲方单位" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="contract_amount" label="签约金额" width="160" align="right">
+        <el-table-column prop="party_a_name" label="甲方单位" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="party_b_name" label="乙方单位" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="contract_amount" label="签约金额" width="140" align="right">
           <template #default="scope">
             ¥ {{ formatMoney(scope.row.contract_amount) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="sign_date" label="签约时间" width="120" align="center" />
+        <el-table-column prop="company_category" label="公司合同分类" width="130" align="center" show-overflow-tooltip />
+        <el-table-column label="合同文件" width="100" align="center">
+          <template #default="scope">
+            <el-button 
+              v-if="scope.row.contract_file_path" 
+              link 
+              type="primary" 
+              size="small"
+              icon="Document"
+              @click="openPdfInNewTab(scope.row.contract_file_path)"
+            >查看</el-button>
+            <span v-else class="text-gray">-</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="190" fixed="right">
@@ -127,10 +154,15 @@
       :close-on-click-modal="false"
     >
       <el-form ref="formRef" :model="form" :rules="rules" label-width="110px">
+        <!-- Contract Serial Number (Read-only) -->
         <el-row :gutter="20">
           <el-col :span="12">
-             <el-form-item label="合同编号" prop="contract_code">
-              <el-input v-model="form.contract_code" placeholder="请输入编号" />
+            <el-form-item label="合同序号">
+              <el-input 
+                :value="dialog.isEdit ? form.id : '自动生成'" 
+                disabled 
+                placeholder="系统自动生成"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -142,6 +174,23 @@
                 style="width: 100%" 
                 value-format="YYYY-MM-DD"
               />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="20">
+          <el-col :span="12">
+             <el-form-item label="合同编号" prop="contract_code">
+              <el-input v-model="form.contract_code" placeholder="请输入编号" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="合同状态" prop="status">
+              <el-select v-model="form.status" placeholder="请选择状态" style="width: 100%">
+                <el-option label="进行中" value="进行中" />
+                <el-option label="已完成" value="已完成" />
+                <el-option label="已终止" value="已终止" />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -201,6 +250,7 @@
                 <el-option label="劳务分包" value="劳务分包" />
                 <el-option label="技术服务" value="技术服务" />
                 <el-option label="运营维护" value="运营维护" />
+                <el-option label="物资采购" value="物资采购" />
                 <el-option label="其他合同" value="其他合同" />
               </el-select>
             </el-form-item>
@@ -282,15 +332,62 @@
     >
       <PdfViewer :source="pdfDialog.url" />
     </el-dialog>
+
+    <!-- Hidden file input for import -->
+    <input 
+      ref="importFileInput"
+      type="file" 
+      accept=".xlsx,.xls" 
+      style="display: none;"
+      @change="handleImportFileChange"
+    />
+
+    <!-- Import Result Dialog -->
+    <el-dialog
+      v-model="importResult.visible"
+      title="导入结果"
+      width="500px"
+      append-to-body
+    >
+      <div class="import-result">
+        <el-result v-if="importResult.success_count > 0 && importResult.error_count === 0" icon="success" title="导入成功">
+          <template #sub-title>
+            <p>成功导入 {{ importResult.success_count }} 条合同记录</p>
+          </template>
+        </el-result>
+        <el-result v-else-if="importResult.success_count === 0 && importResult.error_count > 0" icon="error" title="导入失败">
+          <template #sub-title>
+            <p>全部 {{ importResult.error_count }} 条记录导入失败</p>
+          </template>
+        </el-result>
+        <el-result v-else icon="warning" title="部分导入成功">
+          <template #sub-title>
+            <p>成功: {{ importResult.success_count }} 条，失败: {{ importResult.error_count }} 条</p>
+          </template>
+        </el-result>
+        
+        <div v-if="importResult.errors && importResult.errors.length > 0" class="error-list">
+          <el-divider>错误详情</el-divider>
+          <el-table :data="importResult.errors" max-height="200" size="small">
+            <el-table-column prop="row" label="行号" width="80" />
+            <el-table-column prop="error" label="错误信息" show-overflow-tooltip />
+          </el-table>
+        </div>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="importResult.visible = false">确 定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import { getContracts, createContract, updateContract, deleteContract, exportContracts } from '@/api/contractUpstream'
+import { getContracts, createContract, updateContract, deleteContract, exportContracts, downloadImportTemplate, importContracts } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { ArrowDown } from '@element-plus/icons-vue'
 import SmartAutocomplete from '@/components/SmartAutocomplete.vue'
 import PdfViewer from '@/components/PdfViewer.vue'
 
@@ -316,6 +413,16 @@ const pdfDialog = reactive({
   visible: false,
   url: ''
 })
+
+// Import functionality
+const importResult = reactive({
+  visible: false,
+  success_count: 0,
+  error_count: 0,
+  errors: []
+})
+const importFileInput = ref(null)
+const importLoading = ref(false)
 
 const formRef = ref(null)
 const fileList = ref([])
@@ -426,6 +533,17 @@ const handlePreview = (path) => {
   pdfDialog.visible = true
 }
 
+// Open PDF in new tab
+const openPdfInNewTab = (path) => {
+  if (!path) return
+  // PDF files are served from the backend server
+  // In development, backend is at localhost:8000
+  // The path from API is like /uploads/contracts/xxx.pdf
+  const backendUrl = 'http://localhost:8000'
+  const pdfUrl = path.startsWith('http') ? path : `${backendUrl}${path}`
+  window.open(pdfUrl, '_blank')
+}
+
 // Form handling
 const resetForm = () => {
   form.id = undefined
@@ -462,8 +580,10 @@ const handleEdit = (row) => {
   Object.assign(form, row)
   
   if (row.contract_file_path) {
+    // Use contract name as display name instead of UUID filename
+    const displayName = row.contract_name ? `${row.contract_name}.pdf` : '合同文件.pdf'
     fileList.value = [{
-      name: row.contract_file_path.split('/').pop(),
+      name: displayName,
       url: row.contract_file_path
     }]
   }
@@ -537,6 +657,61 @@ const handleExport = async () => {
     ElMessage.success('导出成功')
   } catch (e) {
     ElMessage.error('导出失败')
+  }
+}
+
+// Import functionality
+const handleImportCommand = (command) => {
+  if (command === 'template') {
+    handleDownloadTemplate()
+  } else if (command === 'import') {
+    importFileInput.value?.click()
+  }
+}
+
+const handleDownloadTemplate = async () => {
+  try {
+    ElMessage.info('正在下载模板...')
+    const res = await downloadImportTemplate()
+    const blob = new Blob([res], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const link = document.createElement('a')
+    link.href = window.URL.createObjectURL(blob)
+    link.download = '上游合同导入模板.xlsx'
+    link.click()
+    window.URL.revokeObjectURL(link.href)
+    ElMessage.success('模板下载成功')
+  } catch (e) {
+    ElMessage.error('模板下载失败')
+  }
+}
+
+const handleImportFileChange = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+  
+  // Reset file input for next use
+  event.target.value = ''
+  
+  try {
+    importLoading.value = true
+    ElMessage.info('正在导入数据...')
+    
+    const result = await importContracts(file)
+    
+    // Show result dialog
+    importResult.success_count = result.success_count || 0
+    importResult.error_count = result.error_count || 0
+    importResult.errors = result.errors || []
+    importResult.visible = true
+    
+    // Refresh list if any successful imports
+    if (result.success_count > 0) {
+      getList()
+    }
+  } catch (e) {
+    ElMessage.error('导入失败: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    importLoading.value = false
   }
 }
 
@@ -623,5 +798,9 @@ onBeforeUnmount(() => {
 
 :deep(.amount-input-right .el-input__inner) {
   text-align: right;
+}
+
+.text-gray {
+  color: #c0c4cc;
 }
 </style>

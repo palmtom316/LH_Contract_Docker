@@ -2,11 +2,11 @@ import enum
 
 class ContractCategory(str, enum.Enum):
     """合同类别"""
-    GENERAL = "总包合同"
+    MATERIAL = "材料设备"
     SUB_PRO = "专业分包"
     SUB_LABOR = "劳务分包"
+    CONSULTING = "咨询服务"
     SERVICE = "技术服务"
-    MAINTAIN = "运营维护"
     OTHER = "其他合同"
 
 class PricingMode(str, enum.Enum):
@@ -30,6 +30,15 @@ class PaymentCategory(str, enum.Enum):
     SETTLEMENT = "结算款"
     WARRANTY = "质保金"
     # Note: Requirement 3.1 lists these 5 exactly.
+
+class ReceivableCategory(str, enum.Enum):
+    """应收款类别 - 匹配数据库枚举"""
+    ADVANCE_PAYMENT = "ADVANCE_PAYMENT"
+    PROGRESS_PAYMENT = "PROGRESS_PAYMENT"
+    SETTLEMENT_PAYMENT = "SETTLEMENT_PAYMENT"
+    RETENTION_MONEY = "RETENTION_MONEY"
+    OTHER = "OTHER"
+
 
 class ExpenseCategory(str, enum.Enum):
     """费用类别"""

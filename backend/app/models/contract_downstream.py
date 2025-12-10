@@ -85,6 +85,7 @@ class FinanceDownstreamPayable(Base):
     amount = Column(Numeric(15, 2), nullable=False, default=0)   # 应付金额
     description = Column(String(300), nullable=True)             # 说明
     expected_date = Column(Date, nullable=True)                  # 预计付款日期
+    file_path = Column(String(500), nullable=True)               # 审批文件路径
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())

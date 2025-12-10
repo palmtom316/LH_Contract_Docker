@@ -199,6 +199,7 @@
             :precision="2" 
             :step="1000" 
             :min="0" 
+            :controls="false"
             style="width: 100%" 
           />
         </el-form-item>

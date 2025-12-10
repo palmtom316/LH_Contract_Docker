@@ -2,7 +2,7 @@ import request from '@/utils/request'
 
 export function getContracts(params) {
     return request({
-        url: '/contracts/management',
+        url: '/contracts/management/',
         method: 'get',
         params
     })
@@ -10,7 +10,7 @@ export function getContracts(params) {
 
 export function createContract(data) {
     return request({
-        url: '/contracts/management',
+        url: '/contracts/management/',
         method: 'post',
         data
     })
@@ -38,7 +38,7 @@ export function deleteContract(id) {
     })
 }
 
-// Sub-resources
+// Payables (应付款)
 export function getPayables(contractId) {
     return request({
         url: `/contracts/management/${contractId}/payables`,
@@ -54,6 +54,22 @@ export function createPayable(contractId, data) {
     })
 }
 
+export function updatePayable(contractId, payableId, data) {
+    return request({
+        url: `/contracts/management/${contractId}/payables/${payableId}`,
+        method: 'put',
+        data
+    })
+}
+
+export function deletePayable(contractId, payableId) {
+    return request({
+        url: `/contracts/management/${contractId}/payables/${payableId}`,
+        method: 'delete'
+    })
+}
+
+// Invoices (收票/挂账)
 export function getInvoices(contractId) {
     return request({
         url: `/contracts/management/${contractId}/invoices`,
@@ -69,6 +85,22 @@ export function createInvoice(contractId, data) {
     })
 }
 
+export function updateInvoice(contractId, invoiceId, data) {
+    return request({
+        url: `/contracts/management/${contractId}/invoices/${invoiceId}`,
+        method: 'put',
+        data
+    })
+}
+
+export function deleteInvoice(contractId, invoiceId) {
+    return request({
+        url: `/contracts/management/${contractId}/invoices/${invoiceId}`,
+        method: 'delete'
+    })
+}
+
+// Payments (付款)
 export function getPayments(contractId) {
     return request({
         url: `/contracts/management/${contractId}/payments`,
@@ -84,6 +116,22 @@ export function createPayment(contractId, data) {
     })
 }
 
+export function updatePayment(contractId, paymentId, data) {
+    return request({
+        url: `/contracts/management/${contractId}/payments/${paymentId}`,
+        method: 'put',
+        data
+    })
+}
+
+export function deletePayment(contractId, paymentId) {
+    return request({
+        url: `/contracts/management/${contractId}/payments/${paymentId}`,
+        method: 'delete'
+    })
+}
+
+// Settlements (结算)
 export function getSettlements(contractId) {
     return request({
         url: `/contracts/management/${contractId}/settlements`,
@@ -96,5 +144,20 @@ export function createSettlement(contractId, data) {
         url: `/contracts/management/${contractId}/settlements`,
         method: 'post',
         data
+    })
+}
+
+export function updateSettlement(contractId, settlementId, data) {
+    return request({
+        url: `/contracts/management/${contractId}/settlements/${settlementId}`,
+        method: 'put',
+        data
+    })
+}
+
+export function deleteSettlement(contractId, settlementId) {
+    return request({
+        url: `/contracts/management/${contractId}/settlements/${settlementId}`,
+        method: 'delete'
     })
 }

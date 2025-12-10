@@ -2,7 +2,7 @@ import request from '@/utils/request'
 
 export function getContracts(params) {
     return request({
-        url: '/contracts/upstream',
+        url: '/contracts/upstream/',
         method: 'get',
         params
     })
@@ -10,7 +10,7 @@ export function getContracts(params) {
 
 export function createContract(data) {
     return request({
-        url: '/contracts/upstream',
+        url: '/contracts/upstream/',
         method: 'post',
         data
     })
@@ -38,7 +38,6 @@ export function deleteContract(id) {
     })
 }
 
-// Sub-resources
 export function getReceivables(contractId) {
     return request({
         url: `/contracts/upstream/${contractId}/receivables`,
@@ -51,6 +50,21 @@ export function createReceivable(contractId, data) {
         url: `/contracts/upstream/${contractId}/receivables`,
         method: 'post',
         data
+    })
+}
+
+export function updateReceivable(contractId, receivableId, data) {
+    return request({
+        url: `/contracts/upstream/${contractId}/receivables/${receivableId}`,
+        method: 'put',
+        data
+    })
+}
+
+export function deleteReceivable(contractId, receivableId) {
+    return request({
+        url: `/contracts/upstream/${contractId}/receivables/${receivableId}`,
+        method: 'delete'
     })
 }
 
@@ -69,6 +83,21 @@ export function createInvoice(contractId, data) {
     })
 }
 
+export function updateInvoice(contractId, invoiceId, data) {
+    return request({
+        url: `/contracts/upstream/${contractId}/invoices/${invoiceId}`,
+        method: 'put',
+        data
+    })
+}
+
+export function deleteInvoice(contractId, invoiceId) {
+    return request({
+        url: `/contracts/upstream/${contractId}/invoices/${invoiceId}`,
+        method: 'delete'
+    })
+}
+
 export function getReceipts(contractId) {
     return request({
         url: `/contracts/upstream/${contractId}/receipts`,
@@ -81,6 +110,21 @@ export function createReceipt(contractId, data) {
         url: `/contracts/upstream/${contractId}/receipts`,
         method: 'post',
         data
+    })
+}
+
+export function updateReceipt(contractId, receiptId, data) {
+    return request({
+        url: `/contracts/upstream/${contractId}/receipts/${receiptId}`,
+        method: 'put',
+        data
+    })
+}
+
+export function deleteReceipt(contractId, receiptId) {
+    return request({
+        url: `/contracts/upstream/${contractId}/receipts/${receiptId}`,
+        method: 'delete'
     })
 }
 
@@ -99,6 +143,21 @@ export function createSettlement(contractId, data) {
     })
 }
 
+export function updateSettlement(contractId, settlementId, data) {
+    return request({
+        url: `/contracts/upstream/${contractId}/settlements/${settlementId}`,
+        method: 'put',
+        data
+    })
+}
+
+export function deleteSettlement(contractId, settlementId) {
+    return request({
+        url: `/contracts/upstream/${contractId}/settlements/${settlementId}`,
+        method: 'delete'
+    })
+}
+
 export function exportContracts(params) {
     return request({
         url: '/contracts/upstream/export/excel',
@@ -108,9 +167,31 @@ export function exportContracts(params) {
     })
 }
 
+export function downloadImportTemplate() {
+    return request({
+        url: '/contracts/upstream/template/excel',
+        method: 'get',
+        responseType: 'blob'
+    })
+}
+
+export function importContracts(file) {
+    const formData = new FormData()
+    formData.append('file', file)
+    return request({
+        url: '/contracts/upstream/import/excel',
+        method: 'post',
+        data: formData,
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    })
+}
+
 export function getContractSummary(id) {
     return request({
         url: `/contracts/upstream/${id}/summary`,
         method: 'get'
     })
 }
+
