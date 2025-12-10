@@ -11,6 +11,7 @@
           <el-button type="primary" icon="Search" @click="handleSearch">搜索</el-button>
           <el-button icon="Refresh" @click="resetQuery">重置</el-button>
           <el-button type="success" icon="Plus" @click="handleAdd">新建合同</el-button>
+          <el-button type="warning" icon="Download" @click="handleExport">导出Excel</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -275,11 +276,11 @@
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import { getContracts, createContract, updateContract, deleteContract } from '@/api/contractDownstream'
+import { getContracts, createContract, updateContract, deleteContract, exportContracts } from '@/api/contractDownstream'
 import { getContracts as getUpstreamContracts, getContractSummary } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Document } from '@element-plus/icons-vue'
+import { Document, Refresh, Search, Plus, Download } from '@element-plus/icons-vue'
 import SmartAutocomplete from '@/components/SmartAutocomplete.vue'
 
 const router = useRouter()
@@ -455,6 +456,23 @@ const handleAdd = () => {
   dialog.title = '新建下游合同'
   dialog.isEdit = false
   dialog.visible = true
+}
+
+const handleExport = async () => {
+  try {
+    const response = await exportContracts(queryParams)
+    const url = window.URL.createObjectURL(new Blob([response]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `下游合同列表_${new Date().getTime()}.xlsx`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('导出失败')
+  }
 }
 
 const handleEdit = async (row) => {

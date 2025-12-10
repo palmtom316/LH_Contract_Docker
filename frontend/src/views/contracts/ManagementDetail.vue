@@ -14,30 +14,36 @@
     </div>
 
     <!-- Summary Cards -->
-    <el-row :gutter="20" class="summary-cards">
-      <el-col :span="6" :xs="12">
+    <el-row :gutter="10" class="summary-cards">
+      <el-col :xs="24" :sm="12" :md="4">
         <el-card shadow="hover">
           <template #header><span>合同总额</span></template>
           <div class="amount-text">¥ {{ formatMoney(contract.contract_amount) }}</div>
         </el-card>
       </el-col>
-      <el-col :span="6" :xs="12">
+      <el-col :xs="24" :sm="12" :md="5">
         <el-card shadow="hover">
           <template #header><span>累计应付</span></template>
           <div class="amount-text warning-text">¥ {{ formatMoney(totalPayables) }}</div>
         </el-card>
       </el-col>
-      <el-col :span="6" :xs="12">
+      <el-col :xs="24" :sm="12" :md="5">
         <el-card shadow="hover">
           <template #header><span>累计已付</span></template>
           <div class="amount-text success-text">¥ {{ formatMoney(totalPayments) }}</div>
           <el-progress :percentage="Number(paymentPercentage)" :status="Number(paymentPercentage) >= 100 ? 'success' : ''" />
         </el-card>
       </el-col>
-      <el-col :span="6" :xs="12">
+      <el-col :xs="24" :sm="12" :md="5">
         <el-card shadow="hover">
-          <template #header><span>累计收票(挂账)</span></template>
+          <template #header><span>累计挂账</span></template>
           <div class="amount-text info-text">¥ {{ formatMoney(totalInvoices) }}</div>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="5">
+        <el-card shadow="hover">
+          <template #header><span>合同结算</span></template>
+          <div class="amount-text primary-text">¥ {{ formatMoney(totalSettlements) }}</div>
         </el-card>
       </el-col>
     </el-row>
@@ -55,11 +61,8 @@
           <el-descriptions-item label="乙方(供应商)">{{ contract.party_b_name || '-' }}</el-descriptions-item>
           <el-descriptions-item label="签约日期">{{ contract.sign_date }}</el-descriptions-item>
           <el-descriptions-item label="签约金额">¥ {{ formatMoney(contract.contract_amount) }}</el-descriptions-item>
-          <el-descriptions-item label="合同类别">{{ contract.category }}</el-descriptions-item>
-          <el-descriptions-item label="公司合同分类">{{ contract.company_category || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="计价模式">{{ contract.pricing_mode || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="管理模式">{{ contract.management_mode || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="负责人">{{ contract.responsible_person || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="费用分类">{{ contract.category }}</el-descriptions-item>
+
           <el-descriptions-item label="合同文件" :span="2">
             <el-link 
               v-if="contract.contract_file_path" 
@@ -77,7 +80,7 @@
       </el-tab-pane>
 
       <!-- 2. Payables -->
-      <el-tab-pane label="应付" name="payables">
+      <el-tab-pane label="应付款" name="payables">
         <div class="tab-actions">
           <el-button type="warning" size="small" icon="Plus" @click="openFinanceDialog('payable')">新增应付款</el-button>
         </div>
@@ -86,7 +89,13 @@
           <el-table-column prop="amount" label="应付金额" align="right">
             <template #default="{ row }">¥ {{ formatMoney(row.amount) }}</template>
           </el-table-column>
-          <el-table-column prop="expected_date" label="预计付款日期" width="120" />
+          <el-table-column prop="expected_date" label="产生日期" width="120" />
+          <el-table-column label="审批文件" width="100" align="center">
+            <template #default="{ row }">
+               <el-link v-if="row.file_path" :href="getFileUrl(row.file_path)" target="_blank"><el-icon><Document /></el-icon></el-link>
+               <span v-else>-</span>
+            </template>
+          </el-table-column>
           <el-table-column prop="description" label="备注" show-overflow-tooltip />
           <el-table-column label="操作" width="120" align="center" fixed="right">
             <template #default="{ row }">
@@ -98,9 +107,9 @@
       </el-tab-pane>
 
       <!-- 3. Invoices (Received) -->
-      <el-tab-pane label="收票(挂账)" name="invoices">
+      <el-tab-pane label="挂账明细" name="invoices">
           <div class="tab-actions">
-          <el-button type="primary" size="small" icon="Plus" @click="openFinanceDialog('invoice')">新增收票</el-button>
+          <el-button type="primary" size="small" icon="Plus" @click="openFinanceDialog('invoice')">新增挂账</el-button>
         </div>
         <el-table :data="invoices" border style="width: 100%">
           <el-table-column prop="invoice_number" label="发票号" width="150" />
@@ -138,7 +147,7 @@
       </el-tab-pane>
 
       <!-- 4. Payments -->
-      <el-tab-pane label="付款(实付)" name="payments">
+      <el-tab-pane label="付款明细" name="payments">
           <div class="tab-actions">
           <el-button type="success" size="small" icon="Plus" @click="openFinanceDialog('payment')">新增付款</el-button>
         </div>
@@ -175,6 +184,12 @@
           </el-table-column>
           <el-table-column prop="settlement_date" label="结算日期" width="120" />
           <el-table-column prop="description" label="说明" show-overflow-tooltip />
+          <el-table-column label="审批文件" width="100" align="center">
+            <template #default="{ row }">
+               <el-link v-if="row.file_path" :href="getFileUrl(row.file_path)" target="_blank"><el-icon><Document /></el-icon></el-link>
+               <span v-else>-</span>
+            </template>
+          </el-table-column>
           <el-table-column label="操作" width="120" align="center" fixed="right">
             <template #default="{ row }">
               <el-button link type="primary" size="small" @click="openEditDialog('settlement', row)">编辑</el-button>
@@ -203,8 +218,22 @@
           <el-form-item label="应付金额">
             <el-input-number v-model="financeForm.amount" :precision="2" :min="0" :controls="false" style="width: 100%" />
           </el-form-item>
-          <el-form-item label="预计日期">
+          <el-form-item label="产生日期">
             <el-date-picker v-model="financeForm.expected_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="审批文件">
+            <el-upload
+              class="upload-demo"
+              action="#"
+              :http-request="handleUploadRequest"
+              :limit="1"
+              :file-list="fileList"
+              accept=".pdf"
+            >
+              <template #trigger>
+                <el-button type="primary">选择文件 (PDF)</el-button>
+              </template>
+            </el-upload>
           </el-form-item>
           <el-form-item label="备注">
             <el-input v-model="financeForm.description" />
@@ -292,6 +321,20 @@
           <el-form-item label="结算金额">
             <el-input-number v-model="financeForm.settlement_amount" :precision="2" :min="0" :controls="false" style="width: 100%" />
           </el-form-item>
+          <el-form-item label="结算审批文件">
+            <el-upload
+              class="upload-demo"
+              action="#"
+              :http-request="handleUploadRequest"
+              :limit="1"
+              :file-list="fileList"
+              accept=".pdf"
+            >
+              <template #trigger>
+                <el-button type="primary">选择文件 (PDF)</el-button>
+              </template>
+            </el-upload>
+          </el-form-item>
           <el-form-item label="说明">
             <el-input v-model="financeForm.description" type="textarea" />
           </el-form-item>
@@ -366,6 +409,11 @@ const paymentPercentage = computed(() => {
   if (!contract.value.contract_amount) return 0
   const p = (totalPayments.value / contract.value.contract_amount) * 100
   return Math.min(p, 100).toFixed(1)
+  return Math.min(p, 100).toFixed(1)
+})
+
+const totalSettlements = computed(() => {
+  return settlements.value.reduce((sum, item) => sum + Number(item.settlement_amount), 0)
 })
 
 // Initial Load
@@ -436,14 +484,14 @@ const openFinanceDialog = (type) => {
   if (type === 'payable') {
     financeDialog.title = '新增应付款'
     Object.assign(financeForm, {
-      category: '进度款', amount: 0, expected_date: '', description: ''
+      category: '进度款', amount: 0, expected_date: '', description: '', file_path: ''
     })
   } else if (type === 'invoice') {
     financeDialog.title = '新增收票记录'
     Object.assign(financeForm, {
       invoice_number: '', amount: 0, invoice_date: new Date().toISOString().split('T')[0], 
       invoice_type: '专票', supplier_name: contract.value.party_b_name,
-      file_path: ''
+      file_path: '', tax_rate: '0'
     })
   } else if (type === 'payment') {
     financeDialog.title = '新增付款记录'
@@ -458,7 +506,8 @@ const openFinanceDialog = (type) => {
       settlement_amount: 0,
       settlement_date: new Date().toISOString().split('T')[0],
       status: '待审核',
-      description: ''
+      description: '',
+      file_path: ''
     })
   }
 }
@@ -477,8 +526,10 @@ const openEditDialog = (type, row) => {
       category: row.category,
       amount: row.amount,
       expected_date: row.expected_date,
-      description: row.description
+      description: row.description,
+      file_path: row.file_path || ''
     })
+    fileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
   } else if (type === 'invoice') {
     financeDialog.title = '编辑收票记录'
     Object.assign(financeForm, {
@@ -487,7 +538,8 @@ const openEditDialog = (type, row) => {
       invoice_date: row.invoice_date,
       invoice_type: row.invoice_type,
       supplier_name: row.supplier_name,
-      file_path: row.file_path || ''
+      file_path: row.file_path || '',
+      tax_rate: row.tax_rate ? String(row.tax_rate) : '0'
     })
     fileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
   } else if (type === 'payment') {
@@ -507,8 +559,10 @@ const openEditDialog = (type, row) => {
       settlement_amount: row.settlement_amount,
       settlement_date: row.settlement_date,
       status: row.status,
-      description: row.description
+      description: row.description,
+      file_path: row.file_path || ''
     })
+    fileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
   }
 }
 

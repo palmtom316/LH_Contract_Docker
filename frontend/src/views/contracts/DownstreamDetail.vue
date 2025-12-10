@@ -106,9 +106,9 @@
       </el-tab-pane>
 
       <!-- 3. Invoices (Received) -->
-      <el-tab-pane label="收票(挂账)" name="invoices">
+      <el-tab-pane label="挂账明细" name="invoices">
           <div class="tab-actions">
-          <el-button type="primary" size="small" icon="Plus" @click="openFinanceDialog('invoice')">新增收票</el-button>
+          <el-button type="primary" size="small" icon="Plus" @click="openFinanceDialog('invoice')">新增挂账</el-button>
         </div>
         <el-table :data="invoices" border style="width: 100%">
           <el-table-column prop="invoice_number" label="发票号" width="150" />
@@ -145,7 +145,7 @@
       </el-tab-pane>
 
       <!-- 4. Payments -->
-      <el-tab-pane label="付款(实付)" name="payments">
+      <el-tab-pane label="付款明细" name="payments">
           <div class="tab-actions">
           <el-button type="success" size="small" icon="Plus" @click="openFinanceDialog('payment')">新增付款</el-button>
         </div>

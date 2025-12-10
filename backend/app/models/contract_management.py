@@ -29,7 +29,7 @@ class ContractManagement(Base):
     upstream_contract_name_snapshot = Column(String(200), nullable=True)
     
     # Classification
-    category = Column(SQLEnum(ContractCategory), nullable=True)
+    category = Column(String(50), nullable=True)
     company_category = Column(String(50), nullable=True)
     pricing_mode = Column(SQLEnum(PricingMode), nullable=True)
     management_mode = Column(SQLEnum(ManagementMode), nullable=True)
@@ -83,6 +83,7 @@ class FinanceManagementPayable(Base):
     amount = Column(Numeric(15, 2), nullable=False, default=0)
     description = Column(String(300), nullable=True)
     expected_date = Column(Date, nullable=True)
+    file_path = Column(String(500), nullable=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

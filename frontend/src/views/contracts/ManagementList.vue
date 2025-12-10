@@ -6,17 +6,12 @@
         <el-form-item label="关键词">
           <el-input v-model="queryParams.keyword" placeholder="合同名称/编号/乙方" clearable @keyup.enter="handleQuery" />
         </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="queryParams.status" placeholder="合同状态" clearable style="width: 120px">
-            <el-option label="进行中" value="进行中" />
-            <el-option label="已完成" value="已完成" />
-            <el-option label="已终止" value="已终止" />
-          </el-select>
-        </el-form-item>
+
         <el-form-item>
           <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
           <el-button icon="Refresh" @click="resetQuery">重置</el-button>
           <el-button type="success" icon="Plus" @click="handleAdd">新建合同</el-button>
+          <el-button type="warning" icon="Download" @click="handleExport">导出Excel</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -30,9 +25,18 @@
         border
         highlight-current-row
       >
+        <el-table-column prop="id" label="合同序号" width="80" align="center" fixed />
         <el-table-column prop="contract_code" label="合同编号" width="150" fixed />
         <el-table-column prop="contract_name" label="合同名称" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="party_b_name" label="乙方(供应商/服务商)" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="category" label="合同类别" width="120" show-overflow-tooltip />
+        <el-table-column prop="pricing_mode" label="计价模式" width="120" show-overflow-tooltip />
+        <el-table-column prop="party_b_name" label="乙方" min-width="180" show-overflow-tooltip />
+        <el-table-column label="合同文件" width="100" align="center">
+          <template #default="scope">
+            <el-link v-if="scope.row.contract_file_path" :href="getFileUrl(scope.row.contract_file_path)" target="_blank"><el-icon><Document /></el-icon></el-link>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="contract_amount" label="合同金额" width="140" align="right">
           <template #default="scope">
             ¥ {{ Number(scope.row.contract_amount).toLocaleString() }}
@@ -108,7 +112,15 @@
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         
         <!-- Upstream Contract Selection & Summary Banner -->
-         <el-form-item label="关联上游" prop="upstream_contract_id">
+        <el-form-item label="费用类别" prop="company_category">
+          <el-select v-model="form.company_category" placeholder="请选择费用类别" style="width: 100%" @change="handleCategoryChange">
+            <el-option label="公司费用" value="公司费用" />
+            <el-option label="项目费用" value="项目费用" />
+          </el-select>
+        </el-form-item>
+
+        <!-- Upstream Contract Selection & Summary Banner -->
+         <el-form-item label="关联上游" prop="upstream_contract_id" v-if="form.company_category === '项目费用'">
           <el-select
             v-model="form.upstream_contract_id"
             filterable
@@ -131,7 +143,7 @@
         </el-form-item>
 
         <!-- Summary Banner -->
-        <div v-if="upstreamSummary" class="summary-banner">
+        <div v-if="upstreamSummary && form.company_category === '项目费用'" class="summary-banner">
           <div class="banner-title"><el-icon><Connection /></el-icon> 已关联上游合同信息</div>
           <div class="banner-grid">
             <div class="item">
@@ -168,15 +180,38 @@
           </el-col>
         </el-row>
         
+        <el-form-item label="费用分类" prop="category">
+          <el-select v-model="form.category" placeholder="请选择费用分类" style="width: 100%" filterable allow-create>
+            <el-option label="工资" value="工资" />
+            <el-option label="奖金" value="奖金" />
+            <el-option label="培训费" value="培训费" />
+            <el-option label="资质费" value="资质费" />
+            <el-option label="办公费" value="办公费" />
+            <el-option label="餐饮费" value="餐饮费" />
+            <el-option label="房屋租赁" value="房屋租赁" />
+            <el-option label="交通费" value="交通费" />
+            <el-option label="车辆使用费" value="车辆使用费" />
+            <el-option label="其他租赁" value="其他租赁" />
+            <el-option label="水电费" value="水电费" />
+            <el-option label="业务费" value="业务费" />
+            <el-option label="住宿费" value="住宿费" />
+            <el-option label="通讯费" value="通讯费" />
+            <el-option label="投标费" value="投标费" />
+            <el-option label="中介费" value="中介费" />
+            <el-option label="税费" value="税费" />
+            <el-option label="其他费用" value="其他费用" />
+          </el-select>
+        </el-form-item>
+        
         <el-form-item label="合同名称" prop="contract_name">
           <el-input v-model="form.contract_name" placeholder="请输入合同名称" />
         </el-form-item>
         
-        <el-form-item label="甲方(我们)" prop="party_a_name">
+        <el-form-item label="甲方单位" prop="party_a_name">
           <el-input v-model="form.party_a_name" placeholder="请输入甲方名称" />
         </el-form-item>
 
-        <el-form-item label="乙方名称" prop="party_b_name">
+        <el-form-item label="乙方单位" prop="party_b_name">
           <SmartAutocomplete v-model="form.party_b_name" placeholder="输入乙方名称，支持自动补全" />
         </el-form-item>
 
@@ -204,21 +239,23 @@
           />
         </el-form-item>
 
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="开始日期" prop="start_date">
-              <el-date-picker v-model="form.start_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="结束日期" prop="end_date">
-              <el-date-picker v-model="form.end_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
-            </el-form-item>
-          </el-col>
-        </el-row>
+
         
-        <el-form-item label="合同类别" prop="category">
-          <el-input v-model="form.category" placeholder="例如：材料采购、分包施工" />
+
+
+        <el-form-item label="合同文件" prop="contract_file_path">
+          <el-upload
+            class="upload-demo"
+            action="#"
+            :http-request="handleUploadRequest"
+            :limit="1"
+            :file-list="fileList"
+            accept=".pdf"
+          >
+            <template #trigger>
+              <el-button type="primary">选择文件 (PDF)</el-button>
+            </template>
+          </el-upload>
         </el-form-item>
 
         <el-form-item label="备注">
@@ -238,9 +275,11 @@
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import { getContracts, createContract, updateContract, deleteContract } from '@/api/contractManagement'
+import { getContracts, createContract, updateContract, deleteContract, exportContracts } from '@/api/contractManagement'
 import { getContracts as getUpstreamContracts, getContractSummary } from '@/api/contractUpstream'
+import { uploadFile } from '@/api/common'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus, Search, Refresh, Download, Document, Connection } from '@element-plus/icons-vue'
 import SmartAutocomplete from '@/components/SmartAutocomplete.vue'
 
 const router = useRouter()
@@ -248,6 +287,7 @@ const loading = ref(false)
 const total = ref(0)
 const contractList = ref([])
 const isMobile = ref(false)
+const fileList = ref([])
 
 // Upstream Search
 const upstreamLoading = ref(false)
@@ -279,9 +319,11 @@ const form = reactive({
   party_b_phone: '',
   contract_amount: 0,
   sign_date: '',
-  start_date: '',
-  end_date: '',
+  start_date: null,
+  end_date: null,
   category: '',
+  company_category: '公司费用',
+  contract_file_path: '',
   notes: '',
   status: '进行中'
 })
@@ -360,6 +402,25 @@ const handleUpstreamSelect = async (val) => {
   }
 }
 
+const handleCategoryChange = (val) => {
+  if (val === '公司费用') {
+    form.upstream_contract_id = undefined
+    upstreamSummary.value = null
+  }
+}
+
+const handleUploadRequest = async (option) => {
+  try {
+    const res = await uploadFile(option.file)
+    form.contract_file_path = res.path
+    fileList.value = [{ name: option.file.name, url: res.path }]
+    ElMessage.success('上传成功')
+  } catch (e) {
+    ElMessage.error('上传失败')
+    option.onError(e)
+  }
+}
+
 // Form handling
 const resetForm = () => {
   form.id = undefined
@@ -372,12 +433,15 @@ const resetForm = () => {
   form.party_b_phone = ''
   form.contract_amount = 0
   form.sign_date = new Date().toISOString().split('T')[0]
-  form.start_date = ''
-  form.end_date = ''
+  form.start_date = null
+  form.end_date = null
   form.category = ''
+  form.company_category = '公司费用'
   form.notes = ''
   form.status = '进行中'
+  form.contract_file_path = ''
   
+  fileList.value = []
   upstreamOptions.value = []
   upstreamSummary.value = null
 }
@@ -389,10 +453,37 @@ const handleAdd = () => {
   dialog.visible = true
 }
 
+const handleExport = async () => {
+  try {
+    const response = await exportContracts(queryParams)
+    const url = window.URL.createObjectURL(new Blob([response]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `管理合同列表_${new Date().getTime()}.xlsx`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('导出失败')
+  }
+}
+
+const getFileUrl = (path) => {
+  if (!path) return ''
+  if (path.startsWith('http')) return path
+  return `http://${window.location.hostname}:8000${path}`
+}
+
 const handleEdit = async (row) => {
   resetForm()
   Object.assign(form, row)
   
+  if (form.contract_file_path) {
+    fileList.value = [{ name: '已上传文件', url: form.contract_file_path }]
+  }
+
   if (form.upstream_contract_id) {
     handleUpstreamSelect(form.upstream_contract_id)
   }

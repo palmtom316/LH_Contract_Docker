@@ -2,10 +2,14 @@
 Management Contract Management Router
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 from typing import List, Optional
 from datetime import datetime
+import pandas as pd
+import io
+import urllib.parse
 
 from app.database import get_db
 from app.models.user import User
@@ -23,6 +27,64 @@ from app.schemas.contract_management import (
 from app.services.auth import get_current_active_user
 
 router = APIRouter()
+
+@router.get("/export", response_class=StreamingResponse)
+async def export_contracts(
+    keyword: Optional[str] = None,
+    status: Optional[str] = None,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Export management contracts to Excel"""
+    query = select(ContractManagement)
+    
+    if keyword:
+        query = query.where(
+            (ContractManagement.contract_name.ilike(f"%{keyword}%")) | 
+            (ContractManagement.contract_code.ilike(f"%{keyword}%")) |
+            (ContractManagement.party_a_name.ilike(f"%{keyword}%")) |
+            (ContractManagement.party_b_name.ilike(f"%{keyword}%"))
+        )
+    
+    if status:
+        query = query.where(ContractManagement.status == status)
+        
+    query = query.order_by(desc(ContractManagement.created_at))
+    result = await db.execute(query)
+    contracts = result.scalars().all()
+    
+    # Create DataFrame
+    data = []
+    for c in contracts:
+        data.append({
+            "合同序号": c.id,
+            "合同编号": c.contract_code,
+            "合同名称": c.contract_name,
+            "甲方": c.party_a_name,
+            "乙方": c.party_b_name,
+            "合同类别": c.category.value if c.category else None,
+            "计价模式": c.pricing_mode.value if c.pricing_mode else None,
+            "合同金额": float(c.contract_amount),
+            "签订日期": c.sign_date,
+            "状态": c.status
+        })
+        
+    df = pd.DataFrame(data)
+    
+    # Save to Excel
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Contracts')
+    output.seek(0)
+    
+    filename = f"管理合同列表_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
+    encoded_filename = urllib.parse.quote(filename)
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename*=utf-8''{encoded_filename}"}
+    )
 
 
 # ===== Contract Operations =====

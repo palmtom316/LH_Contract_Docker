@@ -29,17 +29,17 @@
         
         <el-menu-item index="/contracts/upstream">
           <el-icon><Document /></el-icon>
-          <template #title>上游合同 (甲方)</template>
+          <template #title>上游合同</template>
         </el-menu-item>
         
         <el-menu-item index="/contracts/downstream">
           <el-icon><DocumentCopy /></el-icon>
-          <template #title>下游合同 (乙方)</template>
+          <template #title>下游合同</template>
         </el-menu-item>
         
         <el-menu-item index="/contracts/management">
           <el-icon><FolderChecked /></el-icon>
-          <template #title>管理合同 (无合同)</template>
+          <template #title>管理合同</template>
         </el-menu-item>
         
         <el-menu-item index="/expenses">

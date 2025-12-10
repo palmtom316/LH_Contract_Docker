@@ -19,7 +19,7 @@ class ContractManagementBase(BaseModel):
     upstream_contract_id: Optional[int] = None
     upstream_contract_name_snapshot: Optional[str] = Field(None, max_length=200)
     
-    category: Optional[ContractCategory] = None
+    category: Optional[str] = None
     company_category: Optional[str] = None
     pricing_mode: Optional[PricingMode] = None
     management_mode: Optional[ManagementMode] = None
@@ -54,7 +54,7 @@ class ContractManagementUpdate(BaseModel):
     upstream_contract_id: Optional[int] = None
     upstream_contract_name_snapshot: Optional[str] = Field(None, max_length=200)
 
-    category: Optional[ContractCategory] = None
+    category: Optional[str] = None
     company_category: Optional[str] = None
     pricing_mode: Optional[PricingMode] = None
     management_mode: Optional[ManagementMode] = None
@@ -102,6 +102,7 @@ class ManagementPayableBase(BaseModel):
     amount: Decimal = Field(..., ge=0)
     description: Optional[str] = Field(None, max_length=300)
     expected_date: Optional[date] = None
+    file_path: Optional[str] = None
 
 
 class ManagementPayableCreate(ManagementPayableBase):

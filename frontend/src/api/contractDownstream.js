@@ -8,6 +8,15 @@ export function getContracts(params) {
     })
 }
 
+export function exportContracts(params) {
+    return request({
+        url: '/contracts/downstream/export',
+        method: 'get',
+        params,
+        responseType: 'blob'
+    })
+}
+
 export function createContract(data) {
     return request({
         url: '/contracts/downstream/',
