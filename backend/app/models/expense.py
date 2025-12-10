@@ -19,8 +19,8 @@ class ExpenseNonContract(Base):
     expense_code = Column(String(50), unique=True, nullable=False, index=True)  # 序号/编号
     
     # Classification
-    category = Column(SQLEnum(ExpenseCategory), nullable=False)  # 费用类别 (Company/Project)
-    expense_type = Column(SQLEnum(ExpenseType), nullable=False)  # 费用分类 (Management, Training, etc.)
+    category = Column(String(50), nullable=False)  # 费用类别 (Company/Project)
+    expense_type = Column(String(50), nullable=False)  # 费用分类 (Management, Training, etc.)
     
     # Details
     amount = Column(Numeric(15, 2), nullable=False, default=0)       # 金额 (Implied essential field)
