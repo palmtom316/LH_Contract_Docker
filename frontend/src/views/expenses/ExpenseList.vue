@@ -168,6 +168,24 @@
           <el-input v-model="form.description" type="textarea" :rows="2" />
         </el-form-item>
 
+        <el-form-item label="费用文件" prop="file_path">
+          <el-upload
+            v-model:file-list="fileList"
+            class="upload-demo"
+            action="#"
+            :http-request="handleUploadRequest"
+            :limit="1"
+            :on-exceed="handleExceed"
+            :on-remove="handleRemove"
+            accept=".pdf"
+          >
+            <el-button type="primary">点击上传</el-button>
+            <template #tip>
+              <div class="el-upload__tip">只能上传 PDF 文件</div>
+            </template>
+          </el-upload>
+        </el-form-item>
+
         <el-form-item label="收款方" prop="payee_name">
           <el-input v-model="form.payee_name" />
         </el-form-item>
@@ -195,11 +213,13 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { getExpenses, createExpense, updateExpense, deleteExpense, approveExpense } from '@/api/expense'
+import { uploadFile } from '@/api/common'
 import { ElMessage } from 'element-plus'
 
 const loading = ref(false)
 const total = ref(0)
 const expenseList = ref([])
+const fileList = ref([])
 
 const queryParams = reactive({
   page: 1,
@@ -226,6 +246,7 @@ const form = reactive({
   payee_name: '',
   payment_method: '',
   description: '',
+  file_path: '',
   status: '待审核'
 })
 
@@ -270,6 +291,8 @@ const resetForm = () => {
   form.payee_name = ''
   form.payment_method = ''
   form.description = ''
+  form.file_path = ''
+  fileList.value = []
   form.status = '待审核'
 }
 
@@ -283,6 +306,7 @@ const handleAdd = () => {
 const handleEdit = (row) => {
   resetForm()
   Object.assign(form, row)
+  fileList.value = row.file_path ? [{ name: '费用文件', url: row.file_path }] : []
   dialog.title = '编辑费用'
   dialog.isEdit = true
   dialog.visible = true
@@ -315,6 +339,27 @@ const handleApprove = async (row, approved) => {
   await approveExpense(row.id, approved)
   ElMessage.success(approved ? '审核通过' : '已驳回')
   getList()
+}
+
+const handleUploadRequest = async (option) => {
+  try {
+    const res = await uploadFile(option.file)
+    form.file_path = res.path
+    fileList.value = [{ name: option.file.name, url: res.path }]
+    ElMessage.success('上传成功')
+  } catch (e) {
+    ElMessage.error('上传失败')
+    option.onError(e)
+  }
+}
+
+const handleExceed = (files) => {
+  ElMessage.warning('只能上传一个文件，请先删除旧文件')
+}
+
+const handleRemove = () => {
+  form.file_path = ''
+  fileList.value = []
 }
 
 onMounted(() => {
