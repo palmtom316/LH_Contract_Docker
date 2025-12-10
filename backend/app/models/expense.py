@@ -20,7 +20,7 @@ class ExpenseNonContract(Base):
     
     # Classification
     category = Column(String(50), nullable=False)  # 费用类别 (Company/Project)
-    expense_type = Column(String(50), nullable=False)  # 费用分类 (Management, Training, etc.)
+    expense_type = Column(String(50), nullable=True)  # 费用分类 (Management, Training, etc.)
     
     # Details
     amount = Column(Numeric(15, 2), nullable=False, default=0)       # 金额 (Implied essential field)

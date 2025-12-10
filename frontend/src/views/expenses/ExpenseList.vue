@@ -6,13 +6,25 @@
         <el-form-item label="关键词">
           <el-input v-model="queryParams.keyword" placeholder="费用说明/收款方/编号" clearable @keyup.enter="handleQuery" />
         </el-form-item>
-        <el-form-item label="类别">
-          <el-select v-model="queryParams.category" placeholder="费用大类" clearable style="width: 140px">
-            <el-option label="日常运营" value="日常运营" />
-            <el-option label="设备" value="设备" />
-            <el-option label="人员" value="人员" />
-            <el-option label="办公" value="办公" />
-            <el-option label="其他" value="其他" />
+        <el-form-item label="费用类别">
+          <el-select v-model="queryParams.category" placeholder="费用类别" clearable style="width: 140px">
+            <el-option label="工资" value="工资" />
+            <el-option label="奖金" value="奖金" />
+            <el-option label="培训费" value="培训费" />
+            <el-option label="资质费" value="资质费" />
+            <el-option label="办公费" value="办公费" />
+            <el-option label="餐饮费" value="餐饮费" />
+            <el-option label="房屋租赁" value="房屋租赁" />
+            <el-option label="交通费" value="交通费" />
+            <el-option label="车辆使用费" value="车辆使用费" />
+            <el-option label="其他租赁" value="其他租赁" />
+            <el-option label="水电费" value="水电费" />
+            <el-option label="业务费" value="业务费" />
+            <el-option label="住宿费" value="住宿费" />
+            <el-option label="通讯费" value="通讯费" />
+            <el-option label="投标费" value="投标费" />
+            <el-option label="中介费" value="中介费" />
+            <el-option label="其他费用" value="其他费用" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -34,12 +46,12 @@
       >
         <el-table-column prop="expense_code" label="编号" width="140" fixed />
         <el-table-column prop="expense_date" label="日期" width="120" sortable />
-        <el-table-column prop="category" label="大类" width="100">
+        <el-table-column prop="category" label="费用类别" width="100">
           <template #default="scope">
             <el-tag effect="plain">{{ scope.row.category }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="expense_type" label="具体类型" width="120" />
+
         <el-table-column prop="description" label="说明" min-width="200" show-overflow-tooltip />
         <el-table-column prop="payee_name" label="收款方" min-width="150" show-overflow-tooltip />
         <el-table-column prop="amount" label="金额" width="140" align="right">
@@ -116,21 +128,27 @@
         </el-row>
 
         <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="费用大类" prop="category">
+          <el-col :span="24">
+            <el-form-item label="费用类别" prop="category">
               <el-select v-model="form.category" placeholder="请选择" style="width: 100%">
-                <el-option label="日常运营" value="日常运营" />
-                <el-option label="设备" value="设备" />
-                <el-option label="人员" value="人员" />
-                <el-option label="办公" value="办公" />
-                <el-option label="税费" value="税费" />
-                <el-option label="其他" value="其他" />
+            <el-option label="工资" value="工资" />
+            <el-option label="奖金" value="奖金" />
+            <el-option label="培训费" value="培训费" />
+            <el-option label="资质费" value="资质费" />
+            <el-option label="办公费" value="办公费" />
+            <el-option label="餐饮费" value="餐饮费" />
+            <el-option label="房屋租赁" value="房屋租赁" />
+            <el-option label="交通费" value="交通费" />
+            <el-option label="车辆使用费" value="车辆使用费" />
+            <el-option label="其他租赁" value="其他租赁" />
+            <el-option label="水电费" value="水电费" />
+            <el-option label="业务费" value="业务费" />
+            <el-option label="住宿费" value="住宿费" />
+            <el-option label="通讯费" value="通讯费" />
+            <el-option label="投标费" value="投标费" />
+            <el-option label="中介费" value="中介费" />
+            <el-option label="其他费用" value="其他费用" />
               </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="具体类型" prop="expense_type">
-              <el-input v-model="form.expense_type" placeholder="如：水电费、工资等" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -202,7 +220,6 @@ const form = reactive({
   id: undefined,
   expense_code: '',
   category: '',
-  expense_type: '',
   amount: 0,
   tax_amount: 0,
   expense_date: '',
@@ -214,8 +231,7 @@ const form = reactive({
 
 const rules = {
   expense_code: [{ required: true, message: '请输入编号', trigger: 'blur' }],
-  category: [{ required: true, message: '请选择大类', trigger: 'change' }],
-  expense_type: [{ required: true, message: '请输入类型', trigger: 'blur' }],
+  category: [{ required: true, message: '请选择费用类别', trigger: 'change' }],
   amount: [{ required: true, message: '请输入金额', trigger: 'blur' }],
   expense_date: [{ required: true, message: '请选择日期', trigger: 'change' }]
 }
@@ -248,7 +264,6 @@ const resetForm = () => {
   form.id = undefined
   form.expense_code = 'FY' + new Date().getTime().toString().substr(-8) // Generate simple code
   form.category = ''
-  form.expense_type = ''
   form.amount = 0
   form.tax_amount = 0
   form.expense_date = new Date().toISOString().split('T')[0]

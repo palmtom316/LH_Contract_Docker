@@ -12,7 +12,7 @@ class ExpenseBase(BaseModel):
     """Base expense schema"""
     expense_code: str = Field(..., max_length=50)
     category: str
-    expense_type: str
+    expense_type: Optional[str] = None
     amount: Decimal = Field(..., ge=0)
     expense_date: date
     
