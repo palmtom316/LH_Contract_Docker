@@ -23,6 +23,7 @@ async def list_expenses(
     page: int = 1,
     page_size: int = 10,
     keyword: Optional[str] = None,
+    attribution: Optional[str] = None,
     category: Optional[str] = None,
     status: Optional[str] = None,
     current_user: User = Depends(get_current_active_user),
@@ -40,6 +41,9 @@ async def list_expenses(
             (ExpenseNonContract.responsible_person.ilike(f"%{keyword}%"))
         )
     
+    if attribution:
+        query = query.where(ExpenseNonContract.attribution == attribution)
+
     if category:
         query = query.where(ExpenseNonContract.category == category)
         

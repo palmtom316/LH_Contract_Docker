@@ -6,6 +6,12 @@
         <el-form-item label="关键词">
           <el-input v-model="queryParams.keyword" placeholder="费用说明/收款方/编号" clearable @keyup.enter="handleQuery" />
         </el-form-item>
+        <el-form-item label="费用归属">
+          <el-select v-model="queryParams.attribution" placeholder="费用归属" clearable style="width: 140px">
+            <el-option label="公司费用" value="公司费用" />
+            <el-option label="项目费用" value="项目费用" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="费用分类">
           <el-select v-model="queryParams.category" placeholder="费用分类" clearable style="width: 140px">
             <el-option label="工资" value="工资" />
@@ -235,6 +241,7 @@ const queryParams = reactive({
   page: 1,
   page_size: 10,
   keyword: '',
+  attribution: '',
   category: '',
   status: ''
 })
@@ -287,6 +294,7 @@ const handleQuery = () => {
 
 const resetQuery = () => {
   queryParams.keyword = ''
+  queryParams.attribution = ''
   queryParams.category = ''
   queryParams.status = ''
   handleQuery()
