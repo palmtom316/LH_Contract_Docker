@@ -24,6 +24,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash"""
+    if len(plain_password) > 72:
+        return False
     return pwd_context.verify(plain_password, hashed_password)
 
 
