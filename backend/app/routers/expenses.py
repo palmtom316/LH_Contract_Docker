@@ -4,6 +4,7 @@ Expense Management Router
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
+from sqlalchemy.orm import joinedload
 from typing import List, Optional
 from datetime import datetime
 
@@ -30,7 +31,7 @@ async def list_expenses(
     db: AsyncSession = Depends(get_db)
 ):
     """List expenses with pagination and filtering"""
-    query = select(ExpenseNonContract)
+    query = select(ExpenseNonContract).options(joinedload(ExpenseNonContract.upstream_contract))
     
     if keyword:
         # Removed payee_name from search as it's not in the new Requirement 3.4

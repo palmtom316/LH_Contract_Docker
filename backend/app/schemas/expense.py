@@ -46,6 +46,16 @@ class ExpenseUpdate(BaseModel):
     status: Optional[str] = Field(None, max_length=50)
 
 
+class ExpenseRef(BaseModel):
+    pass
+
+class UpstreamContractRef(BaseModel):
+    id: int
+    contract_name: str
+    contract_code: str
+    class Config:
+        from_attributes = True
+
 class ExpenseResponse(ExpenseBase):
     id: int
     approved_by: Optional[int] = None
@@ -53,6 +63,7 @@ class ExpenseResponse(ExpenseBase):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     created_by: Optional[int] = None
+    upstream_contract: Optional[UpstreamContractRef] = None
 
     class Config:
         from_attributes = True
