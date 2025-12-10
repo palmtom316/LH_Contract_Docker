@@ -46,6 +46,7 @@
       >
         <el-table-column prop="expense_code" label="编号" width="140" fixed />
         <el-table-column prop="expense_date" label="日期" width="120" sortable />
+        <el-table-column prop="attribution" label="费用归属" width="120" />
         <el-table-column prop="category" label="费用分类" width="100">
           <template #default="scope">
             <el-tag effect="plain">{{ scope.row.category }}</el-tag>
