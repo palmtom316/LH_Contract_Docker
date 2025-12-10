@@ -6,8 +6,8 @@
         <el-form-item label="关键词">
           <el-input v-model="queryParams.keyword" placeholder="费用说明/收款方/编号" clearable @keyup.enter="handleQuery" />
         </el-form-item>
-        <el-form-item label="费用类别">
-          <el-select v-model="queryParams.category" placeholder="费用类别" clearable style="width: 140px">
+        <el-form-item label="费用分类">
+          <el-select v-model="queryParams.category" placeholder="费用分类" clearable style="width: 140px">
             <el-option label="工资" value="工资" />
             <el-option label="奖金" value="奖金" />
             <el-option label="培训费" value="培训费" />
@@ -46,7 +46,7 @@
       >
         <el-table-column prop="expense_code" label="编号" width="140" fixed />
         <el-table-column prop="expense_date" label="日期" width="120" sortable />
-        <el-table-column prop="category" label="费用类别" width="100">
+        <el-table-column prop="category" label="费用分类" width="100">
           <template #default="scope">
             <el-tag effect="plain">{{ scope.row.category }}</el-tag>
           </template>
@@ -130,7 +130,7 @@
 
         <el-row :gutter="20">
           <el-col :span="24">
-            <el-form-item label="费用类别" prop="category">
+            <el-form-item label="费用分类" prop="category">
               <el-select v-model="form.category" placeholder="请选择" style="width: 100%">
             <el-option label="工资" value="工资" />
             <el-option label="奖金" value="奖金" />
@@ -253,7 +253,7 @@ const form = reactive({
 
 const rules = {
   expense_code: [{ required: true, message: '请输入编号', trigger: 'blur' }],
-  category: [{ required: true, message: '请选择费用类别', trigger: 'change' }],
+  category: [{ required: true, message: '请选择费用分类', trigger: 'change' }],
   amount: [{ required: true, message: '请输入金额', trigger: 'blur' }],
   expense_date: [{ required: true, message: '请选择日期', trigger: 'change' }]
 }
