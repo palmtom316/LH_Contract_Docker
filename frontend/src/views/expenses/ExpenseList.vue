@@ -71,11 +71,7 @@
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="scope">
             <el-button link type="primary" size="small" @click="handleEdit(scope.row)" :disabled="scope.row.status === '已审核'">编辑</el-button>
-            <el-popconfirm title="确定审核通过吗?" @confirm="handleApprove(scope.row, true)">
-              <template #reference>
-                <el-button link type="success" size="small" :disabled="scope.row.status !== '待审核'">审核</el-button>
-              </template>
-            </el-popconfirm>
+
             <el-popconfirm title="确定删除吗?" @confirm="handleDelete(scope.row)">
               <template #reference>
                 <el-button link type="danger" size="small">删除</el-button>
