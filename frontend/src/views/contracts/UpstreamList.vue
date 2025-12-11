@@ -8,9 +8,13 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="queryParams.status" placeholder="合同状态" clearable style="width: 120px">
+            <el-option label="执行中" value="执行中" />
             <el-option label="进行中" value="进行中" />
-            <el-option label="已完成" value="已完成" />
-            <el-option label="已终止" value="已终止" />
+            <el-option label="已完工" value="已完工" />
+            <el-option label="已结算" value="已结算" />
+            <el-option label="质保到期" value="质保到期" />
+            <el-option label="合同终止" value="合同终止" />
+            <el-option label="合同中止" value="合同中止" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -41,17 +45,42 @@
         style="width: 100%" 
         border
         highlight-current-row
+        show-summary
+        :summary-method="getSummaries"
+        class="custom-footer-table"
+        :footer-cell-style="footerCellStyle"
       >
         <el-table-column prop="id" label="合同序号" width="100" align="center" fixed="left" />
-        <el-table-column prop="contract_name" label="合同名称" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="party_a_name" label="甲方单位" min-width="160" show-overflow-tooltip />
-        <el-table-column prop="party_b_name" label="乙方单位" min-width="160" show-overflow-tooltip />
+
+
+
+        <el-table-column prop="contract_code" label="合同编号" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="contract_name" label="合同名称" min-width="220">
+          <template #default="scope">
+            <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.contract_name }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="party_a_name" label="甲方单位" min-width="180">
+          <template #default="scope">
+            <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.party_a_name }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="party_b_name" label="乙方单位" min-width="180">
+          <template #default="scope">
+            <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.party_b_name }}</div>
+          </template>
+        </el-table-column>
         <el-table-column prop="contract_amount" label="签约金额" width="140" align="right">
           <template #default="scope">
             ¥ {{ formatMoney(scope.row.contract_amount) }}
           </template>
         </el-table-column>
         <el-table-column prop="sign_date" label="签约时间" width="120" align="center" />
+        <el-table-column prop="status" label="状态" width="100" align="center">
+          <template #default="scope">
+            <el-tag :type="getStatusType(scope.row.status)">{{ scope.row.status }}</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="company_category" label="公司合同分类" width="130" align="center" show-overflow-tooltip />
         <el-table-column label="合同文件" width="100" align="center">
           <template #default="scope">
@@ -187,9 +216,13 @@
           <el-col :span="12">
             <el-form-item label="合同状态" prop="status">
               <el-select v-model="form.status" placeholder="请选择状态" style="width: 100%">
+                <el-option label="执行中" value="执行中" />
                 <el-option label="进行中" value="进行中" />
-                <el-option label="已完成" value="已完成" />
-                <el-option label="已终止" value="已终止" />
+                <el-option label="已完工" value="已完工" />
+                <el-option label="已结算" value="已结算" />
+                <el-option label="质保到期" value="质保到期" />
+                <el-option label="合同终止" value="合同终止" />
+                <el-option label="合同中止" value="合同中止" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -489,18 +522,57 @@ const resetQuery = () => {
 }
 
 const getStatusType = (status) => {
-  const map = {
-    '进行中': 'primary',
-    '已完成': 'success',
-    '已终止': 'info',
-    '待审核': 'warning'
-  }
-  return map[status] || ''
+  if (status === '已完成' || status === '已完工' || status === '已结算') return 'success'
+  if (status === '已终止' || status === '已归档' || status === '合同终止') return 'info'
+  if (status === '已中止' || status === '合同中止') return 'danger'
+  if (status === '待审核' || status === '质保到期') return 'warning'
+  if (status === '进行中' || status === '执行中') return 'primary'
+  return ''
 }
 
 const formatMoney = (value) => {
   if (value === undefined || value === null) return '0.00'
   return Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+const getSummaries = (param) => {
+  const { columns, data } = param
+  const sums = []
+  columns.forEach((column, index) => {
+    if (index === 0) {
+      sums[index] = '金额合计'
+      return
+    }
+    
+    if (column.property === 'contract_amount') {
+      const values = data.map(item => Number(item[column.property]))
+      if (!values.every(value => Number.isNaN(value))) {
+        const sum = values.reduce((prev, curr) => {
+          const value = Number(curr)
+          if (!Number.isNaN(value)) {
+            return prev + curr
+          } else {
+            return prev
+          }
+        }, 0)
+        sums[index] = '¥ ' + formatMoney(sum)
+      } else {
+        sums[index] = '0.00'
+      }
+    } else {
+      sums[index] = ''
+    }
+  })
+  return sums
+}
+
+const footerCellStyle = () => {
+  return {
+    backgroundColor: '#FFFF00',
+    color: '#000000',
+    fontWeight: 'bold',
+    fontSize: '16px'
+  }
 }
 
 // File Upload Logic
@@ -536,12 +608,8 @@ const handlePreview = (path) => {
 // Open PDF in new tab
 const openPdfInNewTab = (path) => {
   if (!path) return
-  // PDF files are served from the backend server
-  // In development, backend is at localhost:8000
-  // The path from API is like /uploads/contracts/xxx.pdf
-  const backendUrl = 'http://localhost:8000'
-  const pdfUrl = path.startsWith('http') ? path : `${backendUrl}${path}`
-  window.open(pdfUrl, '_blank')
+  // With simplified file serving, we can just supply the relative path
+  window.open(path, '_blank')
 }
 
 // Form handling
@@ -563,7 +631,7 @@ const resetForm = () => {
   form.management_mode = ''
   form.responsible_person = ''
   form.notes = ''
-  form.status = '进行中'
+  form.status = '执行中'
   form.contract_file_path = ''
   fileList.value = []
 }
@@ -656,7 +724,8 @@ const handleExport = async () => {
     window.URL.revokeObjectURL(link.href)
     ElMessage.success('导出成功')
   } catch (e) {
-    ElMessage.error('导出失败')
+    console.error('Export Error:', e)
+    ElMessage.error('导出失败: ' + (e.message || e))
   }
 }
 
@@ -800,7 +869,69 @@ onBeforeUnmount(() => {
   text-align: right;
 }
 
+/* Summary Row Styling removed in favor of footer-cell-style prop */
+
+/* Multi-line cell display for long text */
+.multi-line-cell {
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3; /* Max 3 lines */
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .text-gray {
   color: #c0c4cc;
 }
 </style>
+
+<style>
+/* Global override for table footer - Bold black text with yellow background */
+.custom-footer-table .el-table__footer-wrapper tbody td,
+.custom-footer-table .el-table__fixed-footer-wrapper tbody td,
+.custom-footer-table .el-table__footer-wrapper tbody tr,
+.custom-footer-table .el-table__fixed-footer-wrapper tbody tr {
+  background-color: #FFFF00 !important; /* Bright Yellow */
+  color: #000000 !important; /* Black */
+  font-weight: bold !important;
+  font-size: 16px !important;
+  --el-table-row-hover-bg-color: #FFFF00 !important;
+}
+.custom-footer-table .el-table__footer-wrapper tbody td .cell,
+.custom-footer-table .el-table__fixed-footer-wrapper tbody td .cell {
+  background-color: #FFFF00 !important;
+  color: #000000 !important; /* Black */
+  font-weight: bold !important;
+}
+
+/* Multi-line cell display - Force Element Plus table to allow text wrapping */
+.custom-footer-table td .cell {
+  overflow: visible !important;
+  text-overflow: unset !important;
+  white-space: normal !important;
+}
+
+.custom-footer-table .el-table__row {
+  height: auto !important;
+}
+
+.custom-footer-table td.el-table__cell {
+  height: auto !important;
+  vertical-align: top !important;
+}
+
+.multi-line-cell {
+  white-space: normal !important;
+  word-break: break-word !important;
+  word-wrap: break-word !important;
+  line-height: 1.5 !important;
+  max-height: 4.5em !important; /* Approx 3 lines */
+  overflow: hidden !important;
+  display: block !important;
+}
+</style>
+
+

@@ -37,8 +37,8 @@ async def get_companies(
     stmt_upstream = select(ContractUpstream.party_a_name).where(
         ContractUpstream.party_a_name.ilike(f"%{query}%")
     )
-    stmt_downstream = select(ContractDownstream.supplier_name).where(
-        ContractDownstream.supplier_name.ilike(f"%{query}%")
+    stmt_downstream = select(ContractDownstream.party_b_name).where(
+        ContractDownstream.party_b_name.ilike(f"%{query}%")
     )
     
     # Execute queries

@@ -8,6 +8,16 @@ export function getExpenses(params) {
     })
 }
 
+
+export function exportExpenses(params) {
+    return request({
+        url: '/expenses/export/excel',
+        method: 'get',
+        params,
+        responseType: 'blob'
+    })
+}
+
 export function createExpense(data) {
     return request({
         url: '/expenses/',

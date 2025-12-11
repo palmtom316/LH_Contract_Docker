@@ -52,7 +52,7 @@ const routes = [
                 path: 'expenses',
                 name: 'Expenses',
                 component: () => import('@/views/expenses/ExpenseList.vue'),
-                meta: { title: '费用管理', icon: 'Money' }
+                meta: { title: '无合同费用', icon: 'Money' }
             },
             {
                 path: 'reports',

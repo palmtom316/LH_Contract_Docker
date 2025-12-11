@@ -42,7 +42,7 @@ class ContractUpstream(Base):
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
     
-    status = Column(String(50), default="进行中")
+    status = Column(String(50), default="执行中")
     notes = Column(Text, nullable=True)
     contract_file_path = Column(String(500), nullable=True) # Contract File (PDF Only)
     
@@ -161,7 +161,9 @@ class ProjectSettlement(Base):
     contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="CASCADE"), nullable=False, index=True)
     
     settlement_code = Column(String(50), nullable=True)    # 结算单号
-    settlement_date = Column(Date, nullable=True)          # 结算日期
+    settlement_date = Column(Date, nullable=True)          # 结算办结日期
+    completion_date = Column(Date, nullable=True)          # 完工日期
+    warranty_date = Column(Date, nullable=True)            # 质保到期日期
     settlement_amount = Column(Numeric(15, 2), nullable=False, default=0)  # 结算金额
     audit_amount = Column(Numeric(15, 2), nullable=True)   # 审核金额
     final_amount = Column(Numeric(15, 2), nullable=True)   # 最终金额

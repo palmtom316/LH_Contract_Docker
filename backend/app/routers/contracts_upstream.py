@@ -29,8 +29,36 @@ from app.schemas.contract_upstream import (
     SettlementCreate, SettlementResponse
 )
 from app.services.auth import get_current_active_user
+from app.services.status_service import calculate_contract_status
+from sqlalchemy.orm import selectinload
 
 router = APIRouter()
+
+async def refresh_contract_status(db: AsyncSession, contract_id: int):
+    """Recalculate and update contract status based on latest data"""
+    query = select(ContractUpstream).options(
+        selectinload(ContractUpstream.settlements),
+        selectinload(ContractUpstream.receipts),
+        selectinload(ContractUpstream.receivables),
+    ).where(ContractUpstream.id == contract_id)
+    
+    result = await db.execute(query)
+    contract = result.scalar_one_or_none()
+    
+    if not contract:
+        return
+
+    # Calculate Totals
+    total_settlement = sum(s.settlement_amount or 0 for s in contract.settlements)
+    total_received = sum(r.amount or 0 for r in contract.receipts)
+    total_receivable = sum(r.amount or 0 for r in contract.receivables)
+    
+    new_status = calculate_contract_status(contract, total_settlement, total_received, total_receivable)
+    
+    if contract.status != new_status:
+        contract.status = new_status
+        db.add(contract)
+        await db.commit()
 
 
 # ===== Contract Operations =====
@@ -82,6 +110,77 @@ async def list_contracts(
     }
 
 
+@router.get("/export/excel")
+async def export_contracts(
+    keyword: Optional[str] = None,
+    status: Optional[str] = None,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Export contracts to Excel"""
+    try:
+        # 1. Query Data
+        query = select(ContractUpstream)
+        
+        if keyword:
+            query = query.where(
+                (ContractUpstream.contract_name.ilike(f"%{keyword}%")) | 
+                (ContractUpstream.contract_code.ilike(f"%{keyword}%")) |
+                (ContractUpstream.party_a_name.ilike(f"%{keyword}%")) |
+                (ContractUpstream.party_b_name.ilike(f"%{keyword}%"))
+            )
+        
+        if status:
+            query = query.where(ContractUpstream.status == status)
+            
+        query = query.order_by(desc(ContractUpstream.created_at))
+        result = await db.execute(query)
+        contracts = result.scalars().all()
+        
+        # 2. Convert to DataFrame
+        data = []
+        for c in contracts:
+            data.append({
+                "合同序号": c.id,
+                "合同编号": c.contract_code,
+                "合同名称": c.contract_name,
+                "甲方单位": c.party_a_name,
+                "乙方单位": c.party_b_name,
+                "合同类别": c.category.value if hasattr(c.category, 'value') else c.category,
+                "公司分类": c.company_category,
+                "计价模式": c.pricing_mode.value if hasattr(c.pricing_mode, 'value') else c.pricing_mode,
+                "管理模式": c.management_mode.value if hasattr(c.management_mode, 'value') else c.management_mode,
+                "负责人": c.responsible_person,
+                "合同金额": float(c.contract_amount) if c.contract_amount else 0,
+                "签约日期": c.sign_date,
+                "状态": c.status,
+                "备注": c.notes
+            })
+            
+        df = pd.DataFrame(data)
+        
+        # 3. Create Excel file
+        filename = f"contracts_upstream_export_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
+        filepath = os.path.join(settings.UPLOAD_DIR, filename)
+        
+        # Ensure directory exists
+        os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+        
+        # Write to Excel
+        df.to_excel(filepath, index=False, engine='openpyxl')
+        
+        # 4. Return file
+        return FileResponse(
+            path=filepath, 
+            filename=filename, 
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"导出失败: {str(e)}")
+
+
 @router.post("/", response_model=ContractUpstreamResponse, status_code=status.HTTP_201_CREATED)
 async def create_contract(
     contract_in: ContractUpstreamCreate,
@@ -89,16 +188,26 @@ async def create_contract(
     db: AsyncSession = Depends(get_db)
 ):
     """Create new upstream contract"""
-    # Check unique code
-    existing = await db.execute(select(ContractUpstream).where(ContractUpstream.contract_code == contract_in.contract_code))
-    if existing.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="合同编号已存在")
-        
-    contract = ContractUpstream(**contract_in.model_dump(), created_by=current_user.id)
-    db.add(contract)
-    await db.commit()
-    await db.refresh(contract)
-    return contract
+    try:
+        # Check unique code
+        existing = await db.execute(select(ContractUpstream).where(ContractUpstream.contract_code == contract_in.contract_code))
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="合同编号已存在")
+            
+        contract = ContractUpstream(**contract_in.model_dump(), created_by=current_user.id)
+        db.add(contract)
+        await db.commit()
+        await db.refresh(contract)
+        return contract
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        with open("error.log", "a", encoding="utf-8") as f:
+            f.write(f"Create Contract Error: {str(e)}\n")
+            f.write(traceback.format_exc())
+            f.write("\n" + "-"*30 + "\n")
+        raise HTTPException(status_code=500, detail=f"服务器内部错误: {str(e)}")
 
 
 @router.get("/{contract_id}", response_model=ContractUpstreamResponse)
@@ -160,6 +269,7 @@ async def update_contract(
         
     await db.commit()
     await db.refresh(contract)
+    await refresh_contract_status(db, contract.id)
     return contract
 
 
@@ -198,6 +308,7 @@ async def create_receivable(
     db.add(receivable)
     await db.commit()
     await db.refresh(receivable)
+    await refresh_contract_status(db, contract_id)
     return receivable
 
 
@@ -232,6 +343,7 @@ async def update_receivable(
         setattr(receivable, key, value)
     await db.commit()
     await db.refresh(receivable)
+    await refresh_contract_status(db, contract_id)
     return receivable
 
 
@@ -253,6 +365,7 @@ async def delete_receivable(
     
     await db.delete(receivable)
     await db.commit()
+    await refresh_contract_status(db, contract_id)
     return {"message": "删除成功"}
 
 
@@ -344,6 +457,7 @@ async def create_receipt(
     db.add(receipt)
     await db.commit()
     await db.refresh(receipt)
+    await refresh_contract_status(db, contract_id)
     return receipt
 
 
@@ -378,6 +492,7 @@ async def update_receipt(
         setattr(receipt, key, value)
     await db.commit()
     await db.refresh(receipt)
+    await refresh_contract_status(db, contract_id)
     return receipt
 
 
@@ -399,6 +514,7 @@ async def delete_receipt(
     
     await db.delete(receipt)
     await db.commit()
+    await refresh_contract_status(db, contract_id)
     return {"message": "删除成功"}
 
 
@@ -417,6 +533,7 @@ async def create_settlement(
     db.add(settlement)
     await db.commit()
     await db.refresh(settlement)
+    await refresh_contract_status(db, contract_id)
     return settlement
 
 
@@ -451,6 +568,7 @@ async def update_settlement(
         setattr(settlement, key, value)
     await db.commit()
     await db.refresh(settlement)
+    await refresh_contract_status(db, contract_id)
     return settlement
 
 
@@ -472,6 +590,7 @@ async def delete_settlement(
     
     await db.delete(settlement)
     await db.commit()
+    await refresh_contract_status(db, contract_id)
     return {"message": "删除成功"}
 
 
@@ -647,68 +766,5 @@ async def import_contracts_from_excel(
         raise HTTPException(status_code=500, detail=f"导入失败: {str(e)}")
 
 
-@router.get("/export/excel")
-async def export_contracts(
-    keyword: Optional[str] = None,
-    status: Optional[str] = None,
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """Export contracts to Excel"""
-    # 1. Query Data
-    query = select(ContractUpstream)
-    
-    if keyword:
-        query = query.where(
-            (ContractUpstream.contract_name.ilike(f"%{keyword}%")) | 
-            (ContractUpstream.contract_code.ilike(f"%{keyword}%")) |
-            (ContractUpstream.party_a_name.ilike(f"%{keyword}%")) |
-            (ContractUpstream.party_b_name.ilike(f"%{keyword}%"))
-        )
-    
-    if status:
-        query = query.where(ContractUpstream.status == status)
-        
-    query = query.order_by(desc(ContractUpstream.created_at))
-    result = await db.execute(query)
-    contracts = result.scalars().all()
-    
-    # 2. Convert to DataFrame
-    data = []
-    for c in contracts:
-        data.append({
-            "合同序号": c.id,
-            "合同编号": c.contract_code,
-            "合同名称": c.contract_name,
-            "甲方单位": c.party_a_name,
-            "乙方单位": c.party_b_name,
-            "合同类别": c.category.value if hasattr(c.category, 'value') else c.category,
-            "公司分类": c.company_category,
-            "计价模式": c.pricing_mode.value if hasattr(c.pricing_mode, 'value') else c.pricing_mode,
-            "管理模式": c.management_mode.value if hasattr(c.management_mode, 'value') else c.management_mode,
-            "负责人": c.responsible_person,
-            "合同金额": float(c.contract_amount) if c.contract_amount else 0,
-            "签约日期": c.sign_date,
-            "状态": c.status,
-            "备注": c.notes
-        })
-        
-    df = pd.DataFrame(data)
-    
-    # 3. Create Excel file
-    filename = f"contracts_upstream_export_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
-    filepath = os.path.join(settings.UPLOAD_DIR, filename)
-    
-    # Ensure directory exists
-    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-    
-    # Write to Excel
-    df.to_excel(filepath, index=False, engine='openpyxl')
-    
-    # 4. Return file
-    return FileResponse(
-        path=filepath, 
-        filename=filename, 
-        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
+
 

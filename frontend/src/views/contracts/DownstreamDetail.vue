@@ -181,7 +181,9 @@
           <el-table-column prop="settlement_amount" label="结算金额" align="right">
             <template #default="{ row }">¥ {{ formatMoney(row.settlement_amount) }}</template>
           </el-table-column>
-          <el-table-column prop="settlement_date" label="结算日期" width="120" />
+          <el-table-column prop="settlement_date" label="结算办结日期" width="120" />
+          <el-table-column prop="completion_date" label="完工日期" width="120" />
+          <el-table-column prop="warranty_date" label="质保到期日期" width="120" />
           <el-table-column label="审批文件" width="100" align="center">
             <template #default="{ row }">
                <el-link v-if="row.file_path" :href="getFileUrl(row.file_path)" target="_blank"><el-icon><Document /></el-icon></el-link>
@@ -315,8 +317,14 @@
           <el-form-item label="结算金额">
             <el-input-number v-model="financeForm.settlement_amount" :precision="2" :min="0" :controls="false" style="width: 100%" />
           </el-form-item>
-          <el-form-item label="结算日期">
+          <el-form-item label="结算办结日期">
             <el-date-picker v-model="financeForm.settlement_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="完工日期">
+            <el-date-picker v-model="financeForm.completion_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="质保到期日期">
+            <el-date-picker v-model="financeForm.warranty_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
           </el-form-item>
           <el-form-item label="说明">
             <el-input v-model="financeForm.description" type="textarea" />
@@ -429,10 +437,12 @@ const loadSettlements = async () => { settlements.value = await getSettlements(c
 // Helpers
 const formatMoney = (val) => Number(val || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const getStatusType = (status) => {
-  if (status === '进行中') return 'primary'
-  if (status === '已完成') return 'success'
-  if (status === '已终止') return 'danger'
-  return 'info'
+  if (status === '已完成' || status === '已完工' || status === '已结算') return 'success'
+  if (status === '已终止' || status === '已归档' || status === '合同终止') return 'info'
+  if (status === '已中止' || status === '合同中止') return 'danger'
+  if (status === '待审核' || status === '质保到期') return 'warning'
+  if (status === '进行中' || status === '执行中') return 'primary'
+  return ''
 }
 const getFileUrl = (path) => {
   if (!path) return ''
@@ -473,7 +483,7 @@ const openFinanceDialog = (type) => {
     Object.assign(financeForm, { amount: 0, payment_date: new Date().toISOString().split('T')[0], payment_method: '银行转账', payee_name: contract.value.party_b_name, file_path: '' })
   } else if (type === 'settlement') {
     financeDialog.title = '新增结算记录'
-    Object.assign(financeForm, { settlement_code: '', settlement_amount: 0, settlement_date: new Date().toISOString().split('T')[0], description: '', file_path: '' })
+    Object.assign(financeForm, { settlement_code: '', settlement_amount: 0, settlement_date: new Date().toISOString().split('T')[0], completion_date: null, warranty_date: null, description: '', file_path: '' })
   }
 }
 
@@ -499,7 +509,7 @@ const openEditDialog = (type, row) => {
     fileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
   } else if (type === 'settlement') {
     financeDialog.title = '编辑结算记录'
-    Object.assign(financeForm, { settlement_code: row.settlement_code, settlement_amount: row.settlement_amount, settlement_date: row.settlement_date, description: row.description, file_path: row.file_path || '' })
+    Object.assign(financeForm, { settlement_code: row.settlement_code, settlement_amount: row.settlement_amount, settlement_date: row.settlement_date, completion_date: row.completion_date, warranty_date: row.warranty_date, description: row.description, file_path: row.file_path || '' })
     fileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
   }
 }
@@ -530,6 +540,9 @@ const submitFinance = async () => {
       financeDialog.isEdit ? await updatePayment(contractId, financeDialog.editingId, financeForm) : await createPayment(contractId, financeForm)
       await loadPayments()
     } else if (financeDialog.type === 'settlement') {
+      // Clean up dates
+      if (financeForm.completion_date === '') financeForm.completion_date = null
+      if (financeForm.warranty_date === '') financeForm.warranty_date = null
       financeDialog.isEdit ? await updateSettlement(contractId, financeDialog.editingId, financeForm) : await createSettlement(contractId, financeForm)
       await loadSettlements()
     }

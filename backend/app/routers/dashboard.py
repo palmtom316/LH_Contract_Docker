@@ -10,6 +10,7 @@ from app.database import get_db
 from app.models.user import User
 from app.models.contract_upstream import ContractUpstream, FinanceUpstreamReceipt
 from app.models.contract_downstream import ContractDownstream, FinanceDownstreamPayment
+from app.models.contract_management import FinanceManagementPayment
 from app.models.expense import ExpenseNonContract
 from app.services.auth import get_current_active_user
 
@@ -38,14 +39,17 @@ async def get_dashboard_stats(
     res_received = await db.execute(select(func.sum(FinanceUpstreamReceipt.amount)))
     total_received = res_received.scalar() or 0
     
-    # Total Actual Paid (Downstream + Expenses) - Simplified
+    # Total Actual Paid (Downstream + Management + Expenses)
     res_paid_down = await db.execute(select(func.sum(FinanceDownstreamPayment.amount)))
     total_paid_down = res_paid_down.scalar() or 0
+    
+    res_paid_mgmt = await db.execute(select(func.sum(FinanceManagementPayment.amount)))
+    total_paid_mgmt = res_paid_mgmt.scalar() or 0
     
     res_paid_exp = await db.execute(select(func.sum(ExpenseNonContract.amount)))
     total_paid_exp = res_paid_exp.scalar() or 0
     
-    total_paid = total_paid_down + total_paid_exp
+    total_paid = (total_paid_down or 0) + (total_paid_mgmt or 0) + (total_paid_exp or 0)
     
     # Downstream Contract Amount (Pending mostly)
     res_down_total = await db.execute(select(func.sum(ContractDownstream.contract_amount)))
@@ -76,6 +80,28 @@ async def get_dashboard_stats(
     )
     month_in = (await db.execute(stmt_month_in)).scalar() or 0
     
+    # Monthly Expense (Downstream Payments + Management Payments + Non-Contract Expenses)
+    stmt_month_out_down = select(func.sum(FinanceDownstreamPayment.amount)).where(
+        extract('month', FinanceDownstreamPayment.payment_date) == current_month,
+        extract('year', FinanceDownstreamPayment.payment_date) == current_year
+    )
+    month_out_down = (await db.execute(stmt_month_out_down)).scalar() or 0
+    
+    # Management contract payments
+    stmt_month_out_mgmt = select(func.sum(FinanceManagementPayment.amount)).where(
+        extract('month', FinanceManagementPayment.payment_date) == current_month,
+        extract('year', FinanceManagementPayment.payment_date) == current_year
+    )
+    month_out_mgmt = (await db.execute(stmt_month_out_mgmt)).scalar() or 0
+    
+    stmt_month_out_exp = select(func.sum(ExpenseNonContract.amount)).where(
+        extract('month', ExpenseNonContract.expense_date) == current_month,
+        extract('year', ExpenseNonContract.expense_date) == current_year
+    )
+    month_out_exp = (await db.execute(stmt_month_out_exp)).scalar() or 0
+    
+    month_out = float(month_out_down or 0) + float(month_out_mgmt or 0) + float(month_out_exp or 0)
+    
     # Constructing a simple mock-ish historical data for frontend demo
     # In production, this should be a full query group by month
     bar_data = {
@@ -85,6 +111,7 @@ async def get_dashboard_stats(
     }
     # Fill current month (index starts at 0)
     bar_data["income"][current_month - 1] = float(month_in)
+    bar_data["expense"][current_month - 1] = month_out
     
     return {
         "cards": {

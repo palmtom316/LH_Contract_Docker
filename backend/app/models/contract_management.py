@@ -54,7 +54,7 @@ class ContractManagement(Base):
     contract_file_path = Column(String(500), nullable=True)
     
     # Status and notes
-    status = Column(String(50), default="进行中")
+    status = Column(String(50), default="执行中")
     notes = Column(Text, nullable=True)
     
     # Timestamps
@@ -147,8 +147,10 @@ class ManagementSettlement(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     contract_id = Column(Integer, ForeignKey("contracts_management.id", ondelete="CASCADE"), nullable=False, index=True)
     
-    settlement_code = Column(String(50), unique=True, nullable=False)
+    settlement_code = Column(String(50), nullable=True)
     settlement_date = Column(Date, nullable=False)
+    completion_date = Column(Date, nullable=True)
+    warranty_date = Column(Date, nullable=True)
     settlement_amount = Column(Numeric(15, 2), nullable=False, default=0)
     
     audit_amount = Column(Numeric(15, 2), nullable=True)

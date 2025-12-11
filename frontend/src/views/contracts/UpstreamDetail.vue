@@ -16,28 +16,34 @@
     <!-- Summary Cards -->
     <!-- Summary Cards -->
     <el-row :gutter="20" class="summary-cards">
-      <el-col :span="6" :xs="12">
+      <el-col :span="4" :xs="12">
         <el-card shadow="hover">
           <template #header><span>合同总额</span></template>
           <div class="amount-text">¥ {{ formatMoney(contract.contract_amount) }}</div>
         </el-card>
       </el-col>
-      <el-col :span="6" :xs="12">
+      <el-col :span="4" :xs="12">
         <el-card shadow="hover">
           <template #header><span>累计应收款</span></template>
           <div class="amount-text info-text">¥ {{ formatMoney(totalReceivables) }}</div>
         </el-card>
       </el-col>
-      <el-col :span="6" :xs="12">
+      <el-col :span="4" :xs="12">
         <el-card shadow="hover">
           <template #header><span>累计回款</span></template>
           <div class="amount-text success-text">¥ {{ formatMoney(totalReceipts) }} <span class="percentage-inline">({{ receiptPercentage }}%)</span></div>
         </el-card>
       </el-col>
-      <el-col :span="6" :xs="12">
+      <el-col :span="4" :xs="12">
         <el-card shadow="hover">
           <template #header><span>累计开票</span></template>
           <div class="amount-text warning-text">¥ {{ formatMoney(totalInvoices) }}</div>
+        </el-card>
+      </el-col>
+      <el-col :span="4" :xs="12">
+        <el-card shadow="hover">
+          <template #header><span>累计结算</span></template>
+          <div class="amount-text" style="color: #626aef">¥ {{ formatMoney(totalSettlements) }}</div>
         </el-card>
       </el-col>
     </el-row>
@@ -92,15 +98,14 @@
           <el-table-column prop="description" label="备注" show-overflow-tooltip />
           <el-table-column label="应收款审批文件" width="150" align="center">
             <template #default="{ row }">
-              <el-link 
+              <el-button 
                 v-if="row.file_path" 
+                link 
                 type="primary" 
-                :href="getFileUrl(row.file_path)" 
-                target="_blank"
-                :underline="false"
+                @click="openFile(row.file_path)"
               >
-                <el-icon><Document /></el-icon> 查看文件
-              </el-link>
+                <el-icon class="el-icon--left"><Document /></el-icon> 查看文件
+              </el-button>
             </template>
           </el-table-column>
           <el-table-column label="操作" width="120" align="center" fixed="right">
@@ -130,15 +135,14 @@
           <el-table-column prop="description" label="说明" show-overflow-tooltip />
           <el-table-column label="发票文件" width="120" align="center">
             <template #default="{ row }">
-              <el-link 
+              <el-button 
                 v-if="row.file_path" 
+                link 
                 type="primary" 
-                :href="getFileUrl(row.file_path)" 
-                target="_blank"
-                :underline="false"
+                @click="openFile(row.file_path)"
               >
-                <el-icon><Document /></el-icon> 查看文件
-              </el-link>
+                <el-icon class="el-icon--left"><Document /></el-icon> 查看文件
+              </el-button>
               <span v-else style="color: #909399">-</span>
             </template>
           </el-table-column>
@@ -165,15 +169,14 @@
           <el-table-column prop="payer_name" label="付款单位" show-overflow-tooltip />
           <el-table-column label="回款附件" width="120" align="center">
             <template #default="{ row }">
-              <el-link 
+              <el-button 
                 v-if="row.file_path" 
+                link 
                 type="primary" 
-                :href="getFileUrl(row.file_path)" 
-                target="_blank"
-                :underline="false"
+                @click="openFile(row.file_path)"
               >
-                <el-icon><Document /></el-icon> 查看文件
-              </el-link>
+                <el-icon class="el-icon--left"><Document /></el-icon> 查看文件
+              </el-button>
               <span v-else style="color: #909399">-</span>
             </template>
           </el-table-column>
@@ -196,29 +199,31 @@
           <el-table-column prop="settlement_amount" label="结算金额" align="right">
             <template #default="{ row }">¥ {{ formatMoney(row.settlement_amount) }}</template>
           </el-table-column>
-          <el-table-column prop="settlement_date" label="结算日期" width="120" />
+          <el-table-column prop="settlement_date" label="结算办结日期" width="120" />
+          <el-table-column prop="completion_date" label="完工日期" width="120" />
+          <el-table-column prop="warranty_date" label="质保到期日期" width="120" />
           <el-table-column prop="description" label="说明" show-overflow-tooltip />
           <el-table-column label="审核报告" width="100" align="center">
             <template #default="{ row }">
-              <el-link v-if="row.audit_report_path" type="primary" :href="getFileUrl(row.audit_report_path)" target="_blank" :underline="false">
-                <el-icon><Document /></el-icon> 查看
-              </el-link>
+              <el-button v-if="row.audit_report_path" link type="primary" @click="openFile(row.audit_report_path)">
+                <el-icon class="el-icon--left"><Document /></el-icon> 查看
+              </el-button>
               <span v-else style="color: #909399">-</span>
             </template>
           </el-table-column>
           <el-table-column label="开工报告" width="100" align="center">
             <template #default="{ row }">
-              <el-link v-if="row.start_report_path" type="primary" :href="getFileUrl(row.start_report_path)" target="_blank" :underline="false">
-                <el-icon><Document /></el-icon> 查看
-              </el-link>
+              <el-button v-if="row.start_report_path" link type="primary" @click="openFile(row.start_report_path)">
+                <el-icon class="el-icon--left"><Document /></el-icon> 查看
+              </el-button>
               <span v-else style="color: #909399">-</span>
             </template>
           </el-table-column>
           <el-table-column label="竣工报告" width="100" align="center">
             <template #default="{ row }">
-              <el-link v-if="row.completion_report_path" type="primary" :href="getFileUrl(row.completion_report_path)" target="_blank" :underline="false">
-                <el-icon><Document /></el-icon> 查看
-              </el-link>
+              <el-button v-if="row.completion_report_path" link type="primary" @click="openFile(row.completion_report_path)">
+                <el-icon class="el-icon--left"><Document /></el-icon> 查看
+              </el-button>
               <span v-else style="color: #909399">-</span>
             </template>
           </el-table-column>
@@ -353,8 +358,14 @@
           <el-form-item label="结算单号">
             <el-input v-model="financeForm.settlement_code" placeholder="单号" />
           </el-form-item>
-          <el-form-item label="结算日期">
+          <el-form-item label="结算办结日期">
              <el-date-picker v-model="financeForm.settlement_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="完工日期">
+             <el-date-picker v-model="financeForm.completion_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="质保到期日期">
+             <el-date-picker v-model="financeForm.warranty_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
           </el-form-item>
           <el-form-item label="结算金额">
             <el-input-number v-model="financeForm.settlement_amount" :precision="2" :min="0" :controls="false" style="width: 100%" />
@@ -474,6 +485,10 @@ const totalInvoices = computed(() => {
   return invoices.value.reduce((sum, item) => sum + Number(item.amount), 0)
 })
 
+const totalSettlements = computed(() => {
+  return settlements.value.reduce((sum, item) => sum + Number(item.settlement_amount), 0)
+})
+
 const receiptPercentage = computed(() => {
   if (!totalReceivables.value || totalReceivables.value === 0) return 0
   const p = (totalReceipts.value / totalReceivables.value) * 100
@@ -516,9 +531,18 @@ const getFileUrl = (path) => {
   return path.startsWith('http') ? path : `${backendUrl}${path}`
 }
 
+const openFile = (path) => {
+  const url = getFileUrl(path)
+  if (url) window.open(url, '_blank')
+}
+
 const getStatusType = (status) => {
-  const map = { '进行中': 'primary', '已完成': 'success', '已终止': 'info' }
-  return map[status] || ''
+  if (status === '已完成' || status === '已完工' || status === '已结算') return 'success'
+  if (status === '已终止' || status === '已归档' || status === '合同终止') return 'info'
+  if (status === '已中止' || status === '合同中止') return 'danger'
+  if (status === '待审核' || status === '质保到期') return 'warning'
+  if (status === '进行中' || status === '执行中') return 'primary'
+  return ''
 }
 
 const formatReceivableCategory = (value) => {
@@ -620,6 +644,8 @@ const openFinanceDialog = (type) => {
       settlement_code: '',
       settlement_amount: 0,
       settlement_date: new Date().toISOString().split('T')[0],
+      completion_date: null,
+      warranty_date: null,
       status: '待审核',
       description: '',
       file_path: '',
@@ -677,6 +703,8 @@ const openEditDialog = (type, row) => {
       settlement_code: row.settlement_code,
       settlement_amount: row.settlement_amount,
       settlement_date: row.settlement_date,
+      completion_date: row.completion_date,
+      warranty_date: row.warranty_date,
       status: row.status,
       description: row.description,
       file_path: row.file_path || '',
@@ -714,6 +742,9 @@ const submitFinance = async () => {
       }
       await loadReceipts()
     } else if (financeDialog.type === 'settlement') {
+      // Clean up dates
+      if (financeForm.completion_date === '') financeForm.completion_date = null
+      if (financeForm.warranty_date === '') financeForm.warranty_date = null
       if (financeDialog.isEdit) {
         await updateSettlement(contractId, financeDialog.editingId, financeForm)
       } else {

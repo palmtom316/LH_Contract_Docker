@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.database import Base
-from app.models.enums import ContractCategory, PricingMode, ManagementMode, PaymentCategory
+from app.models.enums import ContractCategory, DownstreamContractCategory, PricingMode, ManagementMode, PaymentCategory
 
 class ContractDownstream(Base):
     """
@@ -28,7 +28,7 @@ class ContractDownstream(Base):
     upstream_contract_name_snapshot = Column(String(200), nullable=True) # 上游合同名称快照
     
     # Classification (Matching Upstream structure as per Req 3.3)
-    category = Column(SQLEnum(ContractCategory), nullable=True)
+    category = Column(String(50), nullable=True)  # 合同类别 - 使用字符串避免枚举冲突
     company_category = Column(String(50), nullable=True)
     pricing_mode = Column(SQLEnum(PricingMode), nullable=True)
     management_mode = Column(SQLEnum(ManagementMode), nullable=True)
@@ -53,7 +53,7 @@ class ContractDownstream(Base):
     contract_file_path = Column(String(500), nullable=True)   # 合同文件路径 (PDF Only)
     
     # Status and notes
-    status = Column(String(50), default="进行中")              # 合同状态
+    status = Column(String(50), default="执行中")              # 合同状态
     notes = Column(Text, nullable=True)                       # 备注
     
     # Timestamps
@@ -173,8 +173,10 @@ class DownstreamSettlement(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     contract_id = Column(Integer, ForeignKey("contracts_downstream.id", ondelete="CASCADE"), nullable=False, index=True)
     
-    settlement_code = Column(String(50), unique=True, nullable=False)  # 结算编号
-    settlement_date = Column(Date, nullable=False)                     # 结算日期
+    settlement_code = Column(String(50), nullable=True)  # 结算编号
+    settlement_date = Column(Date, nullable=False)                     # 结算办结日期
+    completion_date = Column(Date, nullable=True)                      # 完工日期
+    warranty_date = Column(Date, nullable=True)                        # 质保到期日期
     settlement_amount = Column(Numeric(15, 2), nullable=False, default=0)  # 结算金额
     
     audit_amount = Column(Numeric(15, 2), nullable=True)               # 审核金额

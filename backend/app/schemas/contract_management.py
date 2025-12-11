@@ -37,7 +37,7 @@ class ContractManagementBase(BaseModel):
     sign_date: Optional[date] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
-    status: Optional[str] = Field(default="进行中", max_length=50)
+    status: Optional[str] = Field(default="执行中", max_length=50)
     notes: Optional[str] = None
     contract_file_path: Optional[str] = None
 
@@ -174,8 +174,10 @@ class ManagementPaymentResponse(ManagementPaymentBase):
 
 # ===== Management Settlement Schemas =====
 class ManagementSettlementBase(BaseModel):
-    settlement_code: str = Field(..., max_length=50)
+    settlement_code: Optional[str] = Field(None, max_length=50)
     settlement_date: date
+    completion_date: Optional[date] = None
+    warranty_date: Optional[date] = None
     settlement_amount: Decimal = Field(..., ge=0)
     audit_amount: Optional[Decimal] = Field(None, ge=0)
     final_amount: Optional[Decimal] = Field(None, ge=0)

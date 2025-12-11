@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import date, datetime
 from decimal import Decimal
-from app.models.enums import ContractCategory, PaymentCategory, PricingMode, ManagementMode
+from app.models.enums import ContractCategory, DownstreamContractCategory, PaymentCategory, PricingMode, ManagementMode
 
 # ===== Contract Downstream Schemas =====
 class ContractDownstreamBase(BaseModel):
@@ -20,7 +20,7 @@ class ContractDownstreamBase(BaseModel):
     upstream_contract_name_snapshot: Optional[str] = Field(None, max_length=200) # Added
     
     # Classification (Req 3.3: Same structure as Upstream)
-    category: Optional[ContractCategory] = None
+    category: Optional[str] = None  # 合同类别 - 使用字符串
     company_category: Optional[str] = None
     pricing_mode: Optional[PricingMode] = None
     management_mode: Optional[ManagementMode] = None
@@ -38,7 +38,7 @@ class ContractDownstreamBase(BaseModel):
     sign_date: Optional[date] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
-    status: Optional[str] = Field(default="进行中", max_length=50)
+    status: Optional[str] = Field(default="执行中", max_length=50)
     notes: Optional[str] = None
     contract_file_path: Optional[str] = None # Added for PDF
 
@@ -57,7 +57,7 @@ class ContractDownstreamUpdate(BaseModel):
     upstream_contract_id: Optional[int] = None
     upstream_contract_name_snapshot: Optional[str] = Field(None, max_length=200)
 
-    category: Optional[ContractCategory] = None
+    category: Optional[str] = None
     company_category: Optional[str] = None
     pricing_mode: Optional[PricingMode] = None
     management_mode: Optional[ManagementMode] = None
@@ -189,8 +189,10 @@ class PaymentResponse(PaymentBase):
 # ===== Downstream Settlement Schemas =====
 class DownstreamSettlementBase(BaseModel):
     """Base downstream settlement schema"""
-    settlement_code: str = Field(..., max_length=50)
+    settlement_code: Optional[str] = Field(None, max_length=50)
     settlement_date: date
+    completion_date: Optional[date] = None
+    warranty_date: Optional[date] = None
     settlement_amount: Decimal = Field(..., ge=0)
     audit_amount: Optional[Decimal] = Field(None, ge=0)
     final_amount: Optional[Decimal] = Field(None, ge=0)

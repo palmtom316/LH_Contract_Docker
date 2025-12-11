@@ -3,14 +3,27 @@
     <!-- Search Bar -->
     <el-card class="filter-container" shadow="never">
       <el-form :inline="true" :model="queryParams" class="demo-form-inline">
-        <el-form-item label="关键词">
-          <el-input v-model="queryParams.keyword" placeholder="费用说明/收款方/编号" clearable @keyup.enter="handleQuery" />
-        </el-form-item>
+
         <el-form-item label="费用归属">
           <el-select v-model="queryParams.attribution" placeholder="费用归属" clearable style="width: 140px">
             <el-option label="公司费用" value="公司费用" />
             <el-option label="项目费用" value="项目费用" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="日期范围">
+          <el-date-picker
+            v-model="queryParams.dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+            style="width: 240px"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="上游合同序号">
+          <el-input v-model="queryParams.upstream_contract_id" placeholder="上游合同序号" clearable style="width: 120px" @keyup.enter="handleQuery" />
         </el-form-item>
         <el-form-item label="费用分类">
           <el-select v-model="queryParams.category" placeholder="费用分类" clearable style="width: 140px">
@@ -30,13 +43,15 @@
             <el-option label="通讯费" value="通讯费" />
             <el-option label="投标费" value="投标费" />
             <el-option label="中介费" value="中介费" />
+            <el-option label="零星采购" value="零星采购" />
             <el-option label="其他费用" value="其他费用" />
           </el-select>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
           <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-          <el-button type="success" icon="Plus" @click="handleAdd">记一笔</el-button>
+          <el-button type="warning" icon="Download" @click="handleExport">导出Excel</el-button>
+          <el-button type="success" icon="Plus" @click="handleAdd">新增无合同费用</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -49,6 +64,10 @@
         style="width: 100%" 
         border
         highlight-current-row
+        show-summary
+        :summary-method="getSummaries"
+        class="custom-footer-table"
+        :footer-cell-style="footerCellStyle"
       >
         <el-table-column prop="expense_code" label="编号" width="140" fixed />
         <el-table-column prop="expense_date" label="日期" width="120" sortable />
@@ -58,19 +77,23 @@
             <el-tag effect="plain">{{ scope.row.category }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="上游合同名称" min-width="150" show-overflow-tooltip>
+        <el-table-column label="上游合同名称" min-width="180">
           <template #default="scope">
-            <span v-if="scope.row.upstream_contract">
+            <div v-if="scope.row.upstream_contract" :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">
               {{ scope.row.upstream_contract.contract_name }}
-            </span>
+            </div>
           </template>
         </el-table-column>
 
-        <el-table-column prop="description" label="说明" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="payee_name" label="收款方" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="description" label="说明" min-width="200">
+          <template #default="scope">
+            <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.description }}</div>
+          </template>
+        </el-table-column>
+
         <el-table-column label="费用文件" width="100" align="center">
           <template #default="scope">
-            <el-link v-if="scope.row.file_path" type="primary" :href="scope.row.file_path" target="_blank">查看</el-link>
+            <el-link v-if="scope.row.file_path" type="primary" @click="viewExpenseFile(scope.row.file_path)">查看</el-link>
           </template>
         </el-table-column>
         <el-table-column prop="amount" label="金额" width="140" align="right">
@@ -78,15 +101,7 @@
              ¥ {{ Number(scope.row.amount).toLocaleString() }}
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="scope">
-            <el-tag 
-              :type="scope.row.status === '已审核' ? 'success' : (scope.row.status === '已驳回' ? 'danger' : 'warning')"
-            >
-              {{ scope.row.status }}
-            </el-tag>
-          </template>
-        </el-table-column>
+
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="scope">
             <el-button link type="primary" size="small" @click="handleEdit(scope.row)" :disabled="scope.row.status === '已审核'">编辑</el-button>
@@ -166,6 +181,7 @@
             <el-option label="通讯费" value="通讯费" />
             <el-option label="投标费" value="投标费" />
             <el-option label="中介费" value="中介费" />
+            <el-option label="零星采购" value="零星采购" />
             <el-option label="其他费用" value="其他费用" />
               </el-select>
             </el-form-item>
@@ -220,6 +236,7 @@
             :limit="1"
             :on-exceed="handleExceed"
             :on-remove="handleRemove"
+            :on-preview="handlePreview"
             accept=".pdf"
           >
             <el-button type="primary">点击上传</el-button>
@@ -229,18 +246,7 @@
           </el-upload>
         </el-form-item>
 
-        <el-form-item label="收款方" prop="payee_name">
-          <el-input v-model="form.payee_name" />
-        </el-form-item>
 
-        <el-form-item label="付款方式" prop="payment_method">
-          <el-select v-model="form.payment_method" style="width: 100%">
-            <el-option label="银行转账" value="银行转账" />
-            <el-option label="现金" value="现金" />
-            <el-option label="微信/支付宝" value="网络支付" />
-            <el-option label="支票" value="支票" />
-          </el-select>
-        </el-form-item>
 
       </el-form>
       <template #footer>
@@ -255,7 +261,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { getExpenses, createExpense, updateExpense, deleteExpense, approveExpense } from '@/api/expense'
+import { getExpenses, createExpense, updateExpense, deleteExpense, approveExpense, exportExpenses } from '@/api/expense'
 import { getContracts, getContract } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -270,10 +276,12 @@ const loadingContracts = ref(false)
 const queryParams = reactive({
   page: 1,
   page_size: 10,
-  keyword: '',
+
   attribution: '',
   category: '',
-  status: ''
+  status: '',
+  dateRange: null,
+  upstream_contract_id: ''
 })
 
 const dialog = reactive({
@@ -292,8 +300,7 @@ const form = reactive({
   amount: 0,
   tax_amount: 0,
   expense_date: '',
-  payee_name: '',
-  payment_method: '',
+
   description: '',
   file_path: '',
   status: '待审核'
@@ -310,7 +317,21 @@ const rules = {
 const getList = async () => {
   loading.value = true
   try {
-    const res = await getExpenses(queryParams)
+    // Build query params
+    const params = {
+      page: queryParams.page,
+      page_size: queryParams.page_size,
+      attribution: queryParams.attribution,
+      category: queryParams.category,
+      status: queryParams.status,
+      upstream_contract_id: queryParams.upstream_contract_id || undefined
+    }
+    // Handle date range
+    if (queryParams.dateRange && queryParams.dateRange.length === 2) {
+      params.start_date = queryParams.dateRange[0]
+      params.end_date = queryParams.dateRange[1]
+    }
+    const res = await getExpenses(params)
     expenseList.value = res.items
     total.value = res.total
   } finally {
@@ -324,14 +345,92 @@ const handleQuery = () => {
 }
 
 const resetQuery = () => {
-  queryParams.keyword = ''
+
   queryParams.attribution = ''
   queryParams.category = ''
   queryParams.status = ''
+  queryParams.dateRange = null
+  queryParams.upstream_contract_id = ''
   handleQuery()
 }
 
+// Format money
+const formatMoney = (value) => {
+  if (value === undefined || value === null) return '0.00'
+  return Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// Summary row calculation
+const getSummaries = (param) => {
+  const { columns, data } = param
+  const sums = []
+  columns.forEach((column, index) => {
+    if (index === 0) {
+      sums[index] = '金额合计'
+      return
+    }
+    
+    if (column.property === 'amount') {
+      const values = data.map(item => Number(item[column.property]))
+      if (!values.every(value => Number.isNaN(value))) {
+        const sum = values.reduce((prev, curr) => {
+          const value = Number(curr)
+          if (!Number.isNaN(value)) {
+            return prev + curr
+          } else {
+            return prev
+          }
+        }, 0)
+        sums[index] = '¥ ' + formatMoney(sum)
+      } else {
+        sums[index] = '0.00'
+      }
+    } else {
+      sums[index] = ''
+    }
+  })
+  return sums
+}
+
+const footerCellStyle = () => {
+  return {
+    backgroundColor: '#FFFF00',
+    color: '#000000',
+    fontWeight: 'bold',
+    fontSize: '16px'
+  }
+}
+
 // Form handling
+const handleExport = async () => {
+  try {
+    const params = {
+
+      attribution: queryParams.attribution,
+      category: queryParams.category,
+      status: queryParams.status,
+      upstream_contract_id: queryParams.upstream_contract_id || undefined
+    }
+    
+    if (queryParams.dateRange && queryParams.dateRange.length === 2) {
+      params.start_date = queryParams.dateRange[0]
+      params.end_date = queryParams.dateRange[1]
+    }
+
+    const res = await exportExpenses(params)
+    const blob = new Blob([res], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const link = document.createElement('a')
+    link.href = window.URL.createObjectURL(blob)
+    link.download = `费用列表_${new Date().toISOString().slice(0, 10)}.xlsx`
+    link.click()
+    window.URL.revokeObjectURL(link.href)
+    ElMessage.success('导出成功')
+  } catch (e) {
+    console.error('Export Error:', e)
+    ElMessage.error('导出失败: ' + (e.message || e))
+  }
+}
+
 const resetForm = () => {
   form.id = undefined
   form.expense_code = 'FY' + new Date().getTime().toString().substr(-8) // Generate simple code
@@ -341,8 +440,7 @@ const resetForm = () => {
   form.amount = 0
   form.tax_amount = 0
   form.expense_date = new Date().toISOString().split('T')[0]
-  form.payee_name = ''
-  form.payment_method = ''
+
   form.description = ''
   form.file_path = ''
   fileList.value = []
@@ -451,6 +549,24 @@ const handleRemove = () => {
   fileList.value = []
 }
 
+const handlePreview = (file) => {
+  if (file.url) {
+    // 直接使用相对路径，由 vite proxy 代理到后端
+    window.open(file.url, '_blank')
+  } else {
+    ElMessage.warning('没有可查看的文件')
+  }
+}
+
+const viewExpenseFile = (filePath) => {
+  if (filePath) {
+    // 直接使用相对路径，由 vite proxy 代理到后端
+    window.open(filePath, '_blank')
+  } else {
+    ElMessage.warning('没有可查看的文件')
+  }
+}
+
 onMounted(() => {
   getList()
 })
@@ -464,5 +580,25 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+</style>
+
+<style>
+/* Global override for table footer - Bold black text with yellow background */
+.custom-footer-table .el-table__footer-wrapper tbody td,
+.custom-footer-table .el-table__fixed-footer-wrapper tbody td,
+.custom-footer-table .el-table__footer-wrapper tbody tr,
+.custom-footer-table .el-table__fixed-footer-wrapper tbody tr {
+  background-color: #FFFF00 !important; /* Bright Yellow */
+  color: #000000 !important; /* Black */
+  font-weight: bold !important;
+  font-size: 16px !important;
+  --el-table-row-hover-bg-color: #FFFF00 !important;
+}
+.custom-footer-table .el-table__footer-wrapper tbody td .cell,
+.custom-footer-table .el-table__fixed-footer-wrapper tbody td .cell {
+  background-color: #FFFF00 !important;
+  color: #000000 !important; /* Black */
+  font-weight: bold !important;
 }
 </style>

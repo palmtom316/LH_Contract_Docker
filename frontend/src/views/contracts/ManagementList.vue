@@ -7,6 +7,17 @@
           <el-input v-model="queryParams.keyword" placeholder="合同名称/编号/乙方" clearable @keyup.enter="handleQuery" />
         </el-form-item>
 
+        <el-form-item label="状态">
+          <el-select v-model="queryParams.status" placeholder="合同状态" clearable style="width: 120px">
+            <el-option label="执行中" value="执行中" />
+            <el-option label="进行中" value="进行中" />
+            <el-option label="已完工" value="已完工" />
+            <el-option label="已结算" value="已结算" />
+            <el-option label="质保到期" value="质保到期" />
+            <el-option label="合同终止" value="合同终止" />
+            <el-option label="合同中止" value="合同中止" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
           <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -24,19 +35,25 @@
         style="width: 100%" 
         border
         highlight-current-row
+        show-summary
+        :summary-method="getSummaries"
+        class="custom-footer-table"
+        :footer-cell-style="footerCellStyle"
       >
-        <el-table-column prop="id" label="合同序号" width="80" align="center" fixed />
+        <el-table-column prop="id" label="合同序号" width="100" fixed />
         <el-table-column prop="contract_code" label="合同编号" width="150" fixed />
-        <el-table-column prop="contract_name" label="合同名称" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="category" label="合同类别" width="120" show-overflow-tooltip />
-        <el-table-column prop="pricing_mode" label="计价模式" width="120" show-overflow-tooltip />
-        <el-table-column prop="party_b_name" label="乙方" min-width="180" show-overflow-tooltip />
-        <el-table-column label="合同文件" width="100" align="center">
+        <el-table-column prop="contract_name" label="合同名称" min-width="220">
           <template #default="scope">
-            <el-link v-if="scope.row.contract_file_path" :href="getFileUrl(scope.row.contract_file_path)" target="_blank"><el-icon><Document /></el-icon></el-link>
-            <span v-else>-</span>
+            <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.contract_name }}</div>
           </template>
         </el-table-column>
+        <el-table-column prop="party_b_name" label="乙方(供应商)" min-width="180">
+          <template #default="scope">
+            <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.party_b_name }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="company_category" label="费用归属" width="100" show-overflow-tooltip />
+        <el-table-column prop="category" label="合同类别" width="120" show-overflow-tooltip />
         <el-table-column prop="contract_amount" label="合同金额" width="140" align="right">
           <template #default="scope">
             ¥ {{ Number(scope.row.contract_amount).toLocaleString() }}
@@ -46,6 +63,19 @@
         <el-table-column prop="status" label="状态" width="100">
           <template #default="scope">
             <el-tag :type="getStatusType(scope.row.status)">{{ scope.row.status }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="合同文件" width="100" align="center">
+          <template #default="scope">
+            <el-link 
+              v-if="scope.row.contract_file_path" 
+              :href="getFileUrl(scope.row.contract_file_path)" 
+              target="_blank" 
+              type="primary"
+            >
+              <el-icon><Document /></el-icon>
+            </el-link>
+            <span v-else>-</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="220" fixed="right">
@@ -112,8 +142,8 @@
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         
         <!-- Upstream Contract Selection & Summary Banner -->
-        <el-form-item label="费用类别" prop="company_category">
-          <el-select v-model="form.company_category" placeholder="请选择费用类别" style="width: 100%" @change="handleCategoryChange">
+        <el-form-item label="费用归属" prop="company_category">
+          <el-select v-model="form.company_category" placeholder="请选择费用归属" style="width: 100%" @change="handleCategoryChange">
             <el-option label="公司费用" value="公司费用" />
             <el-option label="项目费用" value="项目费用" />
           </el-select>
@@ -181,24 +211,12 @@
         </el-row>
         
         <el-form-item label="费用分类" prop="category">
-          <el-select v-model="form.category" placeholder="请选择费用分类" style="width: 100%" filterable allow-create>
-            <el-option label="工资" value="工资" />
-            <el-option label="奖金" value="奖金" />
-            <el-option label="培训费" value="培训费" />
-            <el-option label="资质费" value="资质费" />
+          <el-select v-model="form.category" placeholder="请选择费用分类" style="width: 100%">
             <el-option label="办公费" value="办公费" />
-            <el-option label="餐饮费" value="餐饮费" />
-            <el-option label="房屋租赁" value="房屋租赁" />
-            <el-option label="交通费" value="交通费" />
-            <el-option label="车辆使用费" value="车辆使用费" />
-            <el-option label="其他租赁" value="其他租赁" />
-            <el-option label="水电费" value="水电费" />
-            <el-option label="业务费" value="业务费" />
-            <el-option label="住宿费" value="住宿费" />
-            <el-option label="通讯费" value="通讯费" />
-            <el-option label="投标费" value="投标费" />
-            <el-option label="中介费" value="中介费" />
-            <el-option label="税费" value="税费" />
+            <el-option label="培训费" value="培训费" />
+            <el-option label="租赁费" value="租赁费" />
+            <el-option label="资质费" value="资质费" />
+            <el-option label="咨询费" value="咨询费" />
             <el-option label="其他费用" value="其他费用" />
           </el-select>
         </el-form-item>
@@ -365,13 +383,59 @@ const resetQuery = () => {
 }
 
 const getStatusType = (status) => {
-  const map = {
-    '进行中': 'primary',
-    '已完成': 'success',
-    '已终止': 'info',
-    '待审核': 'warning'
+  if (status === '已完成' || status === '已完工' || status === '已结算') return 'success'
+  if (status === '已终止' || status === '已归档' || status === '合同终止') return 'info'
+  if (status === '已中止' || status === '合同中止') return 'danger'
+  if (status === '待审核' || status === '质保到期') return 'warning'
+  if (status === '进行中' || status === '执行中') return 'primary'
+  return ''
+}
+
+// Format money
+const formatMoney = (value) => {
+  if (value === undefined || value === null) return '0.00'
+  return Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// Summary row calculation
+const getSummaries = (param) => {
+  const { columns, data } = param
+  const sums = []
+  columns.forEach((column, index) => {
+    if (index === 0) {
+      sums[index] = '金额合计'
+      return
+    }
+    
+    if (column.property === 'contract_amount') {
+      const values = data.map(item => Number(item[column.property]))
+      if (!values.every(value => Number.isNaN(value))) {
+        const sum = values.reduce((prev, curr) => {
+          const value = Number(curr)
+          if (!Number.isNaN(value)) {
+            return prev + curr
+          } else {
+            return prev
+          }
+        }, 0)
+        sums[index] = '¥ ' + formatMoney(sum)
+      } else {
+        sums[index] = '0.00'
+      }
+    } else {
+      sums[index] = ''
+    }
+  })
+  return sums
+}
+
+const footerCellStyle = () => {
+  return {
+    backgroundColor: '#FFFF00',
+    color: '#000000',
+    fontWeight: 'bold',
+    fontSize: '16px'
   }
-  return map[status] || ''
 }
 
 // Logic for Upstream Search
@@ -438,7 +502,7 @@ const resetForm = () => {
   form.category = ''
   form.company_category = '公司费用'
   form.notes = ''
-  form.status = '进行中'
+  form.status = '执行中'
   form.contract_file_path = ''
   
   fileList.value = []
@@ -636,5 +700,25 @@ onBeforeUnmount(() => {
       gap: 8px;
     }
   }
+}
+</style>
+
+<style>
+/* Global override for table footer - Bold black text with yellow background */
+.custom-footer-table .el-table__footer-wrapper tbody td,
+.custom-footer-table .el-table__fixed-footer-wrapper tbody td,
+.custom-footer-table .el-table__footer-wrapper tbody tr,
+.custom-footer-table .el-table__fixed-footer-wrapper tbody tr {
+  background-color: #FFFF00 !important; /* Bright Yellow */
+  color: #000000 !important; /* Black */
+  font-weight: bold !important;
+  font-size: 16px !important;
+  --el-table-row-hover-bg-color: #FFFF00 !important;
+}
+.custom-footer-table .el-table__footer-wrapper tbody td .cell,
+.custom-footer-table .el-table__fixed-footer-wrapper tbody td .cell {
+  background-color: #FFFF00 !important;
+  color: #000000 !important; /* Black */
+  font-weight: bold !important;
 }
 </style>

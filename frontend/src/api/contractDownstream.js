@@ -10,7 +10,7 @@ export function getContracts(params) {
 
 export function exportContracts(params) {
     return request({
-        url: '/contracts/downstream/export',
+        url: '/contracts/downstream/export/excel',
         method: 'get',
         params,
         responseType: 'blob'

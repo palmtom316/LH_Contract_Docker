@@ -38,7 +38,7 @@ services:
       UPLOAD_DIR: /app/uploads
     volumes:
       - ./backend/app:/app/app
-      - ./uploads:/app/uploads
+      - ./backend/uploads:/app/uploads
     ports:
       - "8000:8000"
     networks:

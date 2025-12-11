@@ -25,10 +25,38 @@ from app.schemas.contract_downstream import (
     DownstreamSettlementCreate, DownstreamSettlementResponse
 )
 from app.services.auth import get_current_active_user
+from app.services.status_service import calculate_contract_status
+from sqlalchemy.orm import selectinload
 
 router = APIRouter()
 
-@router.get("/export", response_class=StreamingResponse)
+async def refresh_contract_status(db: AsyncSession, contract_id: int):
+    """Recalculate and update contract status based on latest data"""
+    query = select(ContractDownstream).options(
+        selectinload(ContractDownstream.settlements),
+        selectinload(ContractDownstream.payments),
+        selectinload(ContractDownstream.payables),
+    ).where(ContractDownstream.id == contract_id)
+    
+    result = await db.execute(query)
+    contract = result.scalar_one_or_none()
+    
+    if not contract:
+        return
+
+    # Calculate Totals
+    total_settlement = sum(s.settlement_amount or 0 for s in contract.settlements)
+    total_paid = sum(p.amount or 0 for p in contract.payments)
+    total_payable = sum(p.amount or 0 for p in contract.payables)
+    
+    new_status = calculate_contract_status(contract, total_settlement, total_paid, total_payable)
+    
+    if contract.status != new_status:
+        contract.status = new_status
+        db.add(contract)
+        await db.commit()
+
+@router.get("/export/excel", response_class=StreamingResponse)
 async def export_contracts(
     keyword: Optional[str] = None,
     status: Optional[str] = None,
@@ -36,55 +64,60 @@ async def export_contracts(
     db: AsyncSession = Depends(get_db)
 ):
     """Export downstream contracts to Excel"""
-    query = select(ContractDownstream)
-    
-    if keyword:
-        query = query.where(
-            (ContractDownstream.contract_name.ilike(f"%{keyword}%")) | 
-            (ContractDownstream.contract_code.ilike(f"%{keyword}%")) |
-            (ContractDownstream.party_a_name.ilike(f"%{keyword}%")) |
-            (ContractDownstream.party_b_name.ilike(f"%{keyword}%"))
+    try:
+        query = select(ContractDownstream)
+        
+        if keyword:
+            query = query.where(
+                (ContractDownstream.contract_name.ilike(f"%{keyword}%")) | 
+                (ContractDownstream.contract_code.ilike(f"%{keyword}%")) |
+                (ContractDownstream.party_a_name.ilike(f"%{keyword}%")) |
+                (ContractDownstream.party_b_name.ilike(f"%{keyword}%"))
+            )
+        
+        if status:
+            query = query.where(ContractDownstream.status == status)
+            
+        query = query.order_by(desc(ContractDownstream.created_at))
+        result = await db.execute(query)
+        contracts = result.scalars().all()
+        
+        # Create DataFrame
+        data = []
+        for c in contracts:
+            data.append({
+                "合同序号": c.id,
+                "合同编号": c.contract_code,
+                "合同名称": c.contract_name,
+                "甲方": c.party_a_name,
+                "乙方": c.party_b_name,
+                "合同类别": c.category.value if hasattr(c.category, 'value') else c.category,
+                "计价模式": c.pricing_mode.value if hasattr(c.pricing_mode, 'value') else c.pricing_mode,
+                "合同金额": float(c.contract_amount),
+                "签订日期": c.sign_date,
+                "状态": c.status
+            })
+            
+        df = pd.DataFrame(data)
+        
+        # Save to Excel
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Contracts')
+        output.seek(0)
+        
+        filename = f"下游合同列表_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
+        encoded_filename = urllib.parse.quote(filename)
+        
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename*=utf-8''{encoded_filename}"}
         )
-    
-    if status:
-        query = query.where(ContractDownstream.status == status)
-        
-    query = query.order_by(desc(ContractDownstream.created_at))
-    result = await db.execute(query)
-    contracts = result.scalars().all()
-    
-    # Create DataFrame
-    data = []
-    for c in contracts:
-        data.append({
-            "合同序号": c.id,
-            "合同编号": c.contract_code,
-            "合同名称": c.contract_name,
-            "甲方": c.party_a_name,
-            "乙方": c.party_b_name,
-            "合同类别": c.category.value if c.category else None,
-            "计价模式": c.pricing_mode.value if c.pricing_mode else None,
-            "合同金额": float(c.contract_amount),
-            "签订日期": c.sign_date,
-            "状态": c.status
-        })
-        
-    df = pd.DataFrame(data)
-    
-    # Save to Excel
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Contracts')
-    output.seek(0)
-    
-    filename = f"下游合同列表_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
-    encoded_filename = urllib.parse.quote(filename)
-    
-    return StreamingResponse(
-        output,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename*=utf-8''{encoded_filename}"}
-    )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"导出失败: {str(e)}")
 
 
 # ===== Contract Operations =====
@@ -145,6 +178,7 @@ async def create_contract(
     db.add(contract)
     await db.commit()
     await db.refresh(contract)
+    await refresh_contract_status(db, contract.id)
     return contract
 
 
@@ -183,6 +217,7 @@ async def update_contract(
         
     await db.commit()
     await db.refresh(contract)
+    await refresh_contract_status(db, contract.id)
     return contract
 
 
@@ -221,6 +256,7 @@ async def create_payable(
     db.add(payable)
     await db.commit()
     await db.refresh(payable)
+    await refresh_contract_status(db, contract_id)
     return payable
 
 
@@ -255,6 +291,7 @@ async def update_payable(
         setattr(payable, key, value)
     await db.commit()
     await db.refresh(payable)
+    await refresh_contract_status(db, contract_id)
     return payable
 
 
@@ -276,6 +313,7 @@ async def delete_payable(
     
     await db.delete(payable)
     await db.commit()
+    await refresh_contract_status(db, contract_id)
     return {"message": "删除成功"}
 
 
@@ -367,6 +405,7 @@ async def create_payment(
     db.add(payment)
     await db.commit()
     await db.refresh(payment)
+    await refresh_contract_status(db, contract_id)
     return payment
 
 
@@ -401,6 +440,7 @@ async def update_payment(
         setattr(payment, key, value)
     await db.commit()
     await db.refresh(payment)
+    await refresh_contract_status(db, contract_id)
     return payment
 
 
@@ -422,6 +462,7 @@ async def delete_payment(
     
     await db.delete(payment)
     await db.commit()
+    await refresh_contract_status(db, contract_id)
     return {"message": "删除成功"}
 
 
@@ -440,6 +481,7 @@ async def create_settlement(
     db.add(settlement)
     await db.commit()
     await db.refresh(settlement)
+    await refresh_contract_status(db, contract_id)
     return settlement
 
 
@@ -474,6 +516,7 @@ async def update_settlement(
         setattr(settlement, key, value)
     await db.commit()
     await db.refresh(settlement)
+    await refresh_contract_status(db, contract_id)
     return settlement
 
 
@@ -495,4 +538,5 @@ async def delete_settlement(
     
     await db.delete(settlement)
     await db.commit()
+    await refresh_contract_status(db, contract_id)
     return {"message": "删除成功"}

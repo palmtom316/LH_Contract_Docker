@@ -44,7 +44,7 @@
         
         <el-menu-item index="/expenses">
           <el-icon><Money /></el-icon>
-          <template #title>费用管理</template>
+          <template #title>无合同费用</template>
         </el-menu-item>
         
         <el-menu-item index="/reports">

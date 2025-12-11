@@ -7,6 +7,17 @@
           <el-input v-model="queryParams.keyword" placeholder="合同名称/编号/乙方" clearable @keyup.enter="handleSearch" />
         </el-form-item>
 
+        <el-form-item label="状态">
+          <el-select v-model="queryParams.status" placeholder="合同状态" clearable style="width: 120px">
+            <el-option label="执行中" value="执行中" />
+            <el-option label="进行中" value="进行中" />
+            <el-option label="已完工" value="已完工" />
+            <el-option label="已结算" value="已结算" />
+            <el-option label="质保到期" value="质保到期" />
+            <el-option label="合同终止" value="合同终止" />
+            <el-option label="合同中止" value="合同中止" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" icon="Search" @click="handleSearch">搜索</el-button>
           <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -24,11 +35,23 @@
         style="width: 100%" 
         border
         highlight-current-row
+        show-summary
+        :summary-method="getSummaries"
+        class="custom-footer-table"
+        :footer-cell-style="footerCellStyle"
       >
         <el-table-column prop="id" label="合同序号" width="100" fixed />
         <el-table-column prop="contract_code" label="合同编号" width="150" fixed />
-        <el-table-column prop="contract_name" label="合同名称" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="party_b_name" label="乙方(供应商)" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="contract_name" label="合同名称" min-width="220">
+          <template #default="scope">
+            <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.contract_name }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="party_b_name" label="乙方(供应商)" min-width="180">
+          <template #default="scope">
+            <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.party_b_name }}</div>
+          </template>
+        </el-table-column>
         <el-table-column prop="category" label="合同类别" width="120" show-overflow-tooltip />
         <el-table-column prop="pricing_mode" label="计价模式" width="120" show-overflow-tooltip />
         <el-table-column prop="contract_amount" label="合同金额" width="140" align="right">
@@ -366,13 +389,59 @@ const resetQuery = () => {
 }
 
 const getStatusType = (status) => {
-  const map = {
-    '进行中': 'primary',
-    '已完成': 'success',
-    '已终止': 'info',
-    '待审核': 'warning'
+  if (status === '已完成' || status === '已完工' || status === '已结算') return 'success'
+  if (status === '已终止' || status === '已归档' || status === '合同终止') return 'info'
+  if (status === '已中止' || status === '合同中止') return 'danger'
+  if (status === '待审核' || status === '质保到期') return 'warning'
+  if (status === '进行中' || status === '执行中') return 'primary'
+  return ''
+}
+
+// Format money
+const formatMoney = (value) => {
+  if (value === undefined || value === null) return '0.00'
+  return Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// Summary row calculation
+const getSummaries = (param) => {
+  const { columns, data } = param
+  const sums = []
+  columns.forEach((column, index) => {
+    if (index === 0) {
+      sums[index] = '金额合计'
+      return
+    }
+    
+    if (column.property === 'contract_amount') {
+      const values = data.map(item => Number(item[column.property]))
+      if (!values.every(value => Number.isNaN(value))) {
+        const sum = values.reduce((prev, curr) => {
+          const value = Number(curr)
+          if (!Number.isNaN(value)) {
+            return prev + curr
+          } else {
+            return prev
+          }
+        }, 0)
+        sums[index] = '¥ ' + formatMoney(sum)
+      } else {
+        sums[index] = '0.00'
+      }
+    } else {
+      sums[index] = ''
+    }
+  })
+  return sums
+}
+
+const footerCellStyle = () => {
+  return {
+    backgroundColor: '#FFFF00',
+    color: '#000000',
+    fontWeight: 'bold',
+    fontSize: '16px'
   }
-  return map[status] || ''
 }
 
 // Logic for Upstream Search
@@ -444,7 +513,7 @@ const resetForm = () => {
   form.pricing_mode = ''
   form.contract_file_path = ''
   form.notes = ''
-  form.status = '进行中'
+  form.status = '执行中'
   
   fileList.value = []
   upstreamOptions.value = []
@@ -650,5 +719,25 @@ onBeforeUnmount(() => {
       gap: 8px;
     }
   }
+}
+</style>
+
+<style>
+/* Global override for table footer - Bold black text with yellow background */
+.custom-footer-table .el-table__footer-wrapper tbody td,
+.custom-footer-table .el-table__fixed-footer-wrapper tbody td,
+.custom-footer-table .el-table__footer-wrapper tbody tr,
+.custom-footer-table .el-table__fixed-footer-wrapper tbody tr {
+  background-color: #FFFF00 !important; /* Bright Yellow */
+  color: #000000 !important; /* Black */
+  font-weight: bold !important;
+  font-size: 16px !important;
+  --el-table-row-hover-bg-color: #FFFF00 !important;
+}
+.custom-footer-table .el-table__footer-wrapper tbody td .cell,
+.custom-footer-table .el-table__fixed-footer-wrapper tbody td .cell {
+  background-color: #FFFF00 !important;
+  color: #000000 !important; /* Black */
+  font-weight: bold !important;
 }
 </style>

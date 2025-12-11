@@ -1,8 +1,18 @@
 import enum
 
 class ContractCategory(str, enum.Enum):
-    """合同类别"""
-    MATERIAL = "材料设备"
+    """合同类别 - 上游合同"""
+    GENERAL = "总包合同"
+    SUB_PRO = "专业分包"
+    SUB_LABOR = "劳务分包"
+    SERVICE = "技术服务"
+    MAINTENANCE = "运营维护"
+    MATERIAL = "物资采购"
+    OTHER = "其他合同"
+
+class DownstreamContractCategory(str, enum.Enum):
+    """合同类别 - 下游合同"""
+    MATERIAL_EQUIPMENT = "材料设备"
     SUB_PRO = "专业分包"
     SUB_LABOR = "劳务分包"
     CONSULTING = "咨询服务"
