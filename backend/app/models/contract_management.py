@@ -16,7 +16,7 @@ class ContractManagement(Base):
     """
     __tablename__ = "contracts_management"
     
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=False)
     contract_code = Column(String(50), unique=True, nullable=False, index=True)
     contract_name = Column(String(200), nullable=False)
     
@@ -25,7 +25,7 @@ class ContractManagement(Base):
     party_b_name = Column(String(200), nullable=False)    # 乙方 (Supplier/Landlord/etc)
     
     # Link to upstream contract
-    upstream_contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="SET NULL"), nullable=True, index=True)
+    upstream_contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="SET NULL", onupdate="CASCADE"), nullable=True, index=True)
     upstream_contract_name_snapshot = Column(String(200), nullable=True)
     
     # Classification
@@ -77,7 +77,7 @@ class FinanceManagementPayable(Base):
     __tablename__ = "finance_management_payables"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    contract_id = Column(Integer, ForeignKey("contracts_management.id", ondelete="CASCADE"), nullable=False, index=True)
+    contract_id = Column(Integer, ForeignKey("contracts_management.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, index=True)
     
     category = Column(SQLEnum(PaymentCategory), nullable=False)
     amount = Column(Numeric(15, 2), nullable=False, default=0)
@@ -96,7 +96,7 @@ class FinanceManagementInvoice(Base):
     __tablename__ = "finance_management_invoices"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    contract_id = Column(Integer, ForeignKey("contracts_management.id", ondelete="CASCADE"), nullable=False, index=True)
+    contract_id = Column(Integer, ForeignKey("contracts_management.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, index=True)
     
     invoice_number = Column(String(50), nullable=False)
     invoice_date = Column(Date, nullable=False)
@@ -121,7 +121,7 @@ class FinanceManagementPayment(Base):
     __tablename__ = "finance_management_payments"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    contract_id = Column(Integer, ForeignKey("contracts_management.id", ondelete="CASCADE"), nullable=False, index=True)
+    contract_id = Column(Integer, ForeignKey("contracts_management.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, index=True)
     
     payment_date = Column(Date, nullable=False)
     amount = Column(Numeric(15, 2), nullable=False, default=0)
@@ -145,7 +145,7 @@ class ManagementSettlement(Base):
     __tablename__ = "management_settlements"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    contract_id = Column(Integer, ForeignKey("contracts_management.id", ondelete="CASCADE"), nullable=False, index=True)
+    contract_id = Column(Integer, ForeignKey("contracts_management.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, index=True)
     
     settlement_code = Column(String(50), nullable=True)
     settlement_date = Column(Date, nullable=False)

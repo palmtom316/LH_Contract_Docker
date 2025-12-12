@@ -169,6 +169,11 @@ async def create_contract(
     db: AsyncSession = Depends(get_db)
 ):
     """Create new management contract"""
+    # Check unique ID (合同序号)
+    existing_id = await db.execute(select(ContractManagement).where(ContractManagement.id == contract_in.id))
+    if existing_id.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail=f"合同序号 {contract_in.id} 已存在")
+    
     existing = await db.execute(select(ContractManagement).where(ContractManagement.contract_code == contract_in.contract_code))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="合同编号已存在")
@@ -211,6 +216,26 @@ async def update_contract(
         raise HTTPException(status_code=404, detail="合同不存在")
         
     update_data = contract_in.model_dump(exclude_unset=True)
+    
+    # Check id (contract serial number) uniqueness if it's being updated
+    if 'id' in update_data and update_data['id'] != contract.id:
+        existing_id = await db.execute(
+            select(ContractManagement).where(ContractManagement.id == update_data['id'])
+        )
+        if existing_id.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail=f"合同序号 {update_data['id']} 已存在")
+    
+    # Check contract_code uniqueness if it's being updated
+    if 'contract_code' in update_data and update_data['contract_code'] != contract.contract_code:
+        existing = await db.execute(
+            select(ContractManagement).where(
+                ContractManagement.contract_code == update_data['contract_code'],
+                ContractManagement.id != contract_id
+            )
+        )
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="合同编号已存在")
+    
     for field, value in update_data.items():
         setattr(contract, field, value)
         

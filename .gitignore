@@ -33,6 +33,7 @@ Thumbs.db
 
 # Project specific
 uploads/*
+backend/uploads/*
 !uploads/.gitkeep
 postgres_data/
 .pytest_cache/

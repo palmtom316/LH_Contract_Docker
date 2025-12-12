@@ -43,10 +43,12 @@ class ContractManagementBase(BaseModel):
 
 
 class ContractManagementCreate(ContractManagementBase):
-    pass
+    id: int = Field(..., gt=0, description="合同序号，必须是大于0的整数")
 
 
 class ContractManagementUpdate(BaseModel):
+    id: Optional[int] = Field(None, gt=0, description="合同序号")
+    contract_code: Optional[str] = Field(None, max_length=50)
     contract_name: Optional[str] = Field(None, max_length=200)
     party_a_name: Optional[str] = Field(None, max_length=200)
     party_b_name: Optional[str] = Field(None, max_length=200)

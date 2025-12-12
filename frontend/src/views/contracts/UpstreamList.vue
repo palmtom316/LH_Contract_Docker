@@ -183,14 +183,18 @@
       :close-on-click-modal="false"
     >
       <el-form ref="formRef" :model="form" :rules="rules" label-width="110px">
-        <!-- Contract Serial Number (Read-only) -->
+        <!-- Contract Serial Number (Editable) -->
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="合同序号">
-              <el-input 
-                :value="dialog.isEdit ? form.id : '自动生成'" 
-                disabled 
-                placeholder="系统自动生成"
+            <el-form-item label="合同序号" prop="id">
+              <el-input-number 
+                v-model="form.id" 
+                :disabled="false"
+                placeholder="请输入合同序号（正整数）" 
+                :controls="false"
+                :min="1"
+                :precision="0"
+                style="width: 100%"
               />
             </el-form-item>
           </el-col>
@@ -459,6 +463,7 @@ const importLoading = ref(false)
 
 const formRef = ref(null)
 const fileList = ref([])
+const originalId = ref(null)
 
 const form = reactive({
   id: undefined,
@@ -483,6 +488,17 @@ const form = reactive({
 })
 
 const rules = {
+  id: [
+    { required: true, message: '请输入合同序号', trigger: 'blur' },
+    { type: 'number', message: '合同序号必须是数字', trigger: 'blur' },
+    { validator: (rule, value, callback) => {
+        if (value && value <= 0) {
+          callback(new Error('合同序号必须大于0'))
+        } else {
+          callback()
+        }
+      }, trigger: 'blur' }
+  ],
   contract_code: [{ required: true, message: '请输入合同编号', trigger: 'blur' }],
   contract_name: [{ required: true, message: '请输入合同名称', trigger: 'blur' }],
   party_a_name: [{ required: true, message: '请输入甲方名称', trigger: 'blur' }],
@@ -646,6 +662,7 @@ const handleAdd = () => {
 const handleEdit = (row) => {
   resetForm()
   Object.assign(form, row)
+  originalId.value = row.id
   
   if (row.contract_file_path) {
     // Use contract name as display name instead of UUID filename
@@ -680,7 +697,8 @@ const submitForm = async () => {
       
       try {
         if (dialog.isEdit) {
-            await updateContract(form.id, dataToSubmit)
+            // Use the original ID for the URL, because the new ID might be different
+            await updateContract(originalId.value, dataToSubmit)
             ElMessage.success('更新成功')
         } else {
             await createContract(dataToSubmit)

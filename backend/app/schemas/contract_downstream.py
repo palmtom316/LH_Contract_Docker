@@ -45,11 +45,13 @@ class ContractDownstreamBase(BaseModel):
 
 class ContractDownstreamCreate(ContractDownstreamBase):
     """Schema for creating downstream contract"""
-    pass
+    id: int = Field(..., gt=0, description="合同序号，必须是大于0的整数")
 
 
 class ContractDownstreamUpdate(BaseModel):
     """Schema for updating downstream contract"""
+    id: Optional[int] = Field(None, gt=0, description="合同序号")
+    contract_code: Optional[str] = Field(None, max_length=50)
     contract_name: Optional[str] = Field(None, max_length=200)
     party_a_name: Optional[str] = Field(None, max_length=200)
     party_b_name: Optional[str] = Field(None, max_length=200)

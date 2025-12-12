@@ -15,7 +15,7 @@ class ContractDownstream(Base):
     """
     __tablename__ = "contracts_downstream"
     
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=False)
     contract_code = Column(String(50), unique=True, nullable=False, index=True)  # 合同编号
     contract_name = Column(String(200), nullable=False)                           # 合同名称
     
@@ -24,7 +24,7 @@ class ContractDownstream(Base):
     party_b_name = Column(String(200), nullable=False)    # 乙方 (Supplier/Subcontractor)
     
     # Link to upstream contract
-    upstream_contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="SET NULL"), nullable=True, index=True)
+    upstream_contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="SET NULL", onupdate="CASCADE"), nullable=True, index=True)
     upstream_contract_name_snapshot = Column(String(200), nullable=True) # 上游合同名称快照
     
     # Classification (Matching Upstream structure as per Req 3.3)
@@ -79,7 +79,7 @@ class FinanceDownstreamPayable(Base):
     __tablename__ = "finance_downstream_payables"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    contract_id = Column(Integer, ForeignKey("contracts_downstream.id", ondelete="CASCADE"), nullable=False, index=True)
+    contract_id = Column(Integer, ForeignKey("contracts_downstream.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, index=True)
     
     category = Column(SQLEnum(PaymentCategory), nullable=False)  # 款项类别
     amount = Column(Numeric(15, 2), nullable=False, default=0)   # 应付金额
@@ -106,7 +106,7 @@ class FinanceDownstreamInvoice(Base):
     __tablename__ = "finance_downstream_invoices"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    contract_id = Column(Integer, ForeignKey("contracts_downstream.id", ondelete="CASCADE"), nullable=False, index=True)
+    contract_id = Column(Integer, ForeignKey("contracts_downstream.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, index=True)
     
     invoice_number = Column(String(50), nullable=False)              # 发票号码
     invoice_date = Column(Date, nullable=False)                      # 发票日期
@@ -139,7 +139,7 @@ class FinanceDownstreamPayment(Base):
     __tablename__ = "finance_downstream_payments"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    contract_id = Column(Integer, ForeignKey("contracts_downstream.id", ondelete="CASCADE"), nullable=False, index=True)
+    contract_id = Column(Integer, ForeignKey("contracts_downstream.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, index=True)
     
     payment_date = Column(Date, nullable=False)                      # 付款日期
     amount = Column(Numeric(15, 2), nullable=False, default=0)       # 付款金额
@@ -171,7 +171,7 @@ class DownstreamSettlement(Base):
     __tablename__ = "downstream_settlements"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    contract_id = Column(Integer, ForeignKey("contracts_downstream.id", ondelete="CASCADE"), nullable=False, index=True)
+    contract_id = Column(Integer, ForeignKey("contracts_downstream.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, index=True)
     
     settlement_code = Column(String(50), nullable=True)  # 结算编号
     settlement_date = Column(Date, nullable=False)                     # 结算办结日期

@@ -12,7 +12,7 @@ class ContractUpstream(Base):
     """Upstream Contract Model"""
     __tablename__ = "contracts_upstream"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=False)
     contract_code = Column(String(50), unique=True, nullable=False, index=True)
     contract_name = Column(String(200), nullable=False)
     
@@ -69,7 +69,7 @@ class FinanceUpstreamReceivable(Base):
     __tablename__ = "finance_upstream_receivables"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="CASCADE"), nullable=False, index=True)
+    contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, index=True)
     
     category = Column(SQLEnum(ReceivableCategory, name='receivablecategory', create_type=False), nullable=False)  # 应收款类别
     amount = Column(Numeric(15, 2), nullable=False, default=0)       # 应收金额
@@ -96,7 +96,7 @@ class FinanceUpstreamInvoice(Base):
     __tablename__ = "finance_upstream_invoices"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="CASCADE"), nullable=False, index=True)
+    contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, index=True)
     
     invoice_number = Column(String(50), nullable=True)  # 发票号码 (Made nullable as per some flows, but usually strictly required)
     invoice_date = Column(Date, nullable=False)                       # 挂账日期/开票日期
@@ -128,7 +128,7 @@ class FinanceUpstreamReceipt(Base):
     __tablename__ = "finance_upstream_receipts"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="CASCADE"), nullable=False, index=True)
+    contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, index=True)
     
     receipt_date = Column(Date, nullable=False)                      # 收款时间
     amount = Column(Numeric(15, 2), nullable=False, default=0)       # 金额
@@ -158,7 +158,7 @@ class ProjectSettlement(Base):
     __tablename__ = "project_settlements"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="CASCADE"), nullable=False, index=True)
+    contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, index=True)
     
     settlement_code = Column(String(50), nullable=True)    # 结算单号
     settlement_date = Column(Date, nullable=True)          # 结算办结日期

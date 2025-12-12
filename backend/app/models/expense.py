@@ -31,7 +31,7 @@ class ExpenseNonContract(Base):
     responsible_person = Column(String(100), nullable=True)          # 负责人
     
     # Link to Upstream Contract
-    upstream_contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="SET NULL"), nullable=True, index=True)
+    upstream_contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="SET NULL", onupdate="CASCADE"), nullable=True, index=True)
     
     description = Column(Text, nullable=True)                        # 说明
     

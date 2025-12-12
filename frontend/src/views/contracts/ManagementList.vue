@@ -141,6 +141,25 @@
     >
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         
+        <!-- Contract Serial Number (Editable) -->
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="合同序号" prop="id">
+              <el-input-number 
+                v-model="form.id" 
+                :disabled="false"
+                placeholder="请输入合同序号（正整数）" 
+                :controls="false"
+                :min="1"
+                :precision="0"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+          </el-col>
+        </el-row>
+
         <!-- Upstream Contract Selection & Summary Banner -->
         <el-form-item label="费用归属" prop="company_category">
           <el-select v-model="form.company_category" placeholder="请选择费用归属" style="width: 100%" @change="handleCategoryChange">
@@ -306,6 +325,7 @@ const total = ref(0)
 const contractList = ref([])
 const isMobile = ref(false)
 const fileList = ref([])
+const originalId = ref(null)
 
 // Upstream Search
 const upstreamLoading = ref(false)
@@ -347,6 +367,17 @@ const form = reactive({
 })
 
 const rules = {
+  id: [
+    { required: true, message: '请输入合同序号', trigger: 'blur' },
+    { type: 'number', message: '合同序号必须是数字', trigger: 'blur' },
+    { validator: (rule, value, callback) => {
+        if (value && value <= 0) {
+          callback(new Error('合同序号必须大于0'))
+        } else {
+          callback()
+        }
+      }, trigger: 'blur' }
+  ],
   contract_code: [{ required: true, message: '请输入合同编号', trigger: 'blur' }],
   contract_name: [{ required: true, message: '请输入合同名称', trigger: 'blur' }],
   party_a_name: [{ required: true, message: '请输入甲方名称', trigger: 'blur' }],
@@ -543,6 +574,7 @@ const getFileUrl = (path) => {
 const handleEdit = async (row) => {
   resetForm()
   Object.assign(form, row)
+  originalId.value = row.id
   
   if (form.contract_file_path) {
     fileList.value = [{ name: '已上传文件', url: form.contract_file_path }]
@@ -562,7 +594,8 @@ const submitForm = async () => {
   await formRef.value.validate(async (valid) => {
     if (valid) {
       if (dialog.isEdit) {
-        await updateContract(form.id, form)
+        // Use originalId for the URL
+        await updateContract(originalId.value, form)
         ElMessage.success('更新成功')
       } else {
         await createContract(form)
