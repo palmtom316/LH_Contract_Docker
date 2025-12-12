@@ -104,7 +104,7 @@
 
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="scope">
-            <el-button link type="primary" size="small" @click="handleEdit(scope.row)" :disabled="scope.row.status === '已审核'">编辑</el-button>
+            <el-button link type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
 
             <el-button link type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
           </template>
@@ -279,7 +279,7 @@ const queryParams = reactive({
 
   attribution: '',
   category: '',
-  status: '',
+
   dateRange: null,
   upstream_contract_id: ''
 })
@@ -303,7 +303,7 @@ const form = reactive({
 
   description: '',
   file_path: '',
-  status: '待审核'
+  file_path: ''
 })
 
 const rules = {
@@ -323,7 +323,7 @@ const getList = async () => {
       page_size: queryParams.page_size,
       attribution: queryParams.attribution,
       category: queryParams.category,
-      status: queryParams.status,
+
       upstream_contract_id: queryParams.upstream_contract_id || undefined
     }
     // Handle date range
@@ -348,7 +348,7 @@ const resetQuery = () => {
 
   queryParams.attribution = ''
   queryParams.category = ''
-  queryParams.status = ''
+
   queryParams.dateRange = null
   queryParams.upstream_contract_id = ''
   handleQuery()
@@ -408,7 +408,7 @@ const handleExport = async () => {
 
       attribution: queryParams.attribution,
       category: queryParams.category,
-      status: queryParams.status,
+
       upstream_contract_id: queryParams.upstream_contract_id || undefined
     }
     
@@ -444,7 +444,7 @@ const resetForm = () => {
   form.description = ''
   form.file_path = ''
   fileList.value = []
-  form.status = '待审核'
+  fileList.value = []
 }
 
 const handleAdd = () => {

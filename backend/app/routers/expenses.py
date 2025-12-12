@@ -28,7 +28,6 @@ async def export_expenses(
     keyword: Optional[str] = None,
     attribution: Optional[str] = None,
     category: Optional[str] = None,
-    status: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     upstream_contract_id: Optional[int] = None,
@@ -53,8 +52,7 @@ async def export_expenses(
         if category:
             query = query.where(ExpenseNonContract.category == category)
             
-        if status:
-            query = query.where(ExpenseNonContract.status == status)
+
 
         # Date range filter
         if start_date:
@@ -89,7 +87,6 @@ async def export_expenses(
                 "关联上游合同": e.upstream_contract.contract_name if e.upstream_contract else None,
                 "说明": e.description,
                 "金额": float(e.amount),
-                "状态": e.status,
                 "经办人": e.handler,
                 "负责人": e.responsible_person
             })
@@ -123,7 +120,6 @@ async def list_expenses(
     keyword: Optional[str] = None,
     attribution: Optional[str] = None,
     category: Optional[str] = None,
-    status: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     upstream_contract_id: Optional[int] = None,
@@ -148,8 +144,7 @@ async def list_expenses(
     if category:
         query = query.where(ExpenseNonContract.category == category)
         
-    if status:
-        query = query.where(ExpenseNonContract.status == status)
+
     
     # Date range filter
     if start_date:

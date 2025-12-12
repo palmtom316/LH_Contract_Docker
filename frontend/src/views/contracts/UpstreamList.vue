@@ -217,7 +217,7 @@
               <el-input v-model="form.contract_code" placeholder="请输入编号" />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="12" v-if="dialog.isEdit">
             <el-form-item label="合同状态" prop="status">
               <el-select v-model="form.status" placeholder="请选择状态" style="width: 100%">
                 <el-option label="执行中" value="执行中" />
