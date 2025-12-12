@@ -15,17 +15,19 @@ class ContractDownstream(Base):
     """
     __tablename__ = "contracts_downstream"
     
-    id = Column(Integer, primary_key=True, autoincrement=False)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    serial_number = Column(Integer, unique=True, nullable=True, index=True)
     contract_code = Column(String(50), unique=True, nullable=False, index=True)  # 合同编号
     contract_name = Column(String(200), nullable=False)                           # 合同名称
     
     # Parties
     party_a_name = Column(String(200), nullable=False)    # 甲方 (Usually Us)
-    party_b_name = Column(String(200), nullable=False)    # 乙方 (Supplier/Subcontractor)
+    party_b_name = Column(String(200), nullable=False, index=True)    # 乙方 (Supplier/Subcontractor)
     
     # Link to upstream contract
     upstream_contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="SET NULL", onupdate="CASCADE"), nullable=True, index=True)
-    upstream_contract_name_snapshot = Column(String(200), nullable=True) # 上游合同名称快照
+    # Remove snapshot as per normalization
+    # upstream_contract_name_snapshot = Column(String(200), nullable=True)
     
     # Classification (Matching Upstream structure as per Req 3.3)
     category = Column(String(50), nullable=True)  # 合同类别 - 使用字符串避免枚举冲突
@@ -62,10 +64,17 @@ class ContractDownstream(Base):
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     # Relationships
+    upstream_contract = relationship("ContractUpstream")
+
+    @property
+    def upstream_contract_name(self):
+        return self.upstream_contract.contract_name if self.upstream_contract else None
+
     payables = relationship("FinanceDownstreamPayable", back_populates="contract", cascade="all, delete-orphan")
     invoices = relationship("FinanceDownstreamInvoice", back_populates="contract", cascade="all, delete-orphan")
     payments = relationship("FinanceDownstreamPayment", back_populates="contract", cascade="all, delete-orphan")
     settlements = relationship("DownstreamSettlement", back_populates="contract", cascade="all, delete-orphan")
+    upstream_contract = relationship("ContractUpstream")
     
     def __repr__(self):
         return f"<ContractDownstream(id={self.id}, code={self.contract_code}, party_b={self.party_b_name})>"
@@ -90,6 +99,8 @@ class FinanceDownstreamPayable(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     # Relationships
     contract = relationship("ContractDownstream", back_populates="payables")
@@ -123,6 +134,8 @@ class FinanceDownstreamInvoice(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     # Relationships
     contract = relationship("ContractDownstream", back_populates="invoices")
@@ -155,6 +168,8 @@ class FinanceDownstreamPayment(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     # Relationships
     contract = relationship("ContractDownstream", back_populates="payments")
@@ -189,6 +204,8 @@ class DownstreamSettlement(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     # Relationships
     contract = relationship("ContractDownstream", back_populates="settlements")

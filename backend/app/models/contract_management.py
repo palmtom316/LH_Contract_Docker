@@ -16,17 +16,19 @@ class ContractManagement(Base):
     """
     __tablename__ = "contracts_management"
     
-    id = Column(Integer, primary_key=True, autoincrement=False)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    serial_number = Column(Integer, unique=True, nullable=True, index=True)
     contract_code = Column(String(50), unique=True, nullable=False, index=True)
     contract_name = Column(String(200), nullable=False)
     
     # Parties
     party_a_name = Column(String(200), nullable=False)    # 甲方 (Us)
-    party_b_name = Column(String(200), nullable=False)    # 乙方 (Supplier/Landlord/etc)
+    party_b_name = Column(String(200), nullable=False, index=True)    # 乙方 (Supplier/Landlord/etc)
     
     # Link to upstream contract
     upstream_contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="SET NULL", onupdate="CASCADE"), nullable=True, index=True)
-    upstream_contract_name_snapshot = Column(String(200), nullable=True)
+    # Remove snapshot
+    # upstream_contract_name_snapshot = Column(String(200), nullable=True)
     
     # Classification
     category = Column(String(50), nullable=True)
@@ -67,6 +69,11 @@ class ContractManagement(Base):
     invoices = relationship("FinanceManagementInvoice", back_populates="contract", cascade="all, delete-orphan")
     payments = relationship("FinanceManagementPayment", back_populates="contract", cascade="all, delete-orphan")
     settlements = relationship("ManagementSettlement", back_populates="contract", cascade="all, delete-orphan")
+    upstream_contract = relationship("ContractUpstream")
+
+    @property
+    def upstream_contract_name(self):
+        return self.upstream_contract.contract_name if self.upstream_contract else None
     
     def __repr__(self):
         return f"<ContractManagement(id={self.id}, code={self.contract_code}, name={self.contract_name})>"
@@ -87,6 +94,8 @@ class FinanceManagementPayable(Base):
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     contract = relationship("ContractManagement", back_populates="payables")
 
@@ -112,6 +121,8 @@ class FinanceManagementInvoice(Base):
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     contract = relationship("ContractManagement", back_populates="invoices")
 
@@ -136,6 +147,8 @@ class FinanceManagementPayment(Base):
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     contract = relationship("ContractManagement", back_populates="payments")
 
@@ -162,5 +175,7 @@ class ManagementSettlement(Base):
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     contract = relationship("ContractManagement", back_populates="settlements")

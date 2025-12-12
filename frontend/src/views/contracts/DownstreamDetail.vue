@@ -430,7 +430,13 @@ const loadData = async () => {
 }
 
 const loadPayables = async () => { payables.value = await getPayables(contractId) }
-const loadInvoices = async () => { invoices.value = await getInvoices(contractId) }
+const loadInvoices = async () => { 
+  invoices.value = await getInvoices(contractId)
+  console.log('Loaded invoices:', invoices.value)
+  if (invoices.value.length > 0) {
+    console.log('First invoice file_path:', invoices.value[0].file_path)
+  }
+}
 const loadPayments = async () => { payments.value = await getPayments(contractId) }
 const loadSettlements = async () => { settlements.value = await getSettlements(contractId) }
 
@@ -453,7 +459,9 @@ const getFileUrl = (path) => {
 const handleUpload = async (option) => {
   try {
     const result = await uploadFile(option.file)
+    console.log('Upload result:', result)
     financeForm.file_path = result.path
+    console.log('File path set to:', financeForm.file_path)
     fileList.value = [{ name: option.file.name, url: result.path }]
     option.onSuccess(result)
   } catch (e) {
@@ -530,10 +538,14 @@ const handleDelete = (type, row) => {
 
 const submitFinance = async () => {
   try {
+    console.log('Submitting finance form:', financeForm)
+    console.log('Finance type:', financeDialog.type)
+    
     if (financeDialog.type === 'payable') {
       financeDialog.isEdit ? await updatePayable(contractId, financeDialog.editingId, financeForm) : await createPayable(contractId, financeForm)
       await loadPayables()
     } else if (financeDialog.type === 'invoice') {
+      console.log('Creating/updating invoice with file_path:', financeForm.file_path)
       financeDialog.isEdit ? await updateInvoice(contractId, financeDialog.editingId, financeForm) : await createInvoice(contractId, financeForm)
       await loadInvoices()
     } else if (financeDialog.type === 'payment') {
@@ -543,12 +555,14 @@ const submitFinance = async () => {
       // Clean up dates
       if (financeForm.completion_date === '') financeForm.completion_date = null
       if (financeForm.warranty_date === '') financeForm.warranty_date = null
+      console.log('Creating/updating settlement with file_path:', financeForm.file_path)
       financeDialog.isEdit ? await updateSettlement(contractId, financeDialog.editingId, financeForm) : await createSettlement(contractId, financeForm)
       await loadSettlements()
     }
     ElMessage.success(financeDialog.isEdit ? '修改成功' : '保存成功')
     financeDialog.visible = false
   } catch (e) {
+    console.error('Submit error:', e)
     ElMessage.error(financeDialog.isEdit ? '修改失败' : '保存失败')
   }
 }

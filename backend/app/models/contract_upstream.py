@@ -12,13 +12,14 @@ class ContractUpstream(Base):
     """Upstream Contract Model"""
     __tablename__ = "contracts_upstream"
 
-    id = Column(Integer, primary_key=True, autoincrement=False)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    serial_number = Column(Integer, unique=True, nullable=True, index=True)  # new business logic key
     contract_code = Column(String(50), unique=True, nullable=False, index=True)
     contract_name = Column(String(200), nullable=False)
     
     # Parties
     party_a_name = Column(String(200), nullable=False, index=True)
-    party_b_name = Column(String(200), nullable=False)  # 乙方
+    party_b_name = Column(String(200), nullable=False, index=True)  # 乙方
     
     # Classification
     category = Column(SQLEnum(ContractCategory), nullable=True)
@@ -80,6 +81,8 @@ class FinanceUpstreamReceivable(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     # Relationships
     contract = relationship("ContractUpstream", back_populates="receivables")
@@ -113,6 +116,8 @@ class FinanceUpstreamInvoice(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     # Relationships
     contract = relationship("ContractUpstream", back_populates="invoices")
@@ -143,6 +148,8 @@ class FinanceUpstreamReceipt(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     # Relationships
     contract = relationship("ContractUpstream", back_populates="receipts")
@@ -178,6 +185,8 @@ class ProjectSettlement(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     # Relationships
     contract = relationship("ContractUpstream", back_populates="settlements")

@@ -2,7 +2,7 @@
   <div class="login-container">
     <div class="login-box">
       <div class="login-header">
-        <h1>蓝海合同管理系统</h1>
+        <h3 class="title">蓝海合同管理系统 (Debug Mode)</h3>
         <p>Lanhai Contract Management System</p>
       </div>
       

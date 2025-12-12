@@ -86,12 +86,13 @@ async def export_contracts(
         data = []
         for c in contracts:
             data.append({
-                "合同序号": c.id,
+                "合同序号": c.serial_number,
+                "系统编号": c.id,
                 "合同编号": c.contract_code,
                 "合同名称": c.contract_name,
                 "甲方": c.party_a_name,
                 "乙方": c.party_b_name,
-                "合同类别": c.category.value if hasattr(c.category, 'value') else c.category,
+                "合同类别": c.category,
                 "计价模式": c.pricing_mode.value if hasattr(c.pricing_mode, 'value') else c.pricing_mode,
                 "合同金额": float(c.contract_amount),
                 "签订日期": c.sign_date,
@@ -132,15 +133,21 @@ async def list_contracts(
     db: AsyncSession = Depends(get_db)
 ):
     """List management contracts with pagination and filtering"""
-    query = select(ContractManagement)
+    query = select(ContractManagement).options(selectinload(ContractManagement.upstream_contract))
     
     if keyword:
-        query = query.where(
-            (ContractManagement.contract_name.ilike(f"%{keyword}%")) | 
-            (ContractManagement.contract_code.ilike(f"%{keyword}%")) |
-            (ContractManagement.party_a_name.ilike(f"%{keyword}%")) |
-            (ContractManagement.party_b_name.ilike(f"%{keyword}%"))
-        )
+        conditions = [
+            ContractManagement.contract_name.ilike(f"%{keyword}%"),
+            ContractManagement.contract_code.ilike(f"%{keyword}%"),
+            ContractManagement.party_a_name.ilike(f"%{keyword}%"),
+            ContractManagement.party_b_name.ilike(f"%{keyword}%")
+        ]
+        if keyword.isdigit():
+            conditions.append(ContractManagement.serial_number == int(keyword))
+            conditions.append(ContractManagement.id == int(keyword))
+            
+        from sqlalchemy import or_
+        query = query.where(or_(*conditions))
     
     if status:
         query = query.where(ContractManagement.status == status)
@@ -169,10 +176,11 @@ async def create_contract(
     db: AsyncSession = Depends(get_db)
 ):
     """Create new management contract"""
-    # Check unique ID (合同序号)
-    existing_id = await db.execute(select(ContractManagement).where(ContractManagement.id == contract_in.id))
-    if existing_id.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail=f"合同序号 {contract_in.id} 已存在")
+    # Check unique ID (合同序号) - Logic changed to serial_number
+    if contract_in.serial_number:
+        existing_sn = await db.execute(select(ContractManagement).where(ContractManagement.serial_number == contract_in.serial_number))
+        if existing_sn.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail=f"合同序号 {contract_in.serial_number} 已存在")
     
     existing = await db.execute(select(ContractManagement).where(ContractManagement.contract_code == contract_in.contract_code))
     if existing.scalar_one_or_none():
@@ -181,8 +189,11 @@ async def create_contract(
     contract = ContractManagement(**contract_in.model_dump(), created_by=current_user.id)
     db.add(contract)
     await db.commit()
-    await db.refresh(contract)
     await refresh_contract_status(db, contract.id)
+    
+    # Reload with relationships
+    result = await db.execute(select(ContractManagement).options(selectinload(ContractManagement.upstream_contract)).where(ContractManagement.id == contract.id))
+    contract = result.scalar_one()
     return contract
 
 
@@ -193,7 +204,7 @@ async def get_contract(
     db: AsyncSession = Depends(get_db)
 ):
     """Get contract details"""
-    result = await db.execute(select(ContractManagement).where(ContractManagement.id == contract_id))
+    result = await db.execute(select(ContractManagement).options(selectinload(ContractManagement.upstream_contract)).where(ContractManagement.id == contract_id))
     contract = result.scalar_one_or_none()
     
     if not contract:
@@ -217,13 +228,14 @@ async def update_contract(
         
     update_data = contract_in.model_dump(exclude_unset=True)
     
-    # Check id (contract serial number) uniqueness if it's being updated
-    if 'id' in update_data and update_data['id'] != contract.id:
-        existing_id = await db.execute(
-            select(ContractManagement).where(ContractManagement.id == update_data['id'])
-        )
-        if existing_id.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail=f"合同序号 {update_data['id']} 已存在")
+    # Check serial_number uniqueness if it's being updated
+    if 'serial_number' in update_data and update_data['serial_number'] != contract.serial_number:
+        if update_data['serial_number']:
+            existing_sn = await db.execute(
+                select(ContractManagement).where(ContractManagement.serial_number == update_data['serial_number'])
+            )
+            if existing_sn.scalar_one_or_none():
+                raise HTTPException(status_code=400, detail=f"合同序号 {update_data['serial_number']} 已存在")
     
     # Check contract_code uniqueness if it's being updated
     if 'contract_code' in update_data and update_data['contract_code'] != contract.contract_code:
@@ -240,8 +252,11 @@ async def update_contract(
         setattr(contract, field, value)
         
     await db.commit()
-    await db.refresh(contract)
     await refresh_contract_status(db, contract.id)
+    
+    # Reload with relationships
+    result = await db.execute(select(ContractManagement).options(selectinload(ContractManagement.upstream_contract)).where(ContractManagement.id == contract.id))
+    contract = result.scalar_one()
     return contract
 
 

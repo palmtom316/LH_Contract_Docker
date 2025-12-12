@@ -42,12 +42,12 @@ class ContractUpstreamBase(BaseModel):
 
 class ContractUpstreamCreate(ContractUpstreamBase):
     """Schema for creating upstream contract"""
-    id: int = Field(..., gt=0, description="合同序号，必须是大于0的整数")
+    serial_number: Optional[int] = Field(None, gt=0, description="合同序号")
 
 
 class ContractUpstreamUpdate(BaseModel):
     """Schema for updating upstream contract"""
-    id: Optional[int] = Field(None, gt=0, description="合同序号")
+    serial_number: Optional[int] = Field(None, gt=0, description="合同序号")
     contract_code: Optional[str] = Field(None, max_length=50)
     contract_name: Optional[str] = Field(None, max_length=200)
     party_a_name: Optional[str] = Field(None, max_length=200)
@@ -76,6 +76,7 @@ class ContractUpstreamUpdate(BaseModel):
 class ContractUpstreamResponse(ContractUpstreamBase):
     """Schema for upstream contract response"""
     id: int
+    serial_number: Optional[int] = None
     contract_file_path: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

@@ -83,9 +83,10 @@ async def list_contracts(
             ContractUpstream.party_a_name.ilike(f"%{keyword}%"),
             ContractUpstream.party_b_name.ilike(f"%{keyword}%")
         ]
-        # If keyword is numeric, also search by ID
+        # If keyword is numeric, also search by ID and Serial Number
         if keyword.isdigit():
             conditions.append(ContractUpstream.id == int(keyword))
+            conditions.append(ContractUpstream.serial_number == int(keyword))
         
         from sqlalchemy import or_
         query = query.where(or_(*conditions))
@@ -141,7 +142,8 @@ async def export_contracts(
         data = []
         for c in contracts:
             data.append({
-                "合同序号": c.id,
+                "合同序号": c.serial_number,
+                "系统编号": c.id,
                 "合同编号": c.contract_code,
                 "合同名称": c.contract_name,
                 "甲方单位": c.party_a_name,
@@ -189,10 +191,11 @@ async def create_contract(
 ):
     """Create new upstream contract"""
     try:
-        # Check unique ID (合同序号)
-        existing_id = await db.execute(select(ContractUpstream).where(ContractUpstream.id == contract_in.id))
-        if existing_id.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail=f"合同序号 {contract_in.id} 已存在")
+        # Check unique ID (合同序号) - Logic changed to serial_number
+        if contract_in.serial_number:
+            existing_sn = await db.execute(select(ContractUpstream).where(ContractUpstream.serial_number == contract_in.serial_number))
+            if existing_sn.scalar_one_or_none():
+                raise HTTPException(status_code=400, detail=f"合同序号 {contract_in.serial_number} 已存在")
         
         # Check unique code
         existing = await db.execute(select(ContractUpstream).where(ContractUpstream.contract_code == contract_in.contract_code))
@@ -270,13 +273,14 @@ async def update_contract(
         
     update_data = contract_in.model_dump(exclude_unset=True)
     
-    # Check id (contract serial number) uniqueness if it's being updated
-    if 'id' in update_data and update_data['id'] != contract.id:
-        existing_id = await db.execute(
-            select(ContractUpstream).where(ContractUpstream.id == update_data['id'])
-        )
-        if existing_id.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail=f"合同序号 {update_data['id']} 已存在")
+    # Check serial_number uniqueness if it's being updated
+    if 'serial_number' in update_data and update_data['serial_number'] != contract.serial_number:
+        if update_data['serial_number']:
+            existing_sn = await db.execute(
+                select(ContractUpstream).where(ContractUpstream.serial_number == update_data['serial_number'])
+            )
+            if existing_sn.scalar_one_or_none():
+                raise HTTPException(status_code=400, detail=f"合同序号 {update_data['serial_number']} 已存在")
     
     # Check contract_code uniqueness if it's being updated
     if 'contract_code' in update_data and update_data['contract_code'] != contract.contract_code:
@@ -329,7 +333,7 @@ async def create_receivable(
     if contract_id != receivable_in.contract_id:
         raise HTTPException(status_code=400, detail="合同ID不匹配")
         
-    receivable = FinanceUpstreamReceivable(**receivable_in.model_dump())
+    receivable = FinanceUpstreamReceivable(**receivable_in.model_dump(), created_by=current_user.id, updated_by=current_user.id)
     db.add(receivable)
     await db.commit()
     await db.refresh(receivable)
@@ -366,6 +370,7 @@ async def update_receivable(
     
     for key, value in receivable_in.model_dump(exclude={'contract_id'}).items():
         setattr(receivable, key, value)
+    receivable.updated_by = current_user.id
     await db.commit()
     await db.refresh(receivable)
     await refresh_contract_status(db, contract_id)
@@ -405,7 +410,7 @@ async def create_invoice(
     if contract_id != invoice_in.contract_id:
         raise HTTPException(status_code=400, detail="合同ID不匹配")
         
-    invoice = FinanceUpstreamInvoice(**invoice_in.model_dump())
+    invoice = FinanceUpstreamInvoice(**invoice_in.model_dump(), created_by=current_user.id, updated_by=current_user.id)
     db.add(invoice)
     await db.commit()
     await db.refresh(invoice)
@@ -441,6 +446,7 @@ async def update_invoice(
     
     for key, value in invoice_in.model_dump(exclude={'contract_id'}).items():
         setattr(invoice, key, value)
+    invoice.updated_by = current_user.id
     await db.commit()
     await db.refresh(invoice)
     return invoice
@@ -478,7 +484,7 @@ async def create_receipt(
     if contract_id != receipt_in.contract_id:
         raise HTTPException(status_code=400, detail="合同ID不匹配")
         
-    receipt = FinanceUpstreamReceipt(**receipt_in.model_dump())
+    receipt = FinanceUpstreamReceipt(**receipt_in.model_dump(), created_by=current_user.id, updated_by=current_user.id)
     db.add(receipt)
     await db.commit()
     await db.refresh(receipt)
@@ -515,6 +521,7 @@ async def update_receipt(
     
     for key, value in receipt_in.model_dump(exclude={'contract_id'}).items():
         setattr(receipt, key, value)
+    receipt.updated_by = current_user.id
     await db.commit()
     await db.refresh(receipt)
     await refresh_contract_status(db, contract_id)
@@ -554,7 +561,7 @@ async def create_settlement(
     if contract_id != settlement_in.contract_id:
         raise HTTPException(status_code=400, detail="合同ID不匹配")
         
-    settlement = ProjectSettlement(**settlement_in.model_dump())
+    settlement = ProjectSettlement(**settlement_in.model_dump(), created_by=current_user.id, updated_by=current_user.id)
     db.add(settlement)
     await db.commit()
     await db.refresh(settlement)
@@ -591,6 +598,7 @@ async def update_settlement(
     
     for key, value in settlement_in.model_dump(exclude={'contract_id'}).items():
         setattr(settlement, key, value)
+    settlement.updated_by = current_user.id
     await db.commit()
     await db.refresh(settlement)
     await refresh_contract_status(db, contract_id)

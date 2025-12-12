@@ -40,7 +40,7 @@
         class="custom-footer-table"
         :footer-cell-style="footerCellStyle"
       >
-        <el-table-column prop="id" label="合同序号" width="100" fixed />
+        <el-table-column prop="serial_number" label="合同序号" width="100" fixed />
         <el-table-column prop="contract_code" label="合同编号" width="150" fixed />
         <el-table-column prop="contract_name" label="合同名称" min-width="220">
           <template #default="scope">
@@ -144,9 +144,9 @@
         <!-- Contract Serial Number (Editable) -->
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="合同序号" prop="id">
+            <el-form-item label="合同序号" prop="serial_number">
               <el-input-number 
-                v-model="form.id" 
+                v-model="form.serial_number" 
                 :disabled="false"
                 placeholder="请输入合同序号（正整数）" 
                 :controls="false"
@@ -347,6 +347,7 @@ const dialog = reactive({
 
 const formRef = ref(null)
 const form = reactive({
+  serial_number: undefined,
   id: undefined,
   upstream_contract_id: undefined,
   contract_code: '',
@@ -367,7 +368,7 @@ const form = reactive({
 })
 
 const rules = {
-  id: [
+  serial_number: [
     { required: true, message: '请输入合同序号', trigger: 'blur' },
     { type: 'number', message: '合同序号必须是数字', trigger: 'blur' },
     { validator: (rule, value, callback) => {
@@ -518,6 +519,7 @@ const handleUploadRequest = async (option) => {
 
 // Form handling
 const resetForm = () => {
+  form.serial_number = undefined
   form.id = undefined
   form.upstream_contract_id = undefined
   form.contract_code = ''

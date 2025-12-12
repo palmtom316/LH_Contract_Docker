@@ -443,10 +443,26 @@ const loadData = async () => {
   }
 }
 
-const loadPayables = async () => payables.value = await getPayables(contractId)
-const loadInvoices = async () => invoices.value = await getInvoices(contractId)
-const loadPayments = async () => payments.value = await getPayments(contractId)
-const loadSettlements = async () => settlements.value = await getSettlements(contractId)
+const loadPayables = async () => {
+  payables.value = await getPayables(contractId)
+  console.log('Loaded payables:', payables.value.length)
+  if (payables.value.length > 0) console.log('First payable file_path:', payables.value[0].file_path)
+}
+const loadInvoices = async () => {
+  invoices.value = await getInvoices(contractId)
+  console.log('Loaded invoices:', invoices.value.length)
+  if (invoices.value.length > 0) console.log('First invoice file_path:', invoices.value[0].file_path)
+}
+const loadPayments = async () => {
+  payments.value = await getPayments(contractId)
+  console.log('Loaded payments:', payments.value.length)
+  if (payments.value.length > 0) console.log('First payment file_path:', payments.value[0].file_path)
+}
+const loadSettlements = async () => {
+  settlements.value = await getSettlements(contractId)
+  console.log('Loaded settlements:', settlements.value.length)
+  if (settlements.value.length > 0) console.log('First settlement file_path:', settlements.value[0].file_path)
+}
 
 // Helpers
 const formatMoney = (val) => {
@@ -473,7 +489,9 @@ const getStatusType = (status) => {
 const handleUploadRequest = async (option) => {
   try {
     const res = await uploadFile(option.file)
+    console.log('Upload result:', res)
     financeForm.file_path = res.path
+    console.log('File path set to:', financeForm.file_path)
     fileList.value = [{ name: option.file.name, url: res.path }]
     ElMessage.success('上传成功')
   } catch (e) {
@@ -617,6 +635,10 @@ const handleDelete = (type, row) => {
 
 const submitFinance = async () => {
   try {
+    console.log('Submitting finance form:', financeForm)
+    console.log('Finance type:', financeDialog.type)
+    console.log('File path:', financeForm.file_path)
+    
     if (financeDialog.type === 'payable') {
       if (financeDialog.isEdit) {
         await updatePayable(contractId, financeDialog.editingId, financeForm)
@@ -652,6 +674,7 @@ const submitFinance = async () => {
     ElMessage.success(financeDialog.isEdit ? '修改成功' : '保存成功')
     financeDialog.visible = false
   } catch (e) {
+    console.error('Submit error:', e)
     ElMessage.error(financeDialog.isEdit ? '修改失败' : '保存失败')
   }
 }

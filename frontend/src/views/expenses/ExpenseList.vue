@@ -334,6 +334,12 @@ const getList = async () => {
     const res = await getExpenses(params)
     expenseList.value = res.items
     total.value = res.total
+    
+    // Debug: Log expense data
+    console.log('Loaded expenses:', expenseList.value.length)
+    if (expenseList.value.length > 0) {
+      console.log('First expense file_path:', expenseList.value[0].file_path)
+    }
   } finally {
     loading.value = false
   }
@@ -479,6 +485,9 @@ const submitForm = async () => {
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
     if (valid) {
+      console.log('Submitting expense form:', form)
+      console.log('File path:', form.file_path)
+      
       if (dialog.isEdit) {
         await updateExpense(form.id, form)
         ElMessage.success('更新成功')
@@ -531,10 +540,13 @@ const searchUpstreamContracts = async (query) => {
 const handleUploadRequest = async (option) => {
   try {
     const res = await uploadFile(option.file)
+    console.log('Upload result:', res)
     form.file_path = res.path
+    console.log('File path set to:', form.file_path)
     fileList.value = [{ name: option.file.name, url: res.path }]
     ElMessage.success('上传成功')
   } catch (e) {
+    console.error('Upload error:', e)
     ElMessage.error('上传失败')
     option.onError(e)
   }

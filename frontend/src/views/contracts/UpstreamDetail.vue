@@ -513,10 +513,26 @@ const loadData = async () => {
   }
 }
 
-const loadReceivables = async () => receivables.value = await getReceivables(contractId)
-const loadInvoices = async () => invoices.value = await getInvoices(contractId)
-const loadReceipts = async () => receipts.value = await getReceipts(contractId)
-const loadSettlements = async () => settlements.value = await getSettlements(contractId)
+const loadReceivables = async () => {
+  receivables.value = await getReceivables(contractId)
+  console.log('Loaded receivables:', receivables.value.length)
+  if (receivables.value.length > 0) console.log('First receivable file_path:', receivables.value[0].file_path)
+}
+const loadInvoices = async () => {
+  invoices.value = await getInvoices(contractId)
+  console.log('Loaded invoices:', invoices.value.length)
+  if (invoices.value.length > 0) console.log('First invoice file_path:', invoices.value[0].file_path)
+}
+const loadReceipts = async () => {
+  receipts.value = await getReceipts(contractId)
+  console.log('Loaded receipts:', receipts.value.length)
+  if (receipts.value.length > 0) console.log('First receipt file_path:', receipts.value[0].file_path)
+}
+const loadSettlements = async () => {
+  settlements.value = await getSettlements(contractId)
+  console.log('Loaded settlements:', settlements.value.length)
+  if (settlements.value.length > 0) console.log('First settlement file_path:', settlements.value[0].file_path)
+}
 
 // Helpers
 const formatMoney = (val) => {
@@ -559,7 +575,9 @@ const formatReceivableCategory = (value) => {
 const handleUploadRequest = async (option) => {
   try {
     const res = await uploadFile(option.file)
+    console.log('Upload result:', res)
     financeForm.file_path = res.path
+    console.log('File path set to:', financeForm.file_path)
     fileList.value = [{ name: option.file.name, url: res.path }]
     ElMessage.success('上传成功')
   } catch (e) {
@@ -571,7 +589,9 @@ const handleUploadRequest = async (option) => {
 const handleInvoiceUpload = async (option) => {
   try {
     const res = await uploadFile(option.file)
+    console.log('Invoice upload result:', res)
     financeForm.file_path = res.path
+    console.log('Invoice file path set to:', financeForm.file_path)
     invoiceFileList.value = [{ name: option.file.name, url: res.path }]
     ElMessage.success('上传成功')
   } catch (e) {
@@ -720,6 +740,10 @@ const openEditDialog = (type, row) => {
 
 const submitFinance = async () => {
   try {
+    console.log('Submitting finance form:', financeForm)
+    console.log('Finance type:', financeDialog.type)
+    console.log('File path:', financeForm.file_path)
+    
     if (financeDialog.type === 'receivable') {
       if (financeDialog.isEdit) {
         await updateReceivable(contractId, financeDialog.editingId, financeForm)
@@ -755,6 +779,7 @@ const submitFinance = async () => {
     ElMessage.success(financeDialog.isEdit ? '修改成功' : '保存成功')
     financeDialog.visible = false
   } catch (e) {
+    console.error('Submit error:', e)
     ElMessage.error(financeDialog.isEdit ? '修改失败' : '保存失败')
   }
 }

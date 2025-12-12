@@ -192,7 +192,7 @@ async def create_expense(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="费用编号已存在")
         
-    expense = ExpenseNonContract(**expense_in.model_dump(), created_by=current_user.id)
+    expense = ExpenseNonContract(**expense_in.model_dump(), created_by=current_user.id, updated_by=current_user.id)
     db.add(expense)
     await db.commit()
     await db.refresh(expense)
@@ -243,6 +243,7 @@ async def update_expense(
     update_data = expense_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(expense, field, value)
+    expense.updated_by = current_user.id
         
     await db.commit()
     await db.refresh(expense)

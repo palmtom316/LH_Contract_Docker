@@ -50,7 +50,7 @@
         class="custom-footer-table"
         :footer-cell-style="footerCellStyle"
       >
-        <el-table-column prop="id" label="合同序号" width="100" align="center" fixed="left" />
+        <el-table-column prop="serial_number" label="合同序号" width="100" align="center" fixed="left" />
 
 
 
@@ -186,9 +186,9 @@
         <!-- Contract Serial Number (Editable) -->
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="合同序号" prop="id">
+            <el-form-item label="合同序号" prop="serial_number">
               <el-input-number 
-                v-model="form.id" 
+                v-model="form.serial_number" 
                 :disabled="false"
                 placeholder="请输入合同序号（正整数）" 
                 :controls="false"
@@ -326,7 +326,7 @@
         </el-row>
         
         <!-- File Upload -->
-        <el-form-item label="合同文件">
+        <el-form-item label="合同文件" prop="contract_file_path">
           <el-upload
             class="upload-demo"
             action="#"
@@ -354,7 +354,7 @@
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="dialog.visible = false">取 消</el-button>
-          <el-button type="primary" @click="submitForm">确 定</el-button>
+          <el-button type="primary" @click="submitForm" :loading="uploading">确 定</el-button>
         </div>
       </template>
     </el-dialog>
@@ -460,13 +460,15 @@ const importResult = reactive({
 })
 const importFileInput = ref(null)
 const importLoading = ref(false)
+const uploading = ref(false)
 
 const formRef = ref(null)
 const fileList = ref([])
 const originalId = ref(null)
 
 const form = reactive({
-  id: undefined,
+  serial_number: undefined,
+  id: undefined,  // Keep ID for internal tracking if needed
   contract_code: '',
   contract_name: '',
   party_a_name: '',
@@ -488,7 +490,7 @@ const form = reactive({
 })
 
 const rules = {
-  id: [
+  serial_number: [
     { required: true, message: '请输入合同序号', trigger: 'blur' },
     { type: 'number', message: '合同序号必须是数字', trigger: 'blur' },
     { validator: (rule, value, callback) => {
@@ -521,6 +523,12 @@ const getList = async () => {
     const res = await getContracts(queryParams)
     contractList.value = res.items
     total.value = res.total
+    
+    // Debug: Log first contract to check if contract_file_path exists
+    if (res.items && res.items.length > 0) {
+      console.log('First contract in list:', res.items[0])
+      console.log('First contract file path:', res.items[0].contract_file_path)
+    }
   } finally {
     loading.value = false
   }
@@ -593,18 +601,27 @@ const footerCellStyle = () => {
 
 // File Upload Logic
 const handleUploadRequest = async (option) => {
+  uploading.value = true
   try {
     const res = await uploadFile(option.file)
-    form.contract_file_path = res.path
-    // Update file list to display the name
-    fileList.value = [{
-      name: option.file.name,
-      url: res.path
-    }]
-    ElMessage.success('上传成功')
+    console.log('Upload response:', res)
+    if (res && res.path) {
+      form.contract_file_path = res.path
+      console.log('File path set to:', form.contract_file_path)
+      // Update file list to display the name
+      fileList.value = [{
+        name: option.file.name,
+        url: res.path
+      }]
+      ElMessage.success('上传成功')
+    } else {
+      throw new Error('上传返回路径为空')
+    }
   } catch (e) {
     ElMessage.error('上传失败')
     option.onError(e)
+  } finally {
+    uploading.value = false
   }
 }
 
@@ -630,6 +647,7 @@ const openPdfInNewTab = (path) => {
 
 // Form handling
 const resetForm = () => {
+  form.serial_number = undefined
   form.id = undefined
   form.contract_code = ''
   form.contract_name = ''
@@ -694,6 +712,10 @@ const submitForm = async () => {
       if (!dataToSubmit.notes) dataToSubmit.notes = null
       if (!dataToSubmit.party_a_contact) dataToSubmit.party_a_contact = null
       if (!dataToSubmit.party_a_phone) dataToSubmit.party_a_phone = null
+      if (!dataToSubmit.contract_file_path) dataToSubmit.contract_file_path = null
+      
+      // Debug: Log the contract_file_path value
+      console.log('Submitting contract with file path:', dataToSubmit.contract_file_path)
       
       try {
         if (dialog.isEdit) {

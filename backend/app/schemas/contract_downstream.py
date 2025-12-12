@@ -17,7 +17,8 @@ class ContractDownstreamBase(BaseModel):
     party_b_name: str = Field(..., max_length=200) # Renamed from supplier_name
     
     upstream_contract_id: Optional[int] = None
-    upstream_contract_name_snapshot: Optional[str] = Field(None, max_length=200) # Added
+    upstream_contract_id: Optional[int] = None
+    # upstream_contract_name_snapshot removed
     
     # Classification (Req 3.3: Same structure as Upstream)
     category: Optional[str] = None  # 合同类别 - 使用字符串
@@ -45,12 +46,12 @@ class ContractDownstreamBase(BaseModel):
 
 class ContractDownstreamCreate(ContractDownstreamBase):
     """Schema for creating downstream contract"""
-    id: int = Field(..., gt=0, description="合同序号，必须是大于0的整数")
+    serial_number: Optional[int] = Field(None, gt=0, description="合同序号")
 
 
 class ContractDownstreamUpdate(BaseModel):
     """Schema for updating downstream contract"""
-    id: Optional[int] = Field(None, gt=0, description="合同序号")
+    serial_number: Optional[int] = Field(None, gt=0, description="合同序号")
     contract_code: Optional[str] = Field(None, max_length=50)
     contract_name: Optional[str] = Field(None, max_length=200)
     party_a_name: Optional[str] = Field(None, max_length=200)
@@ -82,6 +83,8 @@ class ContractDownstreamUpdate(BaseModel):
 class ContractDownstreamResponse(ContractDownstreamBase):
     """Schema for downstream contract response"""
     id: int
+    serial_number: Optional[int] = None
+    upstream_contract_name: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     created_by: Optional[int] = None
