@@ -421,7 +421,7 @@
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import { getContracts, createContract, updateContract, deleteContract, exportContracts, downloadImportTemplate, importContracts } from '@/api/contractUpstream'
+import { getContracts, createContract, updateContract, deleteContract, exportContracts, downloadImportTemplate, importContracts, getNextSerialNumber } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
 import { downloadExcel, generateFilename } from '@/utils/download'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -671,11 +671,21 @@ const resetForm = () => {
   fileList.value = []
 }
 
-const handleAdd = () => {
+const handleAdd = async () => {
   resetForm()
   dialog.title = '新建上游合同'
   dialog.isEdit = false
   dialog.visible = true
+  
+  // Auto-fetch next serial number
+  try {
+    const res = await getNextSerialNumber()
+    if (res && res.serial_number) {
+      form.serial_number = res.serial_number
+    }
+  } catch (e) {
+    console.error('Failed to get next serial number:', e)
+  }
 }
 
 const handleEdit = (row) => {

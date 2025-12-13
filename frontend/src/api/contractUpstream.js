@@ -195,3 +195,10 @@ export function getContractSummary(id) {
     })
 }
 
+export function getNextSerialNumber() {
+    return request({
+        url: '/contracts/upstream/next-serial-number',
+        method: 'get'
+    })
+}
+

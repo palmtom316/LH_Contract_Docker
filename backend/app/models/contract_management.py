@@ -56,11 +56,11 @@ class ContractManagement(Base):
     contract_file_path = Column(String(500), nullable=True)
     
     # Status and notes
-    status = Column(String(50), default="执行中")
+    status = Column(String(50), default="执行中", index=True)
     notes = Column(Text, nullable=True)
     
     # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     
@@ -72,11 +72,28 @@ class ContractManagement(Base):
     upstream_contract = relationship("ContractUpstream")
 
     @property
+    def total_payable(self):
+        return sum((item.amount or 0) for item in self.payables)
+
+    @property
+    def total_invoiced(self):
+        return sum((item.amount or 0) for item in self.invoices)
+
+    @property
+    def total_paid(self):
+        return sum((item.amount or 0) for item in self.payments)
+        
+    @property
+    def total_settlement(self):
+        return sum((item.settlement_amount or 0) for item in self.settlements)
+
+    @property
     def upstream_contract_name(self):
         return self.upstream_contract.contract_name if self.upstream_contract else None
     
     def __repr__(self):
         return f"<ContractManagement(id={self.id}, code={self.contract_code}, name={self.contract_name})>"
+
 
 
 class FinanceManagementPayable(Base):

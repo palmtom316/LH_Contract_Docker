@@ -43,12 +43,12 @@ class ContractUpstream(Base):
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
     
-    status = Column(String(50), default="执行中")
+    status = Column(String(50), default="执行中", index=True)
     notes = Column(Text, nullable=True)
     contract_file_path = Column(String(500), nullable=True) # Contract File (PDF Only)
     
     # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     
@@ -57,6 +57,22 @@ class ContractUpstream(Base):
     invoices = relationship("FinanceUpstreamInvoice", back_populates="contract", cascade="all, delete-orphan")
     receipts = relationship("FinanceUpstreamReceipt", back_populates="contract", cascade="all, delete-orphan")
     settlements = relationship("ProjectSettlement", back_populates="contract", cascade="all, delete-orphan")
+    
+    @property
+    def total_receivable(self):
+        return sum((item.amount or 0) for item in self.receivables)
+
+    @property
+    def total_invoiced(self):
+        return sum((item.amount or 0) for item in self.invoices)
+
+    @property
+    def total_received(self):
+        return sum((item.amount or 0) for item in self.receipts)
+        
+    @property
+    def total_settlement(self):
+        return sum((item.settlement_amount or 0) for item in self.settlements)
     
     def __repr__(self):
         return f"<ContractUpstream(id={self.id}, code={self.contract_code}, name={self.contract_name})>"

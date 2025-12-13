@@ -433,9 +433,10 @@ import {
   getReceivables, createReceivable, updateReceivable, deleteReceivable,
   getInvoices, createInvoice, updateInvoice, deleteInvoice,
   getReceipts, createReceipt, updateReceipt, deleteReceipt,
-  getSettlements, createSettlement, updateSettlement, deleteSettlement
+  getSettlements, createSettlement, updateSettlement, deleteSettlement, getContractSummary
 } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
+import { getFileUrl, formatMoney, getStatusType } from '@/utils/common'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const route = useRoute()
@@ -500,67 +501,20 @@ const loadData = async () => {
   loading.value = true
   try {
     contract.value = await getContract(contractId)
-    await Promise.all([
-      loadReceivables(),
-      loadInvoices(),
-      loadReceipts(),
-      loadSettlements()
-    ])
+    await Promise.all([loadReceivables(), loadInvoices(), loadReceipts(), loadSettlements()])
   } catch (e) {
-    console.error(e)
+    ElMessage.error('加载合同数据失败')
   } finally {
     loading.value = false
   }
 }
 
-const loadReceivables = async () => {
-  receivables.value = await getReceivables(contractId)
-  console.log('Loaded receivables:', receivables.value.length)
-  if (receivables.value.length > 0) console.log('First receivable file_path:', receivables.value[0].file_path)
-}
-const loadInvoices = async () => {
-  invoices.value = await getInvoices(contractId)
-  console.log('Loaded invoices:', invoices.value.length)
-  if (invoices.value.length > 0) console.log('First invoice file_path:', invoices.value[0].file_path)
-}
-const loadReceipts = async () => {
-  receipts.value = await getReceipts(contractId)
-  console.log('Loaded receipts:', receipts.value.length)
-  if (receipts.value.length > 0) console.log('First receipt file_path:', receipts.value[0].file_path)
-}
-const loadSettlements = async () => {
-  settlements.value = await getSettlements(contractId)
-  console.log('Loaded settlements:', settlements.value.length)
-  if (settlements.value.length > 0) console.log('First settlement file_path:', settlements.value[0].file_path)
-}
+const loadReceivables = async () => { receivables.value = await getReceivables(contractId) }
+const loadInvoices = async () => { invoices.value = await getInvoices(contractId) }
+const loadReceipts = async () => { receipts.value = await getReceipts(contractId) }
+const loadSettlements = async () => { settlements.value = await getSettlements(contractId) }
 
 // Helpers
-const formatMoney = (val) => {
-  if (!val) return '0.00'
-  return Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-const getFileUrl = (path) => {
-  if (!path) return ''
-  // Files are served from the backend server (localhost:8000 in development)
-  const backendUrl = 'http://localhost:8000'
-  return path.startsWith('http') ? path : `${backendUrl}${path}`
-}
-
-const openFile = (path) => {
-  const url = getFileUrl(path)
-  if (url) window.open(url, '_blank')
-}
-
-const getStatusType = (status) => {
-  if (status === '已完成' || status === '已完工' || status === '已结算') return 'success'
-  if (status === '已终止' || status === '已归档' || status === '合同终止') return 'info'
-  if (status === '已中止' || status === '合同中止') return 'danger'
-  if (status === '待审核' || status === '质保到期') return 'warning'
-  if (status === '进行中' || status === '执行中') return 'primary'
-  return ''
-}
-
 const formatReceivableCategory = (value) => {
   const map = {
     'ADVANCE_PAYMENT': '预付款',
@@ -575,10 +529,9 @@ const formatReceivableCategory = (value) => {
 const handleUploadRequest = async (option) => {
   try {
     const res = await uploadFile(option.file)
-    console.log('Upload result:', res)
     financeForm.file_path = res.path
-    console.log('File path set to:', financeForm.file_path)
     fileList.value = [{ name: option.file.name, url: res.path }]
+    option.onSuccess(res)
     ElMessage.success('上传成功')
   } catch (e) {
     ElMessage.error('上传失败')
@@ -620,6 +573,11 @@ const handleSettlementUpload = async (option, fieldName) => {
 }
 
 // Actions
+const openFile = (path) => {
+  if (!path) return
+  window.open(getFileUrl(path), '_blank')
+}
+
 const handleEdit = () => {
   // Navigate back to list or open edit dialog (not implemented in this view directly)
   ElMessage.info('请在列表页点击编辑')

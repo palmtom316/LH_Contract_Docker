@@ -370,6 +370,7 @@ import {
   getSettlements, createSettlement, updateSettlement, deleteSettlement
 } from '@/api/contractManagement'
 import { uploadFile } from '@/api/common'
+import { getFileUrl, formatMoney, getStatusType } from '@/utils/common'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const route = useRoute()
@@ -460,39 +461,15 @@ const loadPayments = async () => {
 }
 const loadSettlements = async () => {
   settlements.value = await getSettlements(contractId)
-  console.log('Loaded settlements:', settlements.value.length)
   if (settlements.value.length > 0) console.log('First settlement file_path:', settlements.value[0].file_path)
-}
-
-// Helpers
-const formatMoney = (val) => {
-  if (!val) return '0.00'
-  return Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-const getFileUrl = (path) => {
-  if (!path) return ''
-  const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
-  const baseUrl = apiUrl.replace(/\/api\/v1\/?$/, '')
-  return `${baseUrl}${path}`
-}
-
-const getStatusType = (status) => {
-  if (status === '已完成' || status === '已完工' || status === '已结算') return 'success'
-  if (status === '已终止' || status === '已归档' || status === '合同终止') return 'info'
-  if (status === '已中止' || status === '合同中止') return 'danger'
-  if (status === '待审核' || status === '质保到期') return 'warning'
-  if (status === '进行中' || status === '执行中') return 'primary'
-  return ''
 }
 
 const handleUploadRequest = async (option) => {
   try {
     const res = await uploadFile(option.file)
-    console.log('Upload result:', res)
     financeForm.file_path = res.path
-    console.log('File path set to:', financeForm.file_path)
     fileList.value = [{ name: option.file.name, url: res.path }]
+    option.onSuccess(res)
     ElMessage.success('上传成功')
   } catch (e) {
     ElMessage.error('上传失败')
@@ -598,6 +575,11 @@ const openEditDialog = (type, row) => {
     })
     fileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
   }
+}
+
+const openFile = (path) => {
+  if (!path) return
+  window.open(getFileUrl(path), '_blank')
 }
 
 const handleDelete = (type, row) => {

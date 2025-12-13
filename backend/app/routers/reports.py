@@ -212,10 +212,10 @@ async def get_expense_breakdown(
 
     # 1. Non-Contract Expense by Category
     stmt_nc_cat = select(
-        ExpenseNonContract.category,
+        ExpenseNonContract.attribution,
         func.count(ExpenseNonContract.id),
         func.sum(ExpenseNonContract.amount)
-    ).where(*nc_filters).group_by(ExpenseNonContract.category)
+    ).where(*nc_filters).group_by(ExpenseNonContract.attribution)
     
     res_nc_cat = await db.execute(stmt_nc_cat)
     # value = amount for charts

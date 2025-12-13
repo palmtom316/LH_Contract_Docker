@@ -39,12 +39,12 @@ class ExpenseNonContract(Base):
     file_path = Column(String(500), nullable=True)                   # 凭证文件路径 (PDF Only)
     
     # Status (Optional/Standard)
-    status = Column(String(50), default="待审核")
+    status = Column(String(50), default="待审核", index=True)
     approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     approved_at = Column(DateTime(timezone=True), nullable=True)
     
     # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)

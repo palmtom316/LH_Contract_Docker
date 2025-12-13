@@ -315,6 +315,7 @@ import { useRouter } from 'vue-router'
 import { getContracts, createContract, updateContract, deleteContract, exportContracts } from '@/api/contractManagement'
 import { getContracts as getUpstreamContracts, getContractSummary } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
+import { getFileUrl, formatMoney, getStatusType } from '@/utils/common'
 import { downloadExcel, generateFilename } from '@/utils/download'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Download, Document, Connection } from '@element-plus/icons-vue'
@@ -413,21 +414,6 @@ const resetQuery = () => {
   queryParams.keyword = ''
   queryParams.status = ''
   handleQuery()
-}
-
-const getStatusType = (status) => {
-  if (status === '已完成' || status === '已完工' || status === '已结算') return 'success'
-  if (status === '已终止' || status === '已归档' || status === '合同终止') return 'info'
-  if (status === '已中止' || status === '合同中止') return 'danger'
-  if (status === '待审核' || status === '质保到期') return 'warning'
-  if (status === '进行中' || status === '执行中') return 'primary'
-  return ''
-}
-
-// Format money
-const formatMoney = (value) => {
-  if (value === undefined || value === null) return '0.00'
-  return Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 // Summary row calculation
@@ -562,12 +548,6 @@ const handleExport = async () => {
     console.error('Export Error:', e)
     ElMessage.error('导出失败: ' + (e.message || e))
   }
-}
-
-const getFileUrl = (path) => {
-  if (!path) return ''
-  if (path.startsWith('http')) return path
-  return `http://${window.location.hostname}:8000${path}`
 }
 
 const handleEdit = async (row) => {

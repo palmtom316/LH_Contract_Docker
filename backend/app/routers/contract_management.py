@@ -4,7 +4,7 @@ Management Contract Management Router
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc
+from sqlalchemy import select
 from typing import List, Optional
 from datetime import datetime
 import pandas as pd
@@ -14,7 +14,7 @@ import urllib.parse
 from app.database import get_db
 from app.models.user import User
 from app.models.contract_management import (
-    ContractManagement, FinanceManagementPayable, FinanceManagementInvoice,
+    FinanceManagementPayable, FinanceManagementInvoice,
     FinanceManagementPayment, ManagementSettlement
 )
 from app.schemas.contract_management import (
@@ -25,62 +25,25 @@ from app.schemas.contract_management import (
     ManagementSettlementCreate, ManagementSettlementResponse
 )
 from app.services.auth import get_current_active_user
-from app.services.status_service import calculate_contract_status
-from sqlalchemy.orm import selectinload
+from app.services.contract_management_service import ContractManagementService
 
 router = APIRouter()
 
-async def refresh_contract_status(db: AsyncSession, contract_id: int):
-    """Recalculate and update contract status based on latest data"""
-    query = select(ContractManagement).options(
-        selectinload(ContractManagement.settlements),
-        selectinload(ContractManagement.payments),
-        selectinload(ContractManagement.payables),
-    ).where(ContractManagement.id == contract_id)
-    
-    result = await db.execute(query)
-    contract = result.scalar_one_or_none()
-    
-    if not contract:
-        return
+# Dependency
+def get_contract_service(db: AsyncSession = Depends(get_db)) -> ContractManagementService:
+    return ContractManagementService(db)
 
-    # Calculate Totals
-    total_settlement = sum(s.settlement_amount or 0 for s in contract.settlements)
-    total_paid = sum(p.amount or 0 for p in contract.payments)
-    total_payable = sum(p.amount or 0 for p in contract.payables)
-    
-    new_status = calculate_contract_status(contract, total_settlement, total_paid, total_payable)
-    
-    if contract.status != new_status:
-        contract.status = new_status
-        db.add(contract)
-        await db.commit()
 
 @router.get("/export/excel", response_class=StreamingResponse)
 async def export_contracts(
     keyword: Optional[str] = None,
     status: Optional[str] = None,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    service: ContractManagementService = Depends(get_contract_service)
 ):
     """Export management contracts to Excel"""
     try:
-        query = select(ContractManagement)
-        
-        if keyword:
-            query = query.where(
-                (ContractManagement.contract_name.ilike(f"%{keyword}%")) | 
-                (ContractManagement.contract_code.ilike(f"%{keyword}%")) |
-                (ContractManagement.party_a_name.ilike(f"%{keyword}%")) |
-                (ContractManagement.party_b_name.ilike(f"%{keyword}%"))
-            )
-        
-        if status:
-            query = query.where(ContractManagement.status == status)
-            
-        query = query.order_by(desc(ContractManagement.created_at))
-        result = await db.execute(query)
-        contracts = result.scalars().all()
+        contracts = await service.list_all_contracts(keyword, status)
         
         # Create DataFrame
         data = []
@@ -125,88 +88,35 @@ async def export_contracts(
 
 @router.get("/", response_model=ContractManagementListResponse)
 async def list_contracts(
-    page: int = 1,
-    page_size: int = 10,
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(10, ge=1, le=100, description="Items per page (max 100)"),
     keyword: Optional[str] = None,
     status: Optional[str] = None,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    service: ContractManagementService = Depends(get_contract_service)
 ):
     """List management contracts with pagination and filtering"""
-    query = select(ContractManagement).options(selectinload(ContractManagement.upstream_contract))
-    
-    if keyword:
-        conditions = [
-            ContractManagement.contract_name.ilike(f"%{keyword}%"),
-            ContractManagement.contract_code.ilike(f"%{keyword}%"),
-            ContractManagement.party_a_name.ilike(f"%{keyword}%"),
-            ContractManagement.party_b_name.ilike(f"%{keyword}%")
-        ]
-        if keyword.isdigit():
-            conditions.append(ContractManagement.serial_number == int(keyword))
-            conditions.append(ContractManagement.id == int(keyword))
-            
-        from sqlalchemy import or_
-        query = query.where(or_(*conditions))
-    
-    if status:
-        query = query.where(ContractManagement.status == status)
-        
-    # Count total
-    count_query = select(func.count()).select_from(query.subquery())
-    total = (await db.execute(count_query)).scalar_one()
-    
-    # Pagination
-    query = query.order_by(desc(ContractManagement.created_at)).offset((page - 1) * page_size).limit(page_size)
-    result = await db.execute(query)
-    contracts = result.scalars().all()
-    
-    return {
-        "items": contracts,
-        "total": total,
-        "page": page,
-        "page_size": page_size
-    }
+    return await service.list_contracts(page, page_size, keyword, status)
 
 
 @router.post("/", response_model=ContractManagementResponse, status_code=status.HTTP_201_CREATED)
 async def create_contract(
     contract_in: ContractManagementCreate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    service: ContractManagementService = Depends(get_contract_service)
 ):
     """Create new management contract"""
-    # Check unique ID (合同序号) - Logic changed to serial_number
-    if contract_in.serial_number:
-        existing_sn = await db.execute(select(ContractManagement).where(ContractManagement.serial_number == contract_in.serial_number))
-        if existing_sn.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail=f"合同序号 {contract_in.serial_number} 已存在")
-    
-    existing = await db.execute(select(ContractManagement).where(ContractManagement.contract_code == contract_in.contract_code))
-    if existing.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="合同编号已存在")
-        
-    contract = ContractManagement(**contract_in.model_dump(), created_by=current_user.id)
-    db.add(contract)
-    await db.commit()
-    await refresh_contract_status(db, contract.id)
-    
-    # Reload with relationships
-    result = await db.execute(select(ContractManagement).options(selectinload(ContractManagement.upstream_contract)).where(ContractManagement.id == contract.id))
-    contract = result.scalar_one()
-    return contract
+    return await service.create_contract(contract_in, current_user.id)
 
 
 @router.get("/{contract_id}", response_model=ContractManagementResponse)
 async def get_contract(
     contract_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    service: ContractManagementService = Depends(get_contract_service)
 ):
     """Get contract details"""
-    result = await db.execute(select(ContractManagement).options(selectinload(ContractManagement.upstream_contract)).where(ContractManagement.id == contract_id))
-    contract = result.scalar_one_or_none()
-    
+    contract = await service.get_contract(contract_id)
     if not contract:
         raise HTTPException(status_code=404, detail="合同不存在")
     return contract
@@ -217,64 +127,20 @@ async def update_contract(
     contract_id: int,
     contract_in: ContractManagementUpdate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    service: ContractManagementService = Depends(get_contract_service)
 ):
     """Update contract"""
-    result = await db.execute(select(ContractManagement).where(ContractManagement.id == contract_id))
-    contract = result.scalar_one_or_none()
-    
-    if not contract:
-        raise HTTPException(status_code=404, detail="合同不存在")
-        
-    update_data = contract_in.model_dump(exclude_unset=True)
-    
-    # Check serial_number uniqueness if it's being updated
-    if 'serial_number' in update_data and update_data['serial_number'] != contract.serial_number:
-        if update_data['serial_number']:
-            existing_sn = await db.execute(
-                select(ContractManagement).where(ContractManagement.serial_number == update_data['serial_number'])
-            )
-            if existing_sn.scalar_one_or_none():
-                raise HTTPException(status_code=400, detail=f"合同序号 {update_data['serial_number']} 已存在")
-    
-    # Check contract_code uniqueness if it's being updated
-    if 'contract_code' in update_data and update_data['contract_code'] != contract.contract_code:
-        existing = await db.execute(
-            select(ContractManagement).where(
-                ContractManagement.contract_code == update_data['contract_code'],
-                ContractManagement.id != contract_id
-            )
-        )
-        if existing.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="合同编号已存在")
-    
-    for field, value in update_data.items():
-        setattr(contract, field, value)
-        
-    await db.commit()
-    await refresh_contract_status(db, contract.id)
-    
-    # Reload with relationships
-    result = await db.execute(select(ContractManagement).options(selectinload(ContractManagement.upstream_contract)).where(ContractManagement.id == contract.id))
-    contract = result.scalar_one()
-    return contract
+    return await service.update_contract(contract_id, contract_in)
 
 
 @router.delete("/{contract_id}")
 async def delete_contract(
     contract_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    service: ContractManagementService = Depends(get_contract_service)
 ):
     """Delete contract"""
-    result = await db.execute(select(ContractManagement).where(ContractManagement.id == contract_id))
-    contract = result.scalar_one_or_none()
-    
-    if not contract:
-        raise HTTPException(status_code=404, detail="合同不存在")
-        
-    await db.delete(contract)
-    await db.commit()
+    await service.delete_contract(contract_id)
     return {"message": "合同已删除"}
 
 
@@ -286,7 +152,8 @@ async def create_payable(
     contract_id: int,
     payable_in: ManagementPayableCreate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    service: ContractManagementService = Depends(get_contract_service)
 ):
     if contract_id != payable_in.contract_id:
         raise HTTPException(status_code=400, detail="合同ID不匹配")
@@ -295,7 +162,8 @@ async def create_payable(
     db.add(payable)
     await db.commit()
     await db.refresh(payable)
-    await refresh_contract_status(db, contract_id)
+    
+    await service.refresh_contract_status(contract_id)
     return payable
 
 
@@ -315,7 +183,8 @@ async def update_payable(
     payable_id: int,
     payable_in: ManagementPayableCreate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    service: ContractManagementService = Depends(get_contract_service)
 ):
     query = select(FinanceManagementPayable).where(
         FinanceManagementPayable.id == payable_id,
@@ -330,7 +199,8 @@ async def update_payable(
         setattr(payable, key, value)
     await db.commit()
     await db.refresh(payable)
-    await refresh_contract_status(db, contract_id)
+    
+    await service.refresh_contract_status(contract_id)
     return payable
 
 
@@ -339,7 +209,8 @@ async def delete_payable(
     contract_id: int,
     payable_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    service: ContractManagementService = Depends(get_contract_service)
 ):
     query = select(FinanceManagementPayable).where(
         FinanceManagementPayable.id == payable_id,
@@ -352,7 +223,8 @@ async def delete_payable(
     
     await db.delete(payable)
     await db.commit()
-    await refresh_contract_status(db, contract_id)
+    
+    await service.refresh_contract_status(contract_id)
     return {"message": "删除成功"}
 
 
@@ -435,7 +307,8 @@ async def create_payment(
     contract_id: int,
     payment_in: ManagementPaymentCreate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    service: ContractManagementService = Depends(get_contract_service)
 ):
     if contract_id != payment_in.contract_id:
         raise HTTPException(status_code=400, detail="合同ID不匹配")
@@ -444,7 +317,8 @@ async def create_payment(
     db.add(payment)
     await db.commit()
     await db.refresh(payment)
-    await refresh_contract_status(db, contract_id)
+    
+    await service.refresh_contract_status(contract_id)
     return payment
 
 
@@ -464,7 +338,8 @@ async def update_payment(
     payment_id: int,
     payment_in: ManagementPaymentCreate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    service: ContractManagementService = Depends(get_contract_service)
 ):
     query = select(FinanceManagementPayment).where(
         FinanceManagementPayment.id == payment_id,
@@ -479,7 +354,8 @@ async def update_payment(
         setattr(payment, key, value)
     await db.commit()
     await db.refresh(payment)
-    await refresh_contract_status(db, contract_id)
+    
+    await service.refresh_contract_status(contract_id)
     return payment
 
 
@@ -488,7 +364,8 @@ async def delete_payment(
     contract_id: int,
     payment_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    service: ContractManagementService = Depends(get_contract_service)
 ):
     query = select(FinanceManagementPayment).where(
         FinanceManagementPayment.id == payment_id,
@@ -501,7 +378,8 @@ async def delete_payment(
     
     await db.delete(payment)
     await db.commit()
-    await refresh_contract_status(db, contract_id)
+    
+    await service.refresh_contract_status(contract_id)
     return {"message": "删除成功"}
 
 
@@ -511,7 +389,8 @@ async def create_settlement(
     contract_id: int,
     settlement_in: ManagementSettlementCreate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    service: ContractManagementService = Depends(get_contract_service)
 ):
     if contract_id != settlement_in.contract_id:
         raise HTTPException(status_code=400, detail="合同ID不匹配")
@@ -520,7 +399,8 @@ async def create_settlement(
     db.add(settlement)
     await db.commit()
     await db.refresh(settlement)
-    await refresh_contract_status(db, contract_id)
+    
+    await service.refresh_contract_status(contract_id)
     return settlement
 
 
@@ -540,7 +420,8 @@ async def update_settlement(
     settlement_id: int,
     settlement_in: ManagementSettlementCreate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    service: ContractManagementService = Depends(get_contract_service)
 ):
     query = select(ManagementSettlement).where(
         ManagementSettlement.id == settlement_id,
@@ -555,7 +436,8 @@ async def update_settlement(
         setattr(settlement, key, value)
     await db.commit()
     await db.refresh(settlement)
-    await refresh_contract_status(db, contract_id)
+    
+    await service.refresh_contract_status(contract_id)
     return settlement
 
 
@@ -564,7 +446,8 @@ async def delete_settlement(
     contract_id: int,
     settlement_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    service: ContractManagementService = Depends(get_contract_service)
 ):
     query = select(ManagementSettlement).where(
         ManagementSettlement.id == settlement_id,
@@ -577,5 +460,6 @@ async def delete_settlement(
     
     await db.delete(settlement)
     await db.commit()
-    await refresh_contract_status(db, contract_id)
+    
+    await service.refresh_contract_status(contract_id)
     return {"message": "删除成功"}

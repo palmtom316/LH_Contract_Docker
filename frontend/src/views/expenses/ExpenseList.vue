@@ -264,6 +264,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { getExpenses, createExpense, updateExpense, deleteExpense, approveExpense, exportExpenses } from '@/api/expense'
 import { getContracts, getContract } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
+import { getFileUrl, formatMoney } from '@/utils/common'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const loading = ref(false)
@@ -351,19 +352,11 @@ const handleQuery = () => {
 }
 
 const resetQuery = () => {
-
   queryParams.attribution = ''
   queryParams.category = ''
-
   queryParams.dateRange = null
   queryParams.upstream_contract_id = ''
   handleQuery()
-}
-
-// Format money
-const formatMoney = (value) => {
-  if (value === undefined || value === null) return '0.00'
-  return Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 // Summary row calculation
@@ -563,8 +556,8 @@ const handleRemove = () => {
 
 const handlePreview = (file) => {
   if (file.url) {
-    // 直接使用相对路径，由 vite proxy 代理到后端
-    window.open(file.url, '_blank')
+    const url = getFileUrl(file.url)
+    if (url) window.open(url, '_blank')
   } else {
     ElMessage.warning('没有可查看的文件')
   }
@@ -572,8 +565,8 @@ const handlePreview = (file) => {
 
 const viewExpenseFile = (filePath) => {
   if (filePath) {
-    // 直接使用相对路径，由 vite proxy 代理到后端
-    window.open(filePath, '_blank')
+    const url = getFileUrl(filePath)
+    if (url) window.open(url, '_blank')
   } else {
     ElMessage.warning('没有可查看的文件')
   }

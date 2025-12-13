@@ -4,24 +4,25 @@ Expense Management Router
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc
-from sqlalchemy.orm import joinedload
 from typing import List, Optional
-from datetime import datetime, date as date_type
+from datetime import datetime
 import pandas as pd
 import io
 import urllib.parse
 
 from app.database import get_db
 from app.models.user import User, UserRole
-from app.models.expense import ExpenseNonContract
 from app.schemas.expense import (
     ExpenseCreate, ExpenseUpdate, ExpenseResponse, ExpenseListResponse
 )
 from app.services.auth import get_current_active_user, require_role
+from app.services.expense_service import ExpenseService
 
 router = APIRouter()
 
+# Dependency
+def get_expense_service(db: AsyncSession = Depends(get_db)) -> ExpenseService:
+    return ExpenseService(db)
 
 @router.get("/export/excel", response_class=StreamingResponse)
 async def export_expenses(
@@ -32,49 +33,13 @@ async def export_expenses(
     end_date: Optional[str] = None,
     upstream_contract_id: Optional[int] = None,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    service: ExpenseService = Depends(get_expense_service)
 ):
     """Export expenses to Excel"""
     try:
-        query = select(ExpenseNonContract).options(joinedload(ExpenseNonContract.upstream_contract))
-        
-        if keyword:
-            query = query.where(
-                (ExpenseNonContract.expense_code.ilike(f"%{keyword}%")) | 
-                (ExpenseNonContract.description.ilike(f"%{keyword}%")) |
-                (ExpenseNonContract.handler.ilike(f"%{keyword}%")) |
-                (ExpenseNonContract.responsible_person.ilike(f"%{keyword}%"))
-            )
-        
-        if attribution:
-            query = query.where(ExpenseNonContract.attribution == attribution)
-    
-        if category:
-            query = query.where(ExpenseNonContract.category == category)
-            
-
-
-        # Date range filter
-        if start_date:
-            try:
-                start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
-                query = query.where(ExpenseNonContract.expense_date >= start_date_obj)
-            except ValueError:
-                pass
-        if end_date:
-            try:
-                end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
-                query = query.where(ExpenseNonContract.expense_date <= end_date_obj)
-            except ValueError:
-                pass
-        
-        # Upstream contract ID filter
-        if upstream_contract_id:
-            query = query.where(ExpenseNonContract.upstream_contract_id == upstream_contract_id)
-            
-        query = query.order_by(desc(ExpenseNonContract.expense_date))
-        result = await db.execute(query)
-        expenses = result.scalars().all()
+        expenses = await service.list_all_expenses(
+            keyword, attribution, category, start_date, end_date, upstream_contract_id
+        )
         
         # Create DataFrame
         data = []
@@ -115,8 +80,8 @@ async def export_expenses(
 
 @router.get("/", response_model=ExpenseListResponse)
 async def list_expenses(
-    page: int = 1,
-    page_size: int = 10,
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(10, ge=1, le=100, description="Items per page (max 100)"),
     keyword: Optional[str] = None,
     attribution: Optional[str] = None,
     category: Optional[str] = None,
@@ -124,103 +89,32 @@ async def list_expenses(
     end_date: Optional[str] = None,
     upstream_contract_id: Optional[int] = None,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    service: ExpenseService = Depends(get_expense_service)
 ):
     """List expenses with pagination and filtering"""
-    query = select(ExpenseNonContract).options(joinedload(ExpenseNonContract.upstream_contract))
-    
-    if keyword:
-        # Removed payee_name from search as it's not in the new Requirement 3.4
-        query = query.where(
-            (ExpenseNonContract.expense_code.ilike(f"%{keyword}%")) | 
-            (ExpenseNonContract.description.ilike(f"%{keyword}%")) |
-            (ExpenseNonContract.handler.ilike(f"%{keyword}%")) |
-            (ExpenseNonContract.responsible_person.ilike(f"%{keyword}%"))
-        )
-    
-    if attribution:
-        query = query.where(ExpenseNonContract.attribution == attribution)
-
-    if category:
-        query = query.where(ExpenseNonContract.category == category)
-        
-
-    
-    # Date range filter
-    if start_date:
-        try:
-            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
-            query = query.where(ExpenseNonContract.expense_date >= start_date_obj)
-        except ValueError:
-            pass
-    if end_date:
-        try:
-            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
-            query = query.where(ExpenseNonContract.expense_date <= end_date_obj)
-        except ValueError:
-            pass
-    
-    # Upstream contract ID filter
-    if upstream_contract_id:
-        query = query.where(ExpenseNonContract.upstream_contract_id == upstream_contract_id)
-        
-    # Count total
-    count_query = select(func.count()).select_from(query.subquery())
-    total = (await db.execute(count_query)).scalar_one()
-    
-    # Pagination
-    query = query.order_by(desc(ExpenseNonContract.expense_date)).offset((page - 1) * page_size).limit(page_size)
-    result = await db.execute(query)
-    expenses = result.scalars().all()
-    
-    return {
-        "items": expenses,
-        "total": total,
-        "page": page,
-        "page_size": page_size
-    }
+    return await service.list_expenses(
+        page, page_size, keyword, attribution, category, start_date, end_date, upstream_contract_id
+    )
 
 
 @router.post("/", response_model=ExpenseResponse, status_code=status.HTTP_201_CREATED)
 async def create_expense(
     expense_in: ExpenseCreate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    service: ExpenseService = Depends(get_expense_service)
 ):
     """Create new expense"""
-    existing = await db.execute(select(ExpenseNonContract).where(ExpenseNonContract.expense_code == expense_in.expense_code))
-    if existing.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="费用编号已存在")
-        
-    expense = ExpenseNonContract(**expense_in.model_dump(), created_by=current_user.id, updated_by=current_user.id)
-    db.add(expense)
-    await db.commit()
-    await db.refresh(expense)
-    
-    # Reload with relationship
-    result = await db.execute(
-        select(ExpenseNonContract)
-        .options(joinedload(ExpenseNonContract.upstream_contract))
-        .where(ExpenseNonContract.id == expense.id)
-    )
-    expense = result.scalar_one()
-    return expense
+    return await service.create_expense(expense_in, current_user.id)
 
 
 @router.get("/{expense_id}", response_model=ExpenseResponse)
 async def get_expense(
     expense_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    service: ExpenseService = Depends(get_expense_service)
 ):
     """Get expense details"""
-    result = await db.execute(
-        select(ExpenseNonContract)
-        .options(joinedload(ExpenseNonContract.upstream_contract))
-        .where(ExpenseNonContract.id == expense_id)
-    )
-    expense = result.scalar_one_or_none()
-    
+    expense = await service.get_expense(expense_id)
     if not expense:
         raise HTTPException(status_code=404, detail="费用记录不存在")
     return expense
@@ -231,48 +125,20 @@ async def update_expense(
     expense_id: int,
     expense_in: ExpenseUpdate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    service: ExpenseService = Depends(get_expense_service)
 ):
     """Update expense"""
-    result = await db.execute(select(ExpenseNonContract).where(ExpenseNonContract.id == expense_id))
-    expense = result.scalar_one_or_none()
-    
-    if not expense:
-        raise HTTPException(status_code=404, detail="费用记录不存在")
-        
-    update_data = expense_in.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(expense, field, value)
-    expense.updated_by = current_user.id
-        
-    await db.commit()
-    await db.refresh(expense)
-    
-    # Reload with relationship
-    result = await db.execute(
-        select(ExpenseNonContract)
-        .options(joinedload(ExpenseNonContract.upstream_contract))
-        .where(ExpenseNonContract.id == expense.id)
-    )
-    expense = result.scalar_one()
-    return expense
+    return await service.update_expense(expense_id, expense_in, current_user.id)
 
 
 @router.delete("/{expense_id}")
 async def delete_expense(
     expense_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    service: ExpenseService = Depends(get_expense_service)
 ):
     """Delete expense"""
-    result = await db.execute(select(ExpenseNonContract).where(ExpenseNonContract.id == expense_id))
-    expense = result.scalar_one_or_none()
-    
-    if not expense:
-        raise HTTPException(status_code=404, detail="费用记录不存在")
-        
-    await db.delete(expense)
-    await db.commit()
+    await service.delete_expense(expense_id)
     return {"message": "费用记录已删除"}
 
 
@@ -281,18 +147,8 @@ async def approve_expense(
     expense_id: int,
     approved: bool = True,
     current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.MANAGER])),
-    db: AsyncSession = Depends(get_db)
+    service: ExpenseService = Depends(get_expense_service)
 ):
     """Approve or reject expense"""
-    result = await db.execute(select(ExpenseNonContract).where(ExpenseNonContract.id == expense_id))
-    expense = result.scalar_one_or_none()
-    
-    if not expense:
-        raise HTTPException(status_code=404, detail="费用记录不存在")
-        
-    expense.status = "已审核" if approved else "已驳回"
-    expense.approved_by = current_user.id
-    expense.approved_at = datetime.utcnow()
-    
-    await db.commit()
+    await service.approve_expense(expense_id, approved, current_user.id)
     return {"message": f"费用已{'审核通过' if approved else '驳回'}"}

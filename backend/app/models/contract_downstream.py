@@ -55,11 +55,12 @@ class ContractDownstream(Base):
     contract_file_path = Column(String(500), nullable=True)   # 合同文件路径 (PDF Only)
     
     # Status and notes
-    status = Column(String(50), default="执行中")              # 合同状态
+    # Status and notes
+    status = Column(String(50), default="执行中", index=True)              # 合同状态
     notes = Column(Text, nullable=True)                       # 备注
     
     # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     
@@ -74,8 +75,23 @@ class ContractDownstream(Base):
     invoices = relationship("FinanceDownstreamInvoice", back_populates="contract", cascade="all, delete-orphan")
     payments = relationship("FinanceDownstreamPayment", back_populates="contract", cascade="all, delete-orphan")
     settlements = relationship("DownstreamSettlement", back_populates="contract", cascade="all, delete-orphan")
-    upstream_contract = relationship("ContractUpstream")
     
+    @property
+    def total_payable(self):
+        return sum((item.amount or 0) for item in self.payables)
+
+    @property
+    def total_invoiced(self):
+        return sum((item.amount or 0) for item in self.invoices)
+
+    @property
+    def total_paid(self):
+        return sum((item.amount or 0) for item in self.payments)
+        
+    @property
+    def total_settlement(self):
+        return sum((item.settlement_amount or 0) for item in self.settlements)
+
     def __repr__(self):
         return f"<ContractDownstream(id={self.id}, code={self.contract_code}, party_b={self.party_b_name})>"
 

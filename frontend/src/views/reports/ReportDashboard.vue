@@ -298,7 +298,7 @@
        <!-- Non-Contract Expense Categories Pie -->
       <el-col :xs="24" :md="6">
         <el-card shadow="hover" style="height: 300px;">
-           <template #header><span style="font-size: 12px; font-weight: bold;">无合同费用分类</span></template>
+           <template #header><span style="font-size: 12px; font-weight: bold;">无合同费用归属</span></template>
            <div ref="expenseCatPieRef" style="height: 200px; width: 100%;"></div>
         </el-card>
       </el-col>

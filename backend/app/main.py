@@ -4,28 +4,40 @@ LH Contract Management System - Main FastAPI Application
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.exceptions import RequestValidationError
+from sqlalchemy.exc import SQLAlchemyError
 from contextlib import asynccontextmanager
 import os
+import logging
 
 from app.config import settings
 from app.database import init_db, close_db
 from app.init_data import init_data
+from app.core.logging_config import setup_logging
+from app.core.exceptions import (
+    global_exception_handler, 
+    sqlalchemy_exception_handler, 
+    validation_exception_handler
+)
 
+# Setup Logging
+setup_logging()
+logger = logging.getLogger("app")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager for startup and shutdown events"""
     # Startup
-    print(f"🚀 Starting {settings.APP_NAME} v{settings.APP_VERSION}")
+    logger.info(f"🚀 Starting {settings.APP_NAME} v{settings.APP_VERSION}")
     await init_db()
-    print("✅ Database tables initialized")
+    logger.info("✅ Database tables initialized")
     await init_data()
     
     yield
     
     # Shutdown
     await close_db()
-    print("👋 Application shutdown complete")
+    logger.info("👋 Application shutdown complete")
 
 
 # Create FastAPI application
@@ -39,6 +51,12 @@ app = FastAPI(
     lifespan=lifespan,
     redirect_slashes=False  # Prevent 307 redirects that lose Authorization header
 )
+
+# Exception Handlers
+app.add_exception_handler(Exception, global_exception_handler)
+app.add_exception_handler(SQLAlchemyError, sqlalchemy_exception_handler)
+# We can override validation handler if we want custom format, strict JSON
+# app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 # Configure CORS - Use whitelist from settings
 app.add_middleware(

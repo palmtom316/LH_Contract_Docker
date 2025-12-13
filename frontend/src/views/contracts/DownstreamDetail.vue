@@ -363,6 +363,7 @@ import {
   getSettlements, createSettlement, updateSettlement, deleteSettlement
 } from '@/api/contractDownstream'
 import { uploadFile } from '@/api/common'
+import { getFileUrl, formatMoney, getStatusType } from '@/utils/common'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const route = useRoute()
@@ -440,28 +441,10 @@ const loadInvoices = async () => {
 const loadPayments = async () => { payments.value = await getPayments(contractId) }
 const loadSettlements = async () => { settlements.value = await getSettlements(contractId) }
 
-// Helpers
-const formatMoney = (val) => Number(val || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-const getStatusType = (status) => {
-  if (status === '已完成' || status === '已完工' || status === '已结算') return 'success'
-  if (status === '已终止' || status === '已归档' || status === '合同终止') return 'info'
-  if (status === '已中止' || status === '合同中止') return 'danger'
-  if (status === '待审核' || status === '质保到期') return 'warning'
-  if (status === '进行中' || status === '执行中') return 'primary'
-  return ''
-}
-const getFileUrl = (path) => {
-  if (!path) return ''
-  if (path.startsWith('http')) return path
-  return `http://${window.location.hostname}:8000${path}`
-}
-
 const handleUpload = async (option) => {
   try {
     const result = await uploadFile(option.file)
-    console.log('Upload result:', result)
     financeForm.file_path = result.path
-    console.log('File path set to:', financeForm.file_path)
     fileList.value = [{ name: option.file.name, url: result.path }]
     option.onSuccess(result)
   } catch (e) {
@@ -520,6 +503,11 @@ const openEditDialog = (type, row) => {
     Object.assign(financeForm, { settlement_code: row.settlement_code, settlement_amount: row.settlement_amount, settlement_date: row.settlement_date, completion_date: row.completion_date, warranty_date: row.warranty_date, description: row.description, file_path: row.file_path || '' })
     fileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
   }
+}
+
+const openFile = (path) => {
+  if (!path) return
+  window.open(getFileUrl(path), '_blank')
 }
 
 const handleDelete = (type, row) => {

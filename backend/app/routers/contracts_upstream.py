@@ -4,8 +4,8 @@ Upstream Contract Management Router
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc
-from typing import List, Optional
+from sqlalchemy import select
+from typing import List, Optional, Dict, Any
 from datetime import date, datetime
 import pandas as pd
 import io
@@ -16,11 +16,11 @@ from app.config import settings
 from app.database import get_db
 from app.models.user import User
 from app.models.contract_upstream import (
-    ContractUpstream, FinanceUpstreamReceivable, FinanceUpstreamInvoice,
+    FinanceUpstreamReceivable, FinanceUpstreamInvoice,
     FinanceUpstreamReceipt, ProjectSettlement
 )
 # We import Enums for type checking or specific logic if needed
-from app.models.enums import ContractCategory, PaymentCategory
+from app.models.enums import ContractCategory
 
 from app.schemas.contract_upstream import (
     ContractUpstreamCreate, ContractUpstreamUpdate, ContractUpstreamResponse, ContractUpstreamListResponse,
@@ -29,87 +29,29 @@ from app.schemas.contract_upstream import (
     ReceiptCreate, ReceiptResponse,
     SettlementCreate, SettlementResponse
 )
-from app.services.auth import get_current_active_user, get_user_from_token
-from app.services.status_service import calculate_contract_status
-from sqlalchemy.orm import selectinload
+from app.services.auth import get_current_active_user
+from app.services.contract_upstream_service import ContractUpstreamService
 
 router = APIRouter()
 
-async def refresh_contract_status(db: AsyncSession, contract_id: int):
-    """Recalculate and update contract status based on latest data"""
-    query = select(ContractUpstream).options(
-        selectinload(ContractUpstream.settlements),
-        selectinload(ContractUpstream.receipts),
-        selectinload(ContractUpstream.receivables),
-    ).where(ContractUpstream.id == contract_id)
-    
-    result = await db.execute(query)
-    contract = result.scalar_one_or_none()
-    
-    if not contract:
-        return
-
-    # Calculate Totals
-    total_settlement = sum(s.settlement_amount or 0 for s in contract.settlements)
-    total_received = sum(r.amount or 0 for r in contract.receipts)
-    total_receivable = sum(r.amount or 0 for r in contract.receivables)
-    
-    new_status = calculate_contract_status(contract, total_settlement, total_received, total_receivable)
-    
-    if contract.status != new_status:
-        contract.status = new_status
-        db.add(contract)
-        await db.commit()
+# Dependency to get service
+def get_contract_service(db: AsyncSession = Depends(get_db)) -> ContractUpstreamService:
+    return ContractUpstreamService(db)
 
 
 # ===== Contract Operations =====
 
 @router.get("/", response_model=ContractUpstreamListResponse)
 async def list_contracts(
-    page: int = 1,
-    page_size: int = 10,
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(10, ge=1, le=100, description="Items per page (max 100)"),
     keyword: Optional[str] = None,
     status: Optional[str] = None,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    service: ContractUpstreamService = Depends(get_contract_service)
 ):
     """List upstream contracts with pagination and filtering"""
-    query = select(ContractUpstream)
-    
-    if keyword:
-        # Check if keyword is a number (could be contract ID)
-        conditions = [
-            ContractUpstream.contract_name.ilike(f"%{keyword}%"),
-            ContractUpstream.contract_code.ilike(f"%{keyword}%"),
-            ContractUpstream.party_a_name.ilike(f"%{keyword}%"),
-            ContractUpstream.party_b_name.ilike(f"%{keyword}%")
-        ]
-        # If keyword is numeric, also search by ID and Serial Number
-        if keyword.isdigit():
-            conditions.append(ContractUpstream.id == int(keyword))
-            conditions.append(ContractUpstream.serial_number == int(keyword))
-        
-        from sqlalchemy import or_
-        query = query.where(or_(*conditions))
-    
-    if status:
-        query = query.where(ContractUpstream.status == status)
-        
-    # Count total
-    count_query = select(func.count()).select_from(query.subquery())
-    total = (await db.execute(count_query)).scalar_one()
-    
-    # Pagination
-    query = query.order_by(desc(ContractUpstream.created_at)).offset((page - 1) * page_size).limit(page_size)
-    result = await db.execute(query)
-    contracts = result.scalars().all()
-    
-    return {
-        "items": contracts,
-        "total": total,
-        "page": page,
-        "page_size": page_size
-    }
+    return await service.list_contracts(page, page_size, keyword, status)
 
 
 @router.get("/export/excel", response_class=StreamingResponse)
@@ -117,27 +59,12 @@ async def export_contracts(
     keyword: Optional[str] = None,
     status: Optional[str] = None,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    service: ContractUpstreamService = Depends(get_contract_service)
 ):
     """Export contracts to Excel"""
     try:
-        # 1. Query Data
-        query = select(ContractUpstream)
-        
-        if keyword:
-            query = query.where(
-                (ContractUpstream.contract_name.ilike(f"%{keyword}%")) | 
-                (ContractUpstream.contract_code.ilike(f"%{keyword}%")) |
-                (ContractUpstream.party_a_name.ilike(f"%{keyword}%")) |
-                (ContractUpstream.party_b_name.ilike(f"%{keyword}%"))
-            )
-        
-        if status:
-            query = query.where(ContractUpstream.status == status)
-            
-        query = query.order_by(desc(ContractUpstream.created_at))
-        result = await db.execute(query)
-        contracts = result.scalars().all()
+        # 1. Get Data from Service
+        contracts = await service.list_all_contracts(keyword, status)
         
         # 2. Convert to DataFrame
         data = []
@@ -182,38 +109,31 @@ async def export_contracts(
         raise HTTPException(status_code=500, detail=f"导出失败: {str(e)}")
 
 
+@router.get("/next-serial-number", response_model=Dict[str, int])
+async def get_next_serial_number(
+    current_user: User = Depends(get_current_active_user),
+    service: ContractUpstreamService = Depends(get_contract_service)
+):
+    """Get next available serial number"""
+    next_sn = await service.get_next_serial_number()
+    return {"serial_number": next_sn}
+
+
 @router.post("/", response_model=ContractUpstreamResponse, status_code=status.HTTP_201_CREATED)
 async def create_contract(
     contract_in: ContractUpstreamCreate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    service: ContractUpstreamService = Depends(get_contract_service)
 ):
     """Create new upstream contract"""
     try:
-        # Check unique ID (合同序号) - Logic changed to serial_number
-        if contract_in.serial_number:
-            existing_sn = await db.execute(select(ContractUpstream).where(ContractUpstream.serial_number == contract_in.serial_number))
-            if existing_sn.scalar_one_or_none():
-                raise HTTPException(status_code=400, detail=f"合同序号 {contract_in.serial_number} 已存在")
-        
-        # Check unique code
-        existing = await db.execute(select(ContractUpstream).where(ContractUpstream.contract_code == contract_in.contract_code))
-        if existing.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="合同编号已存在")
-            
-        contract = ContractUpstream(**contract_in.model_dump(), created_by=current_user.id)
-        db.add(contract)
-        await db.commit()
-        await db.refresh(contract)
-        return contract
+        return await service.create_contract(contract_in, current_user.id)
     except HTTPException:
         raise
     except Exception as e:
         import traceback
-        with open("error.log", "a", encoding="utf-8") as f:
-            f.write(f"Create Contract Error: {str(e)}\n")
-            f.write(traceback.format_exc())
-            f.write("\n" + "-"*30 + "\n")
+        print(f"Create Contract Error: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"服务器内部错误: {str(e)}")
 
 
@@ -221,15 +141,12 @@ async def create_contract(
 async def get_contract(
     contract_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    service: ContractUpstreamService = Depends(get_contract_service)
 ):
     """Get contract details"""
-    result = await db.execute(select(ContractUpstream).where(ContractUpstream.id == contract_id))
-    contract = result.scalar_one_or_none()
-    
+    contract = await service.get_contract(contract_id)
     if not contract:
         raise HTTPException(status_code=404, detail="合同不存在")
-        
     return contract
 
 
@@ -237,11 +154,10 @@ async def get_contract(
 async def get_contract_summary(
     contract_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    service: ContractUpstreamService = Depends(get_contract_service)
 ):
     """Get read-only summary for downstream linking"""
-    result = await db.execute(select(ContractUpstream).where(ContractUpstream.id == contract_id))
-    contract = result.scalar_one_or_none()
+    contract = await service.get_contract(contract_id)
     
     if not contract:
         raise HTTPException(status_code=404, detail="合同不存在")
@@ -261,77 +177,16 @@ async def update_contract(
     contract_id: int,
     contract_in: ContractUpstreamUpdate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    service: ContractUpstreamService = Depends(get_contract_service)
 ):
     """Update contract"""
     try:
-        result = await db.execute(select(ContractUpstream).where(ContractUpstream.id == contract_id))
-        contract = result.scalar_one_or_none()
-        
-        if not contract:
-            raise HTTPException(status_code=404, detail="合同不存在")
-            
-        update_data = contract_in.model_dump(exclude_unset=True)
-        
-        # Check serial_number uniqueness if it's being updated
-        if 'serial_number' in update_data and update_data['serial_number'] != contract.serial_number:
-            if update_data['serial_number']:
-                existing_sn = await db.execute(
-                    select(ContractUpstream).where(ContractUpstream.serial_number == update_data['serial_number'])
-                )
-                if existing_sn.scalar_one_or_none():
-                    raise HTTPException(status_code=400, detail=f"合同序号 {update_data['serial_number']} 已存在")
-        
-        # Check contract_code uniqueness if it's being updated
-        if 'contract_code' in update_data and update_data['contract_code'] != contract.contract_code:
-            existing = await db.execute(
-                select(ContractUpstream).where(
-                    ContractUpstream.contract_code == update_data['contract_code'],
-                    ContractUpstream.id != contract_id
-                )
-            )
-            if existing.scalar_one_or_none():
-                raise HTTPException(status_code=400, detail="合同编号已存在")
-        
-        for field, value in update_data.items():
-            setattr(contract, field, value)
-            
-        await db.commit()
-        await db.refresh(contract)
-        
-        # Return as dict to avoid Pydantic validation issues
-        return {
-            "id": contract.id,
-            "serial_number": contract.serial_number,
-            "contract_code": contract.contract_code,
-            "contract_name": contract.contract_name,
-            "party_a_name": contract.party_a_name,
-            "party_b_name": contract.party_b_name,
-            "category": contract.category,
-            "company_category": contract.company_category,
-            "pricing_mode": contract.pricing_mode,
-            "management_mode": contract.management_mode,
-            "responsible_person": contract.responsible_person,
-            "party_a_contact": contract.party_a_contact,
-            "party_a_phone": contract.party_a_phone,
-            "project_name": contract.project_name,
-            "project_location": contract.project_location,
-            "contract_amount": float(contract.contract_amount) if contract.contract_amount else 0,
-            "sign_date": contract.sign_date.isoformat() if contract.sign_date else None,
-            "start_date": contract.start_date.isoformat() if contract.start_date else None,
-            "end_date": contract.end_date.isoformat() if contract.end_date else None,
-            "status": contract.status,
-            "notes": contract.notes,
-            "contract_file_path": contract.contract_file_path,
-            "created_at": contract.created_at.isoformat() if contract.created_at else None,
-            "updated_at": contract.updated_at.isoformat() if contract.updated_at else None,
-            "created_by": contract.created_by
-        }
+        updated_contract = await service.update_contract(contract_id, contract_in)
+        return updated_contract
     except HTTPException:
         raise
     except Exception as e:
         import traceback
-        print(f"Update contract error: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"更新合同失败: {str(e)}")
 
@@ -340,17 +195,10 @@ async def update_contract(
 async def delete_contract(
     contract_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    service: ContractUpstreamService = Depends(get_contract_service)
 ):
     """Delete contract"""
-    result = await db.execute(select(ContractUpstream).where(ContractUpstream.id == contract_id))
-    contract = result.scalar_one_or_none()
-    
-    if not contract:
-        raise HTTPException(status_code=404, detail="合同不存在")
-        
-    await db.delete(contract)
-    await db.commit()
+    await service.delete_contract(contract_id)
     return {"message": "合同已删除"}
 
 
@@ -362,7 +210,8 @@ async def create_receivable(
     contract_id: int,
     receivable_in: ReceivableCreate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    service: ContractUpstreamService = Depends(get_contract_service)
 ):
     if contract_id != receivable_in.contract_id:
         raise HTTPException(status_code=400, detail="合同ID不匹配")
@@ -371,7 +220,10 @@ async def create_receivable(
     db.add(receivable)
     await db.commit()
     await db.refresh(receivable)
-    await refresh_contract_status(db, contract_id)
+    
+    await service.refresh_contract_status(contract_id)
+    await service._invalidate_dashboard_cache()
+    
     return receivable
 
 
@@ -391,7 +243,8 @@ async def update_receivable(
     receivable_id: int,
     receivable_in: ReceivableCreate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    service: ContractUpstreamService = Depends(get_contract_service)
 ):
     query = select(FinanceUpstreamReceivable).where(
         FinanceUpstreamReceivable.id == receivable_id,
@@ -407,7 +260,10 @@ async def update_receivable(
     receivable.updated_by = current_user.id
     await db.commit()
     await db.refresh(receivable)
-    await refresh_contract_status(db, contract_id)
+    
+    await service.refresh_contract_status(contract_id)
+    await service._invalidate_dashboard_cache()
+    
     return receivable
 
 
@@ -416,7 +272,8 @@ async def delete_receivable(
     contract_id: int,
     receivable_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    service: ContractUpstreamService = Depends(get_contract_service)
 ):
     query = select(FinanceUpstreamReceivable).where(
         FinanceUpstreamReceivable.id == receivable_id,
@@ -429,7 +286,10 @@ async def delete_receivable(
     
     await db.delete(receivable)
     await db.commit()
-    await refresh_contract_status(db, contract_id)
+    
+    await service.refresh_contract_status(contract_id)
+    await service._invalidate_dashboard_cache()
+    
     return {"message": "删除成功"}
 
 
@@ -513,7 +373,8 @@ async def create_receipt(
     contract_id: int,
     receipt_in: ReceiptCreate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    service: ContractUpstreamService = Depends(get_contract_service)
 ):
     if contract_id != receipt_in.contract_id:
         raise HTTPException(status_code=400, detail="合同ID不匹配")
@@ -522,7 +383,10 @@ async def create_receipt(
     db.add(receipt)
     await db.commit()
     await db.refresh(receipt)
-    await refresh_contract_status(db, contract_id)
+    
+    await service.refresh_contract_status(contract_id)
+    await service._invalidate_dashboard_cache()
+    
     return receipt
 
 
@@ -542,7 +406,8 @@ async def update_receipt(
     receipt_id: int,
     receipt_in: ReceiptCreate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    service: ContractUpstreamService = Depends(get_contract_service)
 ):
     query = select(FinanceUpstreamReceipt).where(
         FinanceUpstreamReceipt.id == receipt_id,
@@ -558,7 +423,10 @@ async def update_receipt(
     receipt.updated_by = current_user.id
     await db.commit()
     await db.refresh(receipt)
-    await refresh_contract_status(db, contract_id)
+    
+    await service.refresh_contract_status(contract_id)
+    await service._invalidate_dashboard_cache()
+    
     return receipt
 
 
@@ -567,7 +435,8 @@ async def delete_receipt(
     contract_id: int,
     receipt_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    service: ContractUpstreamService = Depends(get_contract_service)
 ):
     query = select(FinanceUpstreamReceipt).where(
         FinanceUpstreamReceipt.id == receipt_id,
@@ -580,7 +449,10 @@ async def delete_receipt(
     
     await db.delete(receipt)
     await db.commit()
-    await refresh_contract_status(db, contract_id)
+    
+    await service.refresh_contract_status(contract_id)
+    await service._invalidate_dashboard_cache()
+    
     return {"message": "删除成功"}
 
 
@@ -590,7 +462,8 @@ async def create_settlement(
     contract_id: int,
     settlement_in: SettlementCreate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    service: ContractUpstreamService = Depends(get_contract_service)
 ):
     if contract_id != settlement_in.contract_id:
         raise HTTPException(status_code=400, detail="合同ID不匹配")
@@ -599,7 +472,10 @@ async def create_settlement(
     db.add(settlement)
     await db.commit()
     await db.refresh(settlement)
-    await refresh_contract_status(db, contract_id)
+    
+    await service.refresh_contract_status(contract_id)
+    await service._invalidate_dashboard_cache()
+    
     return settlement
 
 
@@ -619,7 +495,8 @@ async def update_settlement(
     settlement_id: int,
     settlement_in: SettlementCreate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    service: ContractUpstreamService = Depends(get_contract_service)
 ):
     query = select(ProjectSettlement).where(
         ProjectSettlement.id == settlement_id,
@@ -635,7 +512,10 @@ async def update_settlement(
     settlement.updated_by = current_user.id
     await db.commit()
     await db.refresh(settlement)
-    await refresh_contract_status(db, contract_id)
+    
+    await service.refresh_contract_status(contract_id)
+    await service._invalidate_dashboard_cache()
+    
     return settlement
 
 
@@ -644,7 +524,8 @@ async def delete_settlement(
     contract_id: int,
     settlement_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    service: ContractUpstreamService = Depends(get_contract_service)
 ):
     query = select(ProjectSettlement).where(
         ProjectSettlement.id == settlement_id,
@@ -657,7 +538,10 @@ async def delete_settlement(
     
     await db.delete(settlement)
     await db.commit()
-    await refresh_contract_status(db, contract_id)
+    
+    await service.refresh_contract_status(contract_id)
+    await service._invalidate_dashboard_cache()
+    
     return {"message": "删除成功"}
 
 
@@ -726,7 +610,7 @@ async def download_import_template():
 async def import_contracts_from_excel(
     file: UploadFile,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    service: ContractUpstreamService = Depends(get_contract_service)
 ):
     """Batch import upstream contracts from Excel file"""
     # Check file type
@@ -744,94 +628,68 @@ async def import_contracts_from_excel(
         if missing_columns:
             raise HTTPException(status_code=400, detail=f"缺少必填列: {', '.join(missing_columns)}")
         
-        # Process each row
-        success_count = 0
-        error_rows = []
+        # Parse Rows into candidate list
+        candidates = []
+        parsing_errors = []
         
         for idx, row in df.iterrows():
-            row_num = idx + 2  # Excel row number (1-indexed + header)
+            row_num = idx + 2
             
-            try:
-                # Check if contract_code already exists
-                contract_code = str(row.get("合同编号", "")).strip()
-                if not contract_code or "(示例)" in contract_code:
-                    continue  # Skip empty or example rows
-                    
-                existing = await db.execute(
-                    select(ContractUpstream).where(ContractUpstream.contract_code == contract_code)
-                )
-                if existing.scalar_one_or_none():
-                    error_rows.append({"row": row_num, "error": f"合同编号 '{contract_code}' 已存在"})
-                    continue
+            # Check if contract_code is valid
+            contract_code = str(row.get("合同编号", "")).strip()
+            if not contract_code or "nan" in contract_code.lower() or "(示例)" in contract_code:
+                continue 
                 
-                # Parse sign_date
-                sign_date_val = row.get("签约日期")
-                sign_date = None
-                if pd.notna(sign_date_val):
-                    if isinstance(sign_date_val, str):
-                        try:
-                            sign_date = datetime.strptime(sign_date_val.strip(), "%Y-%m-%d").date()
-                        except ValueError:
-                            sign_date = None
-                    elif hasattr(sign_date_val, 'date'):
-                        sign_date = sign_date_val.date() if callable(getattr(sign_date_val, 'date', None)) else sign_date_val
-                    elif isinstance(sign_date_val, date):
-                        sign_date = sign_date_val
-                
-                # Parse contract amount
-                amount_val = row.get("合同金额", 0)
-                contract_amount = 0
-                if pd.notna(amount_val):
+            # Parse sign_date
+            sign_date_val = row.get("签约日期")
+            sign_date = None
+            if pd.notna(sign_date_val):
+                if isinstance(sign_date_val, str):
                     try:
-                        contract_amount = float(amount_val)
-                    except (ValueError, TypeError):
-                        contract_amount = 0
-                
-                # Map category to enum
-                category_str = str(row.get("合同类别", "")).strip() or None
-                pricing_mode_str = str(row.get("计价模式", "")).strip() or None
-                management_mode_str = str(row.get("管理模式", "")).strip() or None
-                
-                # Create contract
-                contract = ContractUpstream(
-                    contract_code=contract_code,
-                    contract_name=str(row.get("合同名称", "")).strip(),
-                    party_a_name=str(row.get("甲方单位", "")).strip(),
-                    party_b_name=str(row.get("乙方单位", "")).strip(),
-                    category=category_str,
-                    company_category=str(row.get("公司分类", "")).strip() or None,
-                    pricing_mode=pricing_mode_str,
-                    management_mode=management_mode_str,
-                    responsible_person=str(row.get("负责人", "")).strip() or None,
-                    contract_amount=contract_amount,
-                    sign_date=sign_date,
-                    status=str(row.get("状态", "进行中")).strip() or "进行中",
-                    notes=str(row.get("备注", "")).strip() or None,
-                    created_by=current_user.id
-                )
-                
-                db.add(contract)
-                success_count += 1
-                
-            except Exception as e:
-                error_rows.append({"row": row_num, "error": str(e)})
+                        sign_date = datetime.strptime(sign_date_val.strip(), "%Y-%m-%d").date()
+                    except ValueError:
+                        sign_date = None
+                elif hasattr(sign_date_val, 'date'):
+                    sign_date = sign_date_val.date() if callable(getattr(sign_date_val, 'date', None)) else sign_date_val
+                elif isinstance(sign_date_val, date):
+                    sign_date = sign_date_val
+
+            # Parse amount
+            try:
+                raw_amount = row.get("合同金额", 0)
+                contract_amount = float(raw_amount) if pd.notna(raw_amount) else 0
+            except:
+                contract_amount = 0
+            
+            candidate_dict = {
+                "contract_code": contract_code,
+                "contract_name": str(row.get("合同名称", "")).strip(),
+                "party_a_name": str(row.get("甲方单位", "")).strip(),
+                "party_b_name": str(row.get("乙方单位", "")).strip(),
+                "contract_amount": contract_amount,
+                "category": str(row.get("合同类别")) if pd.notna(row.get("合同类别")) else None,
+                "company_category": str(row.get("公司分类")) if pd.notna(row.get("公司分类")) else None,
+                "pricing_mode": str(row.get("计价模式")) if pd.notna(row.get("计价模式")) else None,
+                "management_mode": str(row.get("管理模式")) if pd.notna(row.get("管理模式")) else None,
+                "responsible_person": str(row.get("负责人")) if pd.notna(row.get("负责人")) else None,
+                "sign_date": sign_date,
+                "status": str(row.get("状态", "执行中")) if pd.notna(row.get("状态")) else "执行中",
+                "notes": str(row.get("备注")) if pd.notna(row.get("备注")) else None
+            }
+            candidates.append(candidate_dict)
+
+        # Call Service to Bulk Create
+        result = await service.bulk_create_from_import(candidates, current_user.id)
         
-        # Commit all successful inserts
-        if success_count > 0:
-            await db.commit()
+        # Combine errors
+        all_errors = parsing_errors + result["errors"]
         
         return {
-            "message": f"导入完成",
-            "success_count": success_count,
-            "error_count": len(error_rows),
-            "errors": error_rows[:20]  # Return first 20 errors
+            "message": f"成功导入 {result['success']} 条合同",
+            "errors": all_errors
         }
-        
-    except HTTPException:
-        raise
+
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"导入失败: {str(e)}")
-
-
-
-
