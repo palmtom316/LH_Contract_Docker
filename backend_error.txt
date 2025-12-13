@@ -1,0 +1,100 @@
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/applications.py", line 123, in __call__
+lh_contract_backend  |     await self.middleware_stack(scope, receive, send)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 186, in __call__
+lh_contract_backend  |     raise exc
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 164, in __call__
+lh_contract_backend  |     await self.app(scope, receive, _send)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 91, in __call__
+lh_contract_backend  |     await self.simple_response(scope, receive, send, request_headers=headers)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 146, in simple_response
+lh_contract_backend  |     await self.app(scope, receive, send)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+lh_contract_backend  |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app
+lh_contract_backend  |     raise exc
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+lh_contract_backend  |     await app(scope, receive, sender)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 762, in __call__
+lh_contract_backend  |     await self.middleware_stack(scope, receive, send)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 782, in app
+lh_contract_backend  |     await route.handle(scope, receive, send)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 297, in handle
+lh_contract_backend  |     await self.app(scope, receive, send)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 77, in app
+lh_contract_backend  |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app
+lh_contract_backend  |     raise exc
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+lh_contract_backend  |     await app(scope, receive, sender)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 72, in app
+lh_contract_backend  |     response = await func(request)
+lh_contract_backend  |                ^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 285, in app
+lh_contract_backend  |     raise e
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 275, in app
+lh_contract_backend  |     solved_result = await solve_dependencies(
+lh_contract_backend  |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/fastapi/dependencies/utils.py", line 570, in solve_dependencies
+lh_contract_backend  |     solved_result = await solve_dependencies(
+lh_contract_backend  |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/fastapi/dependencies/utils.py", line 598, in solve_dependencies
+lh_contract_backend  |     solved = await call(**sub_values)
+lh_contract_backend  |              ^^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/app/app/services/auth.py", line 85, in get_current_user
+lh_contract_backend  |     result = await db.execute(select(User).where(User.id == token_data.user_id))
+lh_contract_backend  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/ext/asyncio/session.py", line 455, in execute
+lh_contract_backend  |     result = await greenlet_spawn(
+lh_contract_backend  |              ^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 200, in greenlet_spawn
+lh_contract_backend  |     result = context.throw(*sys.exc_info())
+lh_contract_backend  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2308, in execute
+lh_contract_backend  |     return self._execute_internal(
+lh_contract_backend  |            ^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2190, in _execute_internal
+lh_contract_backend  |     result: Result[Any] = compile_state_cls.orm_execute_statement(
+lh_contract_backend  |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/context.py", line 293, in orm_execute_statement
+lh_contract_backend  |     result = conn.execute(
+lh_contract_backend  |              ^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1416, in execute
+lh_contract_backend  |     return meth(
+lh_contract_backend  |            ^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/sql/elements.py", line 517, in _execute_on_connection
+lh_contract_backend  |     return connection._execute_clauseelement(
+lh_contract_backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1639, in _execute_clauseelement
+lh_contract_backend  |     ret = self._execute_context(
+lh_contract_backend  |           ^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1848, in _execute_context
+lh_contract_backend  |     return self._exec_single_context(
+lh_contract_backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1988, in _exec_single_context
+lh_contract_backend  |     self._handle_dbapi_exception(
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2344, in _handle_dbapi_exception
+lh_contract_backend  |     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1969, in _exec_single_context
+lh_contract_backend  |     self.dialect.do_execute(
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 922, in do_execute
+lh_contract_backend  |     cursor.execute(statement, parameters)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 580, in execute
+lh_contract_backend  |     self._adapt_connection.await_(
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 130, in await_only
+lh_contract_backend  |     return current.driver.switch(awaitable)  # type: ignore[no-any-return]
+lh_contract_backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 195, in greenlet_spawn
+lh_contract_backend  |     value = await result
+lh_contract_backend  |             ^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 558, in _prepare_and_execute
+lh_contract_backend  |     self._handle_exception(error)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 509, in _handle_exception
+lh_contract_backend  |     self._adapt_connection._handle_exception(error)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 797, in _handle_exception
+lh_contract_backend  |     raise translated_error from error
+lh_contract_backend  | sqlalchemy.exc.ProgrammingError: (sqlalchemy.dialects.postgresql.asyncpg.ProgrammingError) <class 'asyncpg.exceptions.UndefinedColumnError'>: column users.email does not exist
+lh_contract_backend  | [SQL: SELECT users.id, users.username, users.email, users.hashed_password, users.full_name, users.role, users.is_active, users.is_superuser, users.created_at, users.updated_at, users.last_login 
+lh_contract_backend  | FROM users 
+lh_contract_backend  | WHERE users.id = $1::INTEGER]
+lh_contract_backend  | [parameters: (1,)]
+lh_contract_backend  | (Background on this error at: https://sqlalche.me/e/20/f405)

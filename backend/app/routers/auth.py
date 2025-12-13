@@ -109,8 +109,6 @@ async def login_json(
     db: AsyncSession = Depends(get_db)
 ):
     """User login - JSON version"""
-    print(f"DEBUG LOGIN: username={user_in.username}, password_len={len(user_in.password)}")
-    print(f"DEBUG LOGIN: password_preview={user_in.password[:20]}...")
     # Find user by username
     result = await db.execute(select(User).where(User.username == user_in.username))
     user = result.scalar_one_or_none()

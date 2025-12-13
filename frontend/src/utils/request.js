@@ -2,8 +2,6 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
 
-// Log the env var
-console.log('VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL)
 
 // Create Axios instance
 const service = axios.create({

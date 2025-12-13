@@ -2,7 +2,6 @@ import request from '@/utils/request'
 
 export function login(data) {
     // Use JSON login endpoint to avoid Content-Type issues
-    console.log('Login Request Data:', JSON.stringify(data));
     return request({
         url: '/auth/login/json',
         method: 'post',

@@ -1,0 +1,80 @@
+lh_contract_backend  |     value = self._object_value_for_elem(value)
+lh_contract_backend  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/sql/sqltypes.py", line 1649, in _object_value_for_elem
+lh_contract_backend  |     raise LookupError(
+lh_contract_backend  | LookupError: 'leader' is not among the defined enum values. Enum name: userrole. Possible values: ADMIN, MANAGER, OPERATOR, VIEWER
+lh_contract_backend  | DEBUG LOGIN: username=admin, password_len=8
+lh_contract_backend  | DEBUG LOGIN: password_preview=admin123...
+lh_contract_backend  | 2025-12-13 06:12:07,538 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+lh_contract_backend  | 2025-12-13 06:12:07,539 INFO sqlalchemy.engine.Engine SELECT users.id, users.username, users.email, users.hashed_password, users.full_name, users.role, users.is_active, users.is_superuser, users.created_at, users.updated_at, users.last_login 
+lh_contract_backend  | FROM users 
+lh_contract_backend  | WHERE users.username = $1::VARCHAR
+lh_contract_backend  | 2025-12-13 06:12:07,539 INFO sqlalchemy.engine.Engine [cached since 102.7s ago] ('admin',)
+lh_contract_backend  | 2025-12-13 06:12:07,752 INFO sqlalchemy.engine.Engine UPDATE users SET updated_at=now(), last_login=$1::TIMESTAMP WITH TIME ZONE WHERE users.id = $2::INTEGER
+lh_contract_backend  | 2025-12-13 06:12:07,752 INFO sqlalchemy.engine.Engine [cached since 71.07s ago] (datetime.datetime(2025, 12, 13, 6, 12, 7, 751849), 1)
+lh_contract_backend  | 2025-12-13 06:12:07,754 INFO sqlalchemy.engine.Engine COMMIT
+lh_contract_backend  | 2025-12-13 06:12:07,777 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+lh_contract_backend  | 2025-12-13 06:12:07,777 INFO sqlalchemy.engine.Engine SELECT users.id, users.username, users.email, users.hashed_password, users.full_name, users.role, users.is_active, users.is_superuser, users.created_at, users.updated_at, users.last_login 
+lh_contract_backend  | FROM users 
+lh_contract_backend  | WHERE users.id = $1::INTEGER
+lh_contract_backend  | 2025-12-13 06:12:07,777 INFO sqlalchemy.engine.Engine [cached since 71.06s ago] (1,)
+lh_contract_backend  | 2025-12-13 06:12:07,790 INFO sqlalchemy.engine.Engine ROLLBACK
+lh_contract_backend  | INFO:     172.18.0.1:34584 - "POST /api/v1/auth/login/json HTTP/1.1" 500 Internal Server Error
+lh_contract_backend  | ERROR:    Exception in ASGI application
+lh_contract_backend  | Traceback (most recent call last):
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/uvicorn/protocols/http/httptools_impl.py", line 419, in run_asgi
+lh_contract_backend  |     result = await app(  # type: ignore[func-returns-value]
+lh_contract_backend  |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__
+lh_contract_backend  |     return await self.app(scope, receive, send)
+lh_contract_backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/fastapi/applications.py", line 1054, in __call__
+lh_contract_backend  |     await super().__call__(scope, receive, send)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/applications.py", line 123, in __call__
+lh_contract_backend  |     await self.middleware_stack(scope, receive, send)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 186, in __call__
+lh_contract_backend  |     raise exc
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/errors.py", line 164, in __call__
+lh_contract_backend  |     await self.app(scope, receive, _send)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 91, in __call__
+lh_contract_backend  |     await self.simple_response(scope, receive, send, request_headers=headers)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/cors.py", line 146, in simple_response
+lh_contract_backend  |     await self.app(scope, receive, send)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+lh_contract_backend  |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app
+lh_contract_backend  |     raise exc
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+lh_contract_backend  |     await app(scope, receive, sender)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 762, in __call__
+lh_contract_backend  |     await self.middleware_stack(scope, receive, send)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 782, in app
+lh_contract_backend  |     await route.handle(scope, receive, send)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 297, in handle
+lh_contract_backend  |     await self.app(scope, receive, send)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 77, in app
+lh_contract_backend  |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app
+lh_contract_backend  |     raise exc
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+lh_contract_backend  |     await app(scope, receive, sender)
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/starlette/routing.py", line 72, in app
+lh_contract_backend  |     response = await func(request)
+lh_contract_backend  |                ^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 299, in app
+lh_contract_backend  |     raise e
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 294, in app
+lh_contract_backend  |     raw_response = await run_endpoint_function(
+lh_contract_backend  |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/fastapi/routing.py", line 191, in run_endpoint_function
+lh_contract_backend  |     return await dependant.call(**values)
+lh_contract_backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/app/app/routers/auth.py", line 146, in login_json
+lh_contract_backend  |     user=UserResponse.model_validate(user)
+lh_contract_backend  |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  |   File "/usr/local/lib/python3.11/site-packages/pydantic/main.py", line 503, in model_validate
+lh_contract_backend  |     return cls.__pydantic_validator__.validate_python(
+lh_contract_backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+lh_contract_backend  | pydantic_core._pydantic_core.ValidationError: 1 validation error for UserResponse
+lh_contract_backend  | email
+lh_contract_backend  |   value is not a valid email address: The email address is not valid. It must have exactly one @-sign. [type=value_error, input_value='18623100316', input_type=str]

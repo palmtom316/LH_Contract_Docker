@@ -10,10 +10,10 @@ from app.database import Base
 
 class UserRole(str, enum.Enum):
     """User role enumeration"""
-    ADMIN = "admin"          # 管理员 - 完全权限
-    MANAGER = "manager"      # 经理 - 查看所有、编辑权限
-    OPERATOR = "operator"    # 操作员 - 录入和编辑
-    VIEWER = "viewer"        # 查看者 - 只读权限
+    ADMIN = "ADMIN"          # 管理员 - 完全权限
+    MANAGER = "MANAGER"      # 经理 - 查看所有、编辑权限
+    OPERATOR = "OPERATOR"    # 操作员 - 录入和编辑
+    VIEWER = "VIEWER"        # 查看者 - 只读权限
 
 
 class User(Base):
