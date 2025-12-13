@@ -29,42 +29,96 @@ async def get_dashboard_stats(
     """
     current_year = datetime.now().year
     
-    # --- 1. Top Cards ---
+    # --- 1. Top Cards (Annual Statistics for Current Year) ---
     
-    # Total Upstream Contract Amount
-    res_up_total = await db.execute(select(func.sum(ContractUpstream.contract_amount)))
-    total_contract_amount = res_up_total.scalar() or 0
+    # Annual Upstream Contracts (signed in current year)
+    res_up_annual = await db.execute(
+        select(
+            func.count(ContractUpstream.id),
+            func.sum(ContractUpstream.contract_amount)
+        ).where(extract('year', ContractUpstream.sign_date) == current_year)
+    )
+    up_annual = res_up_annual.first()
+    annual_upstream_count = up_annual[0] or 0
+    annual_upstream_amount = up_annual[1] or 0
     
-    # Total Actual Received (Income)
-    res_received = await db.execute(select(func.sum(FinanceUpstreamReceipt.amount)))
-    total_received = res_received.scalar() or 0
+    # Annual Receipts (received in current year)
+    res_receipts_annual = await db.execute(
+        select(func.sum(FinanceUpstreamReceipt.amount)).where(
+            extract('year', FinanceUpstreamReceipt.receipt_date) == current_year
+        )
+    )
+    annual_receipts_amount = res_receipts_annual.scalar() or 0
     
-    # Total Actual Paid (Downstream + Management + Expenses)
-    res_paid_down = await db.execute(select(func.sum(FinanceDownstreamPayment.amount)))
-    total_paid_down = res_paid_down.scalar() or 0
+    # Annual Payments (paid in current year: Downstream + Management + Non-Contract Expenses)
+    res_paid_down_annual = await db.execute(
+        select(func.sum(FinanceDownstreamPayment.amount)).where(
+            extract('year', FinanceDownstreamPayment.payment_date) == current_year
+        )
+    )
+    annual_paid_down = res_paid_down_annual.scalar() or 0
     
-    res_paid_mgmt = await db.execute(select(func.sum(FinanceManagementPayment.amount)))
-    total_paid_mgmt = res_paid_mgmt.scalar() or 0
+    res_paid_mgmt_annual = await db.execute(
+        select(func.sum(FinanceManagementPayment.amount)).where(
+            extract('year', FinanceManagementPayment.payment_date) == current_year
+        )
+    )
+    annual_paid_mgmt = res_paid_mgmt_annual.scalar() or 0
     
-    res_paid_exp = await db.execute(select(func.sum(ExpenseNonContract.amount)))
-    total_paid_exp = res_paid_exp.scalar() or 0
+    res_paid_exp_annual = await db.execute(
+        select(func.sum(ExpenseNonContract.amount)).where(
+            extract('year', ExpenseNonContract.expense_date) == current_year
+        )
+    )
+    annual_paid_exp = res_paid_exp_annual.scalar() or 0
     
-    total_paid = (total_paid_down or 0) + (total_paid_mgmt or 0) + (total_paid_exp or 0)
+    annual_payments_amount = float(annual_paid_down or 0) + float(annual_paid_mgmt or 0) + float(annual_paid_exp or 0)
     
-    # Downstream Contract Amount (Pending mostly)
-    res_down_total = await db.execute(select(func.sum(ContractDownstream.contract_amount)))
-    total_down_contract_amount = res_down_total.scalar() or 0
+    # Annual Downstream + Management Contracts (signed in current year)
+    res_down_annual = await db.execute(
+        select(
+            func.count(ContractDownstream.id),
+            func.sum(ContractDownstream.contract_amount)
+        ).where(extract('year', ContractDownstream.sign_date) == current_year)
+    )
+    down_annual = res_down_annual.first()
+    annual_down_count = down_annual[0] or 0
+    annual_down_amount = down_annual[1] or 0
+    
+    # Import ContractManagement model
+    from app.models.contract_management import ContractManagement
+    
+    res_mgmt_annual = await db.execute(
+        select(
+            func.count(ContractManagement.id),
+            func.sum(ContractManagement.contract_amount)
+        ).where(extract('year', ContractManagement.sign_date) == current_year)
+    )
+    mgmt_annual = res_mgmt_annual.first()
+    annual_mgmt_count = mgmt_annual[0] or 0
+    annual_mgmt_amount = mgmt_annual[1] or 0
+    
+    annual_down_mgmt_count = annual_down_count + annual_mgmt_count
+    annual_down_mgmt_amount = float(annual_down_amount or 0) + float(annual_mgmt_amount or 0)
     
     # --- 2. Charts Data (Simplified for MVP) ---
     
-    # Pie Chart: Upstream Contract Categories
+    # Pie Chart 1: Upstream Contract Categories
     # Note: Group by Category
     stmt_cat = select(
         ContractUpstream.category, 
-        func.count(ContractUpstream.id)
+        func.sum(ContractUpstream.contract_amount)
     ).group_by(ContractUpstream.category)
     cat_result = await db.execute(stmt_cat)
-    pie_data = [{"name": r[0].value if hasattr(r[0], 'value') else str(r[0]), "value": r[1]} for r in cat_result.all()]
+    pie_category_data = [{"name": r[0].value if hasattr(r[0], 'value') else str(r[0]), "value": float(r[1] or 0)} for r in cat_result.all()]
+
+    # Pie Chart 2: Upstream Contract Company Categories
+    stmt_comp_cat = select(
+        ContractUpstream.company_category, 
+        func.sum(ContractUpstream.contract_amount)
+    ).group_by(ContractUpstream.company_category)
+    comp_cat_result = await db.execute(stmt_comp_cat)
+    pie_company_data = [{"name": r[0] or "未分类", "value": float(r[1] or 0)} for r in comp_cat_result.all()]
     
     # Bar Chart: Monthly Receipt vs Payment (Current Year)
     # This involves complex grouping by month. 
@@ -113,15 +167,19 @@ async def get_dashboard_stats(
     bar_data["income"][current_month - 1] = float(month_in)
     bar_data["expense"][current_month - 1] = month_out
     
+    
     return {
         "cards": {
-            "total_contract_amount": float(total_contract_amount),
-            "total_received": float(total_received),
-            "total_paid": float(total_paid),
-            "total_down_contract_amount": float(total_down_contract_amount)
+            "annual_upstream_count": annual_upstream_count,
+            "annual_upstream_amount": float(annual_upstream_amount),
+            "annual_receipts_amount": float(annual_receipts_amount),
+            "annual_payments_amount": annual_payments_amount,
+            "annual_down_mgmt_count": annual_down_mgmt_count,
+            "annual_down_mgmt_amount": annual_down_mgmt_amount
         },
         "charts": {
-            "pie": pie_data,
+            "pie_category": pie_category_data,
+            "pie_company": pie_company_data,
             "bar": bar_data
         }
     }

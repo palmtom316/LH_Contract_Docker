@@ -30,10 +30,69 @@
       <el-button type="primary" icon="Refresh" @click="fetchData">查询</el-button>
     </div>
 
-    <!-- Row 1: Trend Chart (Wide) + AR + AP -->
+    <!-- Row 1: Annual Summary Cards (4 Cards) -->
     <el-row :gutter="20" class="summary-row">
+      <!-- 1. Annual Upstream Contract Total -->
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card shadow="hover" class="stat-card border-left-primary" style="height: 160px;">
+          <div class="card-content">
+            <div class="card-title">年度上游合同签约总金额</div>
+            <div class="card-amount text-primary">
+              {{ annualUpstreamCount }} 单
+            </div>
+            <div class="card-sub">
+              <span class="text-primary">¥ {{ formatWan(annualUpstreamAmount) }} 万元</span>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+
+      <!-- 2. Annual Receipts Total -->
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card shadow="hover" class="stat-card border-left-success" style="height: 160px;">
+          <div class="card-content">
+            <div class="card-title">年度回款总金额</div>
+            <div class="card-amount text-success">
+              ¥ {{ formatWan(annualReceiptsAmount) }} 万元
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+
+      <!-- 3. Annual Payments Total -->
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card shadow="hover" class="stat-card border-left-warning" style="height: 160px;">
+          <div class="card-content">
+            <div class="card-title">年度付款总金额</div>
+            <div class="card-amount text-warning">
+              ¥ {{ formatWan(annualPaymentsAmount) }} 万元
+            </div>
+            <div class="card-sub" style="font-size: 11px;">
+              <span class="text-info">下游+管理+无合同费用</span>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+
+      <!-- 4. Annual Downstream & Management Contract Total -->
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card shadow="hover" class="stat-card border-left-info" style="height: 160px;">
+          <div class="card-content">
+            <div class="card-title">年度下游及管理合同签约总金额</div>
+            <div class="card-amount text-info">
+              {{ annualDownMgmtCount }} 单
+            </div>
+            <div class="card-sub">
+              <span class="text-info">¥ {{ formatWan(annualDownMgmtAmount) }} 万元</span>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <!-- Row 2: Trend Chart (Wide) + AR + AP -->
+    <el-row :gutter="20" style="margin-top: 20px;" class="summary-row">
       <!-- Trend Chart (Takes 12 columns = 2 cards width) -->
-      <!-- Height reduced to match typical card height (~220px) -->
       <el-col :xs="24" :sm="24" :md="12">
         <el-card shadow="hover" class="stat-card" style="height: 228px; display: flex; flex-direction: column;" :body-style="{ flex: '1', overflow: 'hidden', padding: '10px', display: 'flex', flexDirection: 'column' }">
           <div class="card-content" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
@@ -59,20 +118,12 @@
                  <el-icon><InfoFilled /></el-icon>
               </el-tooltip>
             </div>
-            <!-- Total (keep as base reference, but user emphasized Outstanding/Received) -->
-            <!-- Update: Big number is Outstanding (Wait to collect) -->
             <div class="card-amount text-primary">¥ {{ formatWan(arStats.outstanding) }} 万元</div>
             <div class="card-sub">
-              <!-- Reordered: Outstanding (应收款) first -->
-              <!-- Update: Label "应收款" now maps to Total Receivable as requested -->
               <span class="text-primary">应收款: ¥ {{ formatWan(arStats.total_receivable) }} 万元</span>
               <br>
-              <!-- Received (已收款) second -->
               <span class="text-success">已收款: ¥ {{ formatWan(arStats.total_received) }} 万元</span>
             </div>
-            <!-- Custom Progress: Track (Blue) -> Outstanding, Bar (Green) -> Received -->
-            <!-- We use 'text-inside' or just standard? Standard line. -->
-            <!-- To make track blue, we inject style -->
             <el-progress 
               :percentage="calcPercentage(arStats.total_received, arStats.total_receivable)" 
               status="success"
@@ -97,16 +148,12 @@
                  <el-icon><InfoFilled /></el-icon>
               </el-tooltip>
             </div>
-            <!-- Big Number: Outstanding (Wait to pay) -->
             <div class="card-amount text-warning">¥ {{ formatWan(apStats.outstanding) }} 万元</div>
             <div class="card-sub">
-              <!-- Reordered: Total Payable (应付款) first -->
               <span class="text-primary">应付款: ¥ {{ formatWan(apStats.total_payable) }} 万元</span>
               <br>
-              <!-- Paid (已付款) second -->
               <span class="text-success">已付款: ¥ {{ formatWan(apStats.total_paid) }} 万元</span>
             </div>
-            <!-- Custom Progress: Track (Blue) -> Payable, Bar (Green) -> Paid -->
             <el-progress 
               :percentage="calcPercentage(apStats.total_paid, apStats.total_payable)" 
               status="warning"
@@ -279,6 +326,14 @@ const downstreamSummary = ref([])
 const managementSummary = ref([])
 const expenseSummary = ref([])
 
+// Annual Summary Data (for Row 1 cards)
+const annualUpstreamCount = ref(0)
+const annualUpstreamAmount = ref(0)
+const annualReceiptsAmount = ref(0)
+const annualPaymentsAmount = ref(0)
+const annualDownMgmtCount = ref(0)
+const annualDownMgmtAmount = ref(0)
+
 // Chart Refs
 const trendChartRef = ref(null)
 const upstreamPieRef = ref(null)
@@ -334,7 +389,26 @@ const fetchData = async () => {
     managementSummary.value = summaryRes.management_by_category || []
     expenseSummary.value = expenseRes.non_contract_breakdown || [] // Used for summary card
     
-    // 3. Update Charts
+    // 3. Calculate Annual Summary Statistics (for Row 1 cards)
+    // Annual Upstream: count and amount
+    annualUpstreamCount.value = upstreamSummary.value.reduce((acc, cur) => acc + cur.count, 0)
+    annualUpstreamAmount.value = upstreamSummary.value.reduce((acc, cur) => acc + cur.amount, 0)
+    
+    // Annual Receipts: total received amount from AR stats
+    annualReceiptsAmount.value = arApRes.ar.total_received
+    
+    // Annual Payments: total paid from AP stats (includes downstream + management + non-contract)
+    annualPaymentsAmount.value = arApRes.ap.total_paid
+    
+    // Annual Downstream + Management: count and amount
+    const downCount = downstreamSummary.value.reduce((acc, cur) => acc + cur.count, 0)
+    const downAmount = downstreamSummary.value.reduce((acc, cur) => acc + cur.amount, 0)
+    const mgmtCount = managementSummary.value.reduce((acc, cur) => acc + cur.count, 0)
+    const mgmtAmount = managementSummary.value.reduce((acc, cur) => acc + cur.amount, 0)
+    annualDownMgmtCount.value = downCount + mgmtCount
+    annualDownMgmtAmount.value = downAmount + mgmtAmount
+    
+    // 4. Update Charts
     initTrendChart(trendRes)
     initUpstreamPie(summaryRes.upstream_by_category)
     initUpstreamCompanyPie(summaryRes.upstream_by_company_category || [])
