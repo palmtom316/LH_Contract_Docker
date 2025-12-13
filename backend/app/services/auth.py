@@ -114,3 +114,32 @@ def require_role(allowed_roles: list):
             )
         return current_user
     return role_checker
+
+
+async def get_user_from_token(
+    token: str,
+    db: AsyncSession
+) -> User:
+    """Get user from token string (for URL parameter authentication)"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="无法验证凭据",
+    )
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        sub = payload.get("sub")
+        
+        if sub is None:
+            raise credentials_exception
+        
+        user_id = int(sub)
+    except (JWTError, ValueError, TypeError):
+        raise credentials_exception
+    
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    
+    if user is None or not user.is_active:
+        raise credentials_exception
+    return user
+

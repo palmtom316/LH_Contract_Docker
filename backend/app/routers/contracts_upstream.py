@@ -2,7 +2,7 @@
 Upstream Contract Management Router
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 from typing import List, Optional
@@ -10,6 +10,7 @@ from datetime import date, datetime
 import pandas as pd
 import io
 import os
+import urllib.parse
 from app.config import settings
 
 from app.database import get_db
@@ -28,7 +29,7 @@ from app.schemas.contract_upstream import (
     ReceiptCreate, ReceiptResponse,
     SettlementCreate, SettlementResponse
 )
-from app.services.auth import get_current_active_user
+from app.services.auth import get_current_active_user, get_user_from_token
 from app.services.status_service import calculate_contract_status
 from sqlalchemy.orm import selectinload
 
@@ -111,7 +112,7 @@ async def list_contracts(
     }
 
 
-@router.get("/export/excel")
+@router.get("/export/excel", response_class=StreamingResponse)
 async def export_contracts(
     keyword: Optional[str] = None,
     status: Optional[str] = None,
@@ -161,21 +162,19 @@ async def export_contracts(
             
         df = pd.DataFrame(data)
         
-        # 3. Create Excel file
-        filename = f"contracts_upstream_export_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
-        filepath = os.path.join(settings.UPLOAD_DIR, filename)
+        # 3. Create Excel in memory
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Contracts')
+        output.seek(0)
         
-        # Ensure directory exists
-        os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+        filename = f"上游合同列表_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
+        encoded_filename = urllib.parse.quote(filename)
         
-        # Write to Excel
-        df.to_excel(filepath, index=False, engine='openpyxl')
-        
-        # 4. Return file
-        return FileResponse(
-            path=filepath, 
-            filename=filename, 
-            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename*=utf-8''{encoded_filename}"}
         )
     except Exception as e:
         import traceback
@@ -257,7 +256,7 @@ async def get_contract_summary(
     }
 
 
-@router.put("/{contract_id}", response_model=ContractUpstreamResponse)
+@router.put("/{contract_id}")
 async def update_contract(
     contract_id: int,
     contract_in: ContractUpstreamUpdate,
@@ -265,41 +264,76 @@ async def update_contract(
     db: AsyncSession = Depends(get_db)
 ):
     """Update contract"""
-    result = await db.execute(select(ContractUpstream).where(ContractUpstream.id == contract_id))
-    contract = result.scalar_one_or_none()
-    
-    if not contract:
-        raise HTTPException(status_code=404, detail="合同不存在")
+    try:
+        result = await db.execute(select(ContractUpstream).where(ContractUpstream.id == contract_id))
+        contract = result.scalar_one_or_none()
         
-    update_data = contract_in.model_dump(exclude_unset=True)
-    
-    # Check serial_number uniqueness if it's being updated
-    if 'serial_number' in update_data and update_data['serial_number'] != contract.serial_number:
-        if update_data['serial_number']:
-            existing_sn = await db.execute(
-                select(ContractUpstream).where(ContractUpstream.serial_number == update_data['serial_number'])
-            )
-            if existing_sn.scalar_one_or_none():
-                raise HTTPException(status_code=400, detail=f"合同序号 {update_data['serial_number']} 已存在")
-    
-    # Check contract_code uniqueness if it's being updated
-    if 'contract_code' in update_data and update_data['contract_code'] != contract.contract_code:
-        existing = await db.execute(
-            select(ContractUpstream).where(
-                ContractUpstream.contract_code == update_data['contract_code'],
-                ContractUpstream.id != contract_id
-            )
-        )
-        if existing.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="合同编号已存在")
-    
-    for field, value in update_data.items():
-        setattr(contract, field, value)
+        if not contract:
+            raise HTTPException(status_code=404, detail="合同不存在")
+            
+        update_data = contract_in.model_dump(exclude_unset=True)
         
-    await db.commit()
-    await db.refresh(contract)
-    await refresh_contract_status(db, contract.id)
-    return contract
+        # Check serial_number uniqueness if it's being updated
+        if 'serial_number' in update_data and update_data['serial_number'] != contract.serial_number:
+            if update_data['serial_number']:
+                existing_sn = await db.execute(
+                    select(ContractUpstream).where(ContractUpstream.serial_number == update_data['serial_number'])
+                )
+                if existing_sn.scalar_one_or_none():
+                    raise HTTPException(status_code=400, detail=f"合同序号 {update_data['serial_number']} 已存在")
+        
+        # Check contract_code uniqueness if it's being updated
+        if 'contract_code' in update_data and update_data['contract_code'] != contract.contract_code:
+            existing = await db.execute(
+                select(ContractUpstream).where(
+                    ContractUpstream.contract_code == update_data['contract_code'],
+                    ContractUpstream.id != contract_id
+                )
+            )
+            if existing.scalar_one_or_none():
+                raise HTTPException(status_code=400, detail="合同编号已存在")
+        
+        for field, value in update_data.items():
+            setattr(contract, field, value)
+            
+        await db.commit()
+        await db.refresh(contract)
+        
+        # Return as dict to avoid Pydantic validation issues
+        return {
+            "id": contract.id,
+            "serial_number": contract.serial_number,
+            "contract_code": contract.contract_code,
+            "contract_name": contract.contract_name,
+            "party_a_name": contract.party_a_name,
+            "party_b_name": contract.party_b_name,
+            "category": contract.category,
+            "company_category": contract.company_category,
+            "pricing_mode": contract.pricing_mode,
+            "management_mode": contract.management_mode,
+            "responsible_person": contract.responsible_person,
+            "party_a_contact": contract.party_a_contact,
+            "party_a_phone": contract.party_a_phone,
+            "project_name": contract.project_name,
+            "project_location": contract.project_location,
+            "contract_amount": float(contract.contract_amount) if contract.contract_amount else 0,
+            "sign_date": contract.sign_date.isoformat() if contract.sign_date else None,
+            "start_date": contract.start_date.isoformat() if contract.start_date else None,
+            "end_date": contract.end_date.isoformat() if contract.end_date else None,
+            "status": contract.status,
+            "notes": contract.notes,
+            "contract_file_path": contract.contract_file_path,
+            "created_at": contract.created_at.isoformat() if contract.created_at else None,
+            "updated_at": contract.updated_at.isoformat() if contract.updated_at else None,
+            "created_by": contract.created_by
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"Update contract error: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"更新合同失败: {str(e)}")
 
 
 @router.delete("/{contract_id}")

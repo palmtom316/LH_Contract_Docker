@@ -16,11 +16,11 @@ class ContractUpstreamBase(BaseModel):
     party_a_name: str = Field(..., max_length=200)
     party_b_name: str = Field(..., max_length=200)
     
-    # Classification
-    category: Optional[ContractCategory] = None
+    # Classification - Use str to match database VARCHAR columns
+    category: Optional[str] = None
     company_category: Optional[str] = None 
-    pricing_mode: Optional[PricingMode] = None
-    management_mode: Optional[ManagementMode] = None
+    pricing_mode: Optional[str] = None
+    management_mode: Optional[str] = None
     
     responsible_person: Optional[str] = Field(None, max_length=100)
     
@@ -53,10 +53,10 @@ class ContractUpstreamUpdate(BaseModel):
     party_a_name: Optional[str] = Field(None, max_length=200)
     party_b_name: Optional[str] = Field(None, max_length=200)
     
-    category: Optional[ContractCategory] = None
+    category: Optional[str] = None
     company_category: Optional[str] = None
-    pricing_mode: Optional[PricingMode] = None
-    management_mode: Optional[ManagementMode] = None
+    pricing_mode: Optional[str] = None
+    management_mode: Optional[str] = None
     responsible_person: Optional[str] = Field(None, max_length=100)
 
     party_a_contact: Optional[str] = Field(None, max_length=100)

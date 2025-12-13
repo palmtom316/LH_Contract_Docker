@@ -40,13 +40,13 @@ app = FastAPI(
     redirect_slashes=False  # Prevent 307 redirects that lose Authorization header
 )
 
-# Configure CORS
+# Configure CORS - Use whitelist from settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins_list,  # Use configured whitelist
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
 )
 
 # Mount static files for uploads

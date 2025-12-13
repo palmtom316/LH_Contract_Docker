@@ -315,6 +315,7 @@ import { useRouter } from 'vue-router'
 import { getContracts, createContract, updateContract, deleteContract, exportContracts } from '@/api/contractManagement'
 import { getContracts as getUpstreamContracts, getContractSummary } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
+import { downloadExcel, generateFilename } from '@/utils/download'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Download, Document, Connection } from '@element-plus/icons-vue'
 import SmartAutocomplete from '@/components/SmartAutocomplete.vue'
@@ -552,18 +553,14 @@ const handleAdd = () => {
 
 const handleExport = async () => {
   try {
-    const response = await exportContracts(queryParams)
-    const url = window.URL.createObjectURL(new Blob([response]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', `管理合同列表_${new Date().getTime()}.xlsx`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
+    ElMessage.info('正在导出...')
+    const res = await exportContracts(queryParams)
+    const filename = generateFilename('管理合同导出', 'xlsx')
+    downloadExcel(res, filename)
+    ElMessage.success('导出成功')
   } catch (e) {
-    console.error(e)
-    ElMessage.error('导出失败')
+    console.error('Export Error:', e)
+    ElMessage.error('导出失败: ' + (e.message || e))
   }
 }
 

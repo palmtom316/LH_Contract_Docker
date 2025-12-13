@@ -1,9 +1,13 @@
 """
 Application Configuration
+
+All sensitive values should be set via environment variables.
+See .env.example for configuration template.
 """
 from pydantic_settings import BaseSettings
 from typing import List
 import os
+import secrets
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -13,31 +17,40 @@ class Settings(BaseSettings):
     # Application
     APP_NAME: str = "LH Contract Management System"
     APP_VERSION: str = "1.0.0"
-    DEBUG: bool = True
+    DEBUG: bool = False  # Default to False for security
     
-    # Database
-    DATABASE_URL: str = "postgresql+asyncpg://lh_admin:LanHai2024Secure!@localhost:5432/lh_contract_db"
+    # Database - MUST be set via environment variable in production
+    DATABASE_URL: str = os.getenv(
+        "DATABASE_URL",
+        "postgresql+asyncpg://lh_admin:LanHai2024Secure!@db:5432/lh_contract_db"
+    )
     
-    # Security
-    SECRET_KEY: str = "your-super-secret-key-change-in-production-2024"
+    # Security - MUST be set via environment variable in production
+    # Generate strong key: python -c "import secrets; print(secrets.token_urlsafe(64))"
+    SECRET_KEY: str = os.getenv("SECRET_KEY", secrets.token_urlsafe(64))
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     
-    # CORS
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:8080,http://localhost:5173"
+    # CORS - Whitelist of allowed origins
+    CORS_ORIGINS: str = os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000"
+    )
     
     @property
     def cors_origins_list(self) -> List[str]:
-        return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
+        """Parse CORS_ORIGINS string into a list"""
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
     
     # File Upload
-    UPLOAD_DIR: str = os.path.join(BASE_DIR, "uploads")
+    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", os.path.join(BASE_DIR, "uploads"))
     MAX_FILE_SIZE: int = 50 * 1024 * 1024  # 50MB
     ALLOWED_EXTENSIONS: List[str] = ["pdf", "xlsx", "xls", "doc", "docx", "jpg", "jpeg", "png"]
     
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"  # Ignore extra environment variables
 
 
 settings = Settings()

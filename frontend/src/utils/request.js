@@ -29,6 +29,10 @@ service.interceptors.request.use(
 // Response interceptor
 service.interceptors.response.use(
     response => {
+        // For blob responses (file downloads), return the full response data
+        if (response.config.responseType === 'blob') {
+            return response.data
+        }
         return response.data
     },
     error => {

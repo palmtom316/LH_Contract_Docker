@@ -423,6 +423,7 @@ import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { getContracts, createContract, updateContract, deleteContract, exportContracts, downloadImportTemplate, importContracts } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
+import { downloadExcel, generateFilename } from '@/utils/download'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown } from '@element-plus/icons-vue'
 import SmartAutocomplete from '@/components/SmartAutocomplete.vue'
@@ -755,13 +756,10 @@ const handleDetail = (row) => {
 
 const handleExport = async () => {
   try {
+    ElMessage.info('正在导出...')
     const res = await exportContracts(queryParams)
-    const blob = new Blob([res], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    const link = document.createElement('a')
-    link.href = window.URL.createObjectURL(blob)
-    link.download = `上游合同导出_${new Date().toISOString().slice(0, 10)}.xlsx`
-    link.click()
-    window.URL.revokeObjectURL(link.href)
+    const filename = generateFilename('上游合同导出', 'xlsx')
+    downloadExcel(res, filename)
     ElMessage.success('导出成功')
   } catch (e) {
     console.error('Export Error:', e)
@@ -782,12 +780,7 @@ const handleDownloadTemplate = async () => {
   try {
     ElMessage.info('正在下载模板...')
     const res = await downloadImportTemplate()
-    const blob = new Blob([res], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    const link = document.createElement('a')
-    link.href = window.URL.createObjectURL(blob)
-    link.download = '上游合同导入模板.xlsx'
-    link.click()
-    window.URL.revokeObjectURL(link.href)
+    downloadExcel(res, '上游合同导入模板.xlsx')
     ElMessage.success('模板下载成功')
   } catch (e) {
     ElMessage.error('模板下载失败')

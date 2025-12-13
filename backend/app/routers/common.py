@@ -58,11 +58,18 @@ async def get_companies(
 @router.post("/upload", response_model=dict)
 async def upload_file(
     file: UploadFile = File(...),
+    upload_dir: str = None,
     current_user: User = Depends(get_current_active_user)
 ):
     """
     Upload file (PDF, Images, Excel)
-    Returns: {"filename": str, "url": str, "content_type": str}
+    
+    Args:
+        file: The file to upload
+        upload_dir: Target directory (contracts, invoices, receipts, settlements, expenses)
+                    If not provided, determined by file extension
+    
+    Returns: {"filename": str, "path": str, "content_type": str}
     """
     # Validate extension
     ext = file.filename.split('.')[-1].lower()
@@ -74,14 +81,21 @@ async def upload_file(
     unique_id = str(uuid.uuid4())[:8]
     new_filename = f"{timestamp}_{unique_id}.{ext}"
     
-    # Determine sub-folder based on extension
-    sub_folder = "others"
-    if ext in ['pdf']:
-        sub_folder = "contracts"
-    elif ext in ['jpg', 'jpeg', 'png']:
-        sub_folder = "receipts"
-    elif ext in ['xlsx', 'xls']:
-        sub_folder = "docs"
+    # Determine sub-folder: use provided upload_dir or auto-detect by extension
+    allowed_dirs = ['contracts', 'invoices', 'receipts', 'settlements', 'expenses', 'docs', 'others']
+    
+    if upload_dir and upload_dir in allowed_dirs:
+        sub_folder = upload_dir
+    else:
+        # Auto-detect based on extension
+        if ext in ['pdf']:
+            sub_folder = "contracts"
+        elif ext in ['jpg', 'jpeg', 'png']:
+            sub_folder = "receipts"
+        elif ext in ['xlsx', 'xls']:
+            sub_folder = "docs"
+        else:
+            sub_folder = "others"
         
     save_dir = os.path.join(settings.UPLOAD_DIR, sub_folder)
     os.makedirs(save_dir, exist_ok=True)
@@ -103,3 +117,4 @@ async def upload_file(
         "path": relative_url,
         "content_type": file.content_type
     }
+

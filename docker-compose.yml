@@ -7,9 +7,9 @@ services:
     container_name: lh_contract_db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: lh_admin
-      POSTGRES_PASSWORD: LanHai2024Secure!
-      POSTGRES_DB: lh_contract_db
+      POSTGRES_USER: ${POSTGRES_USER:-lh_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-LanHai2024Secure!}
+      POSTGRES_DB: ${POSTGRES_DB:-lh_contract_db}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -19,7 +19,7 @@ services:
     networks:
       - lh_network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U lh_admin -d lh_contract_db" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lh_admin} -d ${POSTGRES_DB:-lh_contract_db}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -31,11 +31,14 @@ services:
       dockerfile: Dockerfile
     container_name: lh_contract_backend
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://lh_admin:LanHai2024Secure!@db:5432/lh_contract_db
-      SECRET_KEY: your-super-secret-key-change-in-production-2024
-      CORS_ORIGINS: http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://lh_admin:LanHai2024Secure!@db:5432/lh_contract_db}
+      SECRET_KEY: ${SECRET_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000}
       UPLOAD_DIR: /app/uploads
+      DEBUG: ${DEBUG:-false}
     volumes:
       - ./backend/app:/app/app
       - ./backend/uploads:/app/uploads
