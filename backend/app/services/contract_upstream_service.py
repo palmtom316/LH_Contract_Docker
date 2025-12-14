@@ -43,7 +43,9 @@ class ContractUpstreamService:
         page: int = 1, 
         page_size: int = 10, 
         keyword: Optional[str] = None, 
-        status: Optional[str] = None
+        status: Optional[str] = None,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None
     ) -> Dict[str, Any]:
         """List contracts with filtering and pagination"""
         query = select(ContractUpstream).options(
@@ -68,6 +70,11 @@ class ContractUpstreamService:
         
         if status:
             query = query.where(ContractUpstream.status == status)
+            
+        if start_date:
+            query = query.where(ContractUpstream.sign_date >= start_date)
+        if end_date:
+            query = query.where(ContractUpstream.sign_date <= end_date)
             
         # Count total
         count_query = select(func.count()).select_from(query.subquery())

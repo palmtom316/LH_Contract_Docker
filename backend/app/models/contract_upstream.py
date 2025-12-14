@@ -77,6 +77,35 @@ class ContractUpstream(Base):
     def __repr__(self):
         return f"<ContractUpstream(id={self.id}, code={self.contract_code}, name={self.contract_name})>"
 
+    @property
+    def latest_settlement(self):
+        """Get the most relevant settlement record (usually there's only one active)"""
+        if not self.settlements:
+            return None
+        # Return the last created settlement or filter by logic if needed
+        return self.settlements[-1]
+
+    @property
+    def completion_date(self):
+        s = self.latest_settlement
+        return s.completion_date if s else None
+
+    @property
+    def audit_report_path(self):
+        s = self.latest_settlement
+        return s.audit_report_path if s else None
+
+    @property
+    def start_report_path(self):
+        s = self.latest_settlement
+        return s.start_report_path if s else None
+        
+    @property
+    def completion_report_path(self):
+        s = self.latest_settlement
+        return s.completion_report_path if s else None
+
+
 
 class FinanceUpstreamReceivable(Base):
     """

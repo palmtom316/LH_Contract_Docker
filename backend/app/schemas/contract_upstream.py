@@ -86,6 +86,12 @@ class ContractUpstreamResponse(ContractUpstreamBase):
     total_invoiced: Optional[Decimal] = None
     total_received: Optional[Decimal] = None
     total_settlement: Optional[Decimal] = None
+    
+    # Settlement details
+    completion_date: Optional[date] = None
+    audit_report_path: Optional[str] = None
+    start_report_path: Optional[str] = None
+    completion_report_path: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -1,15 +1,17 @@
 """
 Authentication Router
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, timedelta
+from typing import List
 
 from app.database import get_db
-from app.models.user import User, UserRole
-from app.schemas.user import UserCreate, UserResponse, UserLogin, Token
+from app.models.user import User, UserRole, ROLE_DISPLAY_NAMES
+from app.schemas.user import UserCreate, UserResponse, UserLogin, Token, RoleOption, RoleListResponse
 from app.services.auth import (
     verify_password, 
     get_password_hash, 
@@ -17,6 +19,7 @@ from app.services.auth import (
     get_current_user,
     get_current_active_user
 )
+from app.core.permissions import get_user_permissions
 from app.config import settings
 
 router = APIRouter()
@@ -63,10 +66,13 @@ async def register(
 
 @router.post("/login", response_model=Token)
 async def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db)
 ):
     """User login - get access token"""
+    from app.services.audit_service import create_audit_log, AuditAction, ResourceType, get_client_ip, get_user_agent
+    
     # Find user by username
     result = await db.execute(select(User).where(User.username == form_data.username))
     user = result.scalar_one_or_none()
@@ -89,6 +95,17 @@ async def login(
     await db.commit()
     await db.refresh(user)
     
+    # Create audit log
+    await create_audit_log(
+        db=db,
+        user=user,
+        action=AuditAction.LOGIN,
+        resource_type=ResourceType.SYSTEM,
+        description=f"用户 {user.username} 登录系统",
+        ip_address=get_client_ip(request),
+        user_agent=get_user_agent(request)
+    )
+    
     # Create access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
@@ -99,7 +116,7 @@ async def login(
     return Token(
         access_token=access_token,
         token_type="bearer",
-        user=UserResponse.model_validate(user)
+        user=UserResponse.from_orm_with_permissions(user, get_user_permissions(user))
     )
 
 
@@ -141,7 +158,7 @@ async def login_json(
     return Token(
         access_token=access_token,
         token_type="bearer",
-        user=UserResponse.model_validate(user)
+        user=UserResponse.from_orm_with_permissions(user, get_user_permissions(user))
     )
 
 
@@ -149,25 +166,31 @@ async def login_json(
 async def get_current_user_info(
     current_user: User = Depends(get_current_active_user)
 ):
-    """Get current user information"""
-    return current_user
+    """Get current user information with permissions"""
+    permissions = get_user_permissions(current_user)
+    return UserResponse.from_orm_with_permissions(current_user, permissions)
+
+
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=6, max_length=100)
 
 
 @router.post("/change-password")
 async def change_password(
-    old_password: str,
-    new_password: str,
+    password_data: ChangePasswordRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Change user password"""
-    if not verify_password(old_password, current_user.hashed_password):
+    if not verify_password(password_data.old_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="原密码错误"
         )
     
-    current_user.hashed_password = get_password_hash(new_password)
+    current_user.hashed_password = get_password_hash(password_data.new_password)
     await db.commit()
     
     return {"message": "密码修改成功"}
@@ -205,3 +228,23 @@ async def init_admin(db: AsyncSession = Depends(get_db)):
         "default_password": "admin123",
         "note": "请立即修改默认密码"
     }
+
+
+@router.get("/roles", response_model=RoleListResponse)
+async def get_available_roles(
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get list of available roles for user management"""
+    # Only admin can see all roles
+    if not current_user.is_superuser and current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="只有管理员可以查看角色列表"
+        )
+    
+    roles = [
+        RoleOption(value=role.value, label=ROLE_DISPLAY_NAMES.get(role, role.value))
+        for role in UserRole
+    ]
+    return RoleListResponse(roles=roles)
+

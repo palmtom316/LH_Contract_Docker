@@ -22,34 +22,52 @@
         :collapse-transition="false"
         router
       >
-        <el-menu-item index="/">
+        <!-- 首页概览 - 需要 view_dashboard 权限 -->
+        <el-menu-item v-if="userStore.canViewDashboard" index="/">
           <el-icon><HomeFilled /></el-icon>
           <template #title>首页概览</template>
         </el-menu-item>
         
-        <el-menu-item index="/contracts/upstream">
+        <!-- 上游合同 - 需要 view_upstream_* 权限 -->
+        <el-menu-item v-if="userStore.canViewUpstreamContracts" index="/contracts/upstream">
           <el-icon><Document /></el-icon>
           <template #title>上游合同</template>
         </el-menu-item>
         
-        <el-menu-item index="/contracts/downstream">
+        <!-- 下游合同 - 需要 view_downstream_* 权限 -->
+        <el-menu-item v-if="userStore.canViewDownstreamContracts" index="/contracts/downstream">
           <el-icon><DocumentCopy /></el-icon>
           <template #title>下游合同</template>
         </el-menu-item>
         
-        <el-menu-item index="/contracts/management">
+        <!-- 管理合同 - 需要 view_management_* 权限 -->
+        <el-menu-item v-if="userStore.canViewManagementContracts" index="/contracts/management">
           <el-icon><FolderChecked /></el-icon>
           <template #title>管理合同</template>
         </el-menu-item>
         
-        <el-menu-item index="/expenses">
+        <!-- 无合同费用 - 需要 view_expenses 权限 -->
+        <el-menu-item v-if="userStore.canViewExpenses" index="/expenses">
           <el-icon><Money /></el-icon>
           <template #title>无合同费用</template>
         </el-menu-item>
         
-        <el-menu-item index="/reports">
+        <!-- 报表统计 - 需要 view_reports 权限 -->
+        <el-menu-item v-if="userStore.canViewReports" index="/reports">
           <el-icon><DataAnalysis /></el-icon>
           <template #title>报表统计</template>
+        </el-menu-item>
+        
+        <!-- 用户管理 - 仅管理员可见 -->
+        <el-menu-item v-if="userStore.canManageUsers" index="/users">
+          <el-icon><User /></el-icon>
+          <template #title>用户管理</template>
+        </el-menu-item>
+        
+        <!-- 审计日志 - 仅管理员可见 -->
+        <el-menu-item v-if="userStore.isAdmin" index="/audit">
+          <el-icon><Document /></el-icon>
+          <template #title>审计日志</template>
         </el-menu-item>
       </el-menu>
     </div>
@@ -74,10 +92,12 @@
             <div class="avatar-wrapper">
               <el-avatar size="small" :icon="'UserFilled'" :style="{ backgroundColor: variables.primary }" />
               <span class="user-name">{{ userStore.user.full_name || userStore.user.username }}</span>
+              <el-tag size="small" type="info" style="margin-left: 8px;">{{ userStore.roleDisplay }}</el-tag>
               <el-icon><CaretBottom /></el-icon>
             </div>
             <template #dropdown>
               <el-dropdown-menu>
+                <el-dropdown-item command="changePassword">修改密码</el-dropdown-item>
                 <el-dropdown-item command="profile">个人信息</el-dropdown-item>
                 <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
               </el-dropdown-menu>
@@ -95,14 +115,39 @@
         </router-view>
       </div>
     </div>
+
+    <!-- Change Password Dialog -->
+    <el-dialog 
+      title="修改密码" 
+      v-model="changePwdVisible" 
+      width="400px"
+      :close-on-click-modal="false"
+    >
+      <el-form ref="pwdFormRef" :model="pwdForm" :rules="pwdRules" label-width="100px">
+        <el-form-item label="当前密码" prop="old_password">
+          <el-input v-model="pwdForm.old_password" type="password" show-password placeholder="请输入当前密码" />
+        </el-form-item>
+        <el-form-item label="新密码" prop="new_password">
+          <el-input v-model="pwdForm.new_password" type="password" show-password placeholder="请输入新密码（至少6位）" />
+        </el-form-item>
+        <el-form-item label="确认密码" prop="confirm_password">
+          <el-input v-model="pwdForm.confirm_password" type="password" show-password placeholder="请再次输入新密码" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="changePwdVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleChangePassword" :loading="changingPwd">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { ElMessageBox } from 'element-plus'
+import { ElMessageBox, ElMessage } from 'element-plus'
+import request from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
@@ -153,7 +198,75 @@ const handleCommand = (command) => {
       userStore.logout()
       router.push('/login')
     })
+  } else if (command === 'changePassword') {
+    openChangePasswordDialog()
   }
+}
+
+// Change Password
+const changePwdVisible = ref(false)
+const changingPwd = ref(false)
+const pwdFormRef = ref(null)
+
+const pwdForm = reactive({
+  old_password: '',
+  new_password: '',
+  confirm_password: ''
+})
+
+const validateConfirmPwd = (rule, value, callback) => {
+  if (value !== pwdForm.new_password) {
+    callback(new Error('两次输入的密码不一致'))
+  } else {
+    callback()
+  }
+}
+
+const pwdRules = {
+  old_password: [
+    { required: true, message: '请输入当前密码', trigger: 'blur' }
+  ],
+  new_password: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, max: 100, message: '密码长度6-100个字符', trigger: 'blur' }
+  ],
+  confirm_password: [
+    { required: true, message: '请确认新密码', trigger: 'blur' },
+    { validator: validateConfirmPwd, trigger: 'blur' }
+  ]
+}
+
+const openChangePasswordDialog = () => {
+  pwdForm.old_password = ''
+  pwdForm.new_password = ''
+  pwdForm.confirm_password = ''
+  changePwdVisible.value = true
+}
+
+const handleChangePassword = async () => {
+  if (!pwdFormRef.value) return
+  
+  await pwdFormRef.value.validate(async (valid) => {
+    if (!valid) return
+    
+    changingPwd.value = true
+    try {
+      await request({
+        url: '/auth/change-password',
+        method: 'post',
+        data: {
+          old_password: pwdForm.old_password,
+          new_password: pwdForm.new_password
+        }
+      })
+      ElMessage.success('密码修改成功')
+      changePwdVisible.value = false
+    } catch (e) {
+      ElMessage.error(e.response?.data?.detail || '密码修改失败')
+    } finally {
+      changingPwd.value = false
+    }
+  })
 }
 
 watch(route, () => {

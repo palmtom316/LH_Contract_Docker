@@ -59,6 +59,18 @@ const routes = [
                 name: 'Reports',
                 component: () => import('@/views/reports/ReportDashboard.vue'),
                 meta: { title: '报表统计', icon: 'DataAnalysis' }
+            },
+            {
+                path: 'users',
+                name: 'UserManagement',
+                component: () => import('@/views/users/UserManagement.vue'),
+                meta: { title: '用户管理', icon: 'User' }
+            },
+            {
+                path: 'audit',
+                name: 'AuditLog',
+                component: () => import('@/views/audit/AuditLog.vue'),
+                meta: { title: '审计日志', icon: 'Document' }
             }
         ]
     },

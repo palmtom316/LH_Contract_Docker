@@ -47,11 +47,13 @@ async def list_contracts(
     page_size: int = Query(10, ge=1, le=100, description="Items per page (max 100)"),
     keyword: Optional[str] = None,
     status: Optional[str] = None,
+    start_date: Optional[date] = Query(None, description="Start date for filtering"),
+    end_date: Optional[date] = Query(None, description="End date for filtering"),
     current_user: User = Depends(get_current_active_user),
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
     """List upstream contracts with pagination and filtering"""
-    return await service.list_contracts(page, page_size, keyword, status)
+    return await service.list_contracts(page, page_size, keyword, status, start_date, end_date)
 
 
 @router.get("/export/excel", response_class=StreamingResponse)

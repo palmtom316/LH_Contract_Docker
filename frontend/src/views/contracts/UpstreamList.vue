@@ -1,177 +1,286 @@
 <template>
   <div class="app-container">
-    <!-- Search Bar -->
-    <el-card class="filter-container" shadow="never">
-      <el-form :inline="true" :model="queryParams" class="demo-form-inline">
-        <el-form-item label="关键词">
-          <el-input v-model="queryParams.keyword" placeholder="合同名称/编号/甲方" clearable @keyup.enter="handleQuery" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="queryParams.status" placeholder="合同状态" clearable style="width: 120px">
-            <el-option label="执行中" value="执行中" />
-            <el-option label="进行中" value="进行中" />
-            <el-option label="已完工" value="已完工" />
-            <el-option label="已结算" value="已结算" />
-            <el-option label="质保到期" value="质保到期" />
-            <el-option label="合同终止" value="合同终止" />
-            <el-option label="合同中止" value="合同中止" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-          <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-          <el-button type="warning" icon="Download" @click="handleExport">导出Excel</el-button>
-          <el-dropdown @command="handleImportCommand" style="margin-left: 10px;">
-            <el-button type="info" icon="Upload">
-              导入Excel<el-icon class="el-icon--right"><arrow-down /></el-icon>
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="template">下载导入模板</el-dropdown-item>
-                <el-dropdown-item command="import">选择Excel文件导入</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-          <el-button type="success" icon="Plus" @click="handleAdd" style="margin-left: 10px;">新建合同</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+    <el-tabs v-model="activeTab" @tab-change="handleTabChange">
+      <!-- Tab 1: Contract Management -->
+      <el-tab-pane label="合同管理" name="management">
+        <!-- Search Bar -->
+        <el-card class="filter-container" shadow="never">
+          <el-form :inline="true" :model="queryParams" class="demo-form-inline">
+            <el-form-item label="关键词">
+              <el-input v-model="queryParams.keyword" placeholder="合同名称/编号/甲方" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="状态">
+              <el-select v-model="queryParams.status" placeholder="合同状态" clearable style="width: 120px">
+                <el-option label="执行中" value="执行中" />
+                <el-option label="进行中" value="进行中" />
+                <el-option label="已完工" value="已完工" />
+                <el-option label="已结算" value="已结算" />
+                <el-option label="质保到期" value="质保到期" />
+                <el-option label="合同终止" value="合同终止" />
+                <el-option label="合同中止" value="合同中止" />
+              </el-select>
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+              <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+              <el-button type="warning" icon="Download" @click="handleExport">导出Excel</el-button>
+              <el-dropdown @command="handleImportCommand" style="margin-left: 10px;">
+                <el-button type="info" icon="Upload">
+                  导入Excel<el-icon class="el-icon--right"><arrow-down /></el-icon>
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="template">下载导入模板</el-dropdown-item>
+                    <el-dropdown-item command="import">选择Excel文件导入</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+              <el-button type="success" icon="Plus" @click="handleAdd" style="margin-left: 10px;">新建合同</el-button>
+            </el-form-item>
+          </el-form>
+        </el-card>
 
-    <!-- Table View (PC) -->
-    <el-card v-if="!isMobile" class="table-container" shadow="always">
-      <el-table 
-        v-loading="loading" 
-        :data="contractList" 
-        style="width: 100%" 
-        border
-        highlight-current-row
-        show-summary
-        :summary-method="getSummaries"
-        class="custom-footer-table"
-        :footer-cell-style="footerCellStyle"
-      >
-        <el-table-column prop="serial_number" label="合同序号" width="100" align="center" fixed="left" />
+        <!-- Table View (PC) -->
+        <el-card v-if="!isMobile" class="table-container" shadow="always">
+          <el-table 
+            v-loading="loading" 
+            :data="contractList" 
+            style="width: 100%" 
+            border
+            highlight-current-row
+            show-summary
+            :summary-method="getSummaries"
+            class="custom-footer-table"
+            :footer-cell-style="footerCellStyle"
+          >
+            <el-table-column prop="serial_number" label="合同序号" width="100" align="center" fixed="left" />
+            <el-table-column prop="contract_code" label="合同编号" min-width="140" show-overflow-tooltip />
+            <el-table-column prop="contract_name" label="合同名称" min-width="220">
+              <template #default="scope">
+                <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.contract_name }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="party_a_name" label="甲方单位" min-width="180">
+              <template #default="scope">
+                <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.party_a_name }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="party_b_name" label="乙方单位" min-width="180">
+              <template #default="scope">
+                <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.party_b_name }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="contract_amount" label="签约金额" width="140" align="right">
+              <template #default="scope">
+                ¥ {{ formatMoney(scope.row.contract_amount) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="sign_date" label="签约时间" width="120" align="center" />
+            <el-table-column prop="status" label="状态" width="100" align="center">
+              <template #default="scope">
+                <el-tag :type="getStatusType(scope.row.status)">{{ scope.row.status }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="company_category" label="公司合同分类" width="130" align="center" show-overflow-tooltip />
+            <el-table-column label="合同文件" width="100" align="center">
+              <template #default="scope">
+                <el-button 
+                  v-if="scope.row.contract_file_path" 
+                  link 
+                  type="primary" 
+                  size="small"
+                  icon="Document"
+                  @click="openPdfInNewTab(scope.row.contract_file_path)"
+                >查看</el-button>
+                <span v-else class="text-gray">-</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="190" fixed="right">
+              <template #default="scope">
+                <el-button link type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
+                <el-button link type="primary" size="small" @click="handleDetail(scope.row)">详情</el-button>
+                <el-button link type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
 
+          <!-- Pagination -->
+          <div class="pagination-container">
+            <el-pagination
+              v-model:current-page="queryParams.page"
+              v-model:page-size="queryParams.page_size"
+              :page-sizes="[10, 20, 50, 100]"
+              layout="total, sizes, prev, pager, next, jumper"
+              :total="total"
+              @size-change="getList"
+              @current-change="getList"
+            />
+          </div>
+        </el-card>
 
+        <!-- Card View (Mobile) -->
+        <div v-else class="card-list">
+          <el-card v-for="item in contractList" :key="item.id" class="contract-card" shadow="hover">
+            <div class="card-header">
+              <div class="title">{{ item.contract_name }}</div>
+              <el-tag :type="getStatusType(item.status)" size="small">{{ item.status }}</el-tag>
+            </div>
+            <div class="card-body">
+              <div class="info-row">
+                <span class="label">合同编号:</span>
+                <span class="value">{{ item.contract_code }}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">甲方:</span>
+                <span class="value">{{ item.party_a_name }}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">合同金额:</span>
+                <span class="value amount">¥ {{ formatMoney(item.contract_amount) }}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">签订日期:</span>
+                <span class="value">{{ item.sign_date }}</span>
+              </div>
+            </div>
+            <div class="card-footer">
+               <el-button 
+                v-if="item.contract_file_path" 
+                size="small" 
+                type="warning" 
+                icon="Document" 
+                circle
+                @click="handlePreview(item.contract_file_path)"
+              />
+              <el-button size="small" type="primary" @click="handleEdit(item)">编辑</el-button>
+              <el-button size="small" @click="handleDetail(item)">详情</el-button>
+              <el-button size="small" type="danger" @click="handleDelete(item)">删除</el-button>
+            </div>
+          </el-card>
 
-        <el-table-column prop="contract_code" label="合同编号" min-width="140" show-overflow-tooltip />
-        <el-table-column prop="contract_name" label="合同名称" min-width="220">
-          <template #default="scope">
-            <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.contract_name }}</div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="party_a_name" label="甲方单位" min-width="180">
-          <template #default="scope">
-            <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.party_a_name }}</div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="party_b_name" label="乙方单位" min-width="180">
-          <template #default="scope">
-            <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.party_b_name }}</div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="contract_amount" label="签约金额" width="140" align="right">
-          <template #default="scope">
-            ¥ {{ formatMoney(scope.row.contract_amount) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="sign_date" label="签约时间" width="120" align="center" />
-        <el-table-column prop="status" label="状态" width="100" align="center">
-          <template #default="scope">
-            <el-tag :type="getStatusType(scope.row.status)">{{ scope.row.status }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="company_category" label="公司合同分类" width="130" align="center" show-overflow-tooltip />
-        <el-table-column label="合同文件" width="100" align="center">
-          <template #default="scope">
-            <el-button 
-              v-if="scope.row.contract_file_path" 
-              link 
-              type="primary" 
-              size="small"
-              icon="Document"
-              @click="openPdfInNewTab(scope.row.contract_file_path)"
-            >查看</el-button>
-            <span v-else class="text-gray">-</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="190" fixed="right">
-          <template #default="scope">
-            <el-button link type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button link type="primary" size="small" @click="handleDetail(scope.row)">详情</el-button>
-            <el-button link type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <!-- Pagination -->
-      <div class="pagination-container">
-        <el-pagination
-          v-model:current-page="queryParams.page"
-          v-model:page-size="queryParams.page_size"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
-          @size-change="getList"
-          @current-change="getList"
-        />
-      </div>
-    </el-card>
-
-    <!-- Card View (Mobile) -->
-    <div v-else class="card-list">
-      <el-card v-for="item in contractList" :key="item.id" class="contract-card" shadow="hover">
-        <div class="card-header">
-          <div class="title">{{ item.contract_name }}</div>
-          <el-tag :type="getStatusType(item.status)" size="small">{{ item.status }}</el-tag>
+          <!-- Mobile Pagination -->
+          <div class="pagination-container">
+            <el-pagination
+              v-model:current-page="queryParams.page"
+              v-model:page-size="queryParams.page_size"
+              :page-sizes="[10, 20, 50]"
+              layout="total, prev, pager, next"
+              :total="total"
+              small
+              @size-change="getList"
+              @current-change="getList"
+            />
+          </div>
         </div>
-        <div class="card-body">
-          <div class="info-row">
-            <span class="label">合同编号:</span>
-            <span class="value">{{ item.contract_code }}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">甲方:</span>
-            <span class="value">{{ item.party_a_name }}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">合同金额:</span>
-            <span class="value amount">¥ {{ formatMoney(item.contract_amount) }}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">签订日期:</span>
-            <span class="value">{{ item.sign_date }}</span>
-          </div>
-        </div>
-        <div class="card-footer">
-           <el-button 
-            v-if="item.contract_file_path" 
-            size="small" 
-            type="warning" 
-            icon="Document" 
-            circle
-            @click="handlePreview(item.contract_file_path)"
-          />
-          <el-button size="small" type="primary" @click="handleEdit(item)">编辑</el-button>
-          <el-button size="small" @click="handleDetail(item)">详情</el-button>
-          <el-button size="small" type="danger" @click="handleDelete(item)">删除</el-button>
-        </div>
-      </el-card>
+      </el-tab-pane>
 
-      <!-- Mobile Pagination -->
-      <div class="pagination-container">
-        <el-pagination
-          v-model:current-page="queryParams.page"
-          v-model:page-size="queryParams.page_size"
-          :page-sizes="[10, 20, 50]"
-          layout="total, prev, pager, next"
-          :total="total"
-          small
-          @size-change="getList"
-          @current-change="getList"
-        />
-      </div>
-    </div>
+      <!-- Tab 2: Basic Information List -->
+      <el-tab-pane label="上游合同基本信息" name="basic_info">
+        <!-- Search Bar -->
+        <el-card class="filter-container" shadow="never">
+          <el-form :inline="true" :model="queryParams" class="demo-form-inline">
+            <el-form-item label="关键词">
+              <el-input v-model="queryParams.keyword" placeholder="合同序号/编号/名称/甲方" clearable @keyup.enter="handleQuery" />
+            </el-form-item>
+            <el-form-item label="签约日期">
+              <el-date-picker
+                v-model="dateRange"
+                type="daterange"
+                range-separator="至"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                value-format="YYYY-MM-DD"
+                unlink-panels
+                @change="handleQuery"
+              />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+              <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+            </el-form-item>
+          </el-form>
+        </el-card>
+
+        <!-- Table View -->
+        <el-card class="table-container" shadow="always">
+          <el-table 
+            v-loading="loading" 
+            :data="contractList" 
+            style="width: 100%" 
+            border
+            highlight-current-row
+            class="custom-footer-table"
+          >
+            <el-table-column prop="serial_number" label="合同序号" width="100" align="center" fixed="left" />
+            <el-table-column prop="contract_code" label="合同编号" min-width="140" show-overflow-tooltip />
+            <el-table-column prop="contract_name" label="合同名称" min-width="220" show-overflow-tooltip>
+              <template #default="scope">
+                <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.contract_name }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="party_a_name" label="合同甲方单位" min-width="200" show-overflow-tooltip>
+              <template #default="scope">
+                <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.party_a_name }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="contract_amount" label="签约金额" width="140" align="right">
+              <template #default="scope">
+                ¥ {{ formatMoney(scope.row.contract_amount) }}
+              </template>
+            </el-table-column>
+             <el-table-column prop="total_settlement" label="结算金额" width="140" align="right">
+              <template #default="scope">
+                <span v-if="scope.row.total_settlement">¥ {{ formatMoney(scope.row.total_settlement) }}</span>
+                <span v-else class="text-gray">-</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="sign_date" label="签约时间" width="120" align="center" />
+            <el-table-column prop="completion_date" label="完工时间" width="120" align="center" />
+            
+            <el-table-column label="合同文件" width="120" align="center">
+              <template #default="scope">
+                 <el-button v-if="scope.row.contract_file_path" link type="primary" icon="Document" @click="openPdfInNewTab(scope.row.contract_file_path)">查看</el-button>
+                 <span v-else class="text-gray">-</span>
+              </template>
+            </el-table-column>
+            
+            <el-table-column label="开工报告" width="120" align="center">
+              <template #default="scope">
+                 <el-button v-if="scope.row.start_report_path" link type="primary" icon="Document" @click="openPdfInNewTab(scope.row.start_report_path)">查看</el-button>
+                 <span v-else class="text-gray">-</span>
+              </template>
+            </el-table-column>
+            
+            <el-table-column label="竣工报告" width="120" align="center">
+              <template #default="scope">
+                 <el-button v-if="scope.row.completion_report_path" link type="primary" icon="Document" @click="openPdfInNewTab(scope.row.completion_report_path)">查看</el-button>
+                 <span v-else class="text-gray">-</span>
+              </template>
+            </el-table-column>
+            
+             <el-table-column label="结算审核文件" width="140" align="center">
+              <template #default="scope">
+                 <el-button v-if="scope.row.audit_report_path" link type="primary" icon="Document" @click="openPdfInNewTab(scope.row.audit_report_path)">查看</el-button>
+                 <span v-else class="text-gray">-</span>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <!-- Pagination -->
+          <div class="pagination-container">
+            <el-pagination
+              v-model:current-page="queryParams.page"
+              v-model:page-size="queryParams.page_size"
+              :page-sizes="[10, 20, 50, 100]"
+              layout="total, sizes, prev, pager, next, jumper"
+              :total="total"
+              @size-change="getList"
+              @current-change="getList"
+            />
+          </div>
+        </el-card>
+      </el-tab-pane>
+    </el-tabs>
 
     <!-- Edit/Create Dialog -->
     <el-dialog
@@ -433,12 +542,16 @@ const loading = ref(false)
 const total = ref(0)
 const contractList = ref([])
 const isMobile = ref(false)
+const activeTab = ref('management')
+const dateRange = ref([])
 
 const queryParams = reactive({
   page: 1,
   page_size: 10,
   keyword: '',
-  status: ''
+  status: '',
+  start_date: undefined,
+  end_date: undefined
 })
 
 const dialog = reactive({
@@ -521,6 +634,15 @@ const handleResize = () => {
 const getList = async () => {
   loading.value = true
   try {
+    // Handle Date Range for Basic Info Tab
+    if (activeTab.value === 'basic_info' && dateRange.value && dateRange.value.length === 2) {
+      queryParams.start_date = dateRange.value[0]
+      queryParams.end_date = dateRange.value[1]
+    } else {
+      queryParams.start_date = undefined
+      queryParams.end_date = undefined
+    }
+
     const res = await getContracts(queryParams)
     contractList.value = res.items
     total.value = res.total
@@ -540,9 +662,18 @@ const handleQuery = () => {
   getList()
 }
 
+const handleTabChange = () => {
+  queryParams.page = 1
+  queryParams.keyword = ''
+  queryParams.status = ''
+  dateRange.value = []
+  getList()
+}
+
 const resetQuery = () => {
   queryParams.keyword = ''
   queryParams.status = ''
+  dateRange.value = []
   handleQuery()
 }
 
@@ -604,7 +735,14 @@ const footerCellStyle = () => {
 const handleUploadRequest = async (option) => {
   uploading.value = true
   try {
-    const res = await uploadFile(option.file)
+    const serial = form.serial_number || '000'
+    const customName = `${serial}_${option.file.name}`
+    
+    const res = await uploadFile(option.file, {
+      subdir: 'upstream/contract',
+      custom_filename: customName
+    })
+    
     console.log('Upload response:', res)
     if (res && res.path) {
       form.contract_file_path = res.path
@@ -976,5 +1114,3 @@ onBeforeUnmount(() => {
   display: block !important;
 }
 </style>
-
-

@@ -1,5 +1,5 @@
 from sqlalchemy import select
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.services.auth import get_password_hash
 from app.database import AsyncSessionLocal
 
@@ -17,6 +17,7 @@ async def init_data():
                     email="admin@example.com",
                     full_name="Administrator",
                     hashed_password=get_password_hash("admin123"),
+                    role=UserRole.ADMIN,
                     is_active=True,
                     is_superuser=True
                 )

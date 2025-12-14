@@ -44,16 +44,16 @@
         <el-card shadow="hover" class="chart-card">
           <template #header>
             <div class="card-header">
-              <span>合同分类分布</span>
+              <span>合同分类</span>
             </div>
           </template>
           <el-row>
             <el-col :span="12">
-               <div style="text-align: center; font-size: 12px; font-weight: bold; margin-bottom: 5px;">按合同类别</div>
+               <div style="text-align: center; font-size: 12px; font-weight: bold; margin-bottom: 5px;">合同类别</div>
                <div ref="pieCategoryChartRef" style="height: 320px; width: 100%;"></div>
             </el-col>
             <el-col :span="12">
-               <div style="text-align: center; font-size: 12px; font-weight: bold; margin-bottom: 5px;">按公司分类</div>
+               <div style="text-align: center; font-size: 12px; font-weight: bold; margin-bottom: 5px;">自定类别</div>
                <div ref="pieCompanyChartRef" style="height: 320px; width: 100%;"></div>
             </el-col>
           </el-row>
@@ -79,10 +79,10 @@ let pieCompanyChart = null
 const currentYear = new Date().getFullYear().toString()
 
 const cardData = ref([
-  { title: '年度上游合同签约总金额', value: 0, count: 0, tag: '总览', color: '#1890FF', subInfo: '' },
-  { title: '年度下游及管理合同签约总金额', value: 0, count: 0, tag: '成本', color: '#FAAD14', subInfo: '' },
-  { title: '年度回款总金额', value: 0, tag: '收入', color: '#52C41A', subInfo: '本年度上游合同回款' },
-  { title: '年度付款总金额', value: 0, tag: '支出', color: '#FF4D4F', subInfo: '下游+管理+无合同费用' },
+  { title: '年度上游签约合计', value: 0, count: 0, tag: '总览', color: '#1890FF', subInfo: '' },
+  { title: '年度下游签约合计', value: 0, count: 0, tag: '成本', color: '#FAAD14', subInfo: '' },
+  { title: '年度回款', value: 0, tag: '收入', color: '#52C41A', subInfo: '本年度上游合同回款' },
+  { title: '年度付款', value: 0, tag: '支出', color: '#FF4D4F', subInfo: '下游+管理+无合同费用' },
 ])
 
 const formatCurrency = (val) => {

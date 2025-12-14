@@ -34,6 +34,7 @@ from app.models.contract_management import (
 from app.models.expense import (
     ExpenseNonContract
 )
+from app.models.audit_log import AuditLog
 
 __all__ = [
     # User
@@ -65,5 +66,8 @@ __all__ = [
     "FinanceManagementPayment",
     "ManagementSettlement",
     # Expense
-    "ExpenseNonContract"
+    "ExpenseNonContract",
+    # Audit
+    "AuditLog"
 ]
+

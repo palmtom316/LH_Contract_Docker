@@ -15,7 +15,8 @@ from app.models.user import User, UserRole
 from app.schemas.expense import (
     ExpenseCreate, ExpenseUpdate, ExpenseResponse, ExpenseListResponse
 )
-from app.services.auth import get_current_active_user, require_role
+from app.services.auth import get_current_active_user
+from app.core.permissions import require_permission, require_roles, Permission
 from app.services.expense_service import ExpenseService
 
 router = APIRouter()
@@ -32,7 +33,7 @@ async def export_expenses(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     upstream_contract_id: Optional[int] = None,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission(Permission.VIEW_EXPENSES)),
     service: ExpenseService = Depends(get_expense_service)
 ):
     """Export expenses to Excel"""
@@ -88,7 +89,7 @@ async def list_expenses(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     upstream_contract_id: Optional[int] = None,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission(Permission.VIEW_EXPENSES)),
     service: ExpenseService = Depends(get_expense_service)
 ):
     """List expenses with pagination and filtering"""
@@ -100,7 +101,7 @@ async def list_expenses(
 @router.post("/", response_model=ExpenseResponse, status_code=status.HTTP_201_CREATED)
 async def create_expense(
     expense_in: ExpenseCreate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission(Permission.CREATE_EXPENSES)),
     service: ExpenseService = Depends(get_expense_service)
 ):
     """Create new expense"""
@@ -110,7 +111,7 @@ async def create_expense(
 @router.get("/{expense_id}", response_model=ExpenseResponse)
 async def get_expense(
     expense_id: int,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission(Permission.VIEW_EXPENSES)),
     service: ExpenseService = Depends(get_expense_service)
 ):
     """Get expense details"""
@@ -124,7 +125,7 @@ async def get_expense(
 async def update_expense(
     expense_id: int,
     expense_in: ExpenseUpdate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission(Permission.EDIT_EXPENSES)),
     service: ExpenseService = Depends(get_expense_service)
 ):
     """Update expense"""
@@ -134,7 +135,7 @@ async def update_expense(
 @router.delete("/{expense_id}")
 async def delete_expense(
     expense_id: int,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission(Permission.DELETE_EXPENSES)),
     service: ExpenseService = Depends(get_expense_service)
 ):
     """Delete expense"""
@@ -146,9 +147,10 @@ async def delete_expense(
 async def approve_expense(
     expense_id: int,
     approved: bool = True,
-    current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.MANAGER])),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.CONTRACT_MANAGER, UserRole.FINANCE])),
     service: ExpenseService = Depends(get_expense_service)
 ):
     """Approve or reject expense"""
     await service.approve_expense(expense_id, approved, current_user.id)
     return {"message": f"费用已{'审核通过' if approved else '驳回'}"}
+
