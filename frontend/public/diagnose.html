@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>页面加载诊断</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+        }
+
+        .success {
+            color: green;
+        }
+
+        .error {
+            color: red;
+        }
+
+        .info {
+            color: blue;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>前端页面加载诊断工具</h1>
+    <div id="results"></div>
+
+    <script>
+        const results = [];
+        const log = (msg, type = 'info') => {
+            results.push(`<div class="${type}">[${new Date().toLocaleTimeString()}] ${msg}</div>`);
+            document.getElementById('results').innerHTML = results.join('');
+        };
+
+        async function diagnose() {
+            log('开始诊断...', 'info');
+
+            // 1. Check localStorage
+            log('1. 检查 localStorage...', 'info');
+            const token = localStorage.getItem('token');
+            const user = localStorage.getItem('user_info');
+            const perms = localStorage.getItem('user_permissions');
+
+            if (!token) {
+                log('  未找到 token - 请先登录', 'error');
+                return;
+            } else {
+                log('  ✓ token 存在', 'success');
+            }
+
+            if (user) {
+                const userObj = JSON.parse(user);
+                log(`  ✓ 用户: ${userObj.username} (${userObj.role})`, 'success');
+                log(`  is_superuser: ${userObj.is_superuser}`, 'info');
+            }
+
+            if (perms) {
+                const permsList = JSON.parse(perms);
+                log(`  ✓ 权限数量: ${permsList.length}`, 'success');
+                log(`  权限列表: ${permsList.join(', ')}`, 'info');
+            }
+
+            // 2. Test API connectivity
+            log('2. 测试 API 连接...', 'info');
+            try {
+                const resp = await fetch('http://localhost:8000/api/v1/contracts/upstream/?page=1&page_size=1', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    log(`  ✓ 上游合同 API 正常 (总数: ${data.total})`, 'success');
+                } else {
+                    log(`  ✗ 上游合同 API 失败: ${resp.status} ${resp.statusText}`, 'error');
+                }
+            } catch (e) {
+                log(`  ✗ 上游合同 API 错误: ${e.message}`, 'error');
+            }
+
+            // 3. Navigate and check errors
+            log('3. 尝试导航到上游合同页面...', 'info');
+            log('  请手动点击左侧菜单的"上游合同"，然后按 F12 查看 Console 标签页', 'info');
+            log('  如果有红色错误，请截图或复制错误信息', 'info');
+        }
+
+        diagnose();
+    </script>
+</body>
+
+</html>

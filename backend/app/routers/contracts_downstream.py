@@ -106,7 +106,7 @@ async def create_contract(
     service: ContractDownstreamService = Depends(get_contract_service)
 ):
     """Create new downstream contract"""
-    return await service.create_contract(contract_in, current_user.id)
+    return await service.create_contract(contract_in, current_user)
 
 
 @router.get("/{contract_id}", response_model=ContractDownstreamResponse)
@@ -130,7 +130,7 @@ async def update_contract(
     service: ContractDownstreamService = Depends(get_contract_service)
 ):
     """Update contract"""
-    return await service.update_contract(contract_id, contract_in)
+    return await service.update_contract(contract_id, contract_in, current_user)
 
 
 @router.delete("/{contract_id}")
@@ -140,7 +140,7 @@ async def delete_contract(
     service: ContractDownstreamService = Depends(get_contract_service)
 ):
     """Delete contract"""
-    await service.delete_contract(contract_id)
+    await service.delete_contract(contract_id, current_user)
     return {"message": "合同已删除"}
 
 

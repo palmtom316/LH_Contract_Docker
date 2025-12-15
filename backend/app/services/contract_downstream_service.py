@@ -15,6 +15,8 @@ from app.models.contract_upstream import ContractUpstream
 from app.schemas.contract_downstream import ContractDownstreamCreate, ContractDownstreamUpdate
 from app.services.cache import cache, dashboard_cache_key
 from app.services.status_service import calculate_contract_status
+from app.models.user import User
+from app.services.audit_service import create_audit_log, AuditAction, ResourceType
 
 class ContractDownstreamService:
     def __init__(self, db: AsyncSession):
@@ -26,7 +28,6 @@ class ContractDownstreamService:
 
     async def get_contract(self, contract_id: int) -> Optional[ContractDownstream]:
         """Get contract by ID (with upstream relation for common usage)"""
-        # We also need upstream_contract for the name property often
         query = select(ContractDownstream).options(
             selectinload(ContractDownstream.upstream_contract),
             selectinload(ContractDownstream.payables),
@@ -49,7 +50,6 @@ class ContractDownstreamService:
         status: Optional[str] = None
     ) -> Dict[str, Any]:
         """List contracts with filtering and pagination"""
-        # Use selectinload for all relations to support calculated properties without N+1
         query = select(ContractDownstream).options(
             selectinload(ContractDownstream.upstream_contract),
             selectinload(ContractDownstream.payables),
@@ -119,7 +119,7 @@ class ContractDownstreamService:
         result = await self.db.execute(query)
         return result.scalars().all()
 
-    async def create_contract(self, contract_in: ContractDownstreamCreate, user_id: int) -> ContractDownstream:
+    async def create_contract(self, contract_in: ContractDownstreamCreate, user: User) -> ContractDownstream:
         """Create new downstream contract"""
         # Check unique serial_number
         if contract_in.serial_number:
@@ -136,23 +136,39 @@ class ContractDownstreamService:
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="合同编号已存在")
 
-        contract = ContractDownstream(**contract_in.model_dump(), created_by=user_id)
+        contract = ContractDownstream(**contract_in.model_dump(), created_by=user.id)
         self.db.add(contract)
         await self.db.commit()
         await self.db.refresh(contract)
         
         # Invalidate dashboard cache
         await self._invalidate_dashboard_cache()
+
+        # Audit Log
+        await create_audit_log(
+            db=self.db,
+            user=user,
+            action=AuditAction.CREATE,
+            resource_type=ResourceType.DOWNSTREAM_CONTRACT,
+            resource_id=contract.id,
+            resource_name=contract.contract_name,
+            new_values=contract_in.model_dump(mode='json'),
+            description=f"创建下游合同: {contract.contract_name}"
+        )
         
-        # Return with eager loaded relations if needed (though usually create returns simple object, 
-        # but front-end might expect correct structure for computed fields)
+        # Return with eager loaded relations if needed 
         return await self.get_contract(contract.id)
 
-    async def update_contract(self, contract_id: int, contract_in: ContractDownstreamUpdate) -> ContractDownstream:
+    async def update_contract(self, contract_id: int, contract_in: ContractDownstreamUpdate, user: User) -> ContractDownstream:
         """Update existing contract"""
         contract = await self.get_contract(contract_id)
         if not contract:
             raise HTTPException(status_code=404, detail="合同不存在")
+
+        old_values = {
+            k: getattr(contract, k) for k in contract_in.model_dump(exclude_unset=True).keys() 
+            if hasattr(contract, k)
+        }
 
         update_data = contract_in.model_dump(exclude_unset=True, exclude={'upstream_contract_name_snapshot'})
 
@@ -183,18 +199,52 @@ class ContractDownstreamService:
         await self.db.refresh(contract)
         
         await self._invalidate_dashboard_cache()
+
+        # Audit Log
+        await create_audit_log(
+            db=self.db,
+            user=user,
+            action=AuditAction.UPDATE,
+            resource_type=ResourceType.DOWNSTREAM_CONTRACT,
+            resource_id=contract.id,
+            resource_name=contract.contract_name,
+            old_values=old_values,
+            new_values=update_data,
+            description=f"更新下游合同: {contract.contract_name}"
+        )
+
         return contract
 
-    async def delete_contract(self, contract_id: int) -> None:
+    async def delete_contract(self, contract_id: int, user: User) -> None:
         """Delete contract"""
         contract = await self.get_contract(contract_id)
         if not contract:
             raise HTTPException(status_code=404, detail="合同不存在")
+        
+        contract_name = contract.contract_name
+        contract_data = {
+            "id": contract.id,
+            "serial_number": contract.serial_number,
+            "contract_name": contract.contract_name,
+            "contract_code": contract.contract_code
+        }
 
         await self.db.delete(contract)
         await self.db.commit()
         
         await self._invalidate_dashboard_cache()
+
+        # Audit Log
+        await create_audit_log(
+            db=self.db,
+            user=user,
+            action=AuditAction.DELETE,
+            resource_type=ResourceType.DOWNSTREAM_CONTRACT,
+            resource_id=contract_id,
+            resource_name=contract_name,
+            old_values=contract_data,
+            description=f"删除下游合同: {contract_name}"
+        )
 
     async def refresh_contract_status(self, contract_id: int) -> None:
         """Recalculate and update contract status"""
@@ -215,4 +265,3 @@ class ContractDownstreamService:
             await self.db.commit()
             
         await self._invalidate_dashboard_cache()
-

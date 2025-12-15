@@ -194,7 +194,21 @@ const rules = {
     { min: 3, max: 50, message: '用户名长度3-50个字符', trigger: 'blur' }
   ],
   email: [
-    { type: 'email', message: '请输入有效的邮箱地址', trigger: 'blur' }
+    { 
+      type: 'email', 
+      message: '请输入有效的邮箱地址', 
+      trigger: 'blur',
+      // Only validate if email is not empty
+      validator: (rule, value, callback) => {
+        if (!value || value.trim() === '') {
+          callback() // Allow empty email
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          callback(new Error('请输入有效的邮箱地址'))
+        } else {
+          callback()
+        }
+      }
+    }
   ],
   role: [
     { required: true, message: '请选择角色', trigger: 'change' }

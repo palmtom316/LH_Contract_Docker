@@ -210,16 +210,56 @@ async def get_expense_breakdown(
         down_filters.append(extract('month', FinanceDownstreamPayment.payment_date) == month)
         mgmt_filters.append(extract('month', FinanceManagementPayment.payment_date) == month)
 
-    # 1. Non-Contract Expense by Category
+    # 1. Non-Contract Expense by Classification (Expense Type)
     stmt_nc_cat = select(
-        ExpenseNonContract.attribution,
+        ExpenseNonContract.expense_type,
         func.count(ExpenseNonContract.id),
         func.sum(ExpenseNonContract.amount)
-    ).where(*nc_filters).group_by(ExpenseNonContract.attribution)
+    ).where(*nc_filters).group_by(ExpenseNonContract.expense_type)
     
     res_nc_cat = await db.execute(stmt_nc_cat)
+    
+    # Map for translation
+    expense_type_map = {
+        'MANAGEMENT': '管理费',
+        'TRAINING': '培训费',
+        'CATERING': '餐饮费',
+        'TRANSPORT': '交通费',
+        'CONSULTING': '咨询费',
+        'BUSINESS': '业务费',
+        'LEASING': '租赁费',
+        'QUALIFICATION': '资质费',
+        'VEHICLE': '车辆使用费',
+        # Keep Chinese keys if they exist directly
+        '工资': '工资',
+        '奖金': '奖金',
+        '培训费': '培训费',
+        '资质费': '资质费',
+        '办公费': '办公费',
+        '餐饮费': '餐饮费',
+        '房屋租赁': '房屋租赁',
+        '交通费': '交通费',
+        '车辆使用费': '车辆使用费',
+        '其他租赁': '其他租赁',
+        '水电费': '水电费',
+        '业务费': '业务费',
+        '住宿费': '住宿费',
+        '通讯费': '通讯费',
+        '投标费': '投标费',
+        '中介费': '中介费',
+        '零星采购': '零星采购',
+        '其他费用': '其他费用'
+    }
+
     # value = amount for charts
-    nc_breakdown = [{"name": r[0] or "未分类", "count": r[1], "value": float(r[2] or 0)} for r in res_nc_cat.all()]
+    nc_breakdown = []
+    for r in res_nc_cat.all():
+        raw_type = r[0] or "未分类"
+        name = expense_type_map.get(raw_type, raw_type)
+        nc_breakdown.append({"name": name, "count": r[1], "value": float(r[2] or 0)})
+    
+    # Sort by value descending to show top expenses first
+    nc_breakdown.sort(key=lambda x: x['value'], reverse=True)
     
     # 2. Downstream Payments Total
     stmt_down_total = select(func.sum(FinanceDownstreamPayment.amount)).where(*down_filters)
@@ -1247,10 +1287,26 @@ async def export_association_report(
         res_exp = await db.execute(stmt_exp)
         exps = res_exp.scalars().all()
         
+        # Expense type translation mapping
+        expense_type_map = {
+            "MANAGEMENT": "管理费",
+            "TRAINING": "培训费",
+            "CATERING": "餐饮费",
+            "TRANSPORT": "交通费",
+            "CONSULTING": "咨询费",
+            "BUSINESS": "业务费",
+            "LEASING": "租赁费",
+            "QUALIFICATION": "资质费",
+            "VEHICLE": "车辆使用费"
+        }
+        
         exp_summary = {}
         for e in exps:
-            cat = e.category or "未分类"
-            exp_summary[cat] = exp_summary.get(cat, 0.0) + float(e.amount or 0)
+            # Group by expense_type (费用分类) and translate to Chinese
+            exp_type = e.expense_type or "未分类"
+            # Translate from English enum to Chinese
+            exp_type_cn = expense_type_map.get(exp_type, exp_type)
+            exp_summary[exp_type_cn] = exp_summary.get(exp_type_cn, 0.0) + float(e.amount or 0)
         exp_list = list(exp_summary.items())
         
         # Merge rows

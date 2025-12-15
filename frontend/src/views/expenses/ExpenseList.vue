@@ -71,10 +71,14 @@
       >
         <el-table-column prop="expense_code" label="编号" width="140" fixed />
         <el-table-column prop="expense_date" label="日期" width="120" sortable />
-        <el-table-column prop="attribution" label="费用归属" width="120" />
-        <el-table-column prop="category" label="费用分类" width="100">
+        <el-table-column label="费用归属" width="120">
           <template #default="scope">
-            <el-tag effect="plain">{{ scope.row.category }}</el-tag>
+            {{ translateCategory(scope.row.category) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="费用分类" width="100">
+          <template #default="scope">
+            <el-tag effect="plain">{{ translateExpenseType(scope.row.expense_type) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="上游合同名称" min-width="180">
@@ -155,16 +159,16 @@
 
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="费用归属" prop="attribution">
-              <el-select v-model="form.attribution" placeholder="请选择" style="width: 100%">
+            <el-form-item label="费用归属" prop="category">
+              <el-select v-model="form.category" placeholder="请选择" style="width: 100%">
                 <el-option label="公司费用" value="公司费用" />
                 <el-option label="项目费用" value="项目费用" />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="费用分类" prop="category">
-              <el-select v-model="form.category" placeholder="请选择" style="width: 100%">
+            <el-form-item label="费用分类" prop="expense_type">
+              <el-select v-model="form.expense_type" placeholder="请选择" style="width: 100%">
             <el-option label="工资" value="工资" />
             <el-option label="奖金" value="奖金" />
             <el-option label="培训费" value="培训费" />
@@ -188,7 +192,7 @@
           </el-col>
         </el-row>
 
-        <el-row :gutter="20" v-if="form.attribution === '项目费用'">
+        <el-row :gutter="20" v-if="form.category === '项目费用'">
           <el-col :span="24">
             <el-form-item label="关联上游" prop="upstream_contract_id">
               <el-select
@@ -295,22 +299,20 @@ const formRef = ref(null)
 const form = reactive({
   id: undefined,
   expense_code: '',
-  attribution: '',
+  category: '', // 费用归属（公司费用/项目费用）
+  expense_type: '', // 费用分类（工资、奖金等）
   upstream_contract_id: undefined,
-  category: '',
   amount: 0,
   tax_amount: 0,
   expense_date: '',
-
   description: '',
-  file_path: '',
   file_path: ''
 })
 
 const rules = {
   expense_code: [{ required: true, message: '请输入编号', trigger: 'blur' }],
-  attribution: [{ required: true, message: '请选择费用归属', trigger: 'change' }],
-  category: [{ required: true, message: '请选择费用分类', trigger: 'change' }],
+  category: [{ required: true, message: '请选择费用归属', trigger: 'change' }],
+  expense_type: [{ required: true, message: '请选择费用分类', trigger: 'change' }],
   amount: [{ required: true, message: '请输入金额', trigger: 'blur' }],
   expense_date: [{ required: true, message: '请选择日期', trigger: 'change' }]
 }
@@ -324,7 +326,6 @@ const getList = async () => {
       page_size: queryParams.page_size,
       attribution: queryParams.attribution,
       category: queryParams.category,
-
       upstream_contract_id: queryParams.upstream_contract_id || undefined
     }
     // Handle date range
@@ -404,10 +405,8 @@ const footerCellStyle = () => {
 const handleExport = async () => {
   try {
     const params = {
-
       attribution: queryParams.attribution,
       category: queryParams.category,
-
       upstream_contract_id: queryParams.upstream_contract_id || undefined
     }
     
@@ -433,16 +432,14 @@ const handleExport = async () => {
 const resetForm = () => {
   form.id = undefined
   form.expense_code = 'FY' + new Date().getTime().toString().substr(-8) // Generate simple code
-  form.attribution = ''
+  form.category = '' // 费用归属
+  form.expense_type = '' // 费用分类
   form.upstream_contract_id = undefined
-  form.category = ''
   form.amount = 0
   form.tax_amount = 0
   form.expense_date = new Date().toISOString().split('T')[0]
-
   form.description = ''
   form.file_path = ''
-  fileList.value = []
   fileList.value = []
 }
 
@@ -570,6 +567,50 @@ const viewExpenseFile = (filePath) => {
   } else {
     ElMessage.warning('没有可查看的文件')
   }
+}
+
+// Translation functions
+const translateCategory = (category) => {
+  const map = {
+    'COMPANY': '公司费用',
+    'PROJECT': '项目费用',
+    '公司费用': '公司费用',
+    '项目费用': '项目费用'
+  }
+  return map[category] || category || '-'
+}
+
+const translateExpenseType = (expenseType) => {
+  const map = {
+    'MANAGEMENT': '管理费',
+    'TRAINING': '培训费',
+    'CATERING': '餐饮费',
+    'TRANSPORT': '交通费',
+    'CONSULTING': '咨询费',
+    'BUSINESS': '业务费',
+    'LEASING': '租赁费',
+    'QUALIFICATION': '资质费',
+    'VEHICLE': '车辆使用费',
+    '工资': '工资',
+    '奖金': '奖金',
+    '培训费': '培训费',
+    '资质费': '资质费',
+    '办公费': '办公费',
+    '餐饮费': '餐饮费',
+    '房屋租赁': '房屋租赁',
+    '交通费': '交通费',
+    '车辆使用费': '车辆使用费',
+    '其他租赁': '其他租赁',
+    '水电费': '水电费',
+    '业务费': '业务费',
+    '住宿费': '住宿费',
+    '通讯费': '通讯费',
+    '投标费': '投标费',
+    '中介费': '中介费',
+    '零星采购': '零星采购',
+    '其他费用': '其他费用'
+  }
+  return map[expenseType] || expenseType || '-'
 }
 
 onMounted(() => {

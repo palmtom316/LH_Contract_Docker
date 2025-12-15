@@ -442,15 +442,29 @@ const loadPayments = async () => { payments.value = await getPayments(contractId
 const loadSettlements = async () => { settlements.value = await getSettlements(contractId) }
 
 const handleUpload = async (option) => {
+  console.log('===== handleUpload START =====')
+  console.log('Uploading file:', option.file.name)
+  console.log('financeForm BEFORE upload:', JSON.parse(JSON.stringify(financeForm)))
+  
   try {
     const result = await uploadFile(option.file)
+    console.log('Upload result:', result)
+    console.log('Setting file_path to:', result.path)
+    
     financeForm.file_path = result.path
+    
+    console.log('financeForm AFTER setting file_path:', JSON.parse(JSON.stringify(financeForm)))
+    console.log('financeForm.file_path value:', financeForm.file_path)
+    
     fileList.value = [{ name: option.file.name, url: result.path }]
     option.onSuccess(result)
+    ElMessage.success('上传成功')
   } catch (e) {
+    console.error('Upload error:', e)
     ElMessage.error('上传失败')
     option.onError(e)
   }
+  console.log('===== handleUpload END =====')
 }
 
 const openFinanceDialog = (type) => {
@@ -458,23 +472,64 @@ const openFinanceDialog = (type) => {
   financeDialog.visible = true
   financeDialog.isEdit = false
   financeDialog.editingId = null
-  Object.keys(financeForm).forEach(key => delete financeForm[key])
-  fileList.value = []
   
-  financeForm.contract_id = Number(contractId)
+  // Reset form with Object.assign to preserve reactivity
+  Object.assign(financeForm, {
+    contract_id: Number(contractId),
+    category: undefined,
+    amount: 0,
+    expected_date: '',
+    description: '',
+    file_path: '',
+    invoice_number: '',
+    tax_rate: 0,
+    invoice_date: '',
+    invoice_type: '',
+    supplier_name: '',
+    payment_date: '',
+    payment_method: '',
+    payee_name: '',
+    settlement_code: '',
+    settlement_amount: 0,
+    settlement_date: '',
+    completion_date: null,
+    warranty_date: null
+  })
+  
+  fileList.value = []
   
   if (type === 'payable') {
     financeDialog.title = '新增应付款'
-    Object.assign(financeForm, { category: '进度款', amount: 0, expected_date: '', description: '', file_path: '' })
+    financeForm.category = '进度款'
+    financeForm.amount = 0
+    financeForm.expected_date = ''
+    financeForm.description = ''
+    financeForm.file_path = ''
   } else if (type === 'invoice') {
     financeDialog.title = '新增收票记录'
-    Object.assign(financeForm, { invoice_number: '', amount: 0, tax_rate: 0, invoice_date: new Date().toISOString().split('T')[0], invoice_type: '专票', supplier_name: contract.value.party_b_name, file_path: '' })
+    financeForm.invoice_number = ''
+    financeForm.amount = 0
+    financeForm.tax_rate = 0
+    financeForm.invoice_date = new Date().toISOString().split('T')[0]
+    financeForm.invoice_type = '专票'
+    financeForm.supplier_name = contract.value.party_b_name
+    financeForm.file_path = ''
   } else if (type === 'payment') {
     financeDialog.title = '新增付款记录'
-    Object.assign(financeForm, { amount: 0, payment_date: new Date().toISOString().split('T')[0], payment_method: '银行转账', payee_name: contract.value.party_b_name, file_path: '' })
+    financeForm.amount = 0
+    financeForm.payment_date = new Date().toISOString().split('T')[0]
+    financeForm.payment_method = '银行转账'
+    financeForm.payee_name = contract.value.party_b_name
+    financeForm.file_path = ''
   } else if (type === 'settlement') {
     financeDialog.title = '新增结算记录'
-    Object.assign(financeForm, { settlement_code: '', settlement_amount: 0, settlement_date: new Date().toISOString().split('T')[0], completion_date: null, warranty_date: null, description: '', file_path: '' })
+    financeForm.settlement_code = ''
+    financeForm.settlement_amount = 0
+    financeForm.settlement_date = new Date().toISOString().split('T')[0]
+    financeForm.completion_date = null
+    financeForm.warranty_date = null
+    financeForm.description = ''
+    financeForm.file_path = ''
   }
 }
 
@@ -483,24 +538,65 @@ const openEditDialog = (type, row) => {
   financeDialog.visible = true
   financeDialog.isEdit = true
   financeDialog.editingId = row.id
-  Object.keys(financeForm).forEach(key => delete financeForm[key])
-  financeForm.contract_id = Number(contractId)
+  
+  // Reset form with Object.assign to preserve reactivity
+  Object.assign(financeForm, {
+    contract_id: Number(contractId),
+    category: undefined,
+    amount: 0,
+    expected_date: '',
+    description: '',
+    file_path: '',
+    invoice_number: '',
+    tax_rate: 0,
+    invoice_date: '',
+    invoice_type: '',
+    supplier_name: '',
+    payment_date: '',
+    payment_method: '',
+    payee_name: '',
+    settlement_code: '',
+    settlement_amount: 0,
+    settlement_date: '',
+    completion_date: null,
+    warranty_date: null
+  })
   
   if (type === 'payable') {
     financeDialog.title = '编辑应付款'
-    Object.assign(financeForm, { category: row.category, amount: row.amount, expected_date: row.expected_date, description: row.description, file_path: row.file_path || '' })
+    financeForm.category = row.category
+    financeForm.amount = row.amount
+    financeForm.expected_date = row.expected_date
+    financeForm.description = row.description
+    financeForm.file_path = row.file_path || ''
     fileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
   } else if (type === 'invoice') {
     financeDialog.title = '编辑收票记录'
-    Object.assign(financeForm, { invoice_number: row.invoice_number, amount: row.amount, tax_rate: row.tax_rate, invoice_date: row.invoice_date, invoice_type: row.invoice_type, supplier_name: row.supplier_name, file_path: row.file_path || '' })
+    financeForm.invoice_number = row.invoice_number
+    financeForm.amount = row.amount
+    financeForm.tax_rate = row.tax_rate
+    financeForm.invoice_date = row.invoice_date
+    financeForm.invoice_type = row.invoice_type
+    financeForm.supplier_name = row.supplier_name
+    financeForm.file_path = row.file_path || ''
     fileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
   } else if (type === 'payment') {
     financeDialog.title = '编辑付款记录'
-    Object.assign(financeForm, { amount: row.amount, payment_date: row.payment_date, payment_method: row.payment_method, payee_name: row.payee_name, file_path: row.file_path || '' })
+    financeForm.amount = row.amount
+    financeForm.payment_date = row.payment_date
+    financeForm.payment_method = row.payment_method
+    financeForm.payee_name = row.payee_name
+    financeForm.file_path = row.file_path || ''
     fileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
   } else if (type === 'settlement') {
     financeDialog.title = '编辑结算记录'
-    Object.assign(financeForm, { settlement_code: row.settlement_code, settlement_amount: row.settlement_amount, settlement_date: row.settlement_date, completion_date: row.completion_date, warranty_date: row.warranty_date, description: row.description, file_path: row.file_path || '' })
+    financeForm.settlement_code = row.settlement_code
+    financeForm.settlement_amount = row.settlement_amount
+    financeForm.settlement_date = row.settlement_date
+    financeForm.completion_date = row.completion_date
+    financeForm.warranty_date = row.warranty_date
+    financeForm.description = row.description
+    financeForm.file_path = row.file_path || ''
     fileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
   }
 }

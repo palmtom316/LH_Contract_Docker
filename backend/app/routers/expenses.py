@@ -105,7 +105,7 @@ async def create_expense(
     service: ExpenseService = Depends(get_expense_service)
 ):
     """Create new expense"""
-    return await service.create_expense(expense_in, current_user.id)
+    return await service.create_expense(expense_in, current_user)
 
 
 @router.get("/{expense_id}", response_model=ExpenseResponse)
@@ -129,7 +129,7 @@ async def update_expense(
     service: ExpenseService = Depends(get_expense_service)
 ):
     """Update expense"""
-    return await service.update_expense(expense_id, expense_in, current_user.id)
+    return await service.update_expense(expense_id, expense_in, current_user)
 
 
 @router.delete("/{expense_id}")
@@ -139,7 +139,7 @@ async def delete_expense(
     service: ExpenseService = Depends(get_expense_service)
 ):
     """Delete expense"""
-    await service.delete_expense(expense_id)
+    await service.delete_expense(expense_id, current_user)
     return {"message": "费用记录已删除"}
 
 
@@ -151,6 +151,6 @@ async def approve_expense(
     service: ExpenseService = Depends(get_expense_service)
 ):
     """Approve or reject expense"""
-    await service.approve_expense(expense_id, approved, current_user.id)
+    await service.approve_expense(expense_id, approved, current_user)
     return {"message": f"费用已{'审核通过' if approved else '驳回'}"}
 

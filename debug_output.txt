@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "D:\LH_Contract_Docker\debug2.py", line 12, in <module>
+    print(f"\u2713 Logged in")
+    ~~~~~^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'gbk' codec can't encode character '\u2713' in position 0: illegal multibyte sequence

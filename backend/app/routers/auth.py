@@ -20,6 +20,7 @@ from app.services.auth import (
     get_current_active_user
 )
 from app.core.permissions import get_user_permissions
+from app.services.audit_service import create_audit_log, AuditAction, ResourceType, get_client_ip, get_user_agent
 from app.config import settings
 
 router = APIRouter()
@@ -31,6 +32,7 @@ async def register(
     db: AsyncSession = Depends(get_db)
 ):
     """Register a new user"""
+    # ... existing register logic ...
     # Check if username exists
     result = await db.execute(select(User).where(User.username == user_data.username))
     if result.scalar_one_or_none():
@@ -61,6 +63,11 @@ async def register(
     await db.commit()
     await db.refresh(new_user)
     
+    # Audit log for registration (usually implicit system action or self-registration)
+    # If this is admin registering users, we might want current_user dependency. 
+    # But for public registration, we leave user=new_user or None.
+    # Assuming public registration for now or handle in separate admin user create.
+    
     return new_user
 
 
@@ -71,7 +78,6 @@ async def login(
     db: AsyncSession = Depends(get_db)
 ):
     """User login - get access token"""
-    from app.services.audit_service import create_audit_log, AuditAction, ResourceType, get_client_ip, get_user_agent
     
     # Find user by username
     result = await db.execute(select(User).where(User.username == form_data.username))
@@ -122,6 +128,7 @@ async def login(
 
 @router.post("/login/json", response_model=Token)
 async def login_json(
+    request: Request,
     user_in: UserLogin,
     db: AsyncSession = Depends(get_db)
 ):
@@ -147,6 +154,17 @@ async def login_json(
     user.last_login = datetime.utcnow()
     await db.commit()
     await db.refresh(user)
+    
+    # Create audit log
+    await create_audit_log(
+        db=db,
+        user=user,
+        action=AuditAction.LOGIN,
+        resource_type=ResourceType.SYSTEM,
+        description=f"用户 {user.username} 登录系统 (JSON)",
+        ip_address=get_client_ip(request),
+        user_agent=get_user_agent(request)
+    )
     
     # Create access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -179,6 +197,7 @@ class ChangePasswordRequest(BaseModel):
 
 @router.post("/change-password")
 async def change_password(
+    request: Request,
     password_data: ChangePasswordRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
@@ -192,6 +211,17 @@ async def change_password(
     
     current_user.hashed_password = get_password_hash(password_data.new_password)
     await db.commit()
+    
+    # Audit log
+    await create_audit_log(
+        db=db,
+        user=current_user,
+        action=AuditAction.CHANGE_PASSWORD,
+        resource_type=ResourceType.USER,
+        description=f"用户 {current_user.username} 修改密码",
+        ip_address=get_client_ip(request),
+        user_agent=get_user_agent(request)
+    )
     
     return {"message": "密码修改成功"}
 

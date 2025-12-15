@@ -1,10 +1,15 @@
 import logging
+import logging.config
+import os
 import sys
 from pathlib import Path
 from app.config import settings
 
-# Create logs directory if it doesn't exist
-LOG_DIR = Path("/app/logs")
+# Get the project root directory (backend/)
+PROJECT_ROOT = Path(__file__).parent.parent
+LOG_DIR = PROJECT_ROOT / "logs"
+
+# Ensure log directory exists
 LOG_DIR.mkdir(exist_ok=True)
 
 LOGGING_CONFIG = {
@@ -25,22 +30,23 @@ LOGGING_CONFIG = {
             "class": "logging.StreamHandler",
             "stream": sys.stdout,
         },
-        "file": {
-            "formatter": "default",
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": "/app/logs/app.log",
-            "maxBytes": 10485760,  # 10MB
-            "backupCount": 5,
-            "encoding": "utf8",
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': str(LOG_DIR / 'app.log'),
+            'when': 'midnight',
+            'interval': 1,
+            'backupCount': 7,
+            'formatter': 'default',
         },
-        "error_file": {
-            "formatter": "default",
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": "/app/logs/error.log",
-            "maxBytes": 10485760,  # 10MB
-            "backupCount": 5,
-            "encoding": "utf8",
-            "level": "ERROR",
+        'error_file': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': str(LOG_DIR / 'error.log'),
+            'when': 'midnight',
+            'interval': 1,
+            'backupCount': 30,
+            'formatter': 'default',
         },
     },
     "loggers": {

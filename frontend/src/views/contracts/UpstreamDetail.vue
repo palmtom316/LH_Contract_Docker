@@ -527,16 +527,29 @@ const formatReceivableCategory = (value) => {
 }
 
 const handleUploadRequest = async (option) => {
+  console.log('===== handleUploadRequest START =====')
+  console.log('Uploading file:', option.file.name)
+  console.log('financeForm BEFORE upload:', JSON.parse(JSON.stringify(financeForm)))
+  
   try {
     const res = await uploadFile(option.file)
+    console.log('Upload response:', res)
+    console.log('Setting file_path to:', res.path)
+    
     financeForm.file_path = res.path
+    
+    console.log('financeForm AFTER setting file_path:', JSON.parse(JSON.stringify(financeForm)))
+    console.log('financeForm.file_path value:', financeForm.file_path)
+    
     fileList.value = [{ name: option.file.name, url: res.path }]
     option.onSuccess(res)
     ElMessage.success('上传成功')
   } catch (e) {
+    console.error('Upload error:', e)
     ElMessage.error('上传失败')
     option.onError(e)
   }
+  console.log('===== handleUploadRequest END =====')
 }
 
 const handleInvoiceUpload = async (option) => {
@@ -588,49 +601,76 @@ const openFinanceDialog = (type) => {
   financeDialog.visible = true
   financeDialog.isEdit = false
   financeDialog.editingId = null
-  // Reset form
-  Object.keys(financeForm).forEach(key => delete financeForm[key])
-  fileList.value = [] // Reset file list
   
-  financeForm.contract_id = Number(contractId)
+  // Reset form - use Object.assign with empty object to preserve reactivity
+  Object.assign(financeForm, {
+    contract_id: Number(contractId),
+    category: undefined,
+    amount: 0,
+    expected_date: '',
+    description: '',
+    file_path: '',
+    invoice_number: '',
+    tax_rate: '',
+    invoice_date: '',
+    invoice_type: '',
+    receipt_date: '',
+    payment_method: '',
+    payer_name: '',
+    payer_account: '',
+    settlement_code: '',
+    settlement_amount: 0,
+    settlement_date: '',
+    completion_date: null,
+    warranty_date: null,
+    status: '',
+    audit_report_path: '',
+    start_report_path: '',
+    completion_report_path: ''
+  })
+  
+  fileList.value = [] // Reset file list
   
   if (type === 'receivable') {
     financeDialog.title = '新增应收款'
-    Object.assign(financeForm, {
-      category: 'PROGRESS_PAYMENT', amount: 0, expected_date: '', description: '',
-      file_path: ''
-    })
+    financeForm.category = 'PROGRESS_PAYMENT'
+    financeForm.amount = 0
+    financeForm.expected_date = ''
+    financeForm.description = ''
+    financeForm.file_path = ''
   } else if (type === 'invoice') {
     financeDialog.title = '新增开票记录'
     invoiceFileList.value = [] // Reset invoice file list
-    Object.assign(financeForm, {
-      invoice_number: '', amount: 0, tax_rate: '13', invoice_date: new Date().toISOString().split('T')[0], invoice_type: '专票', file_path: ''
-    })
+    financeForm.invoice_number = ''
+    financeForm.amount = 0
+    financeForm.tax_rate = '13'
+    financeForm.invoice_date = new Date().toISOString().split('T')[0]
+    financeForm.invoice_type = '专票'
+    financeForm.file_path = ''
   } else if (type === 'receipt') {
     financeDialog.title = '新增回款记录'
-    Object.assign(financeForm, {
-      amount: 0, receipt_date: new Date().toISOString().split('T')[0], payment_method: '银行转账', payer_name: contract.value.party_a_name,
-      file_path: ''
-    })
+    financeForm.amount = 0
+    financeForm.receipt_date = new Date().toISOString().split('T')[0]
+    financeForm.payment_method = '银行转账'
+    financeForm.payer_name = contract.value.party_a_name
+    financeForm.file_path = ''
   } else if (type === 'settlement') {
     financeDialog.title = '新增结算记录'
     // Reset settlement report file lists
     auditReportFileList.value = []
     startReportFileList.value = []
     completionReportFileList.value = []
-    Object.assign(financeForm, {
-      settlement_code: '',
-      settlement_amount: 0,
-      settlement_date: new Date().toISOString().split('T')[0],
-      completion_date: null,
-      warranty_date: null,
-      status: '待审核',
-      description: '',
-      file_path: '',
-      audit_report_path: '',
-      start_report_path: '',
-      completion_report_path: ''
-    })
+    financeForm.settlement_code = ''
+    financeForm.settlement_amount = 0
+    financeForm.settlement_date = new Date().toISOString().split('T')[0]
+    financeForm.completion_date = null
+    financeForm.warranty_date = null
+    financeForm.status = '待审核'
+    financeForm.description = ''
+    financeForm.file_path = ''
+    financeForm.audit_report_path = ''
+    financeForm.start_report_path = ''
+    financeForm.completion_report_path = ''
   }
 }
 
@@ -639,57 +679,73 @@ const openEditDialog = (type, row) => {
   financeDialog.visible = true
   financeDialog.isEdit = true
   financeDialog.editingId = row.id
-  // Reset form and populate with row data
-  Object.keys(financeForm).forEach(key => delete financeForm[key])
-  financeForm.contract_id = Number(contractId)
+  
+  // Reset form first to clear all fields, then populate
+  Object.assign(financeForm, {
+    contract_id: Number(contractId),
+    category: undefined,
+    amount: 0,
+    expected_date: '',
+    description: '',
+    file_path: '',
+    invoice_number: '',
+    tax_rate: '',
+    invoice_date: '',
+    invoice_type: '',
+    receipt_date: '',
+    payment_method: '',
+    payer_name: '',
+    payer_account: '',
+    settlement_code: '',
+    settlement_amount: 0,
+    settlement_date: '',
+    completion_date: null,
+    warranty_date: null,
+    status: '',
+    audit_report_path: '',
+    start_report_path: '',
+    completion_report_path: ''
+  })
   
   if (type === 'receivable') {
     financeDialog.title = '编辑应收款'
-    Object.assign(financeForm, {
-      category: row.category,
-      amount: row.amount,
-      expected_date: row.expected_date,
-      description: row.description,
-      file_path: row.file_path || ''
-    })
+    financeForm.category = row.category
+    financeForm.amount = row.amount
+    financeForm.expected_date = row.expected_date
+    financeForm.description = row.description
+    financeForm.file_path = row.file_path || ''
     fileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
   } else if (type === 'invoice') {
     financeDialog.title = '编辑挂账记录'
-    Object.assign(financeForm, {
-      invoice_number: row.invoice_number,
-      amount: row.amount,
-      tax_rate: row.tax_rate,
-      invoice_date: row.invoice_date,
-      invoice_type: row.invoice_type,
-      description: row.description,
-      file_path: row.file_path || ''
-    })
+    financeForm.invoice_number = row.invoice_number
+    financeForm.amount = row.amount
+    financeForm.tax_rate = row.tax_rate
+    financeForm.invoice_date = row.invoice_date
+    financeForm.invoice_type = row.invoice_type
+    financeForm.description = row.description
+    financeForm.file_path = row.file_path || ''
     invoiceFileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
   } else if (type === 'receipt') {
     financeDialog.title = '编辑回款记录'
-    Object.assign(financeForm, {
-      amount: row.amount,
-      receipt_date: row.receipt_date,
-      payment_method: row.payment_method,
-      payer_name: row.payer_name,
-      file_path: row.file_path || ''
-    })
+    financeForm.amount = row.amount
+    financeForm.receipt_date = row.receipt_date
+    financeForm.payment_method = row.payment_method
+    financeForm.payer_name = row.payer_name
+    financeForm.file_path = row.file_path || ''
     fileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
   } else if (type === 'settlement') {
     financeDialog.title = '编辑结算记录'
-    Object.assign(financeForm, {
-      settlement_code: row.settlement_code,
-      settlement_amount: row.settlement_amount,
-      settlement_date: row.settlement_date,
-      completion_date: row.completion_date,
-      warranty_date: row.warranty_date,
-      status: row.status,
-      description: row.description,
-      file_path: row.file_path || '',
-      audit_report_path: row.audit_report_path || '',
-      start_report_path: row.start_report_path || '',
-      completion_report_path: row.completion_report_path || ''
-    })
+    financeForm.settlement_code = row.settlement_code
+    financeForm.settlement_amount = row.settlement_amount
+    financeForm.settlement_date = row.settlement_date
+    financeForm.completion_date = row.completion_date
+    financeForm.warranty_date = row.warranty_date
+    financeForm.status = row.status
+    financeForm.description = row.description
+    financeForm.file_path = row.file_path || ''
+    financeForm.audit_report_path = row.audit_report_path || ''
+    financeForm.start_report_path = row.start_report_path || ''
+    financeForm.completion_report_path = row.completion_report_path || ''
     auditReportFileList.value = row.audit_report_path ? [{ name: '审核报告', url: row.audit_report_path }] : []
     startReportFileList.value = row.start_report_path ? [{ name: '开工报告', url: row.start_report_path }] : []
     completionReportFileList.value = row.completion_report_path ? [{ name: '竣工报告', url: row.completion_report_path }] : []

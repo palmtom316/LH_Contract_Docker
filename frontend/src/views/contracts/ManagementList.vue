@@ -175,7 +175,7 @@
             filterable
             remote
             reserve-keyword
-            placeholder="搜索关联的上游合同(编号/名称)"
+            placeholder="搜索关联的上游合同(序号/编号/名称)"
             :remote-method="searchUpstream"
             :loading="upstreamLoading"
             style="width: 100%"

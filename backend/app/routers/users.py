@@ -27,14 +27,39 @@ async def read_users(
     db: AsyncSession = Depends(get_db)
 ):
     """Get list of users (Admin only)"""
-    result = await db.execute(select(User).offset(skip).limit(limit))
-    users = result.scalars().all()
-    
-    # Return with permissions
-    return [
-        UserResponse.from_orm_with_permissions(u, get_user_permissions(u))
-        for u in users
-    ]
+    try:
+        result = await db.execute(select(User).offset(skip).limit(limit))
+        users = result.scalars().all()
+        
+        # Return with permissions - handle errors for each user
+        user_responses = []
+        for u in users:
+            try:
+                user_responses.append(
+                    UserResponse.from_orm_with_permissions(u, get_user_permissions(u))
+                )
+            except Exception as e:
+                # If individual user fails, log and skip
+                print(f"Error processing user {u.username}: {e}")
+                # Add basic response without permissions as fallback
+                user_responses.append(UserResponse(
+                    id=u.id,
+                    username=u.username,
+                    email=u.email,
+                    full_name=u.full_name,
+                    role=u.role,
+                    role_display=ROLE_DISPLAY_NAMES.get(u.role, str(u.role)),
+                    is_active=u.is_active,
+                    is_superuser=u.is_superuser,
+                    created_at=u.created_at,
+                    updated_at=u.updated_at,
+                    last_login=u.last_login,
+                    permissions=[]
+                ))
+        return user_responses
+    except Exception as e:
+        print(f"Error fetching users: {e}")
+        raise HTTPException(status_code=500, detail=f"获取用户列表失败: {str(e)}")
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -115,17 +140,23 @@ async def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
         
-    # Update fields
-    if user_in.email is not None:
+        
+    # Update fields - Use model_dump to check which fields were explicitly set
+    update_data = user_in.model_dump(exclude_unset=True)
+    
+    if 'email' in update_data:
+        # Email was explicitly provided (could be string, empty string, or None)
+        new_email = update_data['email']
         # Check email uniqueness if changed (only for non-empty email)
-        if user_in.email and user_in.email != user.email:
-            email_check = await db.execute(select(User).where(User.email == user_in.email))
+        if new_email and new_email != user.email:
+            email_check = await db.execute(select(User).where(User.email == new_email))
             if email_check.scalar_one_or_none():
                 raise HTTPException(status_code=400, detail="邮箱已被占用")
-        user.email = user_in.email if user_in.email else None
+        # Set to new value (could be None to clear it)
+        user.email = new_email if new_email else None
         
-    if user_in.full_name is not None:
-        user.full_name = user_in.full_name
+    if 'full_name' in update_data:
+        user.full_name = update_data['full_name']
         
     # Only Admin can update roles and active status
     if is_admin:

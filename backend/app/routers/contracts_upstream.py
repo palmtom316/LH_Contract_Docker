@@ -121,7 +121,7 @@ async def get_next_serial_number(
     return {"serial_number": next_sn}
 
 
-@router.post("/", response_model=ContractUpstreamResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)  # Temporarily remove response_model
 async def create_contract(
     contract_in: ContractUpstreamCreate,
     current_user: User = Depends(get_current_active_user),
@@ -129,7 +129,23 @@ async def create_contract(
 ):
     """Create new upstream contract"""
     try:
-        return await service.create_contract(contract_in, current_user.id)
+        # Pass full user object for audit logging
+        contract = await service.create_contract(contract_in, current_user)
+        
+        # Manually construct response to find problematic field
+        return {
+            "id": contract.id,
+            "serial_number": contract.serial_number,
+            "contract_code": contract.contract_code,
+            "contract_name": contract.contract_name,
+            "party_a_name": contract.party_a_name,
+            "party_b_name": contract.party_b_name,
+            "contract_amount": float(contract.contract_amount) if contract.contract_amount else 0.0,
+            "sign_date": contract.sign_date.isoformat() if contract.sign_date else None,
+            "status": contract.status,
+            "created_at": contract.created_at.isoformat() if contract.created_at else None,
+            # Add other safe fields
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -183,7 +199,7 @@ async def update_contract(
 ):
     """Update contract"""
     try:
-        updated_contract = await service.update_contract(contract_id, contract_in)
+        updated_contract = await service.update_contract(contract_id, contract_in, current_user)
         return updated_contract
     except HTTPException:
         raise
@@ -200,7 +216,7 @@ async def delete_contract(
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
     """Delete contract"""
-    await service.delete_contract(contract_id)
+    await service.delete_contract(contract_id, current_user)
     return {"message": "合同已删除"}
 
 

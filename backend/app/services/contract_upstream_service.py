@@ -15,6 +15,9 @@ from app.schemas.contract_upstream import ContractUpstreamCreate, ContractUpstre
 from app.services.cache import cache, dashboard_cache_key
 from app.services.status_service import calculate_contract_status
 
+from app.models.user import User
+from app.services.audit_service import create_audit_log, AuditAction, ResourceType
+
 class ContractUpstreamService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -120,37 +123,82 @@ class ContractUpstreamService:
         result = await self.db.execute(query)
         return result.scalars().all()
 
-    async def create_contract(self, contract_in: ContractUpstreamCreate, user_id: int) -> ContractUpstream:
+    async def create_contract(self, contract_in: ContractUpstreamCreate, user: User) -> ContractUpstream:
         """Create a new contract"""
-        # Check unique serial_number
-        if contract_in.serial_number:
-            existing_sn = await self.db.execute(
-                select(ContractUpstream).where(ContractUpstream.serial_number == contract_in.serial_number)
-            )
-            if existing_sn.scalar_one_or_none():
-                raise HTTPException(status_code=400, detail=f"合同序号 {contract_in.serial_number} 已存在")
+        import logging
+        logger = logging.getLogger(__name__)
         
-        # Check unique contract_code
-        existing = await self.db.execute(
-            select(ContractUpstream).where(ContractUpstream.contract_code == contract_in.contract_code)
-        )
-        if existing.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="合同编号已存在")
+        try:
+            logger.info(f"Creating contract with code: {contract_in.contract_code}")
             
-        contract = ContractUpstream(**contract_in.model_dump(), created_by=user_id)
-        self.db.add(contract)
-        await self.db.commit()
-        await self.db.refresh(contract)
-        
-        await self._invalidate_dashboard_cache()
-        return contract
+            # Check unique serial_number
+            if contract_in.serial_number:
+                logger.info(f"Checking serial_number: {contract_in.serial_number}")
+                existing_sn = await self.db.execute(
+                    select(ContractUpstream).where(ContractUpstream.serial_number == contract_in.serial_number)
+                )
+                if existing_sn.scalar_one_or_none():
+                    raise HTTPException(status_code=400, detail=f"合同序号 {contract_in.serial_number} 已存在")
+            
+            # Check unique contract_code
+            logger.info(f"Checking contract_code: {contract_in.contract_code}")
+            existing = await self.db.execute(
+                select(ContractUpstream).where(ContractUpstream.contract_code == contract_in.contract_code)
+            )
+            existing_contract = existing.scalar_one_or_none()
+            if existing_contract:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"合同编号 '{contract_in.contract_code}' 已被使用（合同名称：{existing_contract.contract_name}），请使用其他编号"
+                )
+            
+            logger.info("Creating contract object...")
+            contract = ContractUpstream(**contract_in.model_dump(), created_by=user.id)
+            
+            logger.info("Adding to database...")
+            self.db.add(contract)
+            
+            logger.info("Committing...")
+            await self.db.commit()
+            
+            logger.info("Refreshing...")
+            await self.db.refresh(contract)
+            
+            logger.info("Invalidating cache...")
+            await self._invalidate_dashboard_cache()
 
-    async def update_contract(self, contract_id: int, contract_in: ContractUpstreamUpdate) -> ContractUpstream:
+            # Audit Log
+            await create_audit_log(
+                db=self.db,
+                user=user,
+                action=AuditAction.CREATE,
+                resource_type=ResourceType.UPSTREAM_CONTRACT,
+                resource_id=contract.id,
+                resource_name=contract.contract_name,
+                new_values=contract_in.model_dump(mode='json'),
+                description=f"创建上游合同: {contract.contract_name}"
+            )
+            
+            logger.info(f"Contract created successfully: ID={contract.id}")
+            return contract
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error creating contract: {e}", exc_info=True)
+            raise
+
+    async def update_contract(self, contract_id: int, contract_in: ContractUpstreamUpdate, user: User) -> ContractUpstream:
         """Update existing contract"""
         contract = await self.get_contract(contract_id)
         if not contract:
             raise HTTPException(status_code=404, detail="合同不存在")
             
+        old_values = {
+            k: getattr(contract, k) for k in contract_in.model_dump(exclude_unset=True).keys() 
+            if hasattr(contract, k)
+        }
+
         update_data = contract_in.model_dump(exclude_unset=True)
         
         # Check serial_number uniqueness
@@ -170,8 +218,12 @@ class ContractUpstreamService:
                     ContractUpstream.id != contract_id
                 )
             )
-            if existing.scalar_one_or_none():
-                raise HTTPException(status_code=400, detail="合同编号已存在")
+            existing_contract = existing.scalar_one_or_none()
+            if existing_contract:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"合同编号 '{update_data['contract_code']}' 已被使用（合同名称：{existing_contract.contract_name}），请使用其他编号"
+                )
         
         for field, value in update_data.items():
             setattr(contract, field, value)
@@ -180,18 +232,52 @@ class ContractUpstreamService:
         await self.db.refresh(contract)
         
         await self._invalidate_dashboard_cache()
+
+        # Audit Log
+        await create_audit_log(
+            db=self.db,
+            user=user,
+            action=AuditAction.UPDATE,
+            resource_type=ResourceType.UPSTREAM_CONTRACT,
+            resource_id=contract.id,
+            resource_name=contract.contract_name,
+            old_values=old_values,
+            new_values=update_data,
+            description=f"更新上游合同: {contract.contract_name}"
+        )
+
         return contract
 
-    async def delete_contract(self, contract_id: int) -> None:
+    async def delete_contract(self, contract_id: int, user: User) -> None:
         """Delete contract"""
         contract = await self.get_contract(contract_id)
         if not contract:
             raise HTTPException(status_code=404, detail="合同不存在")
+        
+        contract_name = contract.contract_name
+        contract_data = {
+            "id": contract.id,
+            "serial_number": contract.serial_number,
+            "contract_name": contract.contract_name,
+            "contract_code": contract.contract_code
+        }
             
         await self.db.delete(contract)
         await self.db.commit()
         
         await self._invalidate_dashboard_cache()
+
+        # Audit Log
+        await create_audit_log(
+            db=self.db,
+            user=user,
+            action=AuditAction.DELETE,
+            resource_type=ResourceType.UPSTREAM_CONTRACT,
+            resource_id=contract_id,
+            resource_name=contract_name,
+            old_values=contract_data,
+            description=f"删除上游合同: {contract_name}"
+        )
 
     async def refresh_contract_status(self, contract_id: int) -> None:
         """Recalculate and update contract status"""

@@ -15,6 +15,8 @@ from app.models.contract_upstream import ContractUpstream
 from app.schemas.contract_management import ContractManagementCreate, ContractManagementUpdate
 from app.services.cache import cache, dashboard_cache_key
 from app.services.status_service import calculate_contract_status
+from app.models.user import User
+from app.services.audit_service import create_audit_log, AuditAction, ResourceType
 
 class ContractManagementService:
     def __init__(self, db: AsyncSession):
@@ -117,7 +119,7 @@ class ContractManagementService:
         result = await self.db.execute(query)
         return result.scalars().all()
 
-    async def create_contract(self, contract_in: ContractManagementCreate, user_id: int) -> ContractManagement:
+    async def create_contract(self, contract_in: ContractManagementCreate, user: User) -> ContractManagement:
         """Create new management contract"""
         # Check unique serial_number
         if contract_in.serial_number:
@@ -134,21 +136,38 @@ class ContractManagementService:
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="合同编号已存在")
 
-        contract = ContractManagement(**contract_in.model_dump(), created_by=user_id)
+        contract = ContractManagement(**contract_in.model_dump(), created_by=user.id)
         self.db.add(contract)
         await self.db.commit()
         await self.db.refresh(contract)
         
         await self._invalidate_dashboard_cache()
+
+        # Audit Log
+        await create_audit_log(
+            db=self.db,
+            user=user,
+            action=AuditAction.CREATE,
+            resource_type=ResourceType.MANAGEMENT_CONTRACT,
+            resource_id=contract.id,
+            resource_name=contract.contract_name,
+            new_values=contract_in.model_dump(mode='json'),
+            description=f"创建管理合同: {contract.contract_name}"
+        )
         
         # Return partial loaded object
         return await self.get_contract(contract.id)
 
-    async def update_contract(self, contract_id: int, contract_in: ContractManagementUpdate) -> ContractManagement:
+    async def update_contract(self, contract_id: int, contract_in: ContractManagementUpdate, user: User) -> ContractManagement:
         """Update existing contract"""
         contract = await self.get_contract(contract_id)
         if not contract:
             raise HTTPException(status_code=404, detail="合同不存在")
+
+        old_values = {
+            k: getattr(contract, k) for k in contract_in.model_dump(exclude_unset=True).keys() 
+            if hasattr(contract, k)
+        }
 
         update_data = contract_in.model_dump(exclude_unset=True, exclude={'upstream_contract_name_snapshot'})
 
@@ -179,18 +198,52 @@ class ContractManagementService:
         await self.db.refresh(contract)
         
         await self._invalidate_dashboard_cache()
+
+        # Audit Log
+        await create_audit_log(
+            db=self.db,
+            user=user,
+            action=AuditAction.UPDATE,
+            resource_type=ResourceType.MANAGEMENT_CONTRACT,
+            resource_id=contract.id,
+            resource_name=contract.contract_name,
+            old_values=old_values,
+            new_values=update_data,
+            description=f"更新管理合同: {contract.contract_name}"
+        )
+
         return contract
 
-    async def delete_contract(self, contract_id: int) -> None:
+    async def delete_contract(self, contract_id: int, user: User) -> None:
         """Delete contract"""
         contract = await self.get_contract(contract_id)
         if not contract:
             raise HTTPException(status_code=404, detail="合同不存在")
+        
+        contract_name = contract.contract_name
+        contract_data = {
+            "id": contract.id,
+            "serial_number": contract.serial_number,
+            "contract_name": contract.contract_name,
+            "contract_code": contract.contract_code
+        }
 
         await self.db.delete(contract)
         await self.db.commit()
         
         await self._invalidate_dashboard_cache()
+
+        # Audit Log
+        await create_audit_log(
+            db=self.db,
+            user=user,
+            action=AuditAction.DELETE,
+            resource_type=ResourceType.MANAGEMENT_CONTRACT,
+            resource_id=contract_id,
+            resource_name=contract_name,
+            old_values=contract_data,
+            description=f"删除管理合同: {contract_name}"
+        )
 
     async def refresh_contract_status(self, contract_id: int) -> None:
         """Recalculate and update contract status"""
