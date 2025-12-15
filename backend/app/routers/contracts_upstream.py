@@ -31,6 +31,7 @@ from app.schemas.contract_upstream import (
 )
 from app.services.auth import get_current_active_user
 from app.services.contract_upstream_service import ContractUpstreamService
+from app.core.permissions import require_permission, Permission
 
 router = APIRouter()
 
@@ -49,7 +50,7 @@ async def list_contracts(
     status: Optional[str] = None,
     start_date: Optional[date] = Query(None, description="Start date for filtering"),
     end_date: Optional[date] = Query(None, description="End date for filtering"),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission(Permission.VIEW_UPSTREAM_BASIC_INFO)),
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
     """List upstream contracts with pagination and filtering"""
@@ -60,7 +61,7 @@ async def list_contracts(
 async def export_contracts(
     keyword: Optional[str] = None,
     status: Optional[str] = None,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission(Permission.VIEW_UPSTREAM_BASIC_INFO)),
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
     """Export contracts to Excel"""
@@ -124,7 +125,7 @@ async def get_next_serial_number(
 @router.post("/", status_code=status.HTTP_201_CREATED)  # Temporarily remove response_model
 async def create_contract(
     contract_in: ContractUpstreamCreate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission(Permission.CREATE_UPSTREAM_CONTRACTS)),
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
     """Create new upstream contract"""
@@ -158,7 +159,7 @@ async def create_contract(
 @router.get("/{contract_id}", response_model=ContractUpstreamResponse)
 async def get_contract(
     contract_id: int,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission(Permission.VIEW_UPSTREAM_BASIC_INFO)),
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
     """Get contract details"""
@@ -194,7 +195,7 @@ async def get_contract_summary(
 async def update_contract(
     contract_id: int,
     contract_in: ContractUpstreamUpdate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission(Permission.EDIT_UPSTREAM_CONTRACTS)),
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
     """Update contract"""
@@ -212,12 +213,13 @@ async def update_contract(
 @router.delete("/{contract_id}")
 async def delete_contract(
     contract_id: int,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission(Permission.DELETE_UPSTREAM_CONTRACTS)),
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
     """Delete contract"""
     await service.delete_contract(contract_id, current_user)
     return {"message": "合同已删除"}
+
 
 
 # ===== Sub-resource Operations =====

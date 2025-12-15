@@ -6,7 +6,8 @@
     <!-- Sidebar -->
     <div class="sidebar-container" :class="{ 'collapsed': isCollapse }">
       <div class="logo-wrapper">
-        <el-icon class="logo-icon"><Monitor /></el-icon>
+        <img v-if="!isCollapse" src="@/assets/logo_new.png" class="logo-img" alt="logo" />
+        <el-icon v-else class="logo-icon"><Monitor /></el-icon>
         <transition name="fade">
           <span v-if="!isCollapse" class="logo-text">蓝海合同管理</span>
         </transition>
@@ -58,10 +59,10 @@
           <template #title>报表统计</template>
         </el-menu-item>
         
-        <!-- 用户管理 - 仅管理员可见 -->
-        <el-menu-item v-if="userStore.canManageUsers" index="/users">
-          <el-icon><User /></el-icon>
-          <template #title>用户管理</template>
+        <!-- 系统管理 - 仅管理员可见 -->
+        <el-menu-item v-if="userStore.canManageUsers" index="/system">
+          <el-icon><Setting /></el-icon>
+          <template #title>系统管理</template>
         </el-menu-item>
         
         <!-- 审计日志 - 仅管理员可见 -->
@@ -339,9 +340,16 @@ onBeforeUnmount(() => {
     white-space: nowrap;
     overflow: hidden;
     
+    .logo-img {
+      width: 25px; // Adjust based on preference
+      height: 25px;
+      margin-right: 12px;
+    }
+
     .logo-icon {
       font-size: 24px;
-      margin-right: 8px;
+      margin-right: 12px;
+      color: #fff;
     }
   }
   

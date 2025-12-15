@@ -141,7 +141,7 @@
       
       <!-- Payables -->
       <el-col :xs="24" :sm="12" :md="6">
-        <el-card shadow="hover" class="stat-card border-left-warning" style="height: 228px;">
+        <el-card shadow="hover" class="stat-card border-left-success" style="height: 228px;">
           <div class="card-content">
             <div class="card-title">
               {{ currentMonth ? `${currentMonth}月 ` : '' }}应付账款 (AP)
@@ -149,7 +149,7 @@
                  <el-icon><InfoFilled /></el-icon>
               </el-tooltip>
             </div>
-            <div class="card-amount text-warning">¥ {{ formatWan(apStats.outstanding) }} 万元</div>
+            <div class="card-amount text-primary">¥ {{ formatWan(apStats.outstanding) }} 万元</div>
             <div class="card-sub">
               <span class="text-primary">应付款: ¥ {{ formatWan(apStats.total_payable) }} 万元</span>
               <br>
@@ -157,7 +157,7 @@
             </div>
             <el-progress 
               :percentage="calcPercentage(apStats.total_paid, apStats.total_payable)" 
-              status="warning"
+              status="success"
               :stroke-width="10"
               class="ap-progress"
             >
@@ -1386,3 +1386,5 @@ onBeforeUnmount(() => {
   font-weight: bold;
 }
 </style>
+
+

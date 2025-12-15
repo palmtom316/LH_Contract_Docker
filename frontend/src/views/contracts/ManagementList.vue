@@ -21,7 +21,7 @@
         <el-form-item>
           <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
           <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-          <el-button type="success" icon="Plus" @click="handleAdd">新建合同</el-button>
+          <el-button v-if="userStore.canManageManagementContracts" type="success" icon="Plus" @click="handleAdd">新建合同</el-button>
           <el-button type="warning" icon="Download" @click="handleExport">导出Excel</el-button>
         </el-form-item>
       </el-form>
@@ -80,9 +80,9 @@
         </el-table-column>
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="scope">
-            <el-button link type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
+            <el-button v-if="userStore.canManageManagementContracts" link type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
             <el-button link type="primary" size="small" @click="handleDetail(scope.row)">详情</el-button>
-            <el-button link type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
+            <el-button v-if="userStore.canManageManagementContracts" link type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -123,9 +123,9 @@
           </div>
         </div>
         <div class="card-footer">
-          <el-button size="small" type="primary" @click="handleEdit(item)">编辑</el-button>
+          <el-button v-if="userStore.canManageManagementContracts" size="small" type="primary" @click="handleEdit(item)">编辑</el-button>
           <el-button size="small" @click="handleDetail(item)">详情</el-button>
-          <el-button size="small" type="danger" @click="handleDelete(item)">删除</el-button>
+          <el-button v-if="userStore.canManageManagementContracts" size="small" type="danger" @click="handleDelete(item)">删除</el-button>
         </div>
       </el-card>
     </div>
@@ -320,7 +320,9 @@ import { downloadExcel, generateFilename } from '@/utils/download'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Download, Document, Connection } from '@element-plus/icons-vue'
 import SmartAutocomplete from '@/components/SmartAutocomplete.vue'
+import { useUserStore } from '@/stores/user'
 
+const userStore = useUserStore()
 const router = useRouter()
 const loading = ref(false)
 const total = ref(0)

@@ -26,6 +26,7 @@ from app.schemas.contract_management import (
 )
 from app.services.auth import get_current_active_user
 from app.services.contract_management_service import ContractManagementService
+from app.core.permissions import require_permission, Permission
 
 router = APIRouter()
 
@@ -38,7 +39,7 @@ def get_contract_service(db: AsyncSession = Depends(get_db)) -> ContractManageme
 async def export_contracts(
     keyword: Optional[str] = None,
     status: Optional[str] = None,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission(Permission.VIEW_MANAGEMENT_BASIC_INFO)),
     service: ContractManagementService = Depends(get_contract_service)
 ):
     """Export management contracts to Excel"""
@@ -59,29 +60,32 @@ async def export_contracts(
                 "计价模式": c.pricing_mode.value if hasattr(c.pricing_mode, 'value') else c.pricing_mode,
                 "合同金额": float(c.contract_amount),
                 "签订日期": c.sign_date,
-                "状态": c.status
+                "状态": c.status,
+                "备注": c.notes
             })
             
         df = pd.DataFrame(data)
+        stream = io.BytesIO()
+        # Use pandas to write Excel to the stream
+        with pd.ExcelWriter(stream, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='管理合同')
+            
+        stream.seek(0)
         
-        # Save to Excel
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Contracts')
-        output.seek(0)
-        
-        filename = f"管理合同列表_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
+        filename = f"management_contracts_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
         encoded_filename = urllib.parse.quote(filename)
         
         return StreamingResponse(
-            output,
+            stream,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f"attachment; filename*=utf-8''{encoded_filename}"}
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"}
         )
+            
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"导出失败: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Export failed: {str(e)}"
+        )
 
 
 # ===== Contract Operations =====
@@ -92,7 +96,7 @@ async def list_contracts(
     page_size: int = Query(10, ge=1, le=100, description="Items per page (max 100)"),
     keyword: Optional[str] = None,
     status: Optional[str] = None,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission(Permission.VIEW_MANAGEMENT_BASIC_INFO)),
     service: ContractManagementService = Depends(get_contract_service)
 ):
     """List management contracts with pagination and filtering"""
@@ -102,7 +106,7 @@ async def list_contracts(
 @router.post("/", response_model=ContractManagementResponse, status_code=status.HTTP_201_CREATED)
 async def create_contract(
     contract_in: ContractManagementCreate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission(Permission.CREATE_MANAGEMENT_CONTRACTS)),
     service: ContractManagementService = Depends(get_contract_service)
 ):
     """Create new management contract"""
@@ -112,7 +116,7 @@ async def create_contract(
 @router.get("/{contract_id}", response_model=ContractManagementResponse)
 async def get_contract(
     contract_id: int,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission(Permission.VIEW_MANAGEMENT_BASIC_INFO)),
     service: ContractManagementService = Depends(get_contract_service)
 ):
     """Get contract details"""
@@ -126,7 +130,7 @@ async def get_contract(
 async def update_contract(
     contract_id: int,
     contract_in: ContractManagementUpdate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission(Permission.EDIT_MANAGEMENT_CONTRACTS)),
     service: ContractManagementService = Depends(get_contract_service)
 ):
     """Update contract"""
@@ -136,12 +140,13 @@ async def update_contract(
 @router.delete("/{contract_id}")
 async def delete_contract(
     contract_id: int,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission(Permission.DELETE_MANAGEMENT_CONTRACTS)),
     service: ContractManagementService = Depends(get_contract_service)
 ):
     """Delete contract"""
     await service.delete_contract(contract_id, current_user)
     return {"message": "合同已删除"}
+
 
 
 # ===== Sub-resource Operations =====

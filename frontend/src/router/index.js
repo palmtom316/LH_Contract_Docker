@@ -61,10 +61,10 @@ const routes = [
                 meta: { title: '报表统计', icon: 'DataAnalysis' }
             },
             {
-                path: 'users',
-                name: 'UserManagement',
-                component: () => import('@/views/users/UserManagement.vue'),
-                meta: { title: '用户管理', icon: 'User' }
+                path: 'system',
+                name: 'SystemManagement',
+                component: () => import('@/views/system/SystemManagement.vue'),
+                meta: { title: '系统管理', icon: 'Setting' }
             },
             {
                 path: 'audit',

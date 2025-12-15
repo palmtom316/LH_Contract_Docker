@@ -10,6 +10,7 @@ from app.models.user import User, UserRole
 from app.schemas.expense import ExpenseCreate, ExpenseUpdate
 from app.services.cache import cache, dashboard_cache_key
 from app.services.audit_service import create_audit_log, AuditAction, ResourceType
+from app.models.enums import ExpenseCategory, ExpenseType
 
 class ExpenseService:
     def __init__(self, db: AsyncSession):
@@ -32,8 +33,8 @@ class ExpenseService:
         page: int = 1,
         page_size: int = 10,
         keyword: Optional[str] = None,
-        attribution: Optional[str] = None,
         category: Optional[str] = None,
+        expense_type: Optional[str] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         upstream_contract_id: Optional[int] = None
@@ -49,12 +50,24 @@ class ExpenseService:
                 ExpenseNonContract.description.ilike(f"%{keyword}%")
             ]
             query = query.where(or_(*conditions))
-
-        if attribution:
-            query = query.where(ExpenseNonContract.attribution == attribution)
         
         if category:
-            query = query.where(ExpenseNonContract.category == category)
+            # Support both English Key and Chinese Value
+            search_vals = [category]
+            for item in ExpenseCategory:
+                if item.value == category:
+                    search_vals.append(item.name)
+                    break
+            query = query.where(ExpenseNonContract.category.in_(search_vals))
+            
+        if expense_type:
+            # Support both English Key and Chinese Value
+            search_vals = [expense_type]
+            for item in ExpenseType:
+                if item.value == expense_type:
+                    search_vals.append(item.name)
+                    break
+            query = query.where(ExpenseNonContract.expense_type.in_(search_vals))
             
         if upstream_contract_id:
             query = query.where(ExpenseNonContract.upstream_contract_id == upstream_contract_id)
@@ -92,8 +105,8 @@ class ExpenseService:
     async def list_all_expenses(
         self, 
         keyword: Optional[str] = None,
-        attribution: Optional[str] = None,
         category: Optional[str] = None,
+        expense_type: Optional[str] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         upstream_contract_id: Optional[int] = None
@@ -109,12 +122,24 @@ class ExpenseService:
                 ExpenseNonContract.description.ilike(f"%{keyword}%")
             ]
             query = query.where(or_(*conditions))
-
-        if attribution:
-            query = query.where(ExpenseNonContract.attribution == attribution)
         
         if category:
-            query = query.where(ExpenseNonContract.category == category)
+            # Support both English Key and Chinese Value
+            search_vals = [category]
+            for item in ExpenseCategory:
+                if item.value == category:
+                    search_vals.append(item.name)
+                    break
+            query = query.where(ExpenseNonContract.category.in_(search_vals))
+            
+        if expense_type:
+            # Support both English Key and Chinese Value
+            search_vals = [expense_type]
+            for item in ExpenseType:
+                if item.value == expense_type:
+                    search_vals.append(item.name)
+                    break
+            query = query.where(ExpenseNonContract.expense_type.in_(search_vals))
             
         if upstream_contract_id:
             query = query.where(ExpenseNonContract.upstream_contract_id == upstream_contract_id)

@@ -24,7 +24,7 @@
               <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
               <el-button icon="Refresh" @click="resetQuery">重置</el-button>
               <el-button type="warning" icon="Download" @click="handleExport">导出Excel</el-button>
-              <el-dropdown @command="handleImportCommand" style="margin-left: 10px;">
+              <el-dropdown @command="handleImportCommand" style="margin-left: 10px;" v-if="userStore.canManageUpstreamContracts">
                 <el-button type="info" icon="Upload">
                   导入Excel<el-icon class="el-icon--right"><arrow-down /></el-icon>
                 </el-button>
@@ -35,7 +35,7 @@
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
-              <el-button type="success" icon="Plus" @click="handleAdd" style="margin-left: 10px;">新建合同</el-button>
+              <el-button v-if="userStore.canManageUpstreamContracts" type="success" icon="Plus" @click="handleAdd" style="margin-left: 10px;">新建合同</el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -97,9 +97,9 @@
             </el-table-column>
             <el-table-column label="操作" width="190" fixed="right">
               <template #default="scope">
-                <el-button link type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
+                <el-button v-if="userStore.canManageUpstreamContracts" link type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
                 <el-button link type="primary" size="small" @click="handleDetail(scope.row)">详情</el-button>
-                <el-button link type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
+                <el-button v-if="userStore.canManageUpstreamContracts" link type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -152,9 +152,9 @@
                 circle
                 @click="handlePreview(item.contract_file_path)"
               />
-              <el-button size="small" type="primary" @click="handleEdit(item)">编辑</el-button>
+              <el-button v-if="userStore.canManageUpstreamContracts" size="small" type="primary" @click="handleEdit(item)">编辑</el-button>
               <el-button size="small" @click="handleDetail(item)">详情</el-button>
-              <el-button size="small" type="danger" @click="handleDelete(item)">删除</el-button>
+              <el-button v-if="userStore.canManageUpstreamContracts" size="small" type="danger" @click="handleDelete(item)">删除</el-button>
             </div>
           </el-card>
 
@@ -537,6 +537,9 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown } from '@element-plus/icons-vue'
 import SmartAutocomplete from '@/components/SmartAutocomplete.vue'
 import PdfViewer from '@/components/PdfViewer.vue'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
 
 const loading = ref(false)
 const total = ref(0)

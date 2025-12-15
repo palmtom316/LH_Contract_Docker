@@ -381,8 +381,8 @@ const getList = async () => {
     const params = {
       page: queryParams.page,
       page_size: queryParams.page_size,
-      attribution: queryParams.attribution,
-      category: queryParams.category,
+      category: queryParams.attribution, // "Company/Project" maps to category
+      expense_type: queryParams.category, // "Salary/Bonus" maps to expense_type
       upstream_contract_id: queryParams.upstream_contract_id || undefined
     }
     // Handle date range
@@ -462,8 +462,8 @@ const footerCellStyle = () => {
 const handleExport = async () => {
   try {
     const params = {
-      attribution: queryParams.attribution,
-      category: queryParams.category,
+      category: queryParams.attribution, // "Company/Project" maps to category
+      expense_type: queryParams.category, // "Salary/Bonus" maps to expense_type
       upstream_contract_id: queryParams.upstream_contract_id || undefined
     }
     

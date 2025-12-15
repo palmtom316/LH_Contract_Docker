@@ -85,3 +85,39 @@ async def get_resource_types(
             {"value": "系统", "label": "系统"},
         ]
     }
+
+
+@router.delete("/cleanup")
+async def delete_audit_logs_before_date(
+    before_date: str = Query(..., description="Delete logs before this date (YYYY-MM-DD)"),
+    current_user: User = Depends(require_roles([UserRole.ADMIN])),
+    db: AsyncSession = Depends(get_db)
+):
+    """Delete all audit logs before specified date (Admin only)"""
+    from datetime import datetime
+    from sqlalchemy import delete
+    from app.models.audit_log import AuditLog
+    
+    try:
+        # Parse date
+        cutoff_date = datetime.strptime(before_date, '%Y-%m-%d').date()
+        
+        # Delete logs before this date
+        stmt = delete(AuditLog).where(AuditLog.created_at < cutoff_date)
+        result = await db.execute(stmt)
+        await db.commit()
+        
+        deleted_count = result.rowcount
+        
+        return {
+            "success": True,
+            "message": f"成功删除 {deleted_count} 条审计日志",
+            "deleted_count": deleted_count,
+            "before_date": before_date
+        }
+    except ValueError:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="日期格式错误，请使用 YYYY-MM-DD 格式")
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=f"删除失败: {str(e)}")

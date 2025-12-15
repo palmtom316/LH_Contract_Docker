@@ -79,27 +79,23 @@
       </el-tab-pane>
 
       <!-- 2. Payables -->
-      <el-tab-pane label="应付款" name="payables">
+      <el-tab-pane label="应付款明细" name="payables">
         <div class="tab-actions">
-          <el-button type="warning" size="small" icon="Plus" @click="openFinanceDialog('payable')">新增应付款</el-button>
+          <el-button v-if="userStore.canManagePayables" type="primary" size="small" icon="Plus" @click="openFinanceDialog('payable')">新增应付款</el-button>
         </div>
         <el-table :data="payables" border style="width: 100%">
-          <el-table-column prop="category" label="款项类别" width="120" />
-          <el-table-column prop="amount" label="应付金额" align="right">
+          <el-table-column prop="category" label="应付款类别" width="120">
+            <template #default="{ row }">{{ formatReceivableCategory(row.category) }}</template>
+          </el-table-column>
+          <el-table-column prop="amount" label="金额" align="right">
             <template #default="{ row }">¥ {{ formatMoney(row.amount) }}</template>
           </el-table-column>
-          <el-table-column prop="expected_date" label="产生日期" width="120" />
-          <el-table-column label="审批文件" width="100" align="center">
-            <template #default="{ row }">
-               <el-link v-if="row.file_path" :href="getFileUrl(row.file_path)" target="_blank"><el-icon><Document /></el-icon></el-link>
-               <span v-else>-</span>
-            </template>
-          </el-table-column>
+          <el-table-column prop="expected_date" label="计划付款日期" width="120" />
           <el-table-column prop="description" label="备注" show-overflow-tooltip />
-          <el-table-column label="操作" width="120" align="center" fixed="right">
+           <el-table-column label="操作" width="120" align="center" fixed="right">
             <template #default="{ row }">
-              <el-button link type="primary" size="small" @click="openEditDialog('payable', row)">编辑</el-button>
-              <el-button link type="danger" size="small" @click="handleDelete('payable', row)">删除</el-button>
+              <el-button v-if="userStore.canManagePayables" link type="primary" size="small" @click="openEditDialog('payable', row)">编辑</el-button>
+              <el-button v-if="userStore.canManagePayables" link type="danger" size="small" @click="handleDelete('payable', row)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -108,7 +104,7 @@
       <!-- 3. Invoices (Received) -->
       <el-tab-pane label="挂账明细" name="invoices">
           <div class="tab-actions">
-          <el-button type="primary" size="small" icon="Plus" @click="openFinanceDialog('invoice')">新增挂账</el-button>
+          <el-button v-if="userStore.canManageInvoices" type="primary" size="small" icon="Plus" @click="openFinanceDialog('invoice')">新增挂账</el-button>
         </div>
         <el-table :data="invoices" border style="width: 100%">
           <el-table-column prop="invoice_number" label="发票号" width="150" />
@@ -137,8 +133,8 @@
           </el-table-column>
           <el-table-column label="操作" width="120" align="center" fixed="right">
             <template #default="{ row }">
-              <el-button link type="primary" size="small" @click="openEditDialog('invoice', row)">编辑</el-button>
-              <el-button link type="danger" size="small" @click="handleDelete('invoice', row)">删除</el-button>
+              <el-button v-if="userStore.canManageInvoices" link type="primary" size="small" @click="openEditDialog('invoice', row)">编辑</el-button>
+              <el-button v-if="userStore.canManageInvoices" link type="danger" size="small" @click="handleDelete('invoice', row)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -147,7 +143,7 @@
       <!-- 4. Payments -->
       <el-tab-pane label="付款明细" name="payments">
           <div class="tab-actions">
-          <el-button type="success" size="small" icon="Plus" @click="openFinanceDialog('payment')">新增付款</el-button>
+          <el-button v-if="userStore.canManagePayments" type="success" size="small" icon="Plus" @click="openFinanceDialog('payment')">新增付款</el-button>
         </div>
         <el-table :data="payments" border style="width: 100%">
           <el-table-column prop="payment_date" label="付款日期" width="120" />
@@ -164,8 +160,8 @@
           </el-table-column>
           <el-table-column label="操作" width="120" align="center" fixed="right">
             <template #default="{ row }">
-              <el-button link type="primary" size="small" @click="openEditDialog('payment', row)">编辑</el-button>
-              <el-button link type="danger" size="small" @click="handleDelete('payment', row)">删除</el-button>
+              <el-button v-if="userStore.canManagePayments" link type="primary" size="small" @click="openEditDialog('payment', row)">编辑</el-button>
+              <el-button v-if="userStore.canManagePayments" link type="danger" size="small" @click="handleDelete('payment', row)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -174,7 +170,7 @@
       <!-- 5. Settlements -->
       <el-tab-pane label="结算" name="settlements">
           <div class="tab-actions">
-          <el-button type="danger" size="small" icon="Plus" @click="openFinanceDialog('settlement')">新增结算</el-button>
+          <el-button v-if="userStore.canManageSettlements" type="danger" size="small" icon="Plus" @click="openFinanceDialog('settlement')">新增结算</el-button>
         </div>
         <el-table :data="settlements" border style="width: 100%">
           <el-table-column prop="settlement_code" label="结算单号" width="150" />
@@ -187,14 +183,14 @@
           <el-table-column label="审批文件" width="100" align="center">
             <template #default="{ row }">
                <el-link v-if="row.file_path" :href="getFileUrl(row.file_path)" target="_blank"><el-icon><Document /></el-icon></el-link>
-               <span v-else>-</span>
+               <span v-else style="color: #909399">-</span>
             </template>
           </el-table-column>
           <el-table-column prop="description" label="说明" show-overflow-tooltip />
           <el-table-column label="操作" width="120" align="center" fixed="right">
             <template #default="{ row }">
-              <el-button link type="primary" size="small" @click="openEditDialog('settlement', row)">编辑</el-button>
-              <el-button link type="danger" size="small" @click="handleDelete('settlement', row)">删除</el-button>
+              <el-button v-if="userStore.canManageSettlements" link type="primary" size="small" @click="openEditDialog('settlement', row)">编辑</el-button>
+              <el-button v-if="userStore.canManageSettlements" link type="danger" size="small" @click="handleDelete('settlement', row)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -365,7 +361,9 @@ import {
 import { uploadFile } from '@/api/common'
 import { getFileUrl, formatMoney, getStatusType } from '@/utils/common'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUserStore } from '@/stores/user'
 
+const userStore = useUserStore()
 const route = useRoute()
 const router = useRouter()
 const contractId = route.params.id

@@ -28,8 +28,8 @@ def get_expense_service(db: AsyncSession = Depends(get_db)) -> ExpenseService:
 @router.get("/export/excel", response_class=StreamingResponse)
 async def export_expenses(
     keyword: Optional[str] = None,
-    attribution: Optional[str] = None,
     category: Optional[str] = None,
+    expense_type: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     upstream_contract_id: Optional[int] = None,
@@ -39,7 +39,7 @@ async def export_expenses(
     """Export expenses to Excel"""
     try:
         expenses = await service.list_all_expenses(
-            keyword, attribution, category, start_date, end_date, upstream_contract_id
+            keyword, category, expense_type, start_date, end_date, upstream_contract_id
         )
         
         # Create DataFrame
@@ -48,8 +48,8 @@ async def export_expenses(
             data.append({
                 "编号": e.expense_code,
                 "日期": e.expense_date,
-                "费用归属": e.attribution,
-                "费用分类": e.category,
+                "费用归属": e.category, # Renamed to match UI meaning if needed, or keeping it logic
+                "费用分类": e.expense_type,
                 "关联上游合同": e.upstream_contract.contract_name if e.upstream_contract else None,
                 "说明": e.description,
                 "金额": float(e.amount),
@@ -84,8 +84,8 @@ async def list_expenses(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(10, ge=1, le=100, description="Items per page (max 100)"),
     keyword: Optional[str] = None,
-    attribution: Optional[str] = None,
     category: Optional[str] = None,
+    expense_type: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     upstream_contract_id: Optional[int] = None,
@@ -94,7 +94,7 @@ async def list_expenses(
 ):
     """List expenses with pagination and filtering"""
     return await service.list_expenses(
-        page, page_size, keyword, attribution, category, start_date, end_date, upstream_contract_id
+        page, page_size, keyword, category, expense_type, start_date, end_date, upstream_contract_id
     )
 
 
