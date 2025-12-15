@@ -1,10 +1,12 @@
 <template>
-  <div class="app-container" v-loading="loading">
+<div class="app-container">
     
     <!-- Header -->
     <div class="page-header">
       <div class="header-left">
-        <el-button link icon="ArrowLeft" @click="$router.back()">返回</el-button>
+        <div class="back-link" @click="handleBack">
+          <el-icon><ArrowLeft /></el-icon> 返回
+        </div>
         <h2 class="title">{{ contract.contract_name || '合同详情' }}</h2>
         <el-tag :type="getStatusType(contract.status)">{{ contract.status }}</el-tag>
       </div>
@@ -425,7 +427,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed, watch } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Document } from '@element-plus/icons-vue'
 import { 
@@ -834,9 +836,25 @@ const handleDelete = (type, row) => {
   }).catch(() => {})
 }
 
+
+
+// Force reload to avoid router freeze
+const handleBack = () => {
+  location.href = '/contracts/upstream'
+}
+
+// Resize handler function (named so we can remove it properly)
+const handleResize = () => {
+  isMobile.value = window.innerWidth < 768
+}
+
 onMounted(() => {
   loadData()
-  window.addEventListener('resize', () => isMobile.value = window.innerWidth < 768)
+  window.addEventListener('resize', handleResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -851,6 +869,24 @@ onMounted(() => {
     display: flex;
     align-items: center;
     gap: 15px;
+    
+    .back-link {
+      display: flex;
+      align-items: center;
+      color: #606266;
+      text-decoration: none;
+      font-size: 14px;
+      cursor: pointer;
+      line-height: 1;
+      
+      &:hover {
+        color: var(--color-primary);
+      }
+      
+      .el-icon {
+        margin-right: 4px;
+      }
+    }
     
     .title { margin: 0; font-size: 20px; }
   }
