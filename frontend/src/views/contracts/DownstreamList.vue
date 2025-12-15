@@ -324,6 +324,7 @@ import { getContracts, createContract, updateContract, deleteContract, exportCon
 import { getContracts as getUpstreamContracts, getContractSummary } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
 import { downloadExcel, generateFilename } from '@/utils/download'
+import { getFileUrl } from '@/utils/common'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Document, Refresh, Search, Plus, Download } from '@element-plus/icons-vue'
 import SmartAutocomplete from '@/components/SmartAutocomplete.vue'
@@ -512,14 +513,7 @@ const handleUpstreamSelect = async (val) => {
   }
 }
 
-const getFileUrl = (path) => {
-  if (!path) return ''
-  // If path starts with http, return as is
-  if (path.startsWith('http')) return path
-  // In dev environment, point to backend port 8000
-  // Use window.location.hostname to support access via IP
-  return `http://${window.location.hostname}:8000${path}`
-}
+// getFileUrl imported from @/utils/common
 
 // Upload
 const handleUpload = async (option) => {

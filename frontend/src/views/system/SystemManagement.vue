@@ -191,6 +191,7 @@ import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import UserManagement from '@/views/users/UserManagement.vue'
 import { deleteAuditLogsBefore } from '@/api/audit'
+import { backupSystem, backupDatabase } from '@/api/system'
 
 const activeTab = ref('users')
 const backupLoading = ref(false)
@@ -199,23 +200,42 @@ const resetLoading = ref(false)
 const auditDeleteLoading = ref(false)
 const auditDeleteDate = ref('')
 
+// Helper to download blob
+const downloadBlob = (blob, filename) => {
+  if (!blob) return
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(url)
+}
+
 // 系统备份
 const handleSystemBackup = async () => {
   try {
-    await ElMessageBox.confirm('确定要备份系统吗？', '提示', {
+    await ElMessageBox.confirm('确定要备份系统吗？此操作可能需要几分钟。', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     })
     
     backupLoading.value = true
-    // TODO: 调用备份API
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    ElMessage.success('系统备份成功')
+    const blob = await backupSystem()
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+    downloadBlob(blob, `lh_system_backup_${timestamp}.zip`)
+    ElMessage.success('系统备份下载成功')
   } catch (e) {
     if (e !== 'cancel') {
       console.error(e)
-      ElMessage.error('系统备份失败')
+      // request.js might have already shown an error, but we ensure we show specific detail if available
+      const msg = e.response?.data?.detail || e.message || '系统备份失败'
+      // Avoid duplicate messaging if possible, but prioritization is key for debug
+      if (!document.querySelector('.el-message')) { 
+         ElMessage.error(msg)
+      }
     }
   } finally {
     backupLoading.value = false
@@ -257,13 +277,17 @@ const handleDbBackup = async () => {
     })
     
     dbBackupLoading.value = true
-    // TODO: 调用数据库备份API
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    ElMessage.success('数据库备份成功')
+    const blob = await backupDatabase()
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+    downloadBlob(blob, `lh_contract_db_${timestamp}.sql`)
+    ElMessage.success('数据库备份下载成功')
   } catch (e) {
     if (e !== 'cancel') {
       console.error(e)
-      ElMessage.error('数据库备份失败')
+      const msg = e.response?.data?.detail || e.message || '数据库备份失败'
+      if (!document.querySelector('.el-message')) { 
+         ElMessage.error(msg)
+      }
     }
   } finally {
     dbBackupLoading.value = false

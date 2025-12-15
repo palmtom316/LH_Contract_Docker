@@ -106,7 +106,7 @@ async def system_info():
 
 
 # Import and include routers
-from app.routers import auth, users, contracts_upstream, contracts_downstream, contract_management, expenses, common, dashboard, reports, audit
+from app.routers import auth, users, contracts_upstream, contracts_downstream, contract_management, expenses, common, dashboard, reports, audit, system
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
@@ -118,6 +118,7 @@ app.include_router(common.router, prefix="/api/v1/common", tags=["Common"])
 app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
 app.include_router(audit.router, prefix="/api/v1/audit", tags=["Audit Logs"])
+app.include_router(system.router, prefix="/api/v1/system", tags=["System Management"])
 
 
 if __name__ == "__main__":
