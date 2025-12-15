@@ -21,7 +21,9 @@ class ExpenseService:
 
     async def get_expense(self, expense_id: int) -> Optional[ExpenseNonContract]:
         """Get expense by ID"""
-        query = select(ExpenseNonContract).where(ExpenseNonContract.id == expense_id)
+        query = select(ExpenseNonContract).options(
+            joinedload(ExpenseNonContract.upstream_contract)
+        ).where(ExpenseNonContract.id == expense_id)
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
@@ -30,22 +32,46 @@ class ExpenseService:
         page: int = 1,
         page_size: int = 10,
         keyword: Optional[str] = None,
-        status: Optional[str] = None
+        attribution: Optional[str] = None,
+        category: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        upstream_contract_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """List expenses with filtering and pagination"""
-        query = select(ExpenseNonContract)
+        query = select(ExpenseNonContract).options(
+            joinedload(ExpenseNonContract.upstream_contract)
+        )
 
         if keyword:
             conditions = [
                 ExpenseNonContract.expense_code.ilike(f"%{keyword}%"),
                 ExpenseNonContract.description.ilike(f"%{keyword}%")
             ]
-            # Check if fields exist or catch error? 
-            # Assuming expense_code and description exist on ExpenseNonContract as standard fields.
             query = query.where(or_(*conditions))
 
-        if status:
-            query = query.where(ExpenseNonContract.status == status)
+        if attribution:
+            query = query.where(ExpenseNonContract.attribution == attribution)
+        
+        if category:
+            query = query.where(ExpenseNonContract.category == category)
+            
+        if upstream_contract_id:
+            query = query.where(ExpenseNonContract.upstream_contract_id == upstream_contract_id)
+
+        if start_date:
+            try:
+                sd = datetime.strptime(start_date, '%Y-%m-%d').date()
+                query = query.where(ExpenseNonContract.expense_date >= sd)
+            except ValueError:
+                pass
+        
+        if end_date:
+            try:
+                ed = datetime.strptime(end_date, '%Y-%m-%d').date()
+                query = query.where(ExpenseNonContract.expense_date <= ed)
+            except ValueError:
+                pass
 
         # Count total
         count_query = select(func.count()).select_from(query.subquery())
@@ -63,9 +89,19 @@ class ExpenseService:
             "page_size": page_size
         }
 
-    async def list_all_expenses(self, keyword: Optional[str] = None, status: Optional[str] = None) -> List[ExpenseNonContract]:
+    async def list_all_expenses(
+        self, 
+        keyword: Optional[str] = None,
+        attribution: Optional[str] = None,
+        category: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        upstream_contract_id: Optional[int] = None
+    ) -> List[ExpenseNonContract]:
         """List all expenses for export"""
-        query = select(ExpenseNonContract)
+        query = select(ExpenseNonContract).options(
+            joinedload(ExpenseNonContract.upstream_contract)
+        )
         
         if keyword:
             conditions = [
@@ -74,8 +110,28 @@ class ExpenseService:
             ]
             query = query.where(or_(*conditions))
 
-        if status:
-            query = query.where(ExpenseNonContract.status == status)
+        if attribution:
+            query = query.where(ExpenseNonContract.attribution == attribution)
+        
+        if category:
+            query = query.where(ExpenseNonContract.category == category)
+            
+        if upstream_contract_id:
+            query = query.where(ExpenseNonContract.upstream_contract_id == upstream_contract_id)
+
+        if start_date:
+            try:
+                sd = datetime.strptime(start_date, '%Y-%m-%d').date()
+                query = query.where(ExpenseNonContract.expense_date >= sd)
+            except ValueError:
+                pass
+        
+        if end_date:
+            try:
+                ed = datetime.strptime(end_date, '%Y-%m-%d').date()
+                query = query.where(ExpenseNonContract.expense_date <= ed)
+            except ValueError:
+                pass
 
         query = query.order_by(desc(ExpenseNonContract.created_at))
         result = await self.db.execute(query)

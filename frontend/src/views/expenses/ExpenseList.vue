@@ -57,7 +57,59 @@
     </el-card>
 
     <!-- Table -->
-    <el-card class="table-container" shadow="always">
+    <div v-if="isMobile" class="mobile-list-container">
+      <el-card v-for="item in expenseList" :key="item.id" class="mobile-card" shadow="sm">
+        <div class="mobile-card-header">
+          <span class="mobile-card-title">{{ item.expense_code }}</span>
+          <el-tag size="small" :type="item.category === '项目费用' ? 'warning' : 'info'">{{ translateCategory(item.category) }}</el-tag>
+        </div>
+        <div class="mobile-card-body">
+          <div class="mobile-card-row">
+            <span class="label">金额:</span>
+            <span class="value amount">¥ {{ Number(item.amount).toLocaleString() }}</span>
+          </div>
+          <div class="mobile-card-row">
+            <span class="label">日期:</span>
+            <span class="value">{{ item.expense_date }}</span>
+          </div>
+          <div class="mobile-card-row">
+            <span class="label">分类:</span>
+            <span class="value">{{ translateExpenseType(item.expense_type) }}</span>
+          </div>
+          <div v-if="item.upstream_contract" class="mobile-card-row">
+            <span class="label">关联合同:</span>
+            <span class="value contract-link">{{ item.upstream_contract.contract_name }}</span>
+          </div>
+          <div class="mobile-card-row">
+            <span class="label">说明:</span>
+            <div class="value description">{{ item.description || '-' }}</div>
+          </div>
+        </div>
+        <div class="mobile-card-footer">
+          <div class="left-actions">
+             <el-button v-if="item.file_path" link type="primary" size="small" icon="Document" @click="viewExpenseFile(item.file_path)">附件</el-button>
+          </div>
+          <div class="right-actions">
+            <el-button link type="primary" size="small" icon="Edit" @click="handleEdit(item)">编辑</el-button>
+            <el-button link type="danger" size="small" icon="Delete" @click="handleDelete(item)">删除</el-button>
+          </div>
+        </div>
+      </el-card>
+      
+       <!-- Mobile Pagination -->
+       <div class="pagination-container">
+          <el-pagination
+            v-model:current-page="queryParams.page"
+            v-model:page-size="queryParams.page_size"
+            layout="prev, pager, next"
+            :total="total"
+            small
+            @current-change="getList"
+          />
+       </div>
+    </div>
+
+    <el-card v-else class="table-container" shadow="always">
       <el-table 
         v-loading="loading" 
         :data="expenseList" 
@@ -133,18 +185,18 @@
     <el-dialog
       :title="dialog.title"
       v-model="dialog.visible"
-      width="600px"
+      :width="isMobile ? '90%' : '600px'"
       append-to-body
       :close-on-click-modal="false"
     >
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px" :label-position="isMobile ? 'top' : 'right'">
         <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12">
              <el-form-item label="费用编号" prop="expense_code">
               <el-input v-model="form.expense_code" placeholder="系统自动生成" />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12">
             <el-form-item label="费用日期" prop="expense_date">
               <el-date-picker 
                 v-model="form.expense_date" 
@@ -158,7 +210,7 @@
         </el-row>
 
         <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12">
             <el-form-item label="费用归属" prop="category">
               <el-select v-model="form.category" placeholder="请选择" style="width: 100%">
                 <el-option label="公司费用" value="公司费用" />
@@ -166,7 +218,7 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12">
             <el-form-item label="费用分类" prop="expense_type">
               <el-select v-model="form.expense_type" placeholder="请选择" style="width: 100%">
             <el-option label="工资" value="工资" />
@@ -264,7 +316,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { getExpenses, createExpense, updateExpense, deleteExpense, approveExpense, exportExpenses } from '@/api/expense'
 import { getContracts, getContract } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
@@ -277,6 +329,11 @@ const expenseList = ref([])
 const fileList = ref([])
 const upstreamContracts = ref([])
 const loadingContracts = ref(false)
+const isMobile = ref(false)
+
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 768
+}
 
 const queryParams = reactive({
   page: 1,
@@ -614,7 +671,13 @@ const translateExpenseType = (expenseType) => {
 }
 
 onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
   getList()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
 })
 </script>
 
@@ -626,6 +689,61 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+/* Mobile List Styles */
+.mobile-list-container {
+  padding-bottom: 20px;
+}
+.mobile-card {
+  margin-bottom: 12px;
+  border-radius: 8px;
+}
+.mobile-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #f0f2f5;
+  padding-bottom: 8px;
+}
+.mobile-card-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: #303133;
+}
+.mobile-card-body {
+  font-size: 14px;
+}
+.mobile-card-row {
+  display: flex;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+.mobile-card-row .label {
+  color: #909399;
+  width: 70px;
+  flex-shrink: 0;
+}
+.mobile-card-row .value {
+  color: #606266;
+  flex: 1;
+  word-break: break-word;
+}
+.mobile-card-row .value.amount {
+  color: #F56C6C;
+  font-weight: bold;
+}
+.mobile-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #f0f2f5;
+}
+.description {
+  white-space: pre-wrap;
 }
 </style>
 
