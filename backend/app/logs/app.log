@@ -10318,3 +10318,81 @@ FROM expenses_non_contract
 WHERE EXTRACT(year FROM expenses_non_contract.expense_date) = $1::INTEGER GROUP BY month
 2025-12-16 14:36:52,317 - [803d5775-a59e-4eb7-b909-9316bb6fadb7] - sqlalchemy.engine.Engine - INFO - [cached since 1232s ago] (2025,)
 2025-12-16 14:36:52,321 - [803d5775-a59e-4eb7-b909-9316bb6fadb7] - sqlalchemy.engine.Engine - INFO - COMMIT
+2025-12-16 14:37:38,401 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+2025-12-16 14:37:38,402 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - SELECT users.id, users.username, users.email, users.hashed_password, users.full_name, users.role, users.is_active, users.is_superuser, users.created_at, users.updated_at, users.last_login 
+FROM users 
+WHERE users.id = $1::INTEGER
+2025-12-16 14:37:38,402 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - [cached since 1278s ago] (1,)
+2025-12-16 14:37:38,403 - [5a53af76-858f-407f-bd9e-f135e5b78112] - sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+2025-12-16 14:37:38,404 - [5a53af76-858f-407f-bd9e-f135e5b78112] - sqlalchemy.engine.Engine - INFO - SELECT users.id, users.username, users.email, users.hashed_password, users.full_name, users.role, users.is_active, users.is_superuser, users.created_at, users.updated_at, users.last_login 
+FROM users 
+WHERE users.id = $1::INTEGER
+2025-12-16 14:37:38,405 - [5a53af76-858f-407f-bd9e-f135e5b78112] - sqlalchemy.engine.Engine - INFO - [cached since 1278s ago] (1,)
+2025-12-16 14:37:38,408 - [5a53af76-858f-407f-bd9e-f135e5b78112] - sqlalchemy.engine.Engine - INFO - SELECT EXTRACT(month FROM finance_upstream_receipts.receipt_date) AS month, sum(finance_upstream_receipts.amount) AS sum_1 
+FROM finance_upstream_receipts 
+WHERE EXTRACT(year FROM finance_upstream_receipts.receipt_date) = $1::INTEGER GROUP BY month
+2025-12-16 14:37:38,409 - [5a53af76-858f-407f-bd9e-f135e5b78112] - sqlalchemy.engine.Engine - INFO - [cached since 1278s ago] (2025,)
+2025-12-16 14:37:38,410 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - SELECT count(contracts_upstream.id) AS count_1, sum(contracts_upstream.contract_amount) AS sum_1 
+FROM contracts_upstream 
+WHERE EXTRACT(year FROM contracts_upstream.sign_date) = $1::INTEGER
+2025-12-16 14:37:38,411 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - [cached since 1278s ago] (2025,)
+2025-12-16 14:37:38,413 - [5a53af76-858f-407f-bd9e-f135e5b78112] - sqlalchemy.engine.Engine - INFO - SELECT EXTRACT(month FROM finance_downstream_payments.payment_date) AS month, sum(finance_downstream_payments.amount) AS sum_1 
+FROM finance_downstream_payments 
+WHERE EXTRACT(year FROM finance_downstream_payments.payment_date) = $1::INTEGER GROUP BY month
+2025-12-16 14:37:38,414 - [5a53af76-858f-407f-bd9e-f135e5b78112] - sqlalchemy.engine.Engine - INFO - [cached since 1278s ago] (2025,)
+2025-12-16 14:37:38,416 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - SELECT sum(finance_upstream_receipts.amount) AS sum_1 
+FROM finance_upstream_receipts 
+WHERE EXTRACT(year FROM finance_upstream_receipts.receipt_date) = $1::INTEGER
+2025-12-16 14:37:38,417 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - [cached since 1278s ago] (2025,)
+2025-12-16 14:37:38,419 - [5a53af76-858f-407f-bd9e-f135e5b78112] - sqlalchemy.engine.Engine - INFO - SELECT EXTRACT(month FROM finance_management_payments.payment_date) AS month, sum(finance_management_payments.amount) AS sum_1 
+FROM finance_management_payments 
+WHERE EXTRACT(year FROM finance_management_payments.payment_date) = $1::INTEGER GROUP BY month
+2025-12-16 14:37:38,420 - [5a53af76-858f-407f-bd9e-f135e5b78112] - sqlalchemy.engine.Engine - INFO - [cached since 1278s ago] (2025,)
+2025-12-16 14:37:38,422 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - SELECT sum(finance_downstream_payments.amount) AS sum_1 
+FROM finance_downstream_payments 
+WHERE EXTRACT(year FROM finance_downstream_payments.payment_date) = $1::INTEGER
+2025-12-16 14:37:38,423 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - [cached since 1278s ago] (2025,)
+2025-12-16 14:37:38,424 - [5a53af76-858f-407f-bd9e-f135e5b78112] - sqlalchemy.engine.Engine - INFO - SELECT EXTRACT(month FROM expenses_non_contract.expense_date) AS month, sum(expenses_non_contract.amount) AS sum_1 
+FROM expenses_non_contract 
+WHERE EXTRACT(year FROM expenses_non_contract.expense_date) = $1::INTEGER GROUP BY month
+2025-12-16 14:37:38,425 - [5a53af76-858f-407f-bd9e-f135e5b78112] - sqlalchemy.engine.Engine - INFO - [cached since 1278s ago] (2025,)
+2025-12-16 14:37:38,427 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - SELECT sum(finance_management_payments.amount) AS sum_1 
+FROM finance_management_payments 
+WHERE EXTRACT(year FROM finance_management_payments.payment_date) = $1::INTEGER
+2025-12-16 14:37:38,428 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - [cached since 1278s ago] (2025,)
+2025-12-16 14:37:38,430 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - SELECT sum(expenses_non_contract.amount) AS sum_1 
+FROM expenses_non_contract 
+WHERE EXTRACT(year FROM expenses_non_contract.expense_date) = $1::INTEGER
+2025-12-16 14:37:38,431 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - [cached since 1278s ago] (2025,)
+2025-12-16 14:37:38,433 - [5a53af76-858f-407f-bd9e-f135e5b78112] - sqlalchemy.engine.Engine - INFO - COMMIT
+2025-12-16 14:37:38,435 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - SELECT count(contracts_downstream.id) AS count_1, sum(contracts_downstream.contract_amount) AS sum_1 
+FROM contracts_downstream 
+WHERE EXTRACT(year FROM contracts_downstream.sign_date) = $1::INTEGER
+2025-12-16 14:37:38,437 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - [cached since 1278s ago] (2025,)
+2025-12-16 14:37:38,439 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - SELECT count(contracts_management.id) AS count_1, sum(contracts_management.contract_amount) AS sum_1 
+FROM contracts_management 
+WHERE EXTRACT(year FROM contracts_management.sign_date) = $1::INTEGER
+2025-12-16 14:37:38,440 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - [cached since 1278s ago] (2025,)
+2025-12-16 14:37:38,442 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - SELECT contracts_upstream.category, sum(contracts_upstream.contract_amount) AS sum_1 
+FROM contracts_upstream GROUP BY contracts_upstream.category
+2025-12-16 14:37:38,443 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - [cached since 1278s ago] ()
+2025-12-16 14:37:38,445 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - SELECT contracts_upstream.company_category, sum(contracts_upstream.contract_amount) AS sum_1 
+FROM contracts_upstream GROUP BY contracts_upstream.company_category
+2025-12-16 14:37:38,446 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - [cached since 1278s ago] ()
+2025-12-16 14:37:38,448 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - SELECT sum(finance_upstream_receipts.amount) AS sum_1 
+FROM finance_upstream_receipts 
+WHERE EXTRACT(month FROM finance_upstream_receipts.receipt_date) = $1::INTEGER AND EXTRACT(year FROM finance_upstream_receipts.receipt_date) = $2::INTEGER
+2025-12-16 14:37:38,449 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - [cached since 1278s ago] (12, 2025)
+2025-12-16 14:37:38,451 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - SELECT sum(finance_downstream_payments.amount) AS sum_1 
+FROM finance_downstream_payments 
+WHERE EXTRACT(month FROM finance_downstream_payments.payment_date) = $1::INTEGER AND EXTRACT(year FROM finance_downstream_payments.payment_date) = $2::INTEGER
+2025-12-16 14:37:38,452 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - [cached since 1278s ago] (12, 2025)
+2025-12-16 14:37:38,454 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - SELECT sum(finance_management_payments.amount) AS sum_1 
+FROM finance_management_payments 
+WHERE EXTRACT(month FROM finance_management_payments.payment_date) = $1::INTEGER AND EXTRACT(year FROM finance_management_payments.payment_date) = $2::INTEGER
+2025-12-16 14:37:38,455 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - [cached since 1278s ago] (12, 2025)
+2025-12-16 14:37:38,458 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - SELECT sum(expenses_non_contract.amount) AS sum_1 
+FROM expenses_non_contract 
+WHERE EXTRACT(month FROM expenses_non_contract.expense_date) = $1::INTEGER AND EXTRACT(year FROM expenses_non_contract.expense_date) = $2::INTEGER
+2025-12-16 14:37:38,459 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - [cached since 1278s ago] (12, 2025)
+2025-12-16 14:37:38,464 - [0047e5e2-154e-4477-9eb6-88b1694381f0] - sqlalchemy.engine.Engine - INFO - COMMIT
