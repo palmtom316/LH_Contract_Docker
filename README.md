@@ -133,6 +133,8 @@ npm run dev
 
 ### 生产环境
 
+#### Docker Compose 部署
+
 使用Docker Compose一键部署:
 
 ```bash
@@ -149,8 +151,22 @@ docker-compose -f docker-compose.prod.yml up -d
 curl http://localhost/health/detailed
 ```
 
-详细部署说明: [DEPLOYMENT.md](DEPLOYMENT.md)  
-运维手册: [OPERATIONS_MANUAL.md](OPERATIONS_MANUAL.md)
+#### PVE LXC 部署 (推荐) ⭐
+
+适用于铭凡MS-A2等小型服务器的专业部署方案：
+
+```bash
+# 在PVE LXC容器中执行自动部署脚本
+wget https://raw.githubusercontent.com/palmtom316/LH_Contract_Docker/release/v1.1/scripts/deploy_lxc.sh
+chmod +x deploy_lxc.sh
+sudo ./deploy_lxc.sh
+```
+
+详细部署说明: 
+- 📘 完整指南: [PVE_LXC_DEPLOYMENT_GUIDE.md](PVE_LXC_DEPLOYMENT_GUIDE.md)
+- 📋 快速参考: [QUICK_REFERENCE.md](QUICK_REFERENCE.md)
+- 🚀 通用部署: [DEPLOYMENT.md](DEPLOYMENT.md)
+- 🔧 运维手册: [OPERATIONS_MANUAL.md](OPERATIONS_MANUAL.md)
 
 ---
 
@@ -208,8 +224,11 @@ LH_Contract_Docker/
 ### 核心文档
 - 📖 [需求文档](REQUIREMENTS.md)
 - 🚀 [部署指南](DEPLOYMENT.md)
+- 🖥️ [PVE LXC部署指南](PVE_LXC_DEPLOYMENT_GUIDE.md) ⭐ 新增
+- 📝 [快速参考手册](QUICK_REFERENCE.md)
 - 🔧 [运维手册](OPERATIONS_MANUAL.md)
 - 📋 [发布说明](RELEASE_NOTES_V1.1.md)
+- 📤 [GitHub上传指南](GITHUB_UPLOAD_GUIDE.md)
 
 ### Phase报告
 - 🔐 [Phase 1: 安全加固](PHASE_1_SECURITY_COMPLETE.md)
