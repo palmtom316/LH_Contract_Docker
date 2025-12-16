@@ -1,5 +1,6 @@
 """
 Dashboard Statistics Router
+Optimized with caching
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,17 +11,15 @@ from app.database import get_db
 from app.models.user import User
 from app.models.contract_upstream import ContractUpstream, FinanceUpstreamReceipt
 from app.models.contract_downstream import ContractDownstream, FinanceDownstreamPayment
-from app.models.contract_management import FinanceManagementPayment
+from app.models.contract_management import FinanceManagementPayment, ContractManagement
 from app.models.expense import ExpenseNonContract
 from app.services.auth import get_current_active_user
-from app.services.cache import cache, dashboard_cache_key
+from app.core.cache import cache_manager
 
 router = APIRouter()
 
-# Cache TTL for dashboard (5 minutes)
-DASHBOARD_CACHE_TTL = 300
-
 @router.get("/stats")
+@cache_manager.cached(ttl=300, key_prefix="dashboard_stats")
 async def get_dashboard_stats(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -31,12 +30,6 @@ async def get_dashboard_stats(
     2. Bar Chart Data (Monthly Income vs Expense)
     3. Pie Chart Data (Contract Categories)
     """
-    # Try to get from cache first
-    cache_key = dashboard_cache_key()
-    cached_data = await cache.get(cache_key)
-    if cached_data is not None:
-        return cached_data
-    
     current_year = datetime.now().year
     
     # --- 1. Top Cards (Annual Statistics for Current Year) ---
@@ -178,7 +171,7 @@ async def get_dashboard_stats(
     bar_data["expense"][current_month - 1] = month_out
     
     
-    result = {
+    return {
         "cards": {
             "annual_upstream_count": annual_upstream_count,
             "annual_upstream_amount": float(annual_upstream_amount),
@@ -193,8 +186,3 @@ async def get_dashboard_stats(
             "bar": bar_data
         }
     }
-    
-    # Store in cache
-    await cache.set(cache_key, result, DASHBOARD_CACHE_TTL)
-    
-    return result

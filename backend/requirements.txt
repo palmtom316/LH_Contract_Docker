@@ -33,4 +33,13 @@ python-magic==0.4.27
 # Date/Time
 python-dateutil==2.8.2
 
+# Security Enhancements
+slowapi==0.1.9
+python-magic==0.4.27
+python-magic-bin==0.4.14
+
+# Performance & Caching
+redis==5.0.1
+hiredis==2.3.2
+
 xlsxwriter

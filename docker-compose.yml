@@ -24,6 +24,24 @@ services:
       timeout: 5s
       retries: 5
 
+  # Redis Cache (Phase 2 Performance Optimization)
+  redis:
+    image: redis:7-alpine
+    container_name: lh_contract_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - lh_network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+
   # FastAPI Backend
   backend:
     build:
@@ -35,6 +53,7 @@ services:
       - .env
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://lh_admin:LanHai2024Secure!@db:5432/lh_contract_db}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       SECRET_KEY: ${SECRET_KEY}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000}
       UPLOAD_DIR: /app/uploads
@@ -75,4 +94,5 @@ networks:
 
 volumes:
   postgres_data:
+  redis_data:
   lh_frontend_node_modules:

@@ -1,7 +1,9 @@
 """
 LH Contract Management System - Main FastAPI Application
+Enhanced with Phase 1 Security Features
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
@@ -13,7 +15,9 @@ import logging
 from app.config import settings
 from app.database import init_db, close_db
 from app.init_data import init_data
-from app.core.logging_config import setup_logging
+from app.core.logging_config import setup_logging, RequestIdMiddleware
+from app.core.rate_limit import setup_rate_limiting, limiter
+from app.core.errors import AppException
 from app.core.exceptions import (
     global_exception_handler, 
     sqlalchemy_exception_handler, 
@@ -31,11 +35,21 @@ async def lifespan(app: FastAPI):
     logger.info(f"[START] Starting {settings.APP_NAME} v{settings.APP_VERSION}")
     await init_db()
     logger.info("[OK] Database tables initialized")
+    
+    # Initialize cache
+    from app.core.cache import init_cache
+    await init_cache()
+    logger.info("[OK] Cache system initialized")
+    
     await init_data()
     
     yield
     
     # Shutdown
+    from app.core.cache import close_cache
+    await close_cache()
+    logger.info("[OK] Cache system closed")
+    
     await close_db()
     logger.info("[STOP] Application shutdown complete")
 
@@ -67,6 +81,13 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
 )
 
+# Add Request ID Middleware for request tracking
+app.add_middleware(RequestIdMiddleware)
+
+# Setup rate limiting
+setup_rate_limiting(app)
+logger.info("[SECURITY] Rate limiting and request tracking enabled")
+
 # Mount static files for uploads
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
@@ -85,12 +106,16 @@ async def root():
 
 @app.get("/health", tags=["Health"])
 async def health_check():
-    """Health check endpoint for container orchestration"""
-    return {
-        "status": "healthy",
-        "app": settings.APP_NAME,
-        "version": settings.APP_VERSION
-    }
+    """Simple health check endpoint for load balancers"""
+    from app.core.health import get_simple_health
+    return await get_simple_health()
+
+
+@app.get("/health/detailed", tags=["Health"])
+async def detailed_health_check(db: AsyncSession = Depends(get_db)):
+    """Detailed health check endpoint for monitoring systems"""
+    from app.core.health import get_detailed_health
+    return await get_detailed_health(db)
 
 
 @app.get("/api/v1/info", tags=["System"])
@@ -104,6 +129,20 @@ async def system_info():
         "redoc_url": "/redoc"
     }
 
+
+# Register exception handlers
+@app.exception_handler(AppException)
+async def app_exception_handler(request: Request, exc: AppException):
+    """Handle custom AppException"""
+    logger.error(f"AppException: {exc.error_code} - {exc.message} - {exc.detail}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=exc.detail if isinstance(exc.detail, dict) else {
+            "error_code": exc.error_code.value,
+            "message": exc.message,
+            "detail": exc.detail
+        }
+    )
 
 # Import and include routers
 from app.routers import auth, users, contracts_upstream, contracts_downstream, contract_management, expenses, common, dashboard, reports, audit, system

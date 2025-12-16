@@ -1,5 +1,6 @@
 """
 Authentication Router
+Enhanced with rate limiting for security
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
@@ -22,6 +23,8 @@ from app.services.auth import (
 from app.core.permissions import get_user_permissions
 from app.services.audit_service import create_audit_log, AuditAction, ResourceType, get_client_ip, get_user_agent
 from app.config import settings
+from app.core.rate_limit import limiter
+from app.core.errors import AuthenticationError, PermissionDeniedError, DuplicateRecordError, ErrorCode
 
 router = APIRouter()
 
@@ -36,17 +39,19 @@ async def register(
     # Check if username exists
     result = await db.execute(select(User).where(User.username == user_data.username))
     if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="用户名已存在"
+        raise DuplicateRecordError(
+            resource_type="用户",
+            field_name="username",
+            field_value=user_data.username
         )
     
     # Check if email exists
     result = await db.execute(select(User).where(User.email == user_data.email))
     if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="邮箱已被注册"
+        raise DuplicateRecordError(
+            resource_type="用户",
+            field_name="email",
+            field_value=user_data.email
         )
     
     # Create new user
@@ -72,6 +77,7 @@ async def register(
 
 
 @router.post("/login", response_model=Token)
+@limiter.limit("5/minute")  # Strict rate limit for login attempts
 async def login(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -84,16 +90,15 @@ async def login(
     user = result.scalar_one_or_none()
     
     if not user or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用户名或密码错误",
-            headers={"WWW-Authenticate": "Bearer"},
+        raise AuthenticationError(
+            message="用户名或密码错误",
+            detail="请检查您的登录凭据"
         )
     
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="用户已被禁用"
+        raise PermissionDeniedError(
+            message="用户已被禁用",
+            detail="请联系管理员"
         )
     
     # Update last login time
@@ -127,6 +132,7 @@ async def login(
 
 
 @router.post("/login/json", response_model=Token)
+@limiter.limit("5/minute")  # Strict rate limit for login attempts
 async def login_json(
     request: Request,
     user_in: UserLogin,
@@ -138,16 +144,15 @@ async def login_json(
     user = result.scalar_one_or_none()
     
     if not user or not verify_password(user_in.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用户名或密码错误",
-            headers={"WWW-Authenticate": "Bearer"},
+        raise AuthenticationError(
+            message="用户名或密码错误",
+            detail="请检查您的登录凭据"
         )
     
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="用户已被禁用"
+        raise PermissionDeniedError(
+            message="用户已被禁用",
+            detail="请联系管理员"
         )
     
     # Update last login time
@@ -267,9 +272,9 @@ async def get_available_roles(
     """Get list of available roles for user management"""
     # Only admin can see all roles
     if not current_user.is_superuser and current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="只有管理员可以查看角色列表"
+        raise PermissionDeniedError(
+            message="只有管理员可以查看角色列表",
+            detail="您的账户没有足够的权限"
         )
     
     roles = [

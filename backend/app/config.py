@@ -14,9 +14,10 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 class Settings(BaseSettings):
+    """Application settings"""
     # Application
     APP_NAME: str = "LH Contract Management System"
-    APP_VERSION: str = "1.0.0"
+    APP_VERSION: str = "1.1.0"  # Updated to V1.1
     DEBUG: bool = False  # Default to False for security
     
     # Database - MUST be set via environment variable in production
@@ -46,6 +47,11 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", os.path.join(BASE_DIR, "uploads"))
     MAX_FILE_SIZE: int = 50 * 1024 * 1024  # 50MB
     ALLOWED_EXTENSIONS: List[str] = ["pdf", "xlsx", "xls", "doc", "docx", "jpg", "jpeg", "png"]
+    
+    # Redis Cache (Optional - falls back to memory cache if not available)
+    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    CACHE_DEFAULT_TTL: int = 300  # 5 minutes
+    CACHE_ENABLED: bool = os.getenv("CACHE_ENABLED", "true").lower() == "true"
     
     class Config:
         env_file = ".env"

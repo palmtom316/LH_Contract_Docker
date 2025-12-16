@@ -1,8 +1,10 @@
 """
 Authentication Service - Password hashing and JWT handling
+Enhanced with security improvements
 """
 from datetime import datetime, timedelta
 from typing import Optional
+import re
 # from passlib.context import CryptContext
 import bcrypt
 from jose import JWTError, jwt
@@ -10,11 +12,14 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+import logging
 
 from app.config import settings
 from app.database import get_db
 from app.models.user import User
 from app.schemas.user import TokenData
+
+logger = logging.getLogger(__name__)
 
 # Password hashing
 # pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -23,20 +28,69 @@ from app.schemas.user import TokenData
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
+def validate_password_strength(password: str) -> bool:
+    """
+    Validate password strength
+    
+    Requirements:
+    - At least 8 characters
+    - Contains at least one letter
+    - Contains at least one number
+    """
+    if len(password) < 8:
+        raise HTTPException(
+            status_code=400,
+            detail="密码长度必须至少8个字符"
+        )
+    
+    if len(password) > 72:
+        raise HTTPException(
+            status_code=400,
+            detail="密码长度不能超过72个字符（bcrypt限制）"
+        )
+    
+    # Check for at least one letter and one number
+    if not re.search(r'[a-zA-Z]', password):
+        raise HTTPException(
+            status_code=400,
+            detail="密码必须包含至少一个字母"
+        )
+    
+    if not re.search(r'\d', password):
+        raise HTTPException(
+            status_code=400,
+            detail="密码必须包含至少一个数字"
+        )
+    
+    return True
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash"""
-    if len(plain_password) > 72:
+    # Validate password length first
+    if not plain_password or len(plain_password) > 72:
+        logger.warning("Password verification failed: invalid length")
         return False
+    
     # Use bcrypt directly to avoid passlib compatibility issues
     try:
-        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+        result = bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+        if not result:
+            logger.info("Password verification failed: incorrect password")
+        return result
+    except ValueError as e:
+        logger.error(f"Bcrypt ValueError during password verification: {e}")
+        return False
     except Exception as e:
-        print(f"Bcrypt error: {e}")
+        logger.error(f"Unexpected error during password verification: {e}")
         return False
 
 
 def get_password_hash(password: str) -> str:
-    """Generate password hash"""
+    """Generate password hash with validation"""
+    # Validate password strength before hashing
+    validate_password_strength(password)
+    
     # return pwd_context.hash(password)
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')

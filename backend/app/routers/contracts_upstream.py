@@ -32,6 +32,7 @@ from app.schemas.contract_upstream import (
 from app.services.auth import get_current_active_user
 from app.services.contract_upstream_service import ContractUpstreamService
 from app.core.permissions import require_permission, Permission
+from app.core.errors import ResourceNotFoundError, DuplicateRecordError, ValidationError
 
 router = APIRouter()
 
@@ -165,7 +166,10 @@ async def get_contract(
     """Get contract details"""
     contract = await service.get_contract(contract_id)
     if not contract:
-        raise HTTPException(status_code=404, detail="合同不存在")
+        raise ResourceNotFoundError(
+            resource_type="上游合同",
+            resource_id=contract_id
+        )
     return contract
 
 
