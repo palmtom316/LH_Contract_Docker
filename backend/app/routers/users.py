@@ -171,6 +171,8 @@ async def update_user(
     return UserResponse.from_orm_with_permissions(user, get_user_permissions(user))
 
 
+from sqlalchemy.exc import IntegrityError
+
 @router.delete("/{user_id}")
 async def delete_user(
     user_id: int,
@@ -186,8 +188,20 @@ async def delete_user(
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
         
-    await db.delete(user)
-    await db.commit()
+    try:
+        await db.delete(user)
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=400, 
+            detail="无法删除该用户：该用户已关联业务数据（如创建了合同或财务记录）。为保持数据完整性，请将其状态修改为 [禁用] 即可。"
+        )
+    except Exception as e:
+        await db.rollback()
+        # Log the full error for debugging
+        print(f"Error deleting user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="数据库操作失败，请重试或联系管理员")
     
     return {"message": "用户已删除"}
 

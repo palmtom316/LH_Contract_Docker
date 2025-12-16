@@ -87,12 +87,25 @@
         </div>
         <el-table :data="payables" border style="width: 100%">
           <el-table-column prop="category" label="应付款类别" width="120">
-            <template #default="{ row }">{{ formatReceivableCategory(row.category) }}</template>
+            <template #default="{ row }">{{ row.category }}</template>
           </el-table-column>
           <el-table-column prop="amount" label="金额" align="right">
             <template #default="{ row }">¥ {{ formatMoney(row.amount) }}</template>
           </el-table-column>
-          <el-table-column prop="expected_date" label="计划付款日期" width="120" />
+          <el-table-column prop="expected_date" label="产生日期" width="120" />
+          <el-table-column label="审批文件" width="100" align="center">
+            <template #default="{ row }">
+              <el-button 
+                v-if="row.file_path" 
+                link 
+                type="primary" 
+                size="small"
+                icon="Document"
+                @click="openFile(row.file_path)"
+              >查看</el-button>
+              <span v-else style="color: #909399">-</span>
+            </template>
+          </el-table-column>
           <el-table-column prop="description" label="备注" show-overflow-tooltip />
            <el-table-column label="操作" width="120" align="center" fixed="right">
             <template #default="{ row }">
@@ -121,15 +134,14 @@
           <el-table-column prop="supplier_name" label="开票方" show-overflow-tooltip />
           <el-table-column label="发票文件" width="100" align="center">
             <template #default="{ row }">
-              <el-link 
+              <el-button 
                 v-if="row.file_path" 
+                link 
                 type="primary" 
-                :href="getFileUrl(row.file_path)" 
-                target="_blank"
-                :underline="false"
-              >
-                <el-icon><Document /></el-icon>
-              </el-link>
+                size="small"
+                icon="Document"
+                @click="openFile(row.file_path)"
+              >查看</el-button>
               <span v-else style="color: #909399">-</span>
             </template>
           </el-table-column>
@@ -156,7 +168,14 @@
           <el-table-column prop="payee_name" label="收款单位" show-overflow-tooltip />
           <el-table-column label="支付凭证" width="100" align="center">
             <template #default="{ row }">
-               <el-link v-if="row.file_path" :href="getFileUrl(row.file_path)" target="_blank"><el-icon><Document /></el-icon></el-link>
+              <el-button 
+                v-if="row.file_path" 
+                link 
+                type="primary" 
+                size="small"
+                icon="Document"
+                @click="openFile(row.file_path)"
+              >查看</el-button>
                <span v-else style="color: #909399">-</span>
             </template>
           </el-table-column>
@@ -184,7 +203,14 @@
           <el-table-column prop="warranty_date" label="质保到期日期" width="120" />
           <el-table-column label="审批文件" width="100" align="center">
             <template #default="{ row }">
-               <el-link v-if="row.file_path" :href="getFileUrl(row.file_path)" target="_blank"><el-icon><Document /></el-icon></el-link>
+              <el-button 
+                v-if="row.file_path" 
+                link 
+                type="primary" 
+                size="small"
+                icon="Document"
+                @click="openFile(row.file_path)"
+              >查看</el-button>
                <span v-else style="color: #909399">-</span>
             </template>
           </el-table-column>

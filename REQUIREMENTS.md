@@ -93,3 +93,23 @@
     - 卡片标题加粗，关键数据醒目展示。
     - 图表提示框 (Tooltip) 限制在卡片范围内。
     - 完全适配移动端 (Mobile Responsive)，支持竖向堆叠布局。
+
+## 6. 开发环境与运维 (DevOps & Troubleshooting)
+
+### 6.1 一键启动环境 (Automated Environment Setup)
+为解决开发环境启动繁琐、端口不一致及数据状态脏导致的问题，项目提供了一键启动脚本：
+- **脚本位置**: `d:\LH_Contract_Docker\start_dev.ps1`
+- **功能**:
+    1.  **数据库检查**: 自动检测 PostgreSQL 容器状态，未启动则自动启动。
+    2.  **数据重置与填充 (Idempotent Data Population)**: 
+        - 自动执行 `populate_test_data.py`。
+        - **关键改进**: 脚本在插入新数据前，会**强制清空 (TRUNCATE)** 所有相关业务表，解决 `UniqueViolationError` 主键冲突问题，确保测试数据的一致性。
+    3.  **后端启动**: 在新窗口启动 FastAPI 服务 (Port 8000)。
+    4.  **前端启动**: 在新窗口启动 Vite 开发服务。
+
+### 6.2 常见问题解决 (Troubleshooting)
+- **Problem**: 启动时提示 `UniqueViolationError` 或数据重复。
+    - **Solution**: 使用 `start_dev.ps1` 启动，脚本内置的 data cleaner 会自动清空旧数据。
+- **Problem**: Dashboard 显示为空，或出现 Network Error。
+    - **Solution**: 检查 `frontend/vite.config.js` 中的 proxy target 是否为 `http://localhost:8000` (而非 9000)。`start_dev.ps1` 启动的后端默认为 8000 端口。
+

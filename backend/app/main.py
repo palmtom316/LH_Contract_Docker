@@ -28,16 +28,16 @@ logger = logging.getLogger("app")
 async def lifespan(app: FastAPI):
     """Application lifespan manager for startup and shutdown events"""
     # Startup
-    logger.info(f"🚀 Starting {settings.APP_NAME} v{settings.APP_VERSION}")
+    logger.info(f"[START] Starting {settings.APP_NAME} v{settings.APP_VERSION}")
     await init_db()
-    logger.info("✅ Database tables initialized")
+    logger.info("[OK] Database tables initialized")
     await init_data()
     
     yield
     
     # Shutdown
     await close_db()
-    logger.info("👋 Application shutdown complete")
+    logger.info("[STOP] Application shutdown complete")
 
 
 # Create FastAPI application

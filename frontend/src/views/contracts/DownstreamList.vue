@@ -67,15 +67,15 @@
         </el-table-column>
         <el-table-column label="合同文件" width="100" align="center">
           <template #default="scope">
-            <el-link 
+            <el-button 
               v-if="scope.row.contract_file_path" 
-              :href="getFileUrl(scope.row.contract_file_path)" 
-              target="_blank" 
-              type="primary"
-            >
-              <el-icon><Document /></el-icon>
-            </el-link>
-            <span v-else>-</span>
+              link 
+              type="primary" 
+              size="small"
+              icon="Document"
+              @click="openPdfInNewTab(scope.row.contract_file_path)"
+            >查看</el-button>
+            <span v-else class="text-gray">-</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="190" fixed="right">
@@ -325,6 +325,12 @@ import { getContracts as getUpstreamContracts, getContractSummary } from '@/api/
 import { uploadFile } from '@/api/common'
 import { downloadExcel, generateFilename } from '@/utils/download'
 import { getFileUrl } from '@/utils/common'
+
+// Open PDF in new tab
+const openPdfInNewTab = (path) => {
+  if (!path) return
+  window.open(getFileUrl(path), '_blank')
+}
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Document, Refresh, Search, Plus, Download } from '@element-plus/icons-vue'
 import SmartAutocomplete from '@/components/SmartAutocomplete.vue'

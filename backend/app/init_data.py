@@ -11,7 +11,7 @@ async def init_data():
             user = result.scalar_one_or_none()
             
             if not user:
-                print("✨ Creating default admin user (admin/admin123)...")
+                print("* Creating default admin user (admin/admin123)...")
                 admin_user = User(
                     username="admin",
                     email="admin@example.com",
@@ -23,9 +23,9 @@ async def init_data():
                 )
                 db.add(admin_user)
                 await db.commit()
-                print("✅ Default admin user created.")
+                print("[OK] Default admin user created.")
             else:
-                print("👌 Admin user already exists.")
+                print("[INFO] Admin user already exists.")
         except Exception as e:
-            print(f"❌ Error initializing data: {e}")
+            print(f"[ERROR] Error initializing data: {e}")
             await db.rollback()

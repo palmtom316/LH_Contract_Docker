@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from app.services.auth import get_current_active_user
 from app.models.user import User
@@ -159,3 +159,66 @@ async def backup_system(
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
         raise HTTPException(status_code=500, detail=f"系统备份失败: {str(e)}")
+
+@router.post("/logo")
+async def upload_logo(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Upload system logo
+    """
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    
+    # Validate file type
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="请上传图片文件")
+    
+    # Save to uploads/system/logo.png
+    system_dir = os.path.join(settings.UPLOAD_DIR, "system")
+    os.makedirs(system_dir, exist_ok=True)
+    
+    # We always save as logo.png or preserve extension? 
+    # For simplicity, let's keep original extension or convert to png.
+    # Frontend layout expects a fixed URL or we return the dynamic URL.
+    # Let's save as specific name 'site_logo.png' (or match extension)
+    
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ['.png', '.jpg', '.jpeg', '.gif', '.svg']:
+        ext = '.png' # Default fallback
+        
+    filename = f"site_logo{ext}"
+    target_path = os.path.join(system_dir, filename)
+    
+    try:
+        with open(target_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        # Also clean up other logo files to avoid confusion if we change extension
+        for other_ext in ['.png', '.jpg', '.jpeg', '.gif', '.svg']:
+            if other_ext != ext:
+                other_path = os.path.join(system_dir, f"site_logo{other_ext}")
+                if os.path.exists(other_path):
+                    os.remove(other_path)
+                    
+        return {"message": "Logo上传成功", "path": f"/uploads/system/{filename}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Logo上传失败: {str(e)}")
+
+@router.get("/logo")
+async def get_logo():
+    """
+    Get current system logo URL
+    """
+    system_dir = os.path.join(settings.UPLOAD_DIR, "system")
+    if not os.path.exists(system_dir):
+        return {"path": None}
+        
+    # Find existing logo
+    for ext in ['.png', '.jpg', '.jpeg', '.gif', '.svg']:
+        filename = f"site_logo{ext}"
+        if os.path.exists(os.path.join(system_dir, filename)):
+            return {"path": f"/uploads/system/{filename}"}
+            
+    return {"path": None}

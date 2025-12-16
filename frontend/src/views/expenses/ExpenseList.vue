@@ -149,7 +149,15 @@
 
         <el-table-column label="费用文件" width="100" align="center">
           <template #default="scope">
-            <el-link v-if="scope.row.file_path" type="primary" @click="viewExpenseFile(scope.row.file_path)">查看</el-link>
+            <el-button 
+              v-if="scope.row.file_path" 
+              link 
+              type="primary" 
+              size="small"
+              icon="Document"
+              @click="viewExpenseFile(scope.row.file_path)"
+            >查看</el-button>
+            <span v-else class="text-gray">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="amount" label="金额" width="140" align="right">
@@ -322,6 +330,7 @@ import { getContracts, getContract } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
 import { getFileUrl, formatMoney } from '@/utils/common'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus, Search, Refresh, Download, Document, Edit, Delete } from '@element-plus/icons-vue'
 
 const loading = ref(false)
 const total = ref(0)

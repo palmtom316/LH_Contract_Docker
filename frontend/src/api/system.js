@@ -17,3 +17,19 @@ export function backupSystem() {
         timeout: 300000 // 5 minutes
     })
 }
+
+export function uploadLogo(data) {
+    return request({
+        url: '/system/logo',
+        method: 'post',
+        data,
+        headers: { 'Content-Type': 'multipart/form-data' }
+    })
+}
+
+export function getLogo() {
+    return request({
+        url: '/system/logo',
+        method: 'get'
+    })
+}

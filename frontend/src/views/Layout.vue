@@ -6,7 +6,7 @@
     <!-- Sidebar -->
     <div class="sidebar-container" :class="{ 'collapsed': isCollapse }">
       <div class="logo-wrapper">
-        <img v-if="!isCollapse" src="@/assets/logo_new.png" class="logo-img" alt="logo" />
+        <img v-if="!isCollapse" :src="logoUrl" class="logo-img" alt="logo" />
         <el-icon v-else class="logo-icon"><Monitor /></el-icon>
         <transition name="fade">
           <span v-if="!isCollapse" class="logo-text">蓝海合同管理</span>
@@ -149,6 +149,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import request from '@/utils/request'
+import logoNew from '@/assets/logo_new.png'
+import { getLogo } from '@/api/system'
 
 const route = useRoute()
 const router = useRouter()
@@ -156,6 +158,7 @@ const userStore = useUserStore()
 
 const isCollapse = ref(false)
 const isMobile = ref(false)
+const logoUrl = ref(logoNew)
 
 const variables = {
   menuBg: '#001529',
@@ -279,6 +282,14 @@ watch(route, () => {
 onMounted(() => {
   resizeHandler()
   window.addEventListener('resize', resizeHandler)
+  
+  // Load logo
+  getLogo().then(res => {
+     if (res.path) {
+        const baseUrl = import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/v1\/?$/, '') : 'http://localhost:8000' 
+        logoUrl.value = baseUrl + res.path + '?t=' + new Date().getTime()
+     }
+  }).catch(e => console.error("Logo load err", e))
 })
 
 onBeforeUnmount(() => {
