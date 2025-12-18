@@ -77,7 +77,7 @@ async def register(
 
 
 @router.post("/login", response_model=Token)
-@limiter.limit("5/minute")  # Strict rate limit for login attempts
+# @limiter.limit("5/minute")  # Strict rate limit for login attempts
 async def login(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -132,7 +132,7 @@ async def login(
 
 
 @router.post("/login/json", response_model=Token)
-@limiter.limit("5/minute")  # Strict rate limit for login attempts
+# @limiter.limit("5/minute")  # Strict rate limit for login attempts
 async def login_json(
     request: Request,
     user_in: UserLogin,

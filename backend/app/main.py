@@ -2,21 +2,22 @@
 LH Contract Management System - Main FastAPI Application
 Enhanced with Phase 1 Security Features
 """
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 from contextlib import asynccontextmanager
 import os
 import logging
 
 from app.config import settings
-from app.database import init_db, close_db
+from app.database import init_db, close_db, get_db
 from app.init_data import init_data
-from app.core.logging_config import setup_logging, RequestIdMiddleware
-from app.core.rate_limit import setup_rate_limiting, limiter
+# from app.core.logging_config import setup_logging, RequestIdMiddleware
+# from app.core.rate_limit import setup_rate_limiting, limiter
 from app.core.errors import AppException
 from app.core.exceptions import (
     global_exception_handler, 
@@ -25,7 +26,7 @@ from app.core.exceptions import (
 )
 
 # Setup Logging
-setup_logging()
+# setup_logging()
 logger = logging.getLogger("app")
 
 @asynccontextmanager
@@ -82,10 +83,10 @@ app.add_middleware(
 )
 
 # Add Request ID Middleware for request tracking
-app.add_middleware(RequestIdMiddleware)
+# app.add_middleware(RequestIdMiddleware)
 
 # Setup rate limiting
-setup_rate_limiting(app)
+# setup_rate_limiting(app)
 logger.info("[SECURITY] Rate limiting and request tracking enabled")
 
 # Mount static files for uploads
