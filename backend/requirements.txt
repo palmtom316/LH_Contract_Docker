@@ -9,7 +9,7 @@ asyncpg==0.29.0
 alembic==1.13.1
 
 # Authentication & Security
-python-jose[cryptography]==3.3.0
+PyJWT==2.8.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.1.2
 
@@ -36,7 +36,7 @@ python-dateutil==2.8.2
 # Security Enhancements
 slowapi==0.1.9
 python-magic==0.4.27
-python-magic-bin==0.4.14
+
 
 # Performance & Caching
 redis==5.0.1

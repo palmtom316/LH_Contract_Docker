@@ -7,7 +7,7 @@ from typing import Optional
 import re
 # from passlib.context import CryptContext
 import bcrypt
-from jose import JWTError, jwt
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -133,7 +133,7 @@ async def get_current_user(
             raise credentials_exception
             
         token_data = TokenData(user_id=user_id, username=username)
-    except JWTError:
+    except jwt.PyJWTError:
         raise credentials_exception
     
     result = await db.execute(select(User).where(User.id == token_data.user_id))
@@ -187,7 +187,7 @@ async def get_user_from_token(
             raise credentials_exception
         
         user_id = int(sub)
-    except (JWTError, ValueError, TypeError):
+    except (jwt.PyJWTError, ValueError, TypeError):
         raise credentials_exception
     
     result = await db.execute(select(User).where(User.id == user_id))
