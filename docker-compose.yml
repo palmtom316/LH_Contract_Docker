@@ -1,21 +1,20 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
+  # Database
   db:
     image: postgres:15-alpine
     container_name: lh_contract_db
-    restart: unless-stopped
+    restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-lh_admin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-LanHai2024Secure!}
       POSTGRES_DB: ${POSTGRES_DB:-lh_contract_db}
+      # Critical for data persistence on existing volume structure
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    ports:
-      - "5432:5432"
     networks:
       - lh_network
     healthcheck:
@@ -24,43 +23,33 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis Cache (Phase 2 Performance Optimization)
+  # Redis
   redis:
     image: redis:7-alpine
     container_name: lh_contract_redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
+    restart: always
     networks:
       - lh_network
-    healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
 
-  # FastAPI Backend
+  # Backend
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: lh_contract_backend
-    restart: unless-stopped
+    restart: always
     env_file:
       - .env
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://lh_admin:LanHai2024Secure!@db:5432/lh_contract_db}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       SECRET_KEY: ${SECRET_KEY}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000}
+      CORS_ORIGINS: "*"
       UPLOAD_DIR: /app/uploads
-      DEBUG: ${DEBUG:-false}
+      DEBUG: "false"
     volumes:
       - ./backend/app:/app/app
-      - ./backend/uploads:/app/uploads
+      - ${HOST_UPLOAD_DIR:-./backend/uploads}:/app/uploads
     ports:
       - "8000:8000"
     networks:
@@ -69,15 +58,16 @@ services:
       db:
         condition: service_healthy
 
-  # Vue.js Frontend
+  # Frontend
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: lh_contract_frontend
-    restart: unless-stopped
+    restart: always
     environment:
-      VITE_API_BASE_URL: http://localhost:8000/api/v1
+      # Relative path to support Nginx proxy on Port 80
+      VITE_API_BASE_URL: /api/v1
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -87,6 +77,21 @@ services:
       - lh_network
     depends_on:
       - backend
+
+  # Nginx Gateway
+  nginx:
+    image: nginx:alpine
+    container_name: lh_contract_nginx
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - lh_network
 
 networks:
   lh_network:
