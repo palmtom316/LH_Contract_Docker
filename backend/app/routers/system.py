@@ -9,6 +9,11 @@ import os
 from datetime import datetime
 from typing import List
 from urllib.parse import urlparse, unquote
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, delete, update
+from app.database import get_db
+from app.models.system import SysDictionary, SystemConfig
 
 router = APIRouter()
 
@@ -222,3 +227,224 @@ async def get_logo():
             return {"path": f"/uploads/system/{filename}"}
             
     return {"path": None}
+
+# --- System Configuration & Dictionary Endpoints ---
+
+class SystemConfigUpdate(BaseModel):
+    system_name: str | None = None
+    # Add other config fields if needed
+
+@router.get("/config")
+async def get_system_config(
+    db: AsyncSession = Depends(get_db)
+):
+    """Get system configuration (name, logo, etc)"""
+    # Fetch all config
+    result = await db.execute(select(SystemConfig))
+    configs = result.scalars().all()
+    
+    config_dict = {
+        "system_name": "Lanhai Contract System",
+        "system_logo": None 
+    }
+    
+    # Override defaults
+    for c in configs:
+        if c.key in config_dict:
+            config_dict[c.key] = c.value
+            
+    # Check logo file existence logic if needed, but simple return is fine
+    # Re-use the logic from get_logo if possible, but distinct is fine
+    if not config_dict["system_logo"]:
+        pass
+
+    return config_dict
+
+@router.post("/config")
+async def update_system_config(
+    config: SystemConfigUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Update system configuration"""
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Need admin privileges")
+        
+    if config.system_name is not None:
+        # Upsert
+        result = await db.execute(select(SystemConfig).where(SystemConfig.key == "system_name"))
+        obj = result.scalar_one_or_none()
+        if obj:
+            obj.value = config.system_name
+        else:
+            db.add(SystemConfig(key="system_name", value=config.system_name))
+            
+    await db.commit()
+    return {"message": "Configuration updated"}
+
+# --- Dictionary Endpoints ---
+
+class OptionCreate(BaseModel):
+    category: str
+    label: str
+    value: str
+    sort_order: int = 0
+
+class OptionUpdate(BaseModel):
+    label: str | None = None
+    value: str | None = None
+    sort_order: int | None = None
+    is_active: bool | None = None
+
+@router.get("/options")
+async def get_all_options(
+    category: str | None = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get options, optionally filtered by category"""
+    stmt = select(SysDictionary).where(SysDictionary.is_active == True).order_by(SysDictionary.sort_order)
+    if category:
+        stmt = stmt.where(SysDictionary.category == category)
+        
+    result = await db.execute(stmt)
+    options = result.scalars().all()
+    return options
+
+@router.post("/options")
+async def create_option(
+    option: OptionCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Create a new dictionary option"""
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Need admin privileges")
+        
+    # Check duplicate in category
+    res = await db.execute(select(SysDictionary).where(
+        SysDictionary.category == option.category,
+        SysDictionary.value == option.value
+    ))
+    if res.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Option value already exists in this category")
+        
+    new_opt = SysDictionary(
+        category=option.category,
+        label=option.label,
+        value=option.value,
+        sort_order=option.sort_order
+    )
+    db.add(new_opt)
+    await db.commit()
+    await db.refresh(new_opt)
+    return new_opt
+
+@router.put("/options/{id}")
+async def update_option(
+    id: int,
+    option: OptionUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Update an option"""
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Need admin privileges")
+        
+    res = await db.execute(select(SysDictionary).where(SysDictionary.id == id))
+    obj = res.scalar_one_or_none()
+    if not obj:
+        raise HTTPException(status_code=404, detail="Option not found")
+        
+    if option.label is not None: obj.label = option.label
+    if option.value is not None: obj.value = option.value
+    if option.sort_order is not None: obj.sort_order = option.sort_order
+    if option.is_active is not None: obj.is_active = option.is_active
+    
+    await db.commit()
+    await db.refresh(obj)
+    return obj
+
+@router.delete("/options/{id}")
+async def delete_option(
+    id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Delete (Hard delete) an option"""
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Need admin privileges")
+        
+    res = await db.execute(select(SysDictionary).where(SysDictionary.id == id))
+    obj = res.scalar_one_or_none()
+    if not obj:
+        raise HTTPException(status_code=404, detail="Option not found")
+        
+    await db.delete(obj)
+    await db.commit()
+    return {"message": "Option deleted"}
+
+
+@router.post("/reset")
+async def reset_system(
+    confirm_code: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Reset system to initial state.
+    WARNING: This will delete ALL data except superusers.
+    """
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Need admin privileges")
+        
+    if confirm_code != "RESET":
+        raise HTTPException(status_code=400, detail="Invalid confirmation code")
+
+    try:
+        from sqlalchemy import text
+        # 1. Truncate business tables
+        # Use CASCADE to handle foreign keys
+        target_tables = [
+             "finance_upstream_receivables", "finance_upstream_invoices", "finance_upstream_receipts", "project_settlements",
+             "finance_downstream_payables", "finance_downstream_invoices", "finance_downstream_payments", "downstream_settlements",
+             "finance_management_payables", "finance_management_invoices", "finance_management_payments", "management_settlements",
+             "contracts_upstream", "contracts_downstream", "contracts_management",
+             "sys_expenses", "sys_audit_log", "sys_files"
+        ]
+        
+        # Check which tables exist to avoid "table does not exist" error which aborts transaction
+        # Postgres specific
+        result = await db.execute(text(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+        ))
+        existing_tables_rows = result.fetchall()
+        existing_tables = {row[0] for row in existing_tables_rows}
+        
+        tables_to_truncate = [t for t in target_tables if t in existing_tables]
+        
+        if tables_to_truncate:
+             truncate_sql = f"TRUNCATE TABLE {', '.join(tables_to_truncate)} CASCADE"
+             await db.execute(text(truncate_sql))
+
+        # 2. Delete Users (except superusers)
+        await db.execute(text("DELETE FROM users WHERE is_superuser = false"))
+        
+        # 3. Clear Uploads Directory (Keep 'system' folder for logos)
+        uploads_dir = settings.UPLOAD_DIR
+        if os.path.exists(uploads_dir):
+            for item in os.listdir(uploads_dir):
+                item_path = os.path.join(uploads_dir, item)
+                if item == 'system':
+                    continue 
+                if os.path.isfile(item_path):
+                    os.unlink(item_path)
+                elif os.path.isdir(item_path):
+                    shutil.rmtree(item_path)
+
+        await db.commit()
+        return {"message": "System reset successfully"}
+
+    except Exception as e:
+        await db.rollback()
+        print(f"Reset error: {e}")
+        raise HTTPException(status_code=500, detail=f"System reset failed: {str(e)}")

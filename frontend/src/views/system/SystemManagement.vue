@@ -6,11 +6,16 @@
         <UserManagement />
       </el-tab-pane>
       
-      <!-- 系统管理标签 -->
-      <el-tab-pane label="系统管理" name="system">
+      <!-- 系统配置标签 (New) -->
+      <el-tab-pane label="系统配置" name="settings">
+        <SystemSettings />
+      </el-tab-pane>
+
+      <!-- 系统运维标签 -->
+      <el-tab-pane label="系统运维" name="operations">
         <el-card shadow="never" style="margin-bottom: 20px;">
           <template #header>
-            <span style="font-weight: bold;">系统操作</span>
+            <span style="font-weight: bold;">系统运维操作</span>
           </template>
           
           <el-row :gutter="20">
@@ -180,42 +185,6 @@
               </el-card>
             </el-col>
           </el-row>
-
-          <el-row :gutter="20" style="margin-top: 20px;">
-             <!-- Logo Settings -->
-            <el-col :xs="24" :sm="12" :md="8">
-              <el-card shadow="hover" class="operation-card">
-                <template #header>
-                  <div class="card-header">
-                    <el-icon style="margin-right: 8px;"><Picture /></el-icon>
-                    <span>系统LOGO设置</span>
-                  </div>
-                </template>
-                <div class="operation-content">
-                  <p>更换系统左上角的Logo图片 (建议尺寸: 40x40, png/jpg)</p>
-                  <div class="logo-upload-container">
-                    <el-upload
-                        class="logo-uploader"
-                        action="#"
-                        :http-request="handleLogoUpload"
-                        :show-file-list="false"
-                        accept="image/*"
-                        :disabled="logoUploadLoading"
-                    >
-                        <img v-if="logoUrl" :src="logoUrl" class="logo-preview" />
-                        <el-icon v-else class="logo-uploader-icon"><Plus /></el-icon>
-                        <div v-if="logoUploadLoading" class="logo-loading-mask">
-                            <el-icon class="is-loading"><Loading /></el-icon>
-                        </div>
-                    </el-upload>
-                    <div style="margin-top: 10px;">
-                        <el-button type="primary" size="small" @click="triggerLogoSelect">点击更换</el-button>
-                    </div>
-                  </div>
-                </div>
-              </el-card>
-            </el-col>
-          </el-row>
         </el-card>
       </el-tab-pane>
     </el-tabs>
@@ -226,16 +195,15 @@
 import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import UserManagement from '@/views/users/UserManagement.vue'
+import SystemSettings from './SystemSettings.vue'
 import { deleteAuditLogsBefore } from '@/api/audit'
-import { backupSystem, backupDatabase, uploadLogo, getLogo } from '@/api/system'
+import { backupSystem, backupDatabase, resetSystem } from '@/api/system'
 
 const activeTab = ref('users')
 const backupLoading = ref(false)
 const dbBackupLoading = ref(false)
 const resetLoading = ref(false)
 const auditDeleteLoading = ref(false)
-const logoUploadLoading = ref(false)
-const logoUrl = ref('')
 const auditDeleteDate = ref('')
 
 // Helper to download blob
@@ -369,8 +337,7 @@ const handleSystemReset = async () => {
     )
     
     resetLoading.value = true
-    // TODO: 调用重置API
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    await resetSystem('RESET')
     ElMessage.success('系统重置成功，请重新登录')
     
     // 跳转到登录页
@@ -413,48 +380,8 @@ const handleAuditDelete = async () => {
   }
 }
 
-// Logo Upload
-const handleLogoUpload = async (option) => {
-  try {
-    logoUploadLoading.value = true
-    const formData = new FormData()
-    formData.append('file', option.file)
-    
-    const res = await uploadLogo(formData)
-    ElMessage.success('Logo上传成功，刷新页面生效')
-    // Add timestamp to prevent caching
-    logoUrl.value = import.meta.env.VITE_API_BASE_URL.replace(/\/api\/v1\/?$/, '') + res.path + '?t=' + new Date().getTime()
-    
-    // Dispatch event or reload to update layout immediately? 
-    // For now simple refresh suggestion is fine, or simple location.reload()
-    setTimeout(() => location.reload(), 1000)
-    
-  } catch (e) {
-    console.error(e)
-    ElMessage.error('Logo上传失败')
-  } finally {
-    logoUploadLoading.value = false
-  }
-}
 
-const triggerLogoSelect = () => {
-    document.querySelector('.logo-uploader .el-upload__input').click()
-}
 
-// Load current logo
-const loadCurrentLogo = async () => {
-    try {
-        const res = await getLogo()
-        if (res.path) {
-            logoUrl.value = import.meta.env.VITE_API_BASE_URL.replace(/\/api\/v1\/?$/, '') + res.path + '?t=' + new Date().getTime()
-        }
-    } catch (e) {
-        console.error("Failed to load logo", e)
-    }
-}
-
-// Call on mount
-loadCurrentLogo()
 
 </script>
 
@@ -493,49 +420,6 @@ loadCurrentLogo()
   flex: 1;
 }
 
-.logo-upload-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    flex: 1;
-}
 
-.logo-uploader {
-    border: 1px dashed #d9d9d9;
-    border-radius: 6px;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    width: 80px;
-    height: 80px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    transition: var(--el-transition-duration-fast);
-}
-
-.logo-uploader:hover {
-    border-color: var(--el-color-primary);
-}
-
-.logo-uploader-icon {
-    font-size: 28px;
-    color: #8c939d;
-    width: 80px;
-    height: 80px;
-    text-align: center;
-    line-height: 80px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.logo-preview {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    display: block;
-}
 
 </style>

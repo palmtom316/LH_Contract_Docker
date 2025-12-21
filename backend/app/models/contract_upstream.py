@@ -22,10 +22,10 @@ class ContractUpstream(Base):
     party_b_name = Column(String(200), nullable=False, index=True)  # 乙方
     
     # Classification
-    category = Column(SQLEnum(ContractCategory), nullable=True)
+    category = Column(String(100), nullable=True)
     company_category = Column(String(50), nullable=True) # Keep as string or define enum if needed
-    pricing_mode = Column(SQLEnum(PricingMode), nullable=True)
-    management_mode = Column(SQLEnum(ManagementMode), nullable=True)
+    pricing_mode = Column(String(100), nullable=True)
+    management_mode = Column(String(100), nullable=True)
     
     # Details
     responsible_person = Column(String(100), nullable=True) # 负责人
@@ -117,7 +117,7 @@ class FinanceUpstreamReceivable(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, index=True)
     
-    category = Column(SQLEnum(ReceivableCategory, name='receivablecategory', create_type=False), nullable=False)  # 应收款类别
+    category = Column(String(100), nullable=False)  # 应收款类别
     amount = Column(Numeric(15, 2), nullable=False, default=0)       # 应收金额
     description = Column(String(300), nullable=True)                 # 说明
     expected_date = Column(Date, nullable=True)                      # 形成/预计日期

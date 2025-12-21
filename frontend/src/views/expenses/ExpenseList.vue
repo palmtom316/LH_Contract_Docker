@@ -206,12 +206,10 @@
           </el-col>
           <el-col :xs="24" :sm="12">
             <el-form-item label="费用日期" prop="expense_date">
-              <el-date-picker 
+              <SmartDateInput 
                 v-model="form.expense_date" 
-                type="date" 
                 placeholder="选择日期" 
                 style="width: 100%" 
-                value-format="YYYY-MM-DD"
               />
             </el-form-item>
           </el-col>
@@ -277,12 +275,9 @@
         </el-row>
 
         <el-form-item label="金额" prop="amount">
-          <el-input-number 
+          <FormulaInput 
             v-model="form.amount" 
-            :precision="2" 
-            :step="100" 
-            :min="0" 
-            :controls="false"
+            placeholder="支持公式计算" 
             style="width: 100%" 
           />
         </el-form-item>
@@ -382,6 +377,10 @@ const rules = {
   amount: [{ required: true, message: '请输入金额', trigger: 'blur' }],
   expense_date: [{ required: true, message: '请选择日期', trigger: 'change' }]
 }
+
+import FormulaInput from '@/components/FormulaInput.vue'
+import SmartDateInput from '@/components/SmartDateInput.vue'
+
 
 const getList = async () => {
   loading.value = true

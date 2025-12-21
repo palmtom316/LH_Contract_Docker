@@ -33,3 +33,11 @@ export function getLogo() {
         method: 'get'
     })
 }
+
+export function resetSystem(confirm_code) {
+    return request({
+        url: '/system/reset',
+        method: 'post',
+        params: { confirm_code }
+    })
+}

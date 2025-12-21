@@ -33,8 +33,8 @@ class ContractManagement(Base):
     # Classification
     category = Column(String(50), nullable=True)
     company_category = Column(String(50), nullable=True)
-    pricing_mode = Column(SQLEnum(PricingMode), nullable=True)
-    management_mode = Column(SQLEnum(ManagementMode), nullable=True)
+    pricing_mode = Column(String(100), nullable=True)
+    management_mode = Column(String(100), nullable=True)
     
     # Details
     responsible_person = Column(String(100), nullable=True)
@@ -103,7 +103,7 @@ class FinanceManagementPayable(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     contract_id = Column(Integer, ForeignKey("contracts_management.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, index=True)
     
-    category = Column(SQLEnum(PaymentCategory), nullable=False)
+    category = Column(String(100), nullable=False)
     amount = Column(Numeric(15, 2), nullable=False, default=0)
     description = Column(String(300), nullable=True)
     expected_date = Column(Date, nullable=True)

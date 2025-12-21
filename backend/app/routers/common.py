@@ -17,6 +17,7 @@ from app.config import settings
 from app.models.user import User
 from app.models.contract_upstream import ContractUpstream
 from app.models.contract_downstream import ContractDownstream
+from app.models.contract_management import ContractManagement
 from app.services.auth import get_current_active_user
 
 router = APIRouter()
@@ -33,23 +34,55 @@ async def get_companies(
     - ContractUpstream.party_a_name (甲方)
     - ContractDownstream.supplier_name (乙方/供应商)
     """
-    # Create queries for both tables
-    stmt_upstream = select(ContractUpstream.party_a_name).where(
+    # Create queries for all relevant tables
+    # 1. Upstream Party A (Client) & Party B (If editable)
+    stmt_up_a = select(ContractUpstream.party_a_name).where(
         ContractUpstream.party_a_name.ilike(f"%{query}%")
     )
-    stmt_downstream = select(ContractDownstream.party_b_name).where(
+    stmt_up_b = select(ContractUpstream.party_b_name).where(
+        ContractUpstream.party_b_name.ilike(f"%{query}%")
+    )
+    
+    # 2. Downstream Party A (Usually us, but maybe editable) & Party B (Supplier)
+    stmt_down_a = select(ContractDownstream.party_a_name).where(
+        ContractDownstream.party_a_name.ilike(f"%{query}%")
+    )
+    stmt_down_b = select(ContractDownstream.party_b_name).where(
         ContractDownstream.party_b_name.ilike(f"%{query}%")
     )
     
-    # Execute queries
-    result_upstream = await db.execute(stmt_upstream)
-    up_names = [r for r in result_upstream.scalars().all() if r]
+    # 3. Management Party A & B
+    stmt_mgmt_a = select(ContractManagement.party_a_name).where(
+        ContractManagement.party_a_name.ilike(f"%{query}%")
+    )
+    stmt_mgmt_b = select(ContractManagement.party_b_name).where(
+        ContractManagement.party_b_name.ilike(f"%{query}%")
+    )
     
-    result_downstream = await db.execute(stmt_downstream)
-    down_names = [r for r in result_downstream.scalars().all() if r]
+    # Execute queries
+    res_up_a = await db.execute(stmt_up_a)
+    res_up_b = await db.execute(stmt_up_b)
+    res_down_a = await db.execute(stmt_down_a)
+    res_down_b = await db.execute(stmt_down_b)
+    res_mgmt_a = await db.execute(stmt_mgmt_a)
+    res_mgmt_b = await db.execute(stmt_mgmt_b)
+    
+    names = set()
+    for r in res_up_a.scalars().all():
+        if r: names.add(r)
+    for r in res_up_b.scalars().all():
+        if r: names.add(r)
+    for r in res_down_a.scalars().all():
+        if r: names.add(r)
+    for r in res_down_b.scalars().all():
+        if r: names.add(r)
+    for r in res_mgmt_a.scalars().all():
+        if r: names.add(r)
+    for r in res_mgmt_b.scalars().all():
+        if r: names.add(r)
     
     # Combine and de-duplicate
-    all_names = sorted(list(set(up_names + down_names)))
+    all_names = sorted(list(names))
     
     # Limit results for performance
     return all_names[:50]

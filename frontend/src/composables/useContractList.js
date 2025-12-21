@@ -5,6 +5,7 @@
 import { ref, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { downloadExcel, generateFilename } from '@/utils/download'
+import { getFileUrl, formatMoney, getStatusType } from '@/utils/common'
 
 /**
  * Create a reusable contract list composable
@@ -110,43 +111,6 @@ export function useContractList(options) {
         }
     }
 
-    /**
-     * Get status tag type for display
-     * @param {string} status - Contract status
-     * @returns {string} Element Plus tag type
-     */
-    const getStatusType = (status) => {
-        if (status === '已完成' || status === '已完工' || status === '已结算') return 'success'
-        if (status === '已终止' || status === '已归档' || status === '合同终止') return 'info'
-        if (status === '已中止' || status === '合同中止') return 'danger'
-        if (status === '待审核' || status === '质保到期') return 'warning'
-        if (status === '进行中' || status === '执行中') return 'primary'
-        return ''
-    }
-
-    /**
-     * Format currency for display
-     * @param {number} value - Amount value
-     * @returns {string} Formatted currency string
-     */
-    const formatMoney = (value) => {
-        if (value === undefined || value === null) return '0.00'
-        return Number(value).toLocaleString('zh-CN', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        })
-    }
-
-    /**
-     * Get file URL for contract files
-     * @param {string} path - File path
-     * @returns {string} Full URL
-     */
-    const getFileUrl = (path) => {
-        if (!path) return ''
-        if (path.startsWith('http')) return path
-        return `http://${window.location.hostname}:8000${path}`
-    }
 
     return {
         // State

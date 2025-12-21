@@ -246,19 +246,18 @@
         <!-- Receivable Fields -->
         <template v-if="financeDialog.type === 'receivable'">
           <el-form-item label="应收款类别">
-             <el-select v-model="financeForm.category" style="width: 100%">
-              <el-option label="预付款" value="ADVANCE_PAYMENT" />
-              <el-option label="进度款" value="PROGRESS_PAYMENT" />
-              <el-option label="结算款" value="SETTLEMENT_PAYMENT" />
-              <el-option label="质保金" value="RETENTION_MONEY" />
-              <el-option label="其他" value="OTHER" />
-            </el-select>
+             <DictSelect 
+              v-model="financeForm.category" 
+              category="receivable_category" 
+              placeholder="请选择类别" 
+              style="width: 100%" 
+            />
           </el-form-item>
           <el-form-item label="应收款金额">
-            <el-input-number v-model="financeForm.amount" :precision="2" :min="0" :controls="false" class="amount-input-right" style="width: 100%" />
+            <FormulaInput v-model="financeForm.amount" class="amount-input-right" style="width: 100%" />
           </el-form-item>
           <el-form-item label="发生时间">
-            <el-date-picker v-model="financeForm.expected_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+            <SmartDateInput v-model="financeForm.expected_date" style="width: 100%" />
           </el-form-item>
           <el-form-item label="备注">
             <el-input v-model="financeForm.description" />
@@ -285,7 +284,7 @@
             <el-input v-model="financeForm.invoice_number" />
           </el-form-item>
           <el-form-item label="开票金额">
-            <el-input-number v-model="financeForm.amount" :precision="2" :min="0" :controls="false" class="amount-input-right" style="width: 100%" />
+            <FormulaInput v-model="financeForm.amount" class="amount-input-right" style="width: 100%" />
           </el-form-item>
           <el-form-item label="税率">
             <el-select v-model="financeForm.tax_rate" style="width: 100%">
@@ -298,7 +297,7 @@
             </el-select>
           </el-form-item>
           <el-form-item label="开票日期">
-            <el-date-picker v-model="financeForm.invoice_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+            <SmartDateInput v-model="financeForm.invoice_date" style="width: 100%" />
           </el-form-item>
           <el-form-item label="发票类型">
              <el-select v-model="financeForm.invoice_type" style="width: 100%">
@@ -324,10 +323,10 @@
         <!-- Receipt Fields -->
         <template v-if="financeDialog.type === 'receipt'">
           <el-form-item label="回款金额">
-            <el-input-number v-model="financeForm.amount" :precision="2" :min="0" :controls="false" style="width: 100%" />
+            <FormulaInput v-model="financeForm.amount" style="width: 100%" />
           </el-form-item>
           <el-form-item label="到账日期">
-            <el-date-picker v-model="financeForm.receipt_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+            <SmartDateInput v-model="financeForm.receipt_date" style="width: 100%" />
           </el-form-item>
           <el-form-item label="付款方">
             <el-input v-model="financeForm.payer_name" />
@@ -361,16 +360,16 @@
             <el-input v-model="financeForm.settlement_code" placeholder="单号" />
           </el-form-item>
           <el-form-item label="结算办结日期">
-             <el-date-picker v-model="financeForm.settlement_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+             <SmartDateInput v-model="financeForm.settlement_date" style="width: 100%" />
           </el-form-item>
           <el-form-item label="完工日期">
-             <el-date-picker v-model="financeForm.completion_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+             <SmartDateInput v-model="financeForm.completion_date" style="width: 100%" />
           </el-form-item>
           <el-form-item label="质保到期日期">
-             <el-date-picker v-model="financeForm.warranty_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+             <SmartDateInput v-model="financeForm.warranty_date" style="width: 100%" />
           </el-form-item>
           <el-form-item label="结算金额">
-            <el-input-number v-model="financeForm.settlement_amount" :precision="2" :min="0" :controls="false" style="width: 100%" />
+            <FormulaInput v-model="financeForm.settlement_amount" style="width: 100%" />
           </el-form-item>
           <el-form-item label="说明">
             <el-input v-model="financeForm.description" type="textarea" />
@@ -428,6 +427,9 @@
 
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount, computed, watch } from 'vue'
+import DictSelect from '@/components/DictSelect.vue'
+import FormulaInput from '@/components/FormulaInput.vue'
+import SmartDateInput from '@/components/SmartDateInput.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Document } from '@element-plus/icons-vue'
 import { 

@@ -21,8 +21,8 @@ class ContractManagementBase(BaseModel):
     
     category: Optional[str] = None
     company_category: Optional[str] = None
-    pricing_mode: Optional[PricingMode] = None
-    management_mode: Optional[ManagementMode] = None
+    pricing_mode: Optional[str] = None
+    management_mode: Optional[str] = None
     
     responsible_person: Optional[str] = Field(None, max_length=100)
     
@@ -58,8 +58,8 @@ class ContractManagementUpdate(BaseModel):
 
     category: Optional[str] = None
     company_category: Optional[str] = None
-    pricing_mode: Optional[PricingMode] = None
-    management_mode: Optional[ManagementMode] = None
+    pricing_mode: Optional[str] = None
+    management_mode: Optional[str] = None
     responsible_person: Optional[str] = Field(None, max_length=100)
     
     party_a_contact: Optional[str] = Field(None, max_length=100)
@@ -102,7 +102,7 @@ class ContractManagementListResponse(BaseModel):
 
 # ===== Payable Schemas =====
 class ManagementPayableBase(BaseModel):
-    category: PaymentCategory
+    category: str
     amount: Decimal = Field(..., ge=0)
     description: Optional[str] = Field(None, max_length=300)
     expected_date: Optional[date] = None

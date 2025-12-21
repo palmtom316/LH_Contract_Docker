@@ -32,8 +32,8 @@ class ContractDownstream(Base):
     # Classification (Matching Upstream structure as per Req 3.3)
     category = Column(String(50), nullable=True)  # 合同类别 - 使用字符串避免枚举冲突
     company_category = Column(String(50), nullable=True)
-    pricing_mode = Column(SQLEnum(PricingMode), nullable=True)
-    management_mode = Column(SQLEnum(ManagementMode), nullable=True)
+    pricing_mode = Column(String(100), nullable=True)
+    management_mode = Column(String(100), nullable=True)
     
     # Details
     responsible_person = Column(String(100), nullable=True) # 负责人
@@ -106,7 +106,7 @@ class FinanceDownstreamPayable(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     contract_id = Column(Integer, ForeignKey("contracts_downstream.id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False, index=True)
     
-    category = Column(SQLEnum(PaymentCategory), nullable=False)  # 款项类别
+    category = Column(String(100), nullable=False)  # 款项类别
     amount = Column(Numeric(15, 2), nullable=False, default=0)   # 应付金额
     description = Column(String(300), nullable=True)             # 说明
     expected_date = Column(Date, nullable=True)                  # 预计付款日期

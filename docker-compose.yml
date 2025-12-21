@@ -68,6 +68,7 @@ services:
     environment:
       # Relative path to support Nginx proxy on Port 80
       VITE_API_BASE_URL: /api/v1
+      API_PROXY_TARGET: http://backend:8000
     volumes:
       - ./frontend:/app
       - /app/node_modules

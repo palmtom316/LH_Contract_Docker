@@ -35,6 +35,7 @@ from app.models.expense import (
     ExpenseNonContract
 )
 from app.models.audit_log import AuditLog
+from app.models.system import SysDictionary, SystemConfig
 
 __all__ = [
     # User
@@ -68,6 +69,9 @@ __all__ = [
     # Expense
     "ExpenseNonContract",
     # Audit
-    "AuditLog"
+    "AuditLog",
+    # System
+    "SysDictionary",
+    "SystemConfig"
 ]
 

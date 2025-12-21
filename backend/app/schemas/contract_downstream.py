@@ -23,8 +23,8 @@ class ContractDownstreamBase(BaseModel):
     # Classification (Req 3.3: Same structure as Upstream)
     category: Optional[str] = None  # 合同类别 - 使用字符串
     company_category: Optional[str] = None
-    pricing_mode: Optional[PricingMode] = None
-    management_mode: Optional[ManagementMode] = None
+    pricing_mode: Optional[str] = None
+    management_mode: Optional[str] = None
     
     responsible_person: Optional[str] = Field(None, max_length=100)
     
@@ -62,8 +62,8 @@ class ContractDownstreamUpdate(BaseModel):
 
     category: Optional[str] = None
     company_category: Optional[str] = None
-    pricing_mode: Optional[PricingMode] = None
-    management_mode: Optional[ManagementMode] = None
+    pricing_mode: Optional[str] = None
+    management_mode: Optional[str] = None
     responsible_person: Optional[str] = Field(None, max_length=100)
     
     party_a_contact: Optional[str] = Field(None, max_length=100)
@@ -109,7 +109,7 @@ class ContractDownstreamListResponse(BaseModel):
 # ===== Payable Schemas =====
 class PayableBase(BaseModel):
     """Base payable schema"""
-    category: PaymentCategory
+    category: str
     amount: Decimal = Field(..., ge=0)
     description: Optional[str] = Field(None, max_length=300)
     expected_date: Optional[date] = None

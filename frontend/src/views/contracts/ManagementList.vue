@@ -151,6 +151,7 @@
                 placeholder="请输入合同序号（正整数）" 
                 :controls="false"
                 :min="1"
+                :step="1"
                 :precision="0"
                 style="width: 100%"
               />
@@ -218,26 +219,22 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="签订日期" prop="sign_date">
-              <el-date-picker 
+              <SmartDateInput 
                 v-model="form.sign_date" 
-                type="date" 
                 placeholder="选择日期" 
                 style="width: 100%" 
-                value-format="YYYY-MM-DD"
               />
             </el-form-item>
           </el-col>
         </el-row>
         
         <el-form-item label="费用分类" prop="category">
-          <el-select v-model="form.category" placeholder="请选择费用分类" style="width: 100%">
-            <el-option label="办公费" value="办公费" />
-            <el-option label="培训费" value="培训费" />
-            <el-option label="租赁费" value="租赁费" />
-            <el-option label="资质费" value="资质费" />
-            <el-option label="咨询费" value="咨询费" />
-            <el-option label="其他费用" value="其他费用" />
-          </el-select>
+          <DictSelect 
+            v-model="form.category" 
+            category="management_contract_category" 
+            placeholder="请选择费用分类" 
+            style="width: 100%" 
+          />
         </el-form-item>
         
         <el-form-item label="合同名称" prop="contract_name">
@@ -245,7 +242,7 @@
         </el-form-item>
         
         <el-form-item label="甲方单位" prop="party_a_name">
-          <el-input v-model="form.party_a_name" placeholder="请输入甲方名称" />
+          <SmartAutocomplete v-model="form.party_a_name" placeholder="请输入甲方名称" />
         </el-form-item>
 
         <el-form-item label="乙方单位" prop="party_b_name">
@@ -266,12 +263,9 @@
         </el-row>
 
         <el-form-item label="合同金额" prop="contract_amount">
-          <el-input-number 
+          <FormulaInput 
             v-model="form.contract_amount" 
-            :precision="2" 
-            :step="1000" 
-            :min="0" 
-            :controls="false"
+            placeholder="支持公式计算" 
             style="width: 100%" 
           />
         </el-form-item>
@@ -302,7 +296,7 @@
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="dialog.visible = false">取 消</el-button>
-          <el-button type="primary" @click="submitForm">确 定</el-button>
+          <el-button type="primary" :loading="loading" @click="submitForm">确 定</el-button>
         </div>
       </template>
     </el-dialog>
@@ -315,26 +309,41 @@ import { useRouter, useRoute } from 'vue-router'
 import { getContracts, createContract, updateContract, deleteContract, exportContracts } from '@/api/contractManagement'
 import { getContracts as getUpstreamContracts, getContractSummary } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
-import { getFileUrl, formatMoney, getStatusType } from '@/utils/common'
-
-// Open PDF in new tab
-const openPdfInNewTab = (path) => {
-  if (!path) return
-  window.open(getFileUrl(path), '_blank')
-}
+import { getFileUrl } from '@/utils/common'
+import { useContractList, useTableSummary, useMobileDetection } from '@/composables/useContractList'
 import { downloadExcel, generateFilename } from '@/utils/download'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Download, Document, Connection } from '@element-plus/icons-vue'
 import SmartAutocomplete from '@/components/SmartAutocomplete.vue'
+import FormulaInput from '@/components/FormulaInput.vue'
+import SmartDateInput from '@/components/SmartDateInput.vue'
+import DictSelect from '@/components/DictSelect.vue'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
 const router = useRouter()
 const route = useRoute()
-const loading = ref(false)
-const total = ref(0)
-const contractList = ref([])
-const isMobile = ref(false)
+const { getSummaries, footerCellStyle } = useTableSummary()
+const { isMobile, checkIsMobile } = useMobileDetection()
+
+const {
+  loading,
+  list: contractList,
+  total,
+  queryParams,
+  getList,
+  handleQuery,
+  resetQuery,
+  handleDelete,
+  handleExport,
+  formatMoney,
+  getStatusType
+} = useContractList({
+  api: { getContracts, deleteContract, exportContracts },
+  contractType: '管理合同',
+  exportPrefix: '管理合同列表'
+})
+
 const fileList = ref([])
 const originalId = ref(null)
 
@@ -342,13 +351,6 @@ const originalId = ref(null)
 const upstreamLoading = ref(false)
 const upstreamOptions = ref([])
 const upstreamSummary = ref(null)
-
-const queryParams = reactive({
-  page: 1,
-  page_size: 10,
-  keyword: '',
-  status: ''
-})
 
 const dialog = reactive({
   title: '',
@@ -398,88 +400,7 @@ const rules = {
 }
 
 // Check Is Mobile
-const checkIsMobile = () => {
-  isMobile.value = window.innerWidth < 768
-}
 const handleResize = () => checkIsMobile()
-
-const getList = async () => {
-  loading.value = true
-  try {
-    const res = await getContracts(queryParams)
-    contractList.value = res.items
-    total.value = res.total
-  } finally {
-    loading.value = false
-  }
-}
-
-const handleQuery = () => {
-  queryParams.page = 1
-  getList()
-}
-
-const resetQuery = () => {
-  queryParams.keyword = ''
-  queryParams.status = ''
-  handleQuery()
-}
-
-// Summary row calculation
-const getSummaries = (param) => {
-  const { columns, data } = param
-  const sums = []
-  columns.forEach((column, index) => {
-    if (index === 0) {
-      sums[index] = '金额合计'
-      return
-    }
-    
-    if (column.property === 'contract_amount') {
-      const values = data.map(item => Number(item[column.property]))
-      if (!values.every(value => Number.isNaN(value))) {
-        const sum = values.reduce((prev, curr) => {
-          const value = Number(curr)
-          if (!Number.isNaN(value)) {
-            return prev + curr
-          } else {
-            return prev
-          }
-        }, 0)
-        sums[index] = '¥ ' + formatMoney(sum)
-      } else {
-        sums[index] = '0.00'
-      }
-    } else {
-      sums[index] = ''
-    }
-  })
-  return sums
-}
-
-const footerCellStyle = () => {
-  return {
-    backgroundColor: '#FFFF00',
-    color: '#000000',
-    fontWeight: 'bold',
-    fontSize: '16px'
-  }
-}
-
-// Logic for Upstream Search
-const searchUpstream = async (query) => {
-  if (query) {
-    upstreamLoading.value = true
-    try {
-      const res = await getUpstreamContracts({ keyword: query, page_size: 20 })
-      upstreamOptions.value = res.items
-    } finally {
-      upstreamLoading.value = false
-    }
-  } else {
-    upstreamOptions.value = []
-  }
-}
 
 const handleUpstreamSelect = async (val) => {
   if (val) {
@@ -546,18 +467,6 @@ const handleAdd = () => {
   dialog.visible = true
 }
 
-const handleExport = async () => {
-  try {
-    ElMessage.info('正在导出...')
-    const res = await exportContracts(queryParams)
-    const filename = generateFilename('管理合同导出', 'xlsx')
-    downloadExcel(res, filename)
-    ElMessage.success('导出成功')
-  } catch (e) {
-    console.error('Export Error:', e)
-    ElMessage.error('导出失败: ' + (e.message || e))
-  }
-}
 
 const handleEdit = async (row) => {
   resetForm()
@@ -595,17 +504,6 @@ const submitForm = async () => {
   })
 }
 
-const handleDelete = (row) => {
-  ElMessageBox.confirm(`确认删除合同 "${row.contract_name}" 吗?`, '警告', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    await deleteContract(row.id)
-    ElMessage.success('删除成功')
-    getList()
-  })
-}
 
 const handleDetail = (row) => {
   router.push({ name: 'ManagementDetail', params: { id: row.id }})

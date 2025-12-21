@@ -108,7 +108,7 @@ class ContractUpstreamListResponse(BaseModel):
 # ===== Receivable Schemas =====
 class ReceivableBase(BaseModel):
     """Base receivable schema"""
-    category: ReceivableCategory
+    category: str
     amount: Decimal = Field(..., ge=0)
     description: Optional[str] = Field(None, max_length=300)
     expected_date: Optional[date] = None

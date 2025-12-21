@@ -302,6 +302,7 @@
                 placeholder="请输入合同序号（正整数）" 
                 :controls="false"
                 :min="1"
+                :step="1"
                 :precision="0"
                 style="width: 100%"
               />
@@ -309,12 +310,9 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="签约日期" prop="sign_date">
-              <el-date-picker 
+              <SmartDateInput 
                 v-model="form.sign_date" 
-                type="date" 
-                placeholder="选择日期" 
                 style="width: 100%" 
-                value-format="YYYY-MM-DD"
               />
             </el-form-item>
           </el-col>
@@ -357,7 +355,7 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="乙方单位" prop="party_b_name">
-              <el-input v-model="form.party_b_name" placeholder="请输入乙方名称" />
+              <SmartAutocomplete v-model="form.party_b_name" placeholder="请输入乙方名称" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -365,24 +363,17 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="签约金额" prop="contract_amount">
-              <el-input-number 
+              <FormulaInput 
                 v-model="form.contract_amount" 
-                class="amount-input-right"
-                :precision="2" 
-                :controls="false"
-                :min="0" 
+                placeholder="支持公式计算"
+                show-icon
                 style="width: 100%" 
               />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="计价模式" prop="pricing_mode">
-              <el-select v-model="form.pricing_mode" placeholder="请选择" style="width: 100%">
-                <el-option label="总价包干" value="总价包干" />
-                <el-option label="单价包干" value="单价包干" />
-                <el-option label="工日单价" value="工日单价" />
-                <el-option label="费率下浮" value="费率下浮" />
-              </el-select>
+              <DictSelect v-model="form.pricing_mode" category="pricing_mode" placeholder="请选择" style="width: 100%" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -390,29 +381,12 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="合同类别" prop="category">
-              <el-select v-model="form.category" placeholder="请选择" style="width: 100%">
-                <el-option label="总包合同" value="总包合同" />
-                <el-option label="专业分包" value="专业分包" />
-                <el-option label="劳务分包" value="劳务分包" />
-                <el-option label="技术服务" value="技术服务" />
-                <el-option label="运营维护" value="运营维护" />
-                <el-option label="物资采购" value="物资采购" />
-                <el-option label="其他合同" value="其他合同" />
-              </el-select>
+              <DictSelect v-model="form.category" category="contract_category" placeholder="请选择" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="公司合同分类" prop="company_category">
-              <el-select v-model="form.company_category" placeholder="请选择" style="width: 100%">
-                <el-option label="市区配网" value="市区配网" />
-                <el-option label="市北配网" value="市北配网" />
-                <el-option label="用户工程" value="用户工程" />
-                <el-option label="维护工程" value="维护工程" />
-                <el-option label="变电工程" value="变电工程" />
-                <el-option label="营销工程" value="营销工程" />
-                <el-option label="北源工程" value="北源工程" />
-                <el-option label="安驰工程" value="安驰工程" />
-              </el-select>
+              <DictSelect v-model="form.company_category" category="project_category" placeholder="请选择" style="width: 100%" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -420,11 +394,7 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="管理模式" prop="management_mode">
-              <el-select v-model="form.management_mode" placeholder="请选择" style="width: 100%">
-                <el-option label="自营" value="自营" />
-                <el-option label="合作" value="合作" />
-                <el-option label="挂靠" value="挂靠" />
-              </el-select>
+              <DictSelect v-model="form.management_mode" category="management_mode" placeholder="请选择" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -532,30 +502,41 @@ import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { getContracts, createContract, updateContract, deleteContract, exportContracts, downloadImportTemplate, importContracts, getNextSerialNumber } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
-import { downloadExcel, generateFilename } from '@/utils/download'
+import { getFileUrl } from '@/utils/common'
+import { useContractList, useTableSummary, useMobileDetection } from '@/composables/useContractList'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown } from '@element-plus/icons-vue'
 import SmartAutocomplete from '@/components/SmartAutocomplete.vue'
 import PdfViewer from '@/components/PdfViewer.vue'
+import DictSelect from '@/components/DictSelect.vue'
+import SmartDateInput from '@/components/SmartDateInput.vue'
+import FormulaInput from '@/components/FormulaInput.vue'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
+const { getSummaries, footerCellStyle } = useTableSummary()
+const { isMobile, checkIsMobile } = useMobileDetection()
 
-const loading = ref(false)
-const total = ref(0)
-const contractList = ref([])
-const isMobile = ref(false)
+const {
+  loading,
+  list: contractList,
+  total,
+  queryParams,
+  getList: fetchList,
+  handleQuery,
+  resetQuery: baseResetQuery,
+  handleDelete,
+  handleExport,
+  formatMoney,
+  getStatusType
+} = useContractList({
+  api: { getContracts, deleteContract, exportContracts },
+  contractType: '上游合同',
+  exportPrefix: '上游合同列表'
+})
+
 const activeTab = ref('management')
 const dateRange = ref([])
-
-const queryParams = reactive({
-  page: 1,
-  page_size: 10,
-  keyword: '',
-  status: '',
-  start_date: undefined,
-  end_date: undefined
-})
 
 const dialog = reactive({
   title: '',
@@ -626,43 +607,20 @@ const rules = {
 }
 
 // Check if mobile
-const checkIsMobile = () => {
-  isMobile.value = window.innerWidth < 768
-}
-
 const handleResize = () => {
   checkIsMobile()
 }
 
-const getList = async () => {
-  loading.value = true
-  try {
-    // Handle Date Range for Basic Info Tab
-    if (activeTab.value === 'basic_info' && dateRange.value && dateRange.value.length === 2) {
-      queryParams.start_date = dateRange.value[0]
-      queryParams.end_date = dateRange.value[1]
-    } else {
-      queryParams.start_date = undefined
-      queryParams.end_date = undefined
-    }
-
-    const res = await getContracts(queryParams)
-    contractList.value = res.items
-    total.value = res.total
-    
-    // Debug: Log first contract to check if contract_file_path exists
-    if (res.items && res.items.length > 0) {
-      console.log('First contract in list:', res.items[0])
-      console.log('First contract file path:', res.items[0].contract_file_path)
-    }
-  } finally {
-    loading.value = false
+const getList = () => {
+  // Sync date range
+  if (activeTab.value === 'basic_info' && dateRange.value && dateRange.value.length === 2) {
+    queryParams.start_date = dateRange.value[0]
+    queryParams.end_date = dateRange.value[1]
+  } else {
+    queryParams.start_date = undefined
+    queryParams.end_date = undefined
   }
-}
-
-const handleQuery = () => {
-  queryParams.page = 1
-  getList()
+  fetchList()
 }
 
 const handleTabChange = () => {
@@ -674,65 +632,10 @@ const handleTabChange = () => {
 }
 
 const resetQuery = () => {
-  queryParams.keyword = ''
-  queryParams.status = ''
   dateRange.value = []
-  handleQuery()
+  baseResetQuery()
 }
 
-const getStatusType = (status) => {
-  if (status === '已完成' || status === '已完工' || status === '已结算') return 'success'
-  if (status === '已终止' || status === '已归档' || status === '合同终止') return 'info'
-  if (status === '已中止' || status === '合同中止') return 'danger'
-  if (status === '待审核' || status === '质保到期') return 'warning'
-  if (status === '进行中' || status === '执行中') return 'primary'
-  return ''
-}
-
-const formatMoney = (value) => {
-  if (value === undefined || value === null) return '0.00'
-  return Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-const getSummaries = (param) => {
-  const { columns, data } = param
-  const sums = []
-  columns.forEach((column, index) => {
-    if (index === 0) {
-      sums[index] = '金额合计'
-      return
-    }
-    
-    if (column.property === 'contract_amount') {
-      const values = data.map(item => Number(item[column.property]))
-      if (!values.every(value => Number.isNaN(value))) {
-        const sum = values.reduce((prev, curr) => {
-          const value = Number(curr)
-          if (!Number.isNaN(value)) {
-            return prev + curr
-          } else {
-            return prev
-          }
-        }, 0)
-        sums[index] = '¥ ' + formatMoney(sum)
-      } else {
-        sums[index] = '0.00'
-      }
-    } else {
-      sums[index] = ''
-    }
-  })
-  return sums
-}
-
-const footerCellStyle = () => {
-  return {
-    backgroundColor: '#FFFF00',
-    color: '#000000',
-    fontWeight: 'bold',
-    fontSize: '16px'
-  }
-}
 
 // File Upload Logic
 const handleUploadRequest = async (option) => {
@@ -781,10 +684,10 @@ const handlePreview = (path) => {
 }
 
 // Open PDF in new tab
+// Open PDF in new tab
 const openPdfInNewTab = (path) => {
   if (!path) return
-  // With simplified file serving, we can just supply the relative path
-  window.open(path, '_blank')
+  window.open(getFileUrl(path), '_blank')
 }
 
 // Form handling
@@ -887,17 +790,6 @@ const submitForm = async () => {
   })
 }
 
-const handleDelete = (row) => {
-  ElMessageBox.confirm(`确认删除合同 "${row.contract_name}" 吗?`, '警告', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    await deleteContract(row.id)
-    ElMessage.success('删除成功')
-    getList()
-  })
-}
 
 const router = useRouter() // Ensure router is imported or available
 
@@ -905,18 +797,6 @@ const handleDetail = (row) => {
   router.push({ name: 'UpstreamDetail', params: { id: row.id } })
 }
 
-const handleExport = async () => {
-  try {
-    ElMessage.info('正在导出...')
-    const res = await exportContracts(queryParams)
-    const filename = generateFilename('上游合同导出', 'xlsx')
-    downloadExcel(res, filename)
-    ElMessage.success('导出成功')
-  } catch (e) {
-    console.error('Export Error:', e)
-    ElMessage.error('导出失败: ' + (e.message || e))
-  }
-}
 
 // Import functionality
 const handleImportCommand = (command) => {
