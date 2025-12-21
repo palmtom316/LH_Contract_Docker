@@ -182,7 +182,7 @@
                ¥{{ formatWan(upstreamSummary.reduce((acc, cur) => acc + cur.amount, 0)) }} 万
              </div>
              <div class="card-list">
-               <div v-for="item in upstreamSummary.slice(0, 5)" :key="item.name" class="list-item">
+               <div v-for="item in upstreamSummary.slice(0, 20)" :key="item.name" class="list-item">
                  <span>{{ item.name }}</span>
                  <span>{{ item.count }}单 / ¥{{ formatWan(item.amount) }}万</span>
                </div>
@@ -201,7 +201,7 @@
                ¥{{ formatWan(upstreamCompanySummary.reduce((acc, cur) => acc + cur.amount, 0)) }} 万
              </div>
              <div class="card-list">
-               <div v-for="item in upstreamCompanySummary.slice(0, 5)" :key="item.name" class="list-item">
+               <div v-for="item in upstreamCompanySummary.slice(0, 20)" :key="item.name" class="list-item">
                  <span>{{ item.name }}</span>
                  <span>{{ item.count }}单 / ¥{{ formatWan(item.amount) }}万</span>
                </div>
@@ -220,7 +220,7 @@
                ¥{{ formatWan(downstreamSummary.reduce((acc, cur) => acc + cur.amount, 0)) }} 万
              </div>
              <div class="card-list">
-               <div v-for="item in downstreamSummary.slice(0, 5)" :key="item.name" class="list-item">
+               <div v-for="item in downstreamSummary.slice(0, 20)" :key="item.name" class="list-item">
                  <span>{{ item.name }}</span>
                  <span>{{ item.count }}单 / ¥{{ formatWan(item.amount) }}万</span>
                </div>
@@ -239,7 +239,7 @@
                ¥{{ formatWan(managementSummary.reduce((acc, cur) => acc + cur.amount, 0)) }} 万
              </div>
              <div class="card-list">
-               <div v-for="item in managementSummary.slice(0, 5)" :key="item.name" class="list-item">
+               <div v-for="item in managementSummary.slice(0, 20)" :key="item.name" class="list-item">
                  <span>{{ item.name }}</span>
                  <span>{{ item.count }}单 / ¥{{ formatWan(item.amount) }}万</span>
                </div>
@@ -259,7 +259,7 @@
              </div>
              <div class="card-list">
                <!-- Note: Field is 'value' not 'amount' for expense -->
-               <div v-for="item in expenseSummary.slice(0, 8)" :key="item.name" class="list-item">
+               <div v-for="item in expenseSummary.slice(0, 20)" :key="item.name" class="list-item">
                  <span>{{ item.name }}</span>
                  <span>{{ item.count }}笔 / ¥{{ formatWan(item.value) }}万</span>
                </div>

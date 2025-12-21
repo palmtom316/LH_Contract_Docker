@@ -59,8 +59,8 @@
           <el-descriptions-item label="合同序号">{{ contract.id }}</el-descriptions-item>
           <el-descriptions-item label="合同编号">{{ contract.contract_code }}</el-descriptions-item>
           <el-descriptions-item label="合同名称">{{ contract.contract_name }}</el-descriptions-item>
-          <el-descriptions-item label="甲方(我们)">{{ contract.party_a_name }}</el-descriptions-item>
-          <el-descriptions-item label="乙方(供应商)">{{ contract.party_b_name || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="合同甲方单位">{{ contract.party_a_name }}</el-descriptions-item>
+          <el-descriptions-item label="合同乙方单位">{{ contract.party_b_name || '-' }}</el-descriptions-item>
           <el-descriptions-item label="签约日期">{{ contract.sign_date }}</el-descriptions-item>
           <el-descriptions-item label="签约金额">¥ {{ formatMoney(contract.contract_amount) }}</el-descriptions-item>
           <el-descriptions-item label="费用分类">{{ contract.category }}</el-descriptions-item>

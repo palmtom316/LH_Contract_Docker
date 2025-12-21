@@ -4,7 +4,7 @@ Optimized with caching
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, extract
+from sqlalchemy import select, func, extract, cast, Integer
 from datetime import datetime, date
 
 from app.database import get_db
@@ -39,7 +39,7 @@ async def get_dashboard_stats(
         select(
             func.count(ContractUpstream.id),
             func.sum(ContractUpstream.contract_amount)
-        ).where(extract('year', ContractUpstream.sign_date) == current_year)
+        ).where(cast(extract('year', ContractUpstream.sign_date), Integer) == current_year)
     )
     up_annual = res_up_annual.first()
     annual_upstream_count = up_annual[0] or 0
@@ -48,59 +48,56 @@ async def get_dashboard_stats(
     # Annual Receipts (received in current year)
     res_receipts_annual = await db.execute(
         select(func.sum(FinanceUpstreamReceipt.amount)).where(
-            extract('year', FinanceUpstreamReceipt.receipt_date) == current_year
+            cast(extract('year', FinanceUpstreamReceipt.receipt_date), Integer) == current_year
         )
     )
     annual_receipts_amount = res_receipts_annual.scalar() or 0
     
-    # Annual Payments (paid in current year: Downstream + Management + Non-Contract Expenses)
+    # Annual Payments (paid in current year)
     res_paid_down_annual = await db.execute(
         select(func.sum(FinanceDownstreamPayment.amount)).where(
-            extract('year', FinanceDownstreamPayment.payment_date) == current_year
+            cast(extract('year', FinanceDownstreamPayment.payment_date), Integer) == current_year
         )
     )
     annual_paid_down = res_paid_down_annual.scalar() or 0
     
     res_paid_mgmt_annual = await db.execute(
         select(func.sum(FinanceManagementPayment.amount)).where(
-            extract('year', FinanceManagementPayment.payment_date) == current_year
+            cast(extract('year', FinanceManagementPayment.payment_date), Integer) == current_year
         )
     )
     annual_paid_mgmt = res_paid_mgmt_annual.scalar() or 0
     
     res_paid_exp_annual = await db.execute(
         select(func.sum(ExpenseNonContract.amount)).where(
-            extract('year', ExpenseNonContract.expense_date) == current_year
+            cast(extract('year', ExpenseNonContract.expense_date), Integer) == current_year
         )
     )
     annual_paid_exp = res_paid_exp_annual.scalar() or 0
-    
-    annual_payments_amount = float(annual_paid_down or 0) + float(annual_paid_mgmt or 0) + float(annual_paid_exp or 0)
     
     # Annual Downstream + Management Contracts (signed in current year)
     res_down_annual = await db.execute(
         select(
             func.count(ContractDownstream.id),
             func.sum(ContractDownstream.contract_amount)
-        ).where(extract('year', ContractDownstream.sign_date) == current_year)
+        ).where(cast(extract('year', ContractDownstream.sign_date), Integer) == current_year)
     )
     down_annual = res_down_annual.first()
     annual_down_count = down_annual[0] or 0
     annual_down_amount = down_annual[1] or 0
     
-    # Import ContractManagement model
     from app.models.contract_management import ContractManagement
-    
     res_mgmt_annual = await db.execute(
         select(
             func.count(ContractManagement.id),
             func.sum(ContractManagement.contract_amount)
-        ).where(extract('year', ContractManagement.sign_date) == current_year)
+        ).where(cast(extract('year', ContractManagement.sign_date), Integer) == current_year)
     )
     mgmt_annual = res_mgmt_annual.first()
     annual_mgmt_count = mgmt_annual[0] or 0
     annual_mgmt_amount = mgmt_annual[1] or 0
     
+    annual_payments_amount = float(annual_paid_down or 0) + float(annual_paid_mgmt or 0) + float(annual_paid_exp or 0)
     annual_down_mgmt_count = annual_down_count + annual_mgmt_count
     annual_down_mgmt_amount = float(annual_down_amount or 0) + float(annual_mgmt_amount or 0)
     
@@ -132,28 +129,28 @@ async def get_dashboard_stats(
     current_month = datetime.now().month
     
     stmt_month_in = select(func.sum(FinanceUpstreamReceipt.amount)).where(
-        extract('month', FinanceUpstreamReceipt.receipt_date) == current_month,
-        extract('year', FinanceUpstreamReceipt.receipt_date) == current_year
+        cast(extract('month', FinanceUpstreamReceipt.receipt_date), Integer) == current_month,
+        cast(extract('year', FinanceUpstreamReceipt.receipt_date), Integer) == current_year
     )
     month_in = (await db.execute(stmt_month_in)).scalar() or 0
     
     # Monthly Expense (Downstream Payments + Management Payments + Non-Contract Expenses)
     stmt_month_out_down = select(func.sum(FinanceDownstreamPayment.amount)).where(
-        extract('month', FinanceDownstreamPayment.payment_date) == current_month,
-        extract('year', FinanceDownstreamPayment.payment_date) == current_year
+        cast(extract('month', FinanceDownstreamPayment.payment_date), Integer) == current_month,
+        cast(extract('year', FinanceDownstreamPayment.payment_date), Integer) == current_year
     )
     month_out_down = (await db.execute(stmt_month_out_down)).scalar() or 0
     
     # Management contract payments
     stmt_month_out_mgmt = select(func.sum(FinanceManagementPayment.amount)).where(
-        extract('month', FinanceManagementPayment.payment_date) == current_month,
-        extract('year', FinanceManagementPayment.payment_date) == current_year
+        cast(extract('month', FinanceManagementPayment.payment_date), Integer) == current_month,
+        cast(extract('year', FinanceManagementPayment.payment_date), Integer) == current_year
     )
     month_out_mgmt = (await db.execute(stmt_month_out_mgmt)).scalar() or 0
     
     stmt_month_out_exp = select(func.sum(ExpenseNonContract.amount)).where(
-        extract('month', ExpenseNonContract.expense_date) == current_month,
-        extract('year', ExpenseNonContract.expense_date) == current_year
+        cast(extract('month', ExpenseNonContract.expense_date), Integer) == current_month,
+        cast(extract('year', ExpenseNonContract.expense_date), Integer) == current_year
     )
     month_out_exp = (await db.execute(stmt_month_out_exp)).scalar() or 0
     

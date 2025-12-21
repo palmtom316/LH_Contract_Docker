@@ -4,7 +4,7 @@ Report Statistics Router (Reloaded)
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy import select, func, extract, case, or_, cast, String
+from sqlalchemy import select, func, extract, case, or_, cast, String, Integer
 from datetime import datetime, date
 from typing import List, Dict, Any
 
@@ -37,13 +37,15 @@ async def get_contract_summary(
     if not year:
         year = datetime.now().year
 
-    # Base filters
-    up_filters = [extract('year', ContractUpstream.sign_date) == year]
-    down_filters = [extract('year', ContractDownstream.sign_date) == year]
+    # Base filters using CAST to ensure consistent type comparison across DB dialects
+    up_filters = [cast(extract('year', ContractUpstream.sign_date), Integer) == year]
+    down_filters = [cast(extract('year', ContractDownstream.sign_date), Integer) == year]
+    mgmt_filters = [cast(extract('year', ContractManagement.sign_date), Integer) == year]
     
     if month:
-        up_filters.append(extract('month', ContractUpstream.sign_date) == month)
-        down_filters.append(extract('month', ContractDownstream.sign_date) == month)
+        up_filters.append(cast(extract('month', ContractUpstream.sign_date), Integer) == month)
+        down_filters.append(cast(extract('month', ContractDownstream.sign_date), Integer) == month)
+        mgmt_filters.append(cast(extract('month', ContractManagement.sign_date), Integer) == month)
 
     # 1a. Upstream Contracts Count & Amount by Category
     stmt_up_cat = select(
@@ -80,12 +82,7 @@ async def get_contract_summary(
         ContractManagement.category,
         func.count(ContractManagement.id),
         func.sum(ContractManagement.contract_amount)
-    ).where(
-        extract('year', ContractManagement.sign_date) == year
-    ).group_by(ContractManagement.category)
-    
-    if month:
-        stmt_mgmt_cat = stmt_mgmt_cat.where(extract('month', ContractManagement.sign_date) == month)
+    ).where(*mgmt_filters).group_by(ContractManagement.category)
         
     res_mgmt_cat = await db.execute(stmt_mgmt_cat)
     management_by_category = [{"name": r[0] or "未分类", "count": r[1], "amount": float(r[2] or 0)} for r in res_mgmt_cat.all()]
@@ -313,22 +310,22 @@ async def get_ar_ap_stats(
     # Checking model: FinanceUpstreamReceivable has `expected_date`.
     # FinanceDownstreamPayable has `expected_date`.
     
-    ar_filters = [extract('year', FinanceUpstreamReceivable.expected_date) == year]
-    rec_filters = [extract('year', FinanceUpstreamReceipt.receipt_date) == year]
+    ar_filters = [cast(extract('year', FinanceUpstreamReceivable.expected_date), Integer) == year]
+    rec_filters = [cast(extract('year', FinanceUpstreamReceipt.receipt_date), Integer) == year]
     
-    ap_down_filters = [extract('year', FinanceDownstreamPayable.expected_date) == year]
-    paid_down_filters = [extract('year', FinanceDownstreamPayment.payment_date) == year]
+    ap_down_filters = [cast(extract('year', FinanceDownstreamPayable.expected_date), Integer) == year]
+    paid_down_filters = [cast(extract('year', FinanceDownstreamPayment.payment_date), Integer) == year]
     
-    ap_mgmt_filters = [extract('year', FinanceManagementPayable.expected_date) == year]
-    paid_mgmt_filters = [extract('year', FinanceManagementPayment.payment_date) == year]
+    ap_mgmt_filters = [cast(extract('year', FinanceManagementPayable.expected_date), Integer) == year]
+    paid_mgmt_filters = [cast(extract('year', FinanceManagementPayment.payment_date), Integer) == year]
     
     if month:
-        ar_filters.append(extract('month', FinanceUpstreamReceivable.expected_date) == month)
-        rec_filters.append(extract('month', FinanceUpstreamReceipt.receipt_date) == month)
-        ap_down_filters.append(extract('month', FinanceDownstreamPayable.expected_date) == month)
-        paid_down_filters.append(extract('month', FinanceDownstreamPayment.payment_date) == month)
-        ap_mgmt_filters.append(extract('month', FinanceManagementPayable.expected_date) == month)
-        paid_mgmt_filters.append(extract('month', FinanceManagementPayment.payment_date) == month)
+        ar_filters.append(cast(extract('month', FinanceUpstreamReceivable.expected_date), Integer) == month)
+        rec_filters.append(cast(extract('month', FinanceUpstreamReceipt.receipt_date), Integer) == month)
+        ap_down_filters.append(cast(extract('month', FinanceDownstreamPayable.expected_date), Integer) == month)
+        paid_down_filters.append(cast(extract('month', FinanceDownstreamPayment.payment_date), Integer) == month)
+        ap_mgmt_filters.append(cast(extract('month', FinanceManagementPayable.expected_date), Integer) == month)
+        paid_mgmt_filters.append(cast(extract('month', FinanceManagementPayment.payment_date), Integer) == month)
 
     # AR
     # Total Receivables (Planned in period)
