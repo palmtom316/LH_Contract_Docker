@@ -45,6 +45,6 @@ export const getStatusType = (status) => {
     if (status === '已终止' || status === '已归档' || status === '合同终止') return 'info'
     if (status === '已中止' || status === '合同中止') return 'danger'
     if (status === '待审核' || status === '质保到期') return 'warning'
-    if (status === '进行中' || status === '执行中') return 'primary'
+    if (status === '执行中') return 'primary'
     return ''
 }

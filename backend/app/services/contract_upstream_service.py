@@ -18,6 +18,7 @@ from app.services.status_service import calculate_contract_status
 from app.models.user import User
 from app.services.audit_service import create_audit_log, AuditAction, ResourceType
 
+
 class ContractUpstreamService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -128,6 +129,9 @@ class ContractUpstreamService:
         import logging
         logger = logging.getLogger(__name__)
         
+        # Get data from input (category, pricing_mode, management_mode are now stored as strings)
+        data = contract_in.model_dump()
+
         try:
             logger.info(f"Creating contract with code: {contract_in.contract_code}")
             
@@ -153,7 +157,7 @@ class ContractUpstreamService:
                 )
             
             logger.info("Creating contract object...")
-            contract = ContractUpstream(**contract_in.model_dump(), created_by=user.id)
+            contract = ContractUpstream(**data, created_by=user.id)
             
             logger.info("Adding to database...")
             self.db.add(contract)
@@ -324,7 +328,8 @@ class ContractUpstreamService:
                 # Create Contract
                 # Filter out None values to let defaults take over or allow nulls
                 # Assuming row dict keys match ContractUpstream model fields
-                
+                # (category, pricing_mode, management_mode are stored as strings from dictionary)
+
                 contract = ContractUpstream(
                     **row,
                     created_by=user_id

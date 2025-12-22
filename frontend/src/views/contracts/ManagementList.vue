@@ -10,7 +10,6 @@
         <el-form-item label="状态">
           <el-select v-model="queryParams.status" placeholder="合同状态" clearable style="width: 120px">
             <el-option label="执行中" value="执行中" />
-            <el-option label="进行中" value="进行中" />
             <el-option label="已完工" value="已完工" />
             <el-option label="已结算" value="已结算" />
             <el-option label="质保到期" value="质保到期" />
@@ -377,7 +376,7 @@ const form = reactive({
   company_category: '公司费用',
   contract_file_path: '',
   notes: '',
-  status: '进行中'
+  status: '执行中'
 })
 
 const rules = {

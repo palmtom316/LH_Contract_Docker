@@ -229,6 +229,8 @@ async def delete_contract(
 # ===== Sub-resource Operations =====
 
 # 1. Receivables (应收款)
+# Category is now stored as a string directly from the dictionary
+
 @router.post("/{contract_id}/receivables", response_model=ReceivableResponse)
 async def create_receivable(
     contract_id: int,
@@ -239,16 +241,26 @@ async def create_receivable(
 ):
     if contract_id != receivable_in.contract_id:
         raise HTTPException(status_code=400, detail="合同ID不匹配")
+    
+    try:
+        receivable = FinanceUpstreamReceivable(
+            **receivable_in.model_dump(), 
+            created_by=current_user.id, 
+            updated_by=current_user.id
+        )
+        db.add(receivable)
+        await db.commit()
+        await db.refresh(receivable)
         
-    receivable = FinanceUpstreamReceivable(**receivable_in.model_dump(), created_by=current_user.id, updated_by=current_user.id)
-    db.add(receivable)
-    await db.commit()
-    await db.refresh(receivable)
-    
-    await service.refresh_contract_status(contract_id)
-    await service._invalidate_dashboard_cache()
-    
-    return receivable
+        await service.refresh_contract_status(contract_id)
+        await service._invalidate_dashboard_cache()
+        
+        return receivable
+    except Exception as e:
+        import traceback
+        print(f"Create Receivable Error: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Database Error: {str(e)}")
 
 
 @router.get("/{contract_id}/receivables", response_model=List[ReceivableResponse])
@@ -279,7 +291,10 @@ async def update_receivable(
     if not receivable:
         raise HTTPException(status_code=404, detail="应收款记录不存在")
     
-    for key, value in receivable_in.model_dump(exclude={'contract_id'}).items():
+    # Update receivable with new values (category is stored as string)
+    data = receivable_in.model_dump(exclude={'contract_id'})
+    
+    for key, value in data.items():
         setattr(receivable, key, value)
     receivable.updated_by = current_user.id
     await db.commit()
@@ -585,7 +600,7 @@ async def download_import_template():
         "负责人": ["张三 (示例)"],
         "合同金额": [100000.00],
         "签约日期": ["2024-01-01"],
-        "状态": ["进行中"],
+        "状态": ["执行中"],
         "备注": ["可选填写"]
     }
     
@@ -616,7 +631,7 @@ async def download_import_template():
                 "项目负责人姓名",
                 "数字，支持小数",
                 "格式: YYYY-MM-DD",
-                "可选值: 进行中/已完成/已终止",
+                "可选值: 执行中/已完工/已结算/质保到期/合同终止/合同中止",
                 "其他补充信息"
             ]
         }

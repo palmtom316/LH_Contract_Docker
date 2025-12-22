@@ -12,7 +12,6 @@
             <el-form-item label="状态">
               <el-select v-model="queryParams.status" placeholder="合同状态" clearable style="width: 120px">
                 <el-option label="执行中" value="执行中" />
-                <el-option label="进行中" value="进行中" />
                 <el-option label="已完工" value="已完工" />
                 <el-option label="已结算" value="已结算" />
                 <el-option label="质保到期" value="质保到期" />
@@ -328,7 +327,6 @@
             <el-form-item label="合同状态" prop="status">
               <el-select v-model="form.status" placeholder="请选择状态" style="width: 100%">
                 <el-option label="执行中" value="执行中" />
-                <el-option label="进行中" value="进行中" />
                 <el-option label="已完工" value="已完工" />
                 <el-option label="已结算" value="已结算" />
                 <el-option label="质保到期" value="质保到期" />
@@ -503,6 +501,7 @@ import { useRouter } from 'vue-router'
 import { getContracts, createContract, updateContract, deleteContract, exportContracts, downloadImportTemplate, importContracts, getNextSerialNumber } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
 import { getFileUrl } from '@/utils/common'
+import { downloadExcel } from '@/utils/download'
 import { useContractList, useTableSummary, useMobileDetection } from '@/composables/useContractList'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown } from '@element-plus/icons-vue'
@@ -583,7 +582,7 @@ const form = reactive({
   management_mode: '',  // 管理模式
   responsible_person: '', // 负责人
   notes: '',
-  status: '进行中',
+  status: '执行中',
   contract_file_path: ''
 })
 
@@ -810,11 +809,14 @@ const handleImportCommand = (command) => {
 const handleDownloadTemplate = async () => {
   try {
     ElMessage.info('正在下载模板...')
+    console.log('Starting template download...')
     const res = await downloadImportTemplate()
+    console.log('Template download response:', res)
     downloadExcel(res, '上游合同导入模板.xlsx')
     ElMessage.success('模板下载成功')
   } catch (e) {
-    ElMessage.error('模板下载失败')
+    console.error('Template download error details:', e)
+    ElMessage.error('模板下载失败: ' + (e.message || '未知错误'))
   }
 }
 
