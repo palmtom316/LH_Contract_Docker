@@ -384,6 +384,175 @@ async def delete_option(
     return {"message": "Option deleted"}
 
 
+@router.get("/options/export")
+async def export_options(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Export all dictionary options to Excel"""
+    import pandas as pd
+    import io
+    from starlette.responses import StreamingResponse
+    
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    
+    # Category code to Chinese name mapping
+    category_names = {
+        "contract_category": "上游合同类别",
+        "project_category": "上游合同公司分类",
+        "pricing_mode": "上游合同计价模式",
+        "receivable_category": "上游应收款类别",
+        "management_mode": "上游合同管理模式",
+        "downstream_contract_category": "下游合同类别",
+        "management_contract_category": "管理合同类别",
+        "downstream_pricing_mode": "下游及管理合同计价模式",
+        "payment_category": "下游及管理合同应付款类别",
+        "expense_type": "无合同费用类别"
+    }
+    
+    # Get all options
+    result = await db.execute(select(SysDictionary).order_by(SysDictionary.category, SysDictionary.sort_order))
+    options = result.scalars().all()
+    
+    # Convert to DataFrame with Chinese category names
+    data = []
+    for opt in options:
+        data.append({
+            "分类名称": category_names.get(opt.category, opt.category),
+            "分类代码": opt.category,
+            "显示名称": opt.label,
+            "存储值": opt.value,
+            "排序": opt.sort_order,
+            "是否启用": "是" if opt.is_active else "否",
+            "说明": opt.description or ""
+        })
+    
+    df = pd.DataFrame(data)
+    
+    # Create Excel file in memory
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='数据字典')
+        
+        # Add a notes sheet explaining categories
+        notes_data = {
+            "分类名称": list(category_names.values()),
+            "分类代码": list(category_names.keys()),
+            "说明": [
+                "上游合同的类别，如总包合同、专业分包等",
+                "上游合同公司分类，如市区配网、用户工程等",
+                "上游合同计价模式，如总价包干、单价包干等",
+                "上游应收款类别，如预付款、进度款等",
+                "上游合同管理模式，如自营、合作、挂靠等",
+                "下游合同的类别",
+                "管理合同的类别",
+                "下游及管理合同的计价模式",
+                "下游及管理合同的应付款类别",
+                "无合同费用的分类，如工资、奖金等"
+            ]
+        }
+        notes_df = pd.DataFrame(notes_data)
+        notes_df.to_excel(writer, index=False, sheet_name='分类说明')
+    
+    output.seek(0)
+    
+    from urllib.parse import quote
+    filename = f"数据字典_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    encoded_filename = quote(filename)
+    
+    return StreamingResponse(
+        output,
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"}
+    )
+
+
+@router.post("/options/import")
+async def import_options(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Import dictionary options from Excel file"""
+    import pandas as pd
+    import io
+    
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="请上传Excel文件 (.xlsx 或 .xls)")
+    
+    try:
+        content = await file.read()
+        df = pd.read_excel(io.BytesIO(content), sheet_name='数据字典')
+        
+        # Validate required columns
+        required_cols = ["分类代码", "显示名称", "存储值"]
+        for col in required_cols:
+            if col not in df.columns:
+                raise HTTPException(status_code=400, detail=f"缺少必需列: {col}")
+        
+        imported_count = 0
+        updated_count = 0
+        skipped_count = 0
+        
+        for _, row in df.iterrows():
+            category = str(row["分类代码"]).strip()
+            label = str(row["显示名称"]).strip()
+            value = str(row["存储值"]).strip()
+            sort_order = int(row.get("排序", 0)) if pd.notna(row.get("排序")) else 0
+            is_active = row.get("是否启用", "是") == "是" if pd.notna(row.get("是否启用")) else True
+            description = str(row.get("说明", "")).strip() if pd.notna(row.get("说明")) else None
+            
+            if not category or not label or not value:
+                skipped_count += 1
+                continue
+            
+            # Check if exists
+            result = await db.execute(select(SysDictionary).where(
+                SysDictionary.category == category,
+                SysDictionary.value == value
+            ))
+            existing = result.scalar_one_or_none()
+            
+            if existing:
+                # Update existing
+                existing.label = label
+                existing.sort_order = sort_order
+                existing.is_active = is_active
+                existing.description = description
+                updated_count += 1
+            else:
+                # Create new
+                new_opt = SysDictionary(
+                    category=category,
+                    label=label,
+                    value=value,
+                    sort_order=sort_order,
+                    is_active=is_active,
+                    description=description
+                )
+                db.add(new_opt)
+                imported_count += 1
+        
+        await db.commit()
+        
+        return {
+            "message": "导入成功",
+            "imported": imported_count,
+            "updated": updated_count,
+            "skipped": skipped_count
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"导入失败: {str(e)}")
+
+
 @router.post("/reset")
 async def reset_system(
     confirm_code: str,

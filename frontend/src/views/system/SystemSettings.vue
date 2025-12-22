@@ -33,7 +33,23 @@
       </el-tab-pane>
 
       <el-tab-pane label="数据字典" name="dict">
-        <el-container style="height: 600px; border: 1px solid #eee">
+        <!-- Global actions for all categories -->
+        <div class="dict-global-actions" style="margin-bottom: 15px;">
+          <el-button type="success" :icon="Download" @click="handleExportDict">导出全部字典Excel</el-button>
+          <el-upload
+            class="upload-demo"
+            style="display: inline-block; margin-left: 10px;"
+            action="#"
+            :http-request="handleImportDict"
+            :show-file-list="false"
+            accept=".xlsx,.xls"
+          >
+            <el-button type="warning" :icon="Upload">导入Excel</el-button>
+          </el-upload>
+          <span style="margin-left: 20px; color: #999; font-size: 12px;">导入导出包含所有分类的数据字典</span>
+        </div>
+        
+        <el-container style="height: 550px; border: 1px solid #eee">
             <el-aside width="220px" style="background-color: #fcfcfc">
                 <el-menu :default-active="activeCategory" @select="handleSelectCategory">
                     <el-menu-item index="contract_category">上游合同类别</el-menu-item>
@@ -95,8 +111,9 @@
 <script setup>
 import { ref, onMounted, reactive, computed } from 'vue'
 import { useSystemStore } from '@/stores/system'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Download, Upload } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import request from '@/utils/request'
 
 const activeTab = ref('config')
 const systemStore = useSystemStore()
@@ -204,6 +221,49 @@ async function submitOption() {
         ElMessage.success('操作成功')
     } catch(e) {
         ElMessage.error('操作失败: ' + (e.response?.data?.detail || e.message))
+    }
+}
+
+// Export dictionary to Excel
+async function handleExportDict() {
+    try {
+        const response = await request({
+            url: '/system/options/export',
+            method: 'get',
+            responseType: 'blob'
+        })
+        
+        // Create download link
+        const blob = new Blob([response], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `数据字典_${new Date().toISOString().slice(0,10)}.xlsx`
+        link.click()
+        window.URL.revokeObjectURL(url)
+        ElMessage.success('导出成功')
+    } catch(e) {
+        ElMessage.error('导出失败: ' + (e.response?.data?.detail || e.message))
+    }
+}
+
+// Import dictionary from Excel
+async function handleImportDict(options) {
+    try {
+        const formData = new FormData()
+        formData.append('file', options.file)
+        
+        const response = await request({
+            url: '/system/options/import',
+            method: 'post',
+            data: formData,
+            headers: { 'Content-Type': 'multipart/form-data' }
+        })
+        
+        ElMessage.success(`导入成功: 新增 ${response.imported} 条, 更新 ${response.updated} 条, 跳过 ${response.skipped} 条`)
+        loadOptions()
+    } catch(e) {
+        ElMessage.error('导入失败: ' + (e.response?.data?.detail || e.message))
     }
 }
 
