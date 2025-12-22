@@ -8,8 +8,11 @@
                 <span>基础设置</span>
             </template>
             <el-form :model="configForm" label-width="120px">
-                <el-form-item label="系统名称">
-                    <el-input v-model="configForm.system_name" />
+                <el-form-item label="系统名称(第一行)">
+                    <el-input v-model="configForm.system_name" placeholder="例如：蓝海" />
+                </el-form-item>
+                <el-form-item label="系统名称(第二行)">
+                    <el-input v-model="configForm.system_name_line_2" placeholder="例如：合同管理系统" />
                 </el-form-item>
                 <el-form-item label="系统Logo">
                     <el-upload
@@ -121,6 +124,7 @@ const systemStore = useSystemStore()
 // Config Logic
 const configForm = ref({
     system_name: '',
+    system_name_line_2: '',
     system_logo: ''
 })
 // Headers for upload (if Auth needed, add Authorization header here)

@@ -9,7 +9,10 @@
         <img v-if="!isCollapse" :src="displayLogo" class="logo-img" alt="logo" />
         <el-icon v-else class="logo-icon"><Monitor /></el-icon>
         <transition name="fade">
-          <span v-if="!isCollapse" class="logo-text">{{ displayName }}</span>
+          <div v-if="!isCollapse" class="logo-text-container">
+            <span class="logo-text">{{ displayName }}</span>
+            <span class="logo-text-sub">{{ displayNameLine2 }}</span>
+          </div>
         </transition>
       </div>
       
@@ -173,6 +176,7 @@ const displayLogo = computed(() => {
     return logoNew
 })
 const displayName = computed(() => systemStore.config.system_name || '蓝海合同管理')
+const displayNameLine2 = computed(() => systemStore.config.system_name_line_2 || '')
 
 const variables = {
   menuBg: '#001529',
@@ -350,27 +354,48 @@ onBeforeUnmount(() => {
   }
   
   .logo-wrapper {
-    height: 60px;
+    height: 70px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #fff;
     font-weight: bold;
-    font-size: 18px;
+    font-size: 16px;
     background-color: #002140;
     white-space: nowrap;
     overflow: hidden;
+    padding: 0 10px;
     
     .logo-img {
-      width: 25px; // Adjust based on preference
-      height: 25px;
+      width: 40px; 
+      height: 40px;
       margin-right: 12px;
+      object-fit: contain;
     }
 
     .logo-icon {
       font-size: 24px;
       margin-right: 12px;
       color: #fff;
+    }
+
+    .logo-text-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      line-height: 1.2;
+      align-items: flex-start;
+
+      .logo-text {
+        font-size: 16px;
+      }
+      
+      .logo-text-sub {
+        font-size: 12px;
+        font-weight: normal;
+        opacity: 0.8;
+        margin-top: 2px;
+      }
     }
   }
   
@@ -447,9 +472,7 @@ onBeforeUnmount(() => {
     transform: translate3d(-100%, 0, 0);
     transition: transform 0.3s;
     
-    &.collapsed { // Actually closed in mobile context if we map collapsed to closed
-       // Logic handled by transform
-    }
+    /* &.collapsed logic handled by transform */
   }
   
   &.openSidebar {

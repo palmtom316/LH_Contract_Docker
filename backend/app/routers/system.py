@@ -232,6 +232,7 @@ async def get_logo():
 
 class SystemConfigUpdate(BaseModel):
     system_name: str | None = None
+    system_name_line_2: str | None = None
     # Add other config fields if needed
 
 @router.get("/config")
@@ -244,7 +245,8 @@ async def get_system_config(
     configs = result.scalars().all()
     
     config_dict = {
-        "system_name": "Lanhai Contract System",
+        "system_name": "蓝海合同管理系统",
+        "system_name_line_2": "",
         "system_logo": None 
     }
     
@@ -270,14 +272,18 @@ async def update_system_config(
     if not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Need admin privileges")
         
-    if config.system_name is not None:
-        # Upsert
-        result = await db.execute(select(SystemConfig).where(SystemConfig.key == "system_name"))
-        obj = result.scalar_one_or_none()
-        if obj:
-            obj.value = config.system_name
-        else:
-            db.add(SystemConfig(key="system_name", value=config.system_name))
+    async def upsert_config(key, value):
+        if value is not None:
+            # Upsert
+            result = await db.execute(select(SystemConfig).where(SystemConfig.key == key))
+            obj = result.scalar_one_or_none()
+            if obj:
+                obj.value = value
+            else:
+                db.add(SystemConfig(key=key, value=value))
+
+    await upsert_config("system_name", config.system_name)
+    await upsert_config("system_name_line_2", config.system_name_line_2)
             
     await db.commit()
     return {"message": "Configuration updated"}
