@@ -266,9 +266,12 @@
                 <el-option
                   v-for="item in upstreamContracts"
                   :key="item.id"
-                  :label="item.contract_code + ' - ' + item.contract_name"
+                  :label="'[' + (item.serial_number || '-') + '] ' + item.contract_name"
                   :value="item.id"
-                />
+                >
+                  <span>[{{ item.serial_number || '-' }}] {{ item.contract_name }}</span>
+                  <span style="float: right; color: #8492a6; font-size: 12px">{{ item.contract_code }}</span>
+                </el-option>
               </el-select>
             </el-form-item>
           </el-col>

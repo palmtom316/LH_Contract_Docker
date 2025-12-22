@@ -7,7 +7,7 @@
         <el-card class="filter-container" shadow="never">
           <el-form :inline="true" :model="queryParams" class="demo-form-inline">
             <el-form-item label="关键词">
-              <el-input v-model="queryParams.keyword" placeholder="合同名称/编号/甲方" clearable @keyup.enter="handleQuery" />
+              <el-input v-model="queryParams.keyword" placeholder="合同序号/编号/名称/甲方" clearable @keyup.enter="handleQuery" />
             </el-form-item>
             <el-form-item label="状态">
               <el-select v-model="queryParams.status" placeholder="合同状态" clearable style="width: 120px">
@@ -72,6 +72,30 @@
             <el-table-column prop="contract_amount" label="签约金额" width="140" align="right">
               <template #default="scope">
                 ¥ {{ formatMoney(scope.row.contract_amount) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="total_receivable" label="应收款" width="120" align="right">
+              <template #default="scope">
+                <span v-if="scope.row.total_receivable">¥ {{ formatMoney(scope.row.total_receivable) }}</span>
+                <span v-else class="text-gray">-</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="total_invoiced" label="挂账" width="120" align="right">
+              <template #default="scope">
+                <span v-if="scope.row.total_invoiced">¥ {{ formatMoney(scope.row.total_invoiced) }}</span>
+                <span v-else class="text-gray">-</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="total_received" label="回款" width="120" align="right">
+              <template #default="scope">
+                <span v-if="scope.row.total_received">¥ {{ formatMoney(scope.row.total_received) }}</span>
+                <span v-else class="text-gray">-</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="total_settlement" label="结算" width="120" align="right">
+              <template #default="scope">
+                <span v-if="scope.row.total_settlement">¥ {{ formatMoney(scope.row.total_settlement) }}</span>
+                <span v-else class="text-gray">-</span>
               </template>
             </el-table-column>
             <el-table-column prop="sign_date" label="签约时间" width="120" align="center" />

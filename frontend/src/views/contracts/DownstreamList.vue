@@ -4,7 +4,7 @@
     <el-card class="filter-container" shadow="never">
       <el-form :inline="true" :model="queryParams" class="demo-form-inline">
         <el-form-item label="关键词">
-          <el-input v-model="queryParams.keyword" placeholder="合同名称/编号/乙方" clearable @keyup.enter="handleSearch" />
+          <el-input v-model="queryParams.keyword" placeholder="合同序号/编号/名称/乙方" clearable @keyup.enter="handleSearch" />
         </el-form-item>
 
         <el-form-item label="状态">
@@ -56,6 +56,30 @@
         <el-table-column prop="contract_amount" label="合同金额" width="140" align="right">
           <template #default="scope">
             ¥ {{ Number(scope.row.contract_amount).toLocaleString() }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="total_payable" label="应付款" width="120" align="right">
+          <template #default="scope">
+            <span v-if="scope.row.total_payable">¥ {{ Number(scope.row.total_payable).toLocaleString() }}</span>
+            <span v-else class="text-gray">-</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="total_invoiced" label="挂账" width="120" align="right">
+          <template #default="scope">
+            <span v-if="scope.row.total_invoiced">¥ {{ Number(scope.row.total_invoiced).toLocaleString() }}</span>
+            <span v-else class="text-gray">-</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="total_paid" label="已付款" width="120" align="right">
+          <template #default="scope">
+            <span v-if="scope.row.total_paid">¥ {{ Number(scope.row.total_paid).toLocaleString() }}</span>
+            <span v-else class="text-gray">-</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="total_settlement" label="结算" width="120" align="right">
+          <template #default="scope">
+            <span v-if="scope.row.total_settlement">¥ {{ Number(scope.row.total_settlement).toLocaleString() }}</span>
+            <span v-else class="text-gray">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="sign_date" label="签订日期" width="120" sortable />
@@ -179,10 +203,10 @@
             <el-option
               v-for="item in upstreamOptions"
               :key="item.id"
-              :label="`[${item.id}] ${item.contract_name}`"
+              :label="'[' + (item.serial_number || '-') + '] ' + item.contract_name"
               :value="item.id"
             >
-              <span style="float: left">[{{ item.id }}] {{ item.contract_name }}</span>
+              <span>[{{ item.serial_number || '-' }}] {{ item.contract_name }}</span>
               <span style="float: right; color: #8492a6; font-size: 12px">{{ item.contract_code }}</span>
             </el-option>
           </el-select>
