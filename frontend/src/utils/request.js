@@ -31,6 +31,7 @@ service.interceptors.response.use(
     response => {
         // For blob responses (file downloads), return the full response data
         if (response.config.responseType === 'blob') {
+            console.log('RequestJS: Returning blob data:', response.data)
             return response.data
         }
         return response.data

@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
 
 # Copy requirements first for caching
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+RUN pip install --no-cache-dir -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
 
 # Copy application code
 COPY . .

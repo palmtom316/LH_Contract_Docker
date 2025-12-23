@@ -113,6 +113,10 @@ app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
 app.include_router(audit.router, prefix="/api/v1/audit", tags=["Audit Logs"])
 app.include_router(system.router, prefix="/api/v1/system", tags=["System Management"])
 
+# New Router
+from app.routers import zero_hour_labor
+app.include_router(zero_hour_labor.router, prefix="/api/v1/zero-hour-labor", tags=["Zero Hour Labor"])
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=settings.DEBUG)

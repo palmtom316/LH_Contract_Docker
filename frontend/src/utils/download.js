@@ -2,7 +2,7 @@
  * Utility functions for file downloads
  * Uses file-saver library for cross-browser compatibility
  */
-import { saveAs } from 'file-saver'
+// import { saveAs } from 'file-saver'
 
 /**
  * Download a blob as a file
@@ -11,11 +11,33 @@ import { saveAs } from 'file-saver'
  * @param {string} mimeType - The MIME type of the file
  */
 export function downloadBlob(data, filename, mimeType = 'application/octet-stream') {
-    // Create a new Blob with explicit type
-    const blob = new Blob([data], { type: mimeType })
+    console.log('downloadBlob called with:', { data, filename, mimeType })
 
-    // Use file-saver for reliable download
-    saveAs(blob, filename)
+    if (!data) {
+        console.error('downloadBlob: No data provided')
+        throw new Error('下载数据为空')
+    }
+
+    try {
+        // Create a new Blob with explicit type
+        const blob = new Blob([data], { type: mimeType })
+        console.log('downloadBlob: Created blob, size:', blob.size)
+
+        // Native download
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.style.display = 'none'
+        link.href = url
+        link.setAttribute('download', filename)
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
+        console.log('downloadBlob: Download initiated successfully')
+    } catch (error) {
+        console.error('downloadBlob error:', error)
+        throw error
+    }
 }
 
 /**
@@ -24,6 +46,7 @@ export function downloadBlob(data, filename, mimeType = 'application/octet-strea
  * @param {string} filename - The filename (should end with .xlsx)
  */
 export function downloadExcel(data, filename) {
+    console.log('downloadExcel called with:', { dataType: data?.constructor?.name, filename })
     const mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     downloadBlob(data, filename, mimeType)
 }

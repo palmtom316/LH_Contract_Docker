@@ -75,6 +75,15 @@ async def get_dashboard_stats(
     )
     annual_paid_exp = res_paid_exp_annual.scalar() or 0
     
+    # Annual Zero Hour Labor (labor date in current year)
+    from app.models.zero_hour_labor import ZeroHourLabor
+    res_paid_zhl_annual = await db.execute(
+        select(func.sum(ZeroHourLabor.total_amount)).where(
+            cast(extract('year', ZeroHourLabor.labor_date), Integer) == current_year
+        )
+    )
+    annual_paid_zhl = res_paid_zhl_annual.scalar() or 0
+    
     # Annual Downstream + Management Contracts (signed in current year)
     res_down_annual = await db.execute(
         select(
@@ -97,7 +106,7 @@ async def get_dashboard_stats(
     annual_mgmt_count = mgmt_annual[0] or 0
     annual_mgmt_amount = mgmt_annual[1] or 0
     
-    annual_payments_amount = float(annual_paid_down or 0) + float(annual_paid_mgmt or 0) + float(annual_paid_exp or 0)
+    annual_payments_amount = float(annual_paid_down or 0) + float(annual_paid_mgmt or 0) + float(annual_paid_exp or 0) + float(annual_paid_zhl or 0)
     annual_down_mgmt_count = annual_down_count + annual_mgmt_count
     annual_down_mgmt_amount = float(annual_down_amount or 0) + float(annual_mgmt_amount or 0)
     
@@ -154,7 +163,14 @@ async def get_dashboard_stats(
     )
     month_out_exp = (await db.execute(stmt_month_out_exp)).scalar() or 0
     
-    month_out = float(month_out_down or 0) + float(month_out_mgmt or 0) + float(month_out_exp or 0)
+    # Monthly Zero Hour Labor
+    stmt_month_out_zhl = select(func.sum(ZeroHourLabor.total_amount)).where(
+        cast(extract('month', ZeroHourLabor.labor_date), Integer) == current_month,
+        cast(extract('year', ZeroHourLabor.labor_date), Integer) == current_year
+    )
+    month_out_zhl = (await db.execute(stmt_month_out_zhl)).scalar() or 0
+    
+    month_out = float(month_out_down or 0) + float(month_out_mgmt or 0) + float(month_out_exp or 0) + float(month_out_zhl or 0)
     
     # Constructing a simple mock-ish historical data for frontend demo
     # In production, this should be a full query group by month

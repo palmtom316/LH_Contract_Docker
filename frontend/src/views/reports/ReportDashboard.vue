@@ -69,7 +69,7 @@
               ¥ {{ formatWan(annualPaymentsAmount) }} 万元
             </div>
             <div class="card-sub" style="font-size: 11px;">
-              <span class="text-info">下游+管理+无合同费用</span>
+              <span class="text-info">下游+管理+无合同费用+零星用工</span>
             </div>
           </div>
         </el-card>
@@ -664,6 +664,7 @@ const upstreamCompanySummary = ref([])
 const downstreamSummary = ref([])
 const managementSummary = ref([])
 const expenseSummary = ref([])
+const zeroHourLaborSummary = reactive({ count: 0, total: 0 })
 
 // Export State
 const exportFilters = ref({
@@ -975,6 +976,12 @@ const fetchData = async () => {
     managementSummary.value = summaryRes.management_by_category || []
     expenseSummary.value = expenseRes.non_contract_breakdown || [] // Used for summary card
     
+    // Zero Hour Labor Summary
+    if (expenseRes.zero_hour_labor) {
+      zeroHourLaborSummary.count = expenseRes.zero_hour_labor.count || 0
+      zeroHourLaborSummary.total = expenseRes.zero_hour_labor.total || 0
+    }
+    
     // 3. Calculate Annual Summary Statistics (for Row 1 cards)
     // Annual Upstream: count and amount
     annualUpstreamCount.value = upstreamSummary.value.reduce((acc, cur) => acc + cur.count, 0)
@@ -983,7 +990,7 @@ const fetchData = async () => {
     // Annual Receipts: total received amount from AR stats
     annualReceiptsAmount.value = arApRes.ar.total_received
     
-    // Annual Payments: total paid from AP stats (includes downstream + management + non-contract)
+    // Annual Payments: total paid from AP stats (includes downstream + management + non-contract + zero hour labor)
     annualPaymentsAmount.value = arApRes.ap.total_paid
     
     // Annual Downstream + Management: count and amount

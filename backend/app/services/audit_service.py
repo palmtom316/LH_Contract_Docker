@@ -51,6 +51,7 @@ class ResourceType:
     SETTLEMENT = "结算"
     FILE = "文件"
     SYSTEM = "系统"
+    ZERO_HOUR_LABOR = "零星用工"
 
 
 async def create_audit_log(

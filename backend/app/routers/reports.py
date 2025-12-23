@@ -113,6 +113,7 @@ async def get_finance_trend(
     expense_down = [0] * 12
     expense_mgmt = [0] * 12
     expense_nc = [0] * 12
+    expense_zhl = [0] * 12  # Zero Hour Labor
     
     # 1. Income (Upstream Receipts)
     stmt_income = select(
@@ -128,7 +129,7 @@ async def get_finance_trend(
         if 0 <= month_idx < 12:
             income_data[month_idx] = float(r[1] or 0)
             
-    # 2. Expense (Downstream Payments + Mgmt Payments + Non-Contract Expenses)
+    # 2. Expense (Downstream Payments + Mgmt Payments + Non-Contract Expenses + Zero Hour Labor)
     
     # Downstream
     stmt_exp_down = select(
@@ -169,8 +170,22 @@ async def get_finance_trend(
         if 0 <= month_idx < 12:
             expense_nc[month_idx] = float(r[1] or 0)
 
+    # Zero Hour Labor
+    from app.models.zero_hour_labor import ZeroHourLabor
+    stmt_exp_zhl = select(
+        extract('month', ZeroHourLabor.labor_date).label('month'),
+        func.sum(ZeroHourLabor.total_amount)
+    ).where(
+        extract('year', ZeroHourLabor.labor_date) == year
+    ).group_by('month')
+    res_exp_zhl = await db.execute(stmt_exp_zhl)
+    for r in res_exp_zhl.all():
+        month_idx = int(r[0]) - 1
+        if 0 <= month_idx < 12:
+            expense_zhl[month_idx] = float(r[1] or 0)
+
     # Calculate Total Expense (sum of components)
-    expense_data = [sum(x) for x in zip(expense_down, expense_mgmt, expense_nc)]
+    expense_data = [sum(x) for x in zip(expense_down, expense_mgmt, expense_nc, expense_zhl)]
 
     return {
         "year": year,
@@ -180,7 +195,8 @@ async def get_finance_trend(
         "expense_breakdown": {
             "downstream": expense_down,
             "management": expense_mgmt,
-            "non_contract": expense_nc
+            "non_contract": expense_nc,
+            "zero_hour_labor": expense_zhl
         }
     }
 
@@ -255,6 +271,25 @@ async def get_expense_breakdown(
         name = expense_type_map.get(raw_type, raw_type)
         nc_breakdown.append({"name": name, "count": r[1], "value": float(r[2] or 0)})
     
+    # Add Zero Hour Labor to the breakdown (will be sorted with others)
+    # Fetch now for inclusion in nc_breakdown
+    from app.models.zero_hour_labor import ZeroHourLabor
+    zhl_filters = [extract('year', ZeroHourLabor.labor_date) == year]
+    if month:
+        zhl_filters.append(extract('month', ZeroHourLabor.labor_date) == month)
+    
+    stmt_zhl_total = select(func.sum(ZeroHourLabor.total_amount)).where(*zhl_filters)
+    res_zhl = await db.execute(stmt_zhl_total)
+    total_zhl = float(res_zhl.scalar() or 0)
+    
+    stmt_zhl_count = select(func.count(ZeroHourLabor.id)).where(*zhl_filters)
+    res_zhl_count = await db.execute(stmt_zhl_count)
+    count_zhl = res_zhl_count.scalar() or 0
+    
+    # Add 零星用工 to nc_breakdown so it shows in the Non-Contract Expenses card
+    if total_zhl > 0 or count_zhl > 0:
+        nc_breakdown.append({"name": "零星用工", "count": count_zhl, "value": total_zhl})
+    
     # Sort by value descending to show top expenses first
     nc_breakdown.sort(key=lambda x: x['value'], reverse=True)
     
@@ -273,16 +308,23 @@ async def get_expense_breakdown(
     res_nc = await db.execute(stmt_nc_total)
     total_nc = float(res_nc.scalar() or 0)
     
+    # Note: Zero Hour Labor stats (total_zhl, count_zhl) are already calculated above
+    
     overall_breakdown = [
         {"name": "下游合同支出", "value": total_down},
         {"name": "管理合同支出", "value": total_mgmt},
         {"name": "无合同费用", "value": total_nc},
+        {"name": "零星用工", "value": total_zhl},
     ]
     
     return {
         "year": year,
         "non_contract_breakdown": nc_breakdown,
-        "overall_breakdown": overall_breakdown
+        "overall_breakdown": overall_breakdown,
+        "zero_hour_labor": {
+            "count": count_zhl,
+            "total": total_zhl
+        }
     }
 
 @router.get("/finance/receivables-payables")
@@ -363,8 +405,17 @@ async def get_ar_ap_stats(
     res_nc_total = await db.execute(select(func.sum(ExpenseNonContract.amount)).where(*nc_filters))
     total_nc = res_nc_total.scalar() or 0
     
-    total_ap_plan = float(total_ap_down_plan) + float(total_ap_mgmt_plan) + float(total_nc)
-    total_paid = float(total_paid_down) + float(total_paid_mgmt) + float(total_nc)
+    # Zero Hour Labor (Payable = Paid for this context)
+    from app.models.zero_hour_labor import ZeroHourLabor
+    zhl_filters = [extract('year', ZeroHourLabor.labor_date) == year]
+    if month:
+        zhl_filters.append(extract('month', ZeroHourLabor.labor_date) == month)
+    
+    res_zhl_total = await db.execute(select(func.sum(ZeroHourLabor.total_amount)).where(*zhl_filters))
+    total_zhl = res_zhl_total.scalar() or 0
+    
+    total_ap_plan = float(total_ap_down_plan) + float(total_ap_mgmt_plan) + float(total_nc) + float(total_zhl)
+    total_paid = float(total_paid_down) + float(total_paid_mgmt) + float(total_nc) + float(total_zhl)
 
     return {
         "ar": {
@@ -380,7 +431,9 @@ async def get_ar_ap_stats(
                 "downstream_payable": float(total_ap_down_plan),
                 "downstream_paid": float(total_paid_down),
                 "management_payable": float(total_ap_mgmt_plan),
-                "management_paid": float(total_paid_mgmt)
+                "management_paid": float(total_paid_mgmt),
+                "non_contract": float(total_nc),
+                "zero_hour_labor": float(total_zhl)
             }
         }
     }
@@ -487,6 +540,13 @@ async def export_comprehensive_report(
         .group_by(ExpenseNonContract.upstream_contract_id)
     map_exp = await get_agg(stmt_exp)
 
+    # Zero Hour Labor Aggregation
+    from app.models.zero_hour_labor import ZeroHourLabor
+    stmt_zhl = select(ZeroHourLabor.upstream_contract_id, func.sum(ZeroHourLabor.total_amount))\
+        .where(ZeroHourLabor.upstream_contract_id.in_(upstream_ids))\
+        .group_by(ZeroHourLabor.upstream_contract_id)
+    map_zhl = await get_agg(stmt_zhl)
+
     # 3. Assemble Data
     data_list = []
     for c in contracts:
@@ -522,6 +582,9 @@ async def export_comprehensive_report(
             
             # Associated Expense
             "关联无合同费用付款合计": map_exp.get(c.id, 0),
+            
+            # Associated Zero Hour Labor
+            "关联零星用工费用合计": map_zhl.get(c.id, 0),
         }
         data_list.append(row)
         
@@ -992,8 +1055,9 @@ async def export_expense_payments(
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    Export Non-Contract Expense Payments (无合同费用)
+    Export Non-Contract Expense Payments (无合同费用) including Zero Hour Labor
     """
+    # First, get non-contract expenses
     stmt = select(ExpenseNonContract).options(selectinload(ExpenseNonContract.upstream_contract))
     
     if start_date:
@@ -1007,9 +1071,11 @@ async def export_expense_payments(
     rows = result.scalars().all()
     
     data_list = []
-    for idx, exp in enumerate(rows, 1):
+    idx = 1
+    for exp in rows:
         data_list.append({
             "序号": idx,
+            "费用类型": "无合同费用",
             "费用归属": exp.attribution or "",
             "费用类别": exp.category or "",
             "费用分类": exp.expense_type or "",
@@ -1019,6 +1085,38 @@ async def export_expense_payments(
             "经办人": exp.handler or "",
             "说明": exp.description or ""
         })
+        idx += 1
+    
+    # Then, get zero hour labor
+    from app.models.zero_hour_labor import ZeroHourLabor
+    from sqlalchemy.orm import selectinload as sl
+    
+    stmt_zhl = select(ZeroHourLabor).options(sl(ZeroHourLabor.upstream_contract))
+    
+    if start_date:
+        stmt_zhl = stmt_zhl.where(ZeroHourLabor.labor_date >= start_date)
+    if end_date:
+        stmt_zhl = stmt_zhl.where(ZeroHourLabor.labor_date <= end_date)
+    
+    stmt_zhl = stmt_zhl.order_by(ZeroHourLabor.labor_date.desc())
+    
+    result_zhl = await db.execute(stmt_zhl)
+    rows_zhl = result_zhl.scalars().all()
+    
+    for zhl in rows_zhl:
+        data_list.append({
+            "序号": idx,
+            "费用类型": "零星用工",
+            "费用归属": "项目用工" if zhl.attribution == "PROJECT" else "公司用工",
+            "费用类别": "零星用工",
+            "费用分类": "零星用工",
+            "关联上游合同": zhl.upstream_contract.contract_name if zhl.upstream_contract else "",
+            "发生日期": zhl.labor_date,
+            "金额": float(zhl.total_amount or 0),
+            "经办人": zhl.dispatch_unit or "",
+            "说明": f"技工{zhl.skilled_quantity or 0}人,普工{zhl.general_quantity or 0}人"
+        })
+        idx += 1
         
     df = pd.DataFrame(data_list)
     
@@ -1304,6 +1402,17 @@ async def export_association_report(
             # Translate from English enum to Chinese
             exp_type_cn = expense_type_map.get(exp_type, exp_type)
             exp_summary[exp_type_cn] = exp_summary.get(exp_type_cn, 0.0) + float(e.amount or 0)
+        
+        # Zero Hour Labor
+        from app.models.zero_hour_labor import ZeroHourLabor
+        stmt_zhl = select(ZeroHourLabor).where(ZeroHourLabor.upstream_contract_id == up.id)
+        res_zhl = await db.execute(stmt_zhl)
+        zhls = res_zhl.scalars().all()
+        
+        if zhls:
+            zhl_total = sum(float(z.total_amount or 0) for z in zhls)
+            exp_summary["零星用工"] = exp_summary.get("零星用工", 0.0) + zhl_total
+            
         exp_list = list(exp_summary.items())
         
         # Merge rows
@@ -1327,7 +1436,7 @@ async def export_association_report(
                 row["关联-结算金额"] = ""
                 row["关联-已付款金额"] = ""
                 
-            # Expense
+            # Expense (including Zero Hour Labor)
             if i < len(exp_list):
                 cat, amt = exp_list[i]
                 row["无合同费用分类"] = cat
