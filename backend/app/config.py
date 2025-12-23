@@ -30,7 +30,8 @@ class Settings(BaseSettings):
     # Generate strong key: python -c "import secrets; print(secrets.token_urlsafe(64))"
     SECRET_KEY: str = os.getenv("SECRET_KEY", secrets.token_urlsafe(64))
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 2  # 2 hours (shortened for security)
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # 7 days for refresh token
     
     # CORS - Whitelist of allowed origins
     CORS_ORIGINS: str = os.getenv(

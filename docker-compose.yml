@@ -48,7 +48,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-lh_admin}:${POSTGRES_PASSWORD:-LanHai2024Secure!}@db:5432/${POSTGRES_DB:-lh_contract_db}
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: ${SECRET_KEY}
-      CORS_ORIGINS: "*"
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:80,http://127.0.0.1:3000}
       UPLOAD_DIR: /app/uploads
       DEBUG: "false"
     volumes:

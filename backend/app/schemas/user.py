@@ -71,8 +71,15 @@ class UserLogin(BaseModel):
 class Token(BaseModel):
     """Schema for JWT token response"""
     access_token: str
+    refresh_token: Optional[str] = None  # Refresh token for token renewal
     token_type: str = "bearer"
+    expires_in: Optional[int] = None  # Seconds until access token expires
     user: UserResponse
+
+
+class RefreshTokenRequest(BaseModel):
+    """Schema for refresh token request"""
+    refresh_token: str
 
 
 class TokenData(BaseModel):

@@ -12,11 +12,13 @@ from typing import List
 
 from app.database import get_db
 from app.models.user import User, UserRole, ROLE_DISPLAY_NAMES
-from app.schemas.user import UserCreate, UserResponse, UserLogin, Token, RoleOption, RoleListResponse
+from app.schemas.user import UserCreate, UserResponse, UserLogin, Token, RoleOption, RoleListResponse, RefreshTokenRequest
 from app.services.auth import (
     verify_password, 
     get_password_hash, 
     create_access_token,
+    create_refresh_token,
+    verify_refresh_token,
     get_current_user,
     get_current_active_user
 )
@@ -117,16 +119,17 @@ async def login(
         user_agent=get_user_agent(request)
     )
     
-    # Create access token
+    # Create access token and refresh token
+    token_data = {"sub": str(user.id), "username": user.username, "role": user.role.value}
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": str(user.id), "username": user.username, "role": user.role.value},
-        expires_delta=access_token_expires
-    )
+    access_token = create_access_token(data=token_data, expires_delta=access_token_expires)
+    refresh_token = create_refresh_token(data=token_data)
     
     return Token(
         access_token=access_token,
+        refresh_token=refresh_token,
         token_type="bearer",
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # in seconds
         user=UserResponse.from_orm_with_permissions(user, get_user_permissions(user))
     )
 
@@ -171,16 +174,17 @@ async def login_json(
         user_agent=get_user_agent(request)
     )
     
-    # Create access token
+    # Create access token and refresh token
+    token_data = {"sub": str(user.id), "username": user.username, "role": user.role.value}
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": str(user.id), "username": user.username, "role": user.role.value},
-        expires_delta=access_token_expires
-    )
+    access_token = create_access_token(data=token_data, expires_delta=access_token_expires)
+    refresh_token = create_refresh_token(data=token_data)
     
     return Token(
         access_token=access_token,
+        refresh_token=refresh_token,
         token_type="bearer",
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # in seconds
         user=UserResponse.from_orm_with_permissions(user, get_user_permissions(user))
     )
 
@@ -283,3 +287,66 @@ async def get_available_roles(
     ]
     return RoleListResponse(roles=roles)
 
+
+@router.post("/refresh", response_model=Token)
+async def refresh_access_token(
+    request: Request,
+    token_request: RefreshTokenRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Refresh access token using a valid refresh token.
+    
+    This endpoint allows clients to obtain a new access token without
+    requiring the user to re-authenticate with their credentials.
+    """
+    # Verify the refresh token
+    payload = verify_refresh_token(token_request.refresh_token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效或已过期的刷新令牌",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
+    # Get user from token payload
+    try:
+        user_id = int(payload.get("sub"))
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效的刷新令牌"
+        )
+    
+    # Fetch user from database to ensure they still exist and are active
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="用户不存在"
+        )
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="用户已被禁用"
+        )
+    
+    # Create new access token (refresh token remains the same)
+    token_data = {"sub": str(user.id), "username": user.username, "role": user.role.value}
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data=token_data, expires_delta=access_token_expires)
+    
+    # Optionally create a new refresh token (sliding expiration)
+    # Uncomment the next line if you want to rotate refresh tokens
+    # new_refresh_token = create_refresh_token(data=token_data)
+    
+    return Token(
+        access_token=access_token,
+        refresh_token=token_request.refresh_token,  # Return the same refresh token
+        token_type="bearer",
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        user=UserResponse.from_orm_with_permissions(user, get_user_permissions(user))
+    )

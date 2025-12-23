@@ -62,13 +62,40 @@ service.interceptors.response.use(
 
             switch (response.status) {
                 case 401:
-                    if (response.config.url.includes('/login')) {
+                    if (response.config.url.includes('/login') || response.config.url.includes('/refresh')) {
+                        // Login or refresh failed - show error
                         ElMessage.error(errorMsg || '用户名或密码错误')
                     } else {
-                        localStorage.removeItem('token')
-                        localStorage.removeItem('user')
-                        router.push('/login')
-                        ElMessage.error('登录已过期，请重新登录')
+                        // Try to refresh the token
+                        const refreshToken = localStorage.getItem('refresh_token')
+                        if (refreshToken && !response.config._retry) {
+                            response.config._retry = true
+                            try {
+                                // Import dynamically to avoid circular dependency
+                                const { useUserStore } = await import('@/stores/user')
+                                const userStore = useUserStore()
+                                await userStore.refreshAccessToken()
+
+                                // Retry the original request with new token
+                                response.config.headers['Authorization'] = `Bearer ${localStorage.getItem('token')}`
+                                return service(response.config)
+                            } catch (refreshError) {
+                                // Refresh failed, redirect to login
+                                localStorage.removeItem('token')
+                                localStorage.removeItem('refresh_token')
+                                localStorage.removeItem('user_info')
+                                localStorage.removeItem('user_permissions')
+                                router.push('/login')
+                                ElMessage.error('登录已过期，请重新登录')
+                            }
+                        } else {
+                            localStorage.removeItem('token')
+                            localStorage.removeItem('refresh_token')
+                            localStorage.removeItem('user_info')
+                            localStorage.removeItem('user_permissions')
+                            router.push('/login')
+                            ElMessage.error('登录已过期，请重新登录')
+                        }
                     }
                     break
                 case 403:

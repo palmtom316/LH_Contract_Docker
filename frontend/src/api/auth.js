@@ -34,3 +34,11 @@ export function initAdmin() {
 export function logout() {
     return Promise.resolve()
 }
+
+export function refreshToken(refreshToken) {
+    return request({
+        url: '/auth/refresh',
+        method: 'post',
+        data: { refresh_token: refreshToken }
+    })
+}

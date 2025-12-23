@@ -1,5 +1,6 @@
 """
 Report Statistics Router (Reloaded)
+With Redis caching for improved performance
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,6 +8,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy import select, func, extract, case, or_, cast, String, Integer
 from datetime import datetime, date
 from typing import List, Dict, Any
+import logging
 
 from app.database import get_db
 from app.models.user import User
@@ -15,27 +17,78 @@ from app.models.contract_downstream import ContractDownstream, FinanceDownstream
 from app.models.contract_management import ContractManagement, FinanceManagementPayment, FinanceManagementInvoice, FinanceManagementPayable, ManagementSettlement
 from app.models.expense import ExpenseNonContract
 from app.services.auth import get_current_active_user
+from app.services.report_cache import (
+    get_cached_report, 
+    set_cached_report,
+    invalidate_report_cache,
+    CACHE_TTL_REPORTS,
+    CACHE_TTL_SUMMARY
+)
 import pandas as pd
 import io
 from urllib.parse import quote
 from fastapi.responses import StreamingResponse
 from urllib.parse import quote
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+@router.post("/cache/invalidate")
+async def invalidate_cache(
+    report_type: str = None,
+    year: int = None,
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Invalidate report cache. Admin only.
+    
+    Args:
+        report_type: Optional type to invalidate (e.g., 'contracts_summary', 'finance_trend', 'expense_breakdown', 'ar_ap_stats')
+        year: Optional year to invalidate
+    
+    Returns:
+        Number of cache entries invalidated
+    """
+    # Only admin can invalidate cache
+    from fastapi import HTTPException, status
+    if not current_user.is_superuser and current_user.role.value != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="只有管理员可以清除缓存"
+        )
+    
+    count = await invalidate_report_cache(report_type, year)
+    
+    return {
+        "success": True,
+        "message": f"已清除 {count} 条缓存记录",
+        "invalidated_count": count
+    }
+
 
 @router.get("/contracts/summary")
 async def get_contract_summary(
     year: int = None,
     month: int = None,
+    skip_cache: bool = False,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    Get summary statistics for contracts
-    If year/month provided, filter by sign_date
+    Get summary statistics for contracts.
+    If year/month provided, filter by sign_date.
+    Results are cached for 5 minutes.
     """
     if not year:
         year = datetime.now().year
+    
+    # Try to get from cache first (unless skip_cache is True)
+    if not skip_cache:
+        cached_data = await get_cached_report("contracts_summary", year, month)
+        if cached_data:
+            logger.debug(f"[CACHE] Contract summary served from cache: {year}/{month}")
+            return cached_data
 
     # Base filters using CAST to ensure consistent type comparison across DB dialects
     up_filters = [cast(extract('year', ContractUpstream.sign_date), Integer) == year]
@@ -87,24 +140,38 @@ async def get_contract_summary(
     res_mgmt_cat = await db.execute(stmt_mgmt_cat)
     management_by_category = [{"name": r[0] or "未分类", "count": r[1], "amount": float(r[2] or 0)} for r in res_mgmt_cat.all()]
     
-    return {
+    result = {
         "upstream_by_category": upstream_by_category,
         "upstream_by_company_category": upstream_by_company_category,
         "downstream_by_category": downstream_by_category,
         "management_by_category": management_by_category
     }
+    
+    # Cache the result
+    await set_cached_report("contracts_summary", year, month, result)
+    
+    return result
 
 @router.get("/finance/trend")
 async def get_finance_trend(
     year: int = None,
+    skip_cache: bool = False,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    Get monthly income vs expense trend for a specific year
+    Get monthly income vs expense trend for a specific year.
+    Results are cached for 10 minutes.
     """
     if not year:
         year = datetime.now().year
+    
+    # Try to get from cache first
+    if not skip_cache:
+        cached_data = await get_cached_report("finance_trend", year)
+        if cached_data:
+            logger.debug(f"[CACHE] Finance trend served from cache: {year}")
+            return cached_data
         
     # Initialize 12 months data
     months = list(range(1, 13))
@@ -187,7 +254,7 @@ async def get_finance_trend(
     # Calculate Total Expense (sum of components)
     expense_data = [sum(x) for x in zip(expense_down, expense_mgmt, expense_nc, expense_zhl)]
 
-    return {
+    result = {
         "year": year,
         "months": [f"{m}月" for m in months],
         "income": income_data,
@@ -199,19 +266,33 @@ async def get_finance_trend(
             "zero_hour_labor": expense_zhl
         }
     }
+    
+    # Cache the result
+    await set_cached_report("finance_trend", year, None, result)
+    
+    return result
 
 @router.get("/expenses/breakdown")
 async def get_expense_breakdown(
     year: int = None,
     month: int = None,
+    skip_cache: bool = False,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    Get breakdown of expenses (Contract vs Non-Contract, and Categories)
+    Get breakdown of expenses (Contract vs Non-Contract, and Categories).
+    Results are cached for 5 minutes.
     """
     if not year:
         year = datetime.now().year
+    
+    # Try cache first
+    if not skip_cache:
+        cached_data = await get_cached_report("expense_breakdown", year, month)
+        if cached_data:
+            logger.debug(f"[CACHE] Expense breakdown served from cache: {year}/{month}")
+            return cached_data
         
     # Filters
     nc_filters = [extract('year', ExpenseNonContract.expense_date) == year]
@@ -317,7 +398,7 @@ async def get_expense_breakdown(
         {"name": "零星用工", "value": total_zhl},
     ]
     
-    return {
+    result = {
         "year": year,
         "non_contract_breakdown": nc_breakdown,
         "overall_breakdown": overall_breakdown,
@@ -326,22 +407,33 @@ async def get_expense_breakdown(
             "total": total_zhl
         }
     }
+    
+    # Cache the result
+    await set_cached_report("expense_breakdown", year, month, result)
+    
+    return result
 
 @router.get("/finance/receivables-payables")
 async def get_ar_ap_stats(
     year: int = None,
     month: int = None,
+    skip_cache: bool = False,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """
     Get AR/AP stats.
-    NOTE: AR/AP Outstanding is typically a snapshot (all time). 
-    However, "Received" and "Paid" should reflect the selected period.
-    "Receivable/Payable" in this context will represent 'New AR/AP generated in period'.
+    Results are cached for 5 minutes.
     """
     if not year:
         year = datetime.now().year
+    
+    # Try cache first
+    if not skip_cache:
+        cached_data = await get_cached_report("ar_ap_stats", year, month)
+        if cached_data:
+            logger.debug(f"[CACHE] AR/AP stats served from cache: {year}/{month}")
+            return cached_data
     
     # Define filters for "Creation" (Receivable/Payable dates) and "Flow" (Receipt/Payment dates)
     # Usually: Receivable.expected_date or created_at? Let's use created_at (registration date) for AR generation stats
@@ -417,7 +509,7 @@ async def get_ar_ap_stats(
     total_ap_plan = float(total_ap_down_plan) + float(total_ap_mgmt_plan) + float(total_nc) + float(total_zhl)
     total_paid = float(total_paid_down) + float(total_paid_mgmt) + float(total_nc) + float(total_zhl)
 
-    return {
+    result = {
         "ar": {
             "total_receivable": float(total_ar_plan),
             "total_received": float(total_received),
@@ -437,6 +529,11 @@ async def get_ar_ap_stats(
             }
         }
     }
+    
+    # Cache the result
+    await set_cached_report("ar_ap_stats", year, month, result)
+    
+    return result
 
 
 @router.get("/export/comprehensive")

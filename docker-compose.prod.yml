@@ -74,7 +74,7 @@ services:
       WORKERS: "4"
       # Ensure allowed hosts covers the container and proxy behavior
       ALLOWED_HOSTS: '["*"]'
-      CORS_ORIGINS: '["*"]'
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:80}
     volumes:
       - ./uploads:/app/uploads
       - ./logs:/app/logs

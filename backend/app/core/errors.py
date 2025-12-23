@@ -14,10 +14,10 @@ class ErrorCode(str, Enum):
     INVALID_CREDENTIALS = "1001"
     TOKEN_EXPIRED = "1002"
     TOKEN_INVALID = "1003"
-    INSUFFICIENT_PERMISSIONS = "1003"
-    USER_NOT_FOUND = "1004"
-    USER_INACTIVE = "1005"
-    PASSWORD_TOO_WEAK = "1006"
+    INSUFFICIENT_PERMISSIONS = "1004"  # Fixed: was duplicate of 1003
+    USER_NOT_FOUND = "1005"
+    USER_INACTIVE = "1006"
+    PASSWORD_TOO_WEAK = "1007"
     
     # Contract Business Errors (2xxx)
     CONTRACT_NOT_FOUND = "2001"
