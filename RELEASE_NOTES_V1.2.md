@@ -93,6 +93,23 @@ V1.2 版本是一个重要的代码质量和优化版本，完成了全面的代
   - 系统重置（带安全确认）
 - **权限**: 仅管理员可访问
 
+### 🗄️ 数据库变更 (⚠️ 需要迁移)
+
+> ⚠️ **重要**: 本版本包含数据库结构变更，升级时必须执行迁移脚本！
+
+#### 新增表
+- `zero_hour_labor_materials` - 零星用工材料表
+- `sys_dictionaries` - 系统字典表
+- `sys_config` - 系统配置表
+
+#### 变更列 (zero_hour_labor 表)
+- 新增: `dispatch_file_path` - 派工单文件路径
+- 新增: `skilled_unit_price`, `skilled_quantity`, `skilled_price_total` - 技工相关字段
+- 新增: `general_unit_price`, `general_quantity`, `general_price_total` - 普工相关字段
+
+#### 迁移文档
+详见: [`docs/DATABASE_MIGRATION_V1.2.md`](docs/DATABASE_MIGRATION_V1.2.md)
+
 ---
 
 ## 📊 代码质量指标

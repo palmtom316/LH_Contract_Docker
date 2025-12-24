@@ -254,62 +254,87 @@ docker-compose logs -f
 
 ---
 
-## 四、数据库迁移（如需要）
+## 四、数据库迁移（⚠️ 必须执行）
 
-> V1.2 版本主要是代码优化，无数据库结构变更。以下步骤通常**不是必须的**，但建议执行以确保一致性。
+> ⚠️ **重要**: V1.2 版本包含数据库结构变更，**必须执行**以下迁移步骤，否则部分功能将无法正常使用！
 
-### 4.1 检查是否需要迁移
+### 4.1 执行完整迁移脚本
 
-```bash
-# 进入后端容器
-docker exec -it lh_contract_backend bash
-
-# 检查 Alembic 迁移状态
-alembic current
-alembic history
-```
-
-### 4.2 执行数据库索引优化（建议）
+详细迁移指南请参考: [`docs/DATABASE_MIGRATION_V1.2.md`](docs/DATABASE_MIGRATION_V1.2.md)
 
 ```bash
 # 连接到数据库
 docker exec -it lh_contract_db psql -U lh_admin -d lh_contract_db
-
-# 然后逐个执行以下 SQL（来自 docs/DATABASE_INDEX_OPTIMIZATION.md）
 ```
 
+然后执行以下**关键** SQL（完整版本请查看迁移文档）:
+
 ```sql
--- 上游合同索引
-CREATE INDEX IF NOT EXISTS idx_contract_upstream_sign_date ON contracts_upstream(sign_date);
-CREATE INDEX IF NOT EXISTS idx_contract_upstream_status ON contracts_upstream(status);
-CREATE INDEX IF NOT EXISTS idx_contract_upstream_category ON contracts_upstream(category);
+-- ============================================================
+-- V1.2 关键数据库迁移
+-- ============================================================
 
--- 下游合同索引
-CREATE INDEX IF NOT EXISTS idx_contract_downstream_upstream_id ON contracts_downstream(upstream_contract_id);
-CREATE INDEX IF NOT EXISTS idx_contract_downstream_sign_date ON contracts_downstream(sign_date);
+BEGIN;
 
--- 管理合同索引
-CREATE INDEX IF NOT EXISTS idx_contract_management_upstream_id ON contracts_management(upstream_contract_id);
+-- 1. 零星用工表新增列
+ALTER TABLE zero_hour_labor ADD COLUMN IF NOT EXISTS dispatch_file_path VARCHAR(500);
+ALTER TABLE zero_hour_labor ADD COLUMN IF NOT EXISTS skilled_unit_price NUMERIC(15, 2) DEFAULT 0;
+ALTER TABLE zero_hour_labor ADD COLUMN IF NOT EXISTS skilled_quantity NUMERIC(15, 2) DEFAULT 0;
+ALTER TABLE zero_hour_labor ADD COLUMN IF NOT EXISTS skilled_price_total NUMERIC(15, 2) DEFAULT 0;
+ALTER TABLE zero_hour_labor ADD COLUMN IF NOT EXISTS general_unit_price NUMERIC(15, 2) DEFAULT 0;
+ALTER TABLE zero_hour_labor ADD COLUMN IF NOT EXISTS general_quantity NUMERIC(15, 2) DEFAULT 0;
+ALTER TABLE zero_hour_labor ADD COLUMN IF NOT EXISTS general_price_total NUMERIC(15, 2) DEFAULT 0;
 
--- 财务记录索引
-CREATE INDEX IF NOT EXISTS idx_finance_upstream_receipt_date ON finance_upstream_receipts(receipt_date);
-CREATE INDEX IF NOT EXISTS idx_finance_upstream_receipt_contract ON finance_upstream_receipts(contract_id);
-CREATE INDEX IF NOT EXISTS idx_finance_downstream_payment_date ON finance_downstream_payments(payment_date);
-CREATE INDEX IF NOT EXISTS idx_finance_downstream_payment_contract ON finance_downstream_payments(contract_id);
+-- 2. 创建零星用工材料表
+CREATE TABLE IF NOT EXISTS zero_hour_labor_materials (
+    id SERIAL PRIMARY KEY,
+    zero_hour_labor_id INTEGER NOT NULL REFERENCES zero_hour_labor(id) ON DELETE CASCADE,
+    material_name VARCHAR(200) NOT NULL,
+    material_unit VARCHAR(50),
+    material_quantity NUMERIC(15, 2) DEFAULT 0,
+    material_unit_price NUMERIC(15, 2) DEFAULT 0,
+    material_price_total NUMERIC(15, 2) DEFAULT 0
+);
 
--- 费用索引
-CREATE INDEX IF NOT EXISTS idx_expense_non_contract_date ON expenses_non_contract(expense_date);
-CREATE INDEX IF NOT EXISTS idx_expense_non_contract_type ON expenses_non_contract(expense_type);
+-- 3. 创建系统配置表
+CREATE TABLE IF NOT EXISTS sys_config (
+    id SERIAL PRIMARY KEY,
+    key VARCHAR(100) UNIQUE NOT NULL,
+    value TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE
+);
 
--- 审计日志索引
-CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
+-- 4. 创建系统字典表
+CREATE TABLE IF NOT EXISTS sys_dictionaries (
+    id SERIAL PRIMARY KEY,
+    category VARCHAR(100) NOT NULL,
+    label VARCHAR(200) NOT NULL,
+    value VARCHAR(200) NOT NULL,
+    sort_order INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE
+);
+
+COMMIT;
 
 -- 退出
 \q
 ```
 
+### 4.2 验证迁移结果
+
+```bash
+# 检查 zero_hour_labor 表结构
+docker exec -it lh_contract_db psql -U lh_admin -d lh_contract_db -c "\d zero_hour_labor"
+
+# 检查新表是否存在
+docker exec -it lh_contract_db psql -U lh_admin -d lh_contract_db -c "\dt"
+```
+
 ---
+
 
 ## 五、验证升级成功
 

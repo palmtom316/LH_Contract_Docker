@@ -40,6 +40,14 @@ async def lifespan(app: FastAPI):
     
     await init_data()
     
+    # 数据库结构检查 - 检测缺失的表和列
+    try:
+        from app.core.db_check import run_startup_check
+        from app.database import engine
+        await run_startup_check(engine)
+    except Exception as e:
+        logger.warning(f"Database schema check failed: {e}")
+    
     yield
     
     try:
