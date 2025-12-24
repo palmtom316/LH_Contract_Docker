@@ -17,7 +17,6 @@ class ContractDownstreamBase(BaseModel):
     party_b_name: str = Field(..., max_length=200) # Renamed from supplier_name
     
     upstream_contract_id: Optional[int] = None
-    upstream_contract_id: Optional[int] = None
     # upstream_contract_name_snapshot removed
     
     # Classification (Req 3.3: Same structure as Upstream)
