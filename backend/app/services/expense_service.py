@@ -196,12 +196,23 @@ class ExpenseService:
         if not expense:
             raise HTTPException(status_code=404, detail="费用记录不存在")
 
+        # 检查费用编号是否更新且是否与其他记录重复
+        update_data = expense_in.model_dump(exclude_unset=True)
+        if 'expense_code' in update_data and update_data['expense_code'] != expense.expense_code:
+            existing = await self.db.execute(
+                select(ExpenseNonContract).where(
+                    ExpenseNonContract.expense_code == update_data['expense_code'],
+                    ExpenseNonContract.id != expense_id
+                )
+            )
+            if existing.scalar_one_or_none():
+                raise HTTPException(status_code=400, detail="费用编号已存在")
+
         old_values = {
-            k: getattr(expense, k) for k in expense_in.model_dump(exclude_unset=True).keys() 
+            k: getattr(expense, k) for k in update_data.keys() 
             if hasattr(expense, k)
         }
 
-        update_data = expense_in.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(expense, field, value)
         expense.updated_by = user.id

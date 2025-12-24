@@ -31,6 +31,7 @@ class ExpenseCreate(ExpenseBase):
 
 
 class ExpenseUpdate(BaseModel):
+    expense_code: Optional[str] = Field(None, max_length=50)  # 允许更新费用编号
     attribution: Optional[str] = None
     category: Optional[str] = None
     expense_type: Optional[str] = None
