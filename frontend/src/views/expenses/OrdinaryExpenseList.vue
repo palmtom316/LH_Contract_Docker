@@ -26,26 +26,13 @@
           <el-input v-model="queryParams.upstream_contract_id" placeholder="上游合同序号" clearable style="width: 120px" @keyup.enter="handleQuery" />
         </el-form-item>
         <el-form-item label="费用分类">
-          <el-select v-model="queryParams.category" placeholder="费用分类" clearable style="width: 140px">
-            <el-option label="工资" value="工资" />
-            <el-option label="奖金" value="奖金" />
-            <el-option label="培训费" value="培训费" />
-            <el-option label="资质费" value="资质费" />
-            <el-option label="办公费" value="办公费" />
-            <el-option label="餐饮费" value="餐饮费" />
-            <el-option label="房屋租赁" value="房屋租赁" />
-            <el-option label="交通费" value="交通费" />
-            <el-option label="车辆使用费" value="车辆使用费" />
-            <el-option label="其他租赁" value="其他租赁" />
-            <el-option label="水电费" value="水电费" />
-            <el-option label="业务费" value="业务费" />
-            <el-option label="住宿费" value="住宿费" />
-            <el-option label="通讯费" value="通讯费" />
-            <el-option label="投标费" value="投标费" />
-            <el-option label="中介费" value="中介费" />
-            <el-option label="零星采购" value="零星采购" />
-            <el-option label="其他费用" value="其他费用" />
-          </el-select>
+          <DictSelect 
+            v-model="queryParams.category" 
+            category="expense_type" 
+            placeholder="费用分类" 
+            clearable 
+            style="width: 140px" 
+          />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -226,26 +213,12 @@
           </el-col>
           <el-col :xs="24" :sm="12">
             <el-form-item label="费用分类" prop="expense_type">
-              <el-select v-model="form.expense_type" placeholder="请选择" style="width: 100%">
-            <el-option label="工资" value="工资" />
-            <el-option label="奖金" value="奖金" />
-            <el-option label="培训费" value="培训费" />
-            <el-option label="资质费" value="资质费" />
-            <el-option label="办公费" value="办公费" />
-            <el-option label="餐饮费" value="餐饮费" />
-            <el-option label="房屋租赁" value="房屋租赁" />
-            <el-option label="交通费" value="交通费" />
-            <el-option label="车辆使用费" value="车辆使用费" />
-            <el-option label="其他租赁" value="其他租赁" />
-            <el-option label="水电费" value="水电费" />
-            <el-option label="业务费" value="业务费" />
-            <el-option label="住宿费" value="住宿费" />
-            <el-option label="通讯费" value="通讯费" />
-            <el-option label="投标费" value="投标费" />
-            <el-option label="中介费" value="中介费" />
-            <el-option label="零星采购" value="零星采购" />
-            <el-option label="其他费用" value="其他费用" />
-              </el-select>
+              <DictSelect 
+                v-model="form.expense_type" 
+                category="expense_type" 
+                placeholder="请选择" 
+                style="width: 100%" 
+              />
             </el-form-item>
           </el-col>
         </el-row>
@@ -383,6 +356,7 @@ const rules = {
 
 import FormulaInput from '@/components/FormulaInput.vue'
 import SmartDateInput from '@/components/SmartDateInput.vue'
+import DictSelect from '@/components/DictSelect.vue'
 
 
 const getList = async () => {
