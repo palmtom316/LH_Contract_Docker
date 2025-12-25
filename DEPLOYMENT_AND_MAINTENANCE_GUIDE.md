@@ -111,3 +111,157 @@ docker exec -t lh_contract_db_prod pg_dumpall -c -U <db_user> > dump_`date +%d-%
 ```bash
 tar -czvf uploads_backup.tar.gz ./uploads
 ```
+
+## 6. Docker 清理维护
+
+### 6.1 查看 Docker 磁盘使用情况
+
+```bash
+# 查看 Docker 占用的磁盘空间概览
+docker system df
+
+# 查看详细信息
+docker system df -v
+```
+
+### 6.2 安全清理（推荐日常使用）
+
+```bash
+# 方式一：使用清理脚本（推荐）
+cd /opt/lh-contract
+chmod +x scripts/docker_cleanup.sh
+./scripts/docker_cleanup.sh
+
+# 方式二：手动清理悬空资源
+docker system prune -f
+```
+
+**此命令会清理：**
+- 已停止的容器
+- 悬空镜像（未标记的中间层）
+- 未使用的网络
+- 构建缓存
+
+**此命令不会清理：**
+- 正在运行的容器
+- 有标签的镜像
+- 数据卷（postgres_data, redis_data）
+
+### 6.3 深度清理（版本升级后）
+
+```bash
+# 清理所有未使用的镜像（包括旧版本）
+docker system prune -a -f
+
+# 或使用脚本的深度模式
+./scripts/docker_cleanup.sh --aggressive
+```
+
+⚠️ **警告**：深度清理会删除所有未被容器使用的镜像，下次启动需要重新拉取或构建。
+
+### 6.4 清理日志文件
+
+系统已配置日志轮转，但如遇日志过大：
+
+```bash
+# 查看各容器日志大小
+sudo du -sh /var/lib/docker/containers/*/
+
+# 清空特定容器的日志（保留文件）
+sudo truncate -s 0 $(docker inspect --format='{{.LogPath}}' lh_contract_backend_prod)
+```
+
+### 6.5 ⚠️ 危险操作（谨慎使用）
+
+```bash
+# 清理未使用的卷 - 可能删除数据！
+# 仅在确认数据已备份后执行
+docker volume prune -f
+
+# 彻底清理 - 删除所有未使用资源包括卷
+# 极度危险，仅用于重新部署场景
+docker system prune -a --volumes -f
+```
+
+### 6.6 定时清理（可选）
+
+添加 cron 任务自动清理：
+
+```bash
+# 编辑 crontab
+crontab -e
+
+# 添加以下行（每周日凌晨3点执行安全清理）
+0 3 * * 0 cd /opt/lh-contract && ./scripts/docker_cleanup.sh >> /var/log/docker_cleanup.log 2>&1
+```
+
+## 7. 内存优化
+
+### 7.1 查看当前内存使用
+
+```bash
+# 查看系统总内存
+free -h
+
+# 查看各容器内存使用
+sudo docker stats --no-stream
+```
+
+### 7.2 使用低内存配置
+
+对于内存受限的环境（4-8GB RAM），可以使用低内存版本的配置：
+
+```bash
+# 停止当前服务
+cd /opt/lh-contract
+docker compose -f docker-compose.prod.yml down
+
+# 使用低内存配置启动
+docker compose -f docker-compose.prod.lowmem.yml up -d
+```
+
+### 7.3 内存配置对比
+
+| 服务 | 标准配置 | 低内存配置 | 说明 |
+|------|----------|------------|------|
+| PostgreSQL | 2G | 512M | 优化了 shared_buffers, work_mem 等参数 |
+| Redis | 512M | 128M | 减少缓存上限，禁用RDB快照 |
+| Backend | 2G | 512M | 减少 worker 数量到 2 个 |
+| Frontend | 无限制 | 384M | 限制 Node.js 堆内存 |
+| Nginx | 无限制 | 64M | Nginx 本身很轻量 |
+| **总计** | **~6.5G** | **~1.7G** | 降低约 **74%** |
+
+### 7.4 手动调整内存限制
+
+如需自定义内存限制，编辑 `docker-compose.prod.yml` 中的 `deploy.resources.limits.memory`：
+
+```yaml
+deploy:
+  resources:
+    limits:
+      memory: 512M    # 调整此值
+    reservations:
+      memory: 256M    # 最低保证内存
+```
+
+修改后重启服务：
+```bash
+docker compose -f docker-compose.prod.yml up -d
+```
+
+### 7.5 其他内存优化建议
+
+1. **减少 Backend Worker 数量**：编辑 `.env.production`，设置 `WORKERS=2`
+2. **启用 Swap**（应急）：
+   ```bash
+   sudo fallocate -l 2G /swapfile
+   sudo chmod 600 /swapfile
+   sudo mkswap /swapfile
+   sudo swapon /swapfile
+   echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+   ```
+3. **监控内存使用**：
+   ```bash
+   # 实时监控
+   watch -n 2 'free -h && echo "" && docker stats --no-stream'
+   ```
