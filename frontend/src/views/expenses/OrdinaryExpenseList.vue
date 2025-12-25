@@ -188,7 +188,13 @@
         <el-row :gutter="20">
           <el-col :xs="24" :sm="12">
              <el-form-item label="费用编号" prop="expense_code">
-              <el-input v-model="form.expense_code" placeholder="系统自动生成" />
+              <el-input v-model="form.expense_code" placeholder="留空则自动生成 (F-年-月-序号)">
+                <template #suffix>
+                  <el-tooltip content="留空将自动生成编号，格式：F-2025-12-001" placement="top">
+                    <el-icon class="text-gray"><QuestionFilled /></el-icon>
+                  </el-tooltip>
+                </template>
+              </el-input>
             </el-form-item>
           </el-col>
           <el-col :xs="24" :sm="12">
@@ -301,7 +307,7 @@ import { getContracts, getContract } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
 import { getFileUrl, formatMoney } from '@/utils/common'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, Download, Document, Edit, Delete } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Download, Document, Edit, Delete, QuestionFilled } from '@element-plus/icons-vue'
 
 const loading = ref(false)
 const total = ref(0)
@@ -347,7 +353,7 @@ const form = reactive({
 })
 
 const rules = {
-  expense_code: [{ required: true, message: '请输入编号', trigger: 'blur' }],
+  // expense_code is now optional - auto-generated if empty
   category: [{ required: true, message: '请选择费用归属', trigger: 'change' }],
   expense_type: [{ required: true, message: '请选择费用分类', trigger: 'change' }],
   amount: [{ required: true, message: '请输入金额', trigger: 'blur' }],
@@ -473,7 +479,7 @@ const handleExport = async () => {
 
 const resetForm = () => {
   form.id = undefined
-  form.expense_code = 'FY' + new Date().getTime().toString().substr(-8) // Generate simple code
+  form.expense_code = '' // Leave empty for auto-generation (F-YYYY-MM-NNN)
   form.category = '' // 费用归属
   form.expense_type = '' // 费用分类
   form.upstream_contract_id = undefined

@@ -17,6 +17,7 @@ from app.services.cache import cache, dashboard_cache_key
 from app.services.status_service import calculate_contract_status
 from app.models.user import User
 from app.services.audit_service import create_audit_log, AuditAction, ResourceType
+from app.services.contract_code_generator import ContractCodeGenerator
 
 class ContractManagementService:
     def __init__(self, db: AsyncSession):
@@ -121,6 +122,14 @@ class ContractManagementService:
 
     async def create_contract(self, contract_in: ContractManagementCreate, user: User) -> ContractManagement:
         """Create new management contract"""
+        data = contract_in.model_dump()
+        
+        # Auto-generate contract code if not provided or empty (use sign_date for year/month)
+        if not data.get('contract_code') or data['contract_code'].strip() == '':
+            code_generator = ContractCodeGenerator(self.db)
+            sign_date = data.get('sign_date')
+            data['contract_code'] = await code_generator.generate_management_code(sign_date)
+        
         # Check unique serial_number
         if contract_in.serial_number:
             existing_sn = await self.db.execute(
@@ -131,12 +140,12 @@ class ContractManagementService:
 
         # Check unique contract_code
         existing = await self.db.execute(
-            select(ContractManagement).where(ContractManagement.contract_code == contract_in.contract_code)
+            select(ContractManagement).where(ContractManagement.contract_code == data['contract_code'])
         )
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="合同编号已存在")
 
-        contract = ContractManagement(**contract_in.model_dump(), created_by=user.id)
+        contract = ContractManagement(**data, created_by=user.id)
         self.db.add(contract)
         await self.db.commit()
         await self.db.refresh(contract)

@@ -10,7 +10,7 @@ from app.models.enums import ExpenseCategory, ExpenseType
 
 class ExpenseBase(BaseModel):
     """Base expense schema"""
-    expense_code: str = Field(..., max_length=50)
+    expense_code: Optional[str] = Field(None, max_length=50)  # Optional - will be auto-generated
     attribution: Optional[str] = None
     category: str
     expense_type: Optional[str] = None

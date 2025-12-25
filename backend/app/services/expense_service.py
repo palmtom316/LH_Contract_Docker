@@ -11,6 +11,7 @@ from app.schemas.expense import ExpenseCreate, ExpenseUpdate
 from app.services.cache import cache, dashboard_cache_key
 from app.services.audit_service import create_audit_log, AuditAction, ResourceType
 from app.models.enums import ExpenseCategory, ExpenseType
+from app.services.contract_code_generator import ContractCodeGenerator
 
 class ExpenseService:
     def __init__(self, db: AsyncSession):
@@ -164,11 +165,20 @@ class ExpenseService:
 
     async def create_expense(self, expense_in: ExpenseCreate, user: User) -> ExpenseNonContract:
         """Create new expense"""
-        existing = await self.db.execute(select(ExpenseNonContract).where(ExpenseNonContract.expense_code == expense_in.expense_code))
+        data = expense_in.model_dump()
+        
+        # Auto-generate expense code if not provided or empty (use expense_date for year/month)
+        if not data.get('expense_code') or data['expense_code'].strip() == '':
+            code_generator = ContractCodeGenerator(self.db)
+            expense_date = data.get('expense_date')
+            data['expense_code'] = await code_generator.generate_expense_code(expense_date)
+        
+        # Check for duplicate expense code
+        existing = await self.db.execute(select(ExpenseNonContract).where(ExpenseNonContract.expense_code == data['expense_code']))
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="费用编号已存在")
             
-        expense = ExpenseNonContract(**expense_in.model_dump(), created_by=user.id, updated_by=user.id)
+        expense = ExpenseNonContract(**data, created_by=user.id, updated_by=user.id)
         self.db.add(expense)
         await self.db.commit()
         await self.db.refresh(expense)

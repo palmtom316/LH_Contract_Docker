@@ -344,7 +344,13 @@
         <el-row :gutter="20">
           <el-col :span="12">
              <el-form-item label="合同编号" prop="contract_code">
-              <el-input v-model="form.contract_code" placeholder="请输入编号" />
+              <el-input v-model="form.contract_code" placeholder="留空则自动生成 (S-年-月-序号)">
+                <template #suffix>
+                  <el-tooltip content="留空将自动生成编号，格式：S-2025-12-001" placement="top">
+                    <el-icon class="text-gray"><QuestionFilled /></el-icon>
+                  </el-tooltip>
+                </template>
+              </el-input>
             </el-form-item>
           </el-col>
           <el-col :span="12" v-if="dialog.isEdit">
@@ -528,7 +534,7 @@ import { getFileUrl } from '@/utils/common'
 import { downloadExcel } from '@/utils/download'
 import { useContractList, useTableSummary, useMobileDetection } from '@/composables/useContractList'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowDown } from '@element-plus/icons-vue'
+import { ArrowDown, QuestionFilled } from '@element-plus/icons-vue'
 import SmartAutocomplete from '@/components/SmartAutocomplete.vue'
 import PdfViewer from '@/components/PdfViewer.vue'
 import DictSelect from '@/components/DictSelect.vue'
@@ -622,7 +628,7 @@ const rules = {
         }
       }, trigger: 'blur' }
   ],
-  contract_code: [{ required: true, message: '请输入合同编号', trigger: 'blur' }],
+  // contract_code is now optional - auto-generated if empty
   contract_name: [{ required: true, message: '请输入合同名称', trigger: 'blur' }],
   party_a_name: [{ required: true, message: '请输入甲方名称', trigger: 'blur' }],
   party_b_name: [{ required: true, message: '请输入乙方名称', trigger: 'blur' }],

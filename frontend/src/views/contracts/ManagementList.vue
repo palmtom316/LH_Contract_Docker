@@ -240,7 +240,13 @@
         <el-row :gutter="20">
           <el-col :span="12">
              <el-form-item label="合同编号" prop="contract_code">
-              <el-input v-model="form.contract_code" placeholder="请输入编号" />
+              <el-input v-model="form.contract_code" placeholder="留空则自动生成 (G-年-月-序号)">
+                <template #suffix>
+                  <el-tooltip content="留空将自动生成编号，格式：G-2025-12-001" placement="top">
+                    <el-icon class="text-gray"><QuestionFilled /></el-icon>
+                  </el-tooltip>
+                </template>
+              </el-input>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -418,7 +424,7 @@ const rules = {
         }
       }, trigger: 'blur' }
   ],
-  contract_code: [{ required: true, message: '请输入合同编号', trigger: 'blur' }],
+  // contract_code is now optional - auto-generated if empty
   contract_name: [{ required: true, message: '请输入合同名称', trigger: 'blur' }],
   party_a_name: [{ required: true, message: '请输入甲方名称', trigger: 'blur' }],
   party_b_name: [{ required: true, message: '请输入乙方名称', trigger: 'blur' }],

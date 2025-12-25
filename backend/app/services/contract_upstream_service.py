@@ -17,6 +17,7 @@ from app.services.status_service import calculate_contract_status
 
 from app.models.user import User
 from app.services.audit_service import create_audit_log, AuditAction, ResourceType
+from app.services.contract_code_generator import ContractCodeGenerator
 
 
 class ContractUpstreamService:
@@ -131,9 +132,17 @@ class ContractUpstreamService:
         
         # Get data from input (category, pricing_mode, management_mode are now stored as strings)
         data = contract_in.model_dump()
+        
+        # Auto-generate contract code if not provided or empty (use sign_date for year/month)
+        if not data.get('contract_code') or data['contract_code'].strip() == '':
+            code_generator = ContractCodeGenerator(self.db)
+            # 使用签约日期生成编号
+            sign_date = data.get('sign_date')
+            data['contract_code'] = await code_generator.generate_upstream_code(sign_date)
+            logger.info(f"Auto-generated contract code: {data['contract_code']} (based on sign_date: {sign_date})")
 
         try:
-            logger.info(f"Creating contract with code: {contract_in.contract_code}")
+            logger.info(f"Creating contract with code: {data['contract_code']}")
             
             # Check unique serial_number
             if contract_in.serial_number:
@@ -145,15 +154,15 @@ class ContractUpstreamService:
                     raise HTTPException(status_code=400, detail=f"合同序号 {contract_in.serial_number} 已存在")
             
             # Check unique contract_code
-            logger.info(f"Checking contract_code: {contract_in.contract_code}")
+            logger.info(f"Checking contract_code: {data['contract_code']}")
             existing = await self.db.execute(
-                select(ContractUpstream).where(ContractUpstream.contract_code == contract_in.contract_code)
+                select(ContractUpstream).where(ContractUpstream.contract_code == data['contract_code'])
             )
             existing_contract = existing.scalar_one_or_none()
             if existing_contract:
                 raise HTTPException(
                     status_code=400, 
-                    detail=f"合同编号 '{contract_in.contract_code}' 已被使用（合同名称：{existing_contract.contract_name}），请使用其他编号"
+                    detail=f"合同编号 '{data['contract_code']}' 已被使用（合同名称：{existing_contract.contract_name}），请使用其他编号"
                 )
             
             logger.info("Creating contract object...")

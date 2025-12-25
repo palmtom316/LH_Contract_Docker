@@ -10,7 +10,7 @@ from app.models.enums import ContractCategory, DownstreamContractCategory, Payme
 # ===== Contract Downstream Schemas =====
 class ContractDownstreamBase(BaseModel):
     """Base downstream contract schema"""
-    contract_code: str = Field(..., max_length=50)
+    contract_code: Optional[str] = Field(None, max_length=50)  # Optional - will be auto-generated
     contract_name: str = Field(..., max_length=200)
     
     party_a_name: str = Field(..., max_length=200) # Added (Req 3.3)
