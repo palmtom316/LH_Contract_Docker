@@ -56,7 +56,7 @@
       <!-- 1. Basic Info -->
       <el-tab-pane label="基本信息" name="info">
         <el-descriptions :column="isMobile ? 1 : 2" border>
-          <el-descriptions-item label="合同序号">{{ contract.id }}</el-descriptions-item>
+          <el-descriptions-item label="合同序号">{{ contract.serial_number }}</el-descriptions-item>
           <el-descriptions-item label="合同编号">{{ contract.contract_code }}</el-descriptions-item>
           <el-descriptions-item label="合同名称">{{ contract.contract_name }}</el-descriptions-item>
           <el-descriptions-item label="合同甲方单位">{{ contract.party_a_name }}</el-descriptions-item>
