@@ -20,17 +20,17 @@ services:
     command:
       - "postgres"
       - "-c"
-      - "shared_buffers=128MB"           # 默认128MB，小内存环境保持
+      - "shared_buffers=128MB" # 默认128MB，小内存环境保持
       - "-c"
-      - "effective_cache_size=256MB"     # 减少缓存预期
+      - "effective_cache_size=256MB" # 减少缓存预期
       - "-c"
-      - "work_mem=4MB"                   # 减少排序内存
+      - "work_mem=4MB" # 减少排序内存
       - "-c"
-      - "maintenance_work_mem=64MB"      # 减少维护内存
+      - "maintenance_work_mem=64MB" # 减少维护内存
       - "-c"
-      - "max_connections=50"             # 减少最大连接数
+      - "max_connections=50" # 减少最大连接数
       - "-c"
-      - "wal_buffers=4MB"                # 减少WAL缓冲
+      - "wal_buffers=4MB" # 减少WAL缓冲
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backups:/backups
@@ -46,10 +46,10 @@ services:
       resources:
         limits:
           cpus: '1'
-          memory: 512M          # 从 2G 降到 512M
+          memory: 512M # 从 2G 降到 512M
         reservations:
           cpus: '0.25'
-          memory: 256M          # 从 512M 降到 256M
+          memory: 256M # 从 512M 降到 256M
     logging:
       driver: "json-file"
       options:
@@ -77,7 +77,7 @@ services:
       resources:
         limits:
           cpus: '0.5'
-          memory: 192M          # 从无限制到 192M
+          memory: 192M # 从无限制到 192M
         reservations:
           cpus: '0.1'
           memory: 64M
@@ -97,15 +97,15 @@ services:
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: ${SECRET_KEY}
       DEBUG: "false"
-      WORKERS: "2"              # 从 4 个 worker 降到 2 个
+      WORKERS: "2" # 从 4 个 worker 降到 2 个
       ALLOWED_HOSTS: '["*"]'
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:80}
       # Python 内存优化
       PYTHONUNBUFFERED: "1"
       PYTHONDONTWRITEBYTECODE: "1"
-      MALLOC_ARENA_MAX: "2"     # 限制 glibc 内存池
+      MALLOC_ARENA_MAX: "2" # 限制 glibc 内存池
     volumes:
-      - ./uploads:/app/uploads
+      - ${HOST_UPLOAD_DIR:-./uploads}:/app/uploads
       - ./logs:/app/logs
     depends_on:
       db:
@@ -124,7 +124,7 @@ services:
       resources:
         limits:
           cpus: '1'
-          memory: 512M          # 从 2G 降到 512M
+          memory: 512M # 从 2G 降到 512M
         reservations:
           cpus: '0.25'
           memory: 256M
@@ -143,7 +143,7 @@ services:
     restart: always
     environment:
       VITE_API_BASE_URL: /api/v1
-      NODE_OPTIONS: "--max-old-space-size=256"  # 限制 Node.js 堆内存
+      NODE_OPTIONS: "--max-old-space-size=256" # 限制 Node.js 堆内存
     ports:
       - "3000:3000"
     networks:
@@ -154,7 +154,7 @@ services:
       resources:
         limits:
           cpus: '0.5'
-          memory: 384M          # 限制前端内存
+          memory: 384M # 限制前端内存
         reservations:
           cpus: '0.1'
           memory: 128M
@@ -184,7 +184,7 @@ services:
       resources:
         limits:
           cpus: '0.5'
-          memory: 64M           # Nginx 很轻量
+          memory: 64M # Nginx 很轻量
         reservations:
           cpus: '0.1'
           memory: 32M

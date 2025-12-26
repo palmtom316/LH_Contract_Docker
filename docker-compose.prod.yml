@@ -76,7 +76,7 @@ services:
       ALLOWED_HOSTS: '["*"]'
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:80}
     volumes:
-      - ./uploads:/app/uploads
+      - ${HOST_UPLOAD_DIR:-./uploads}:/app/uploads
       - ./logs:/app/logs
     depends_on:
       db:

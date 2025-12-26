@@ -101,7 +101,7 @@ services:
       PYTHONUNBUFFERED: "1"
       PYTHONDONTWRITEBYTECODE: "1"
     volumes:
-      - ./uploads:/app/uploads
+      - ${HOST_UPLOAD_DIR:-./uploads}:/app/uploads
       - ./logs:/app/logs
     depends_on:
       db:
