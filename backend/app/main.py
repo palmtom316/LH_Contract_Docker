@@ -125,6 +125,10 @@ app.include_router(system.router, prefix="/api/v1/system", tags=["System Managem
 from app.routers import zero_hour_labor
 app.include_router(zero_hour_labor.router, prefix="/api/v1/zero-hour-labor", tags=["Zero Hour Labor"])
 
+# Contract Search Router (查询机器人)
+from app.routers import contract_search
+app.include_router(contract_search.router, prefix="/api/v1/contracts", tags=["Contract Search"])
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=settings.DEBUG)

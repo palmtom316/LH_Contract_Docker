@@ -143,6 +143,9 @@
         <el-button type="primary" @click="handleChangePassword" :loading="changingPwd">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- Contract Query Bot (合同查询机器人) -->
+    <ContractQueryBot />
   </div>
 </template>
 
@@ -154,6 +157,7 @@ import { ElMessageBox, ElMessage } from 'element-plus'
 import request from '@/utils/request'
 import { useSystemStore } from '@/stores/system'
 import logoNew from '@/assets/logo_new.png'
+import ContractQueryBot from '@/components/ContractQueryBot.vue'
 
 const route = useRoute()
 const router = useRouter()

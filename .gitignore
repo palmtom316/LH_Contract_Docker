@@ -29,6 +29,11 @@ MANIFEST
 .venv
 .env
 .env.production
+.env.local
+.env.development
+.env.*.local
+frontend/.env*
+!frontend/.env.example
 
 # IDE
 .vscode/
@@ -42,6 +47,8 @@ MANIFEST
 *.log
 logs/
 *.log.*
+*_log.txt
+*_logs.txt
 
 # Database
 *.db
