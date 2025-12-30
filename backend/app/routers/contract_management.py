@@ -1,7 +1,8 @@
 """
 Management Contract Management Router
+Refactored to use standardized AppException
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, status, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -27,6 +28,7 @@ from app.schemas.contract_management import (
 from app.services.auth import get_current_active_user
 from app.services.contract_management_service import ContractManagementService
 from app.core.permissions import require_permission, Permission
+from app.core.errors import ResourceNotFoundError, ValidationError, DatabaseError
 
 router = APIRouter()
 
@@ -82,10 +84,7 @@ async def export_contracts(
         )
             
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Export failed: {str(e)}"
-        )
+        raise DatabaseError(message="导出失败", detail=str(e))
 
 
 # ===== Contract Operations =====
@@ -122,7 +121,7 @@ async def get_contract(
     """Get contract details"""
     contract = await service.get_contract(contract_id)
     if not contract:
-        raise HTTPException(status_code=404, detail="合同不存在")
+        raise ResourceNotFoundError(resource_type="管理合同", resource_id=contract_id)
     return contract
 
 
@@ -161,7 +160,7 @@ async def create_payable(
     service: ContractManagementService = Depends(get_contract_service)
 ):
     if contract_id != payable_in.contract_id:
-        raise HTTPException(status_code=400, detail="合同ID不匹配")
+        raise ValidationError(message="合同ID不匹配", field_errors={"contract_id": "路径参数与请求体中的合同ID不一致"})
         
     payable = FinanceManagementPayable(**payable_in.model_dump())
     db.add(payable)
@@ -198,7 +197,7 @@ async def update_payable(
     result = await db.execute(query)
     payable = result.scalar_one_or_none()
     if not payable:
-        raise HTTPException(status_code=404, detail="应付款记录不存在")
+        raise ResourceNotFoundError(resource_type="应付款记录", resource_id=payable_id)
     
     for key, value in payable_in.model_dump(exclude={'contract_id'}).items():
         setattr(payable, key, value)
@@ -224,7 +223,7 @@ async def delete_payable(
     result = await db.execute(query)
     payable = result.scalar_one_or_none()
     if not payable:
-        raise HTTPException(status_code=404, detail="应付款记录不存在")
+        raise ResourceNotFoundError(resource_type="应付款记录", resource_id=payable_id)
     
     await db.delete(payable)
     await db.commit()
@@ -242,7 +241,7 @@ async def create_invoice(
     db: AsyncSession = Depends(get_db)
 ):
     if contract_id != invoice_in.contract_id:
-        raise HTTPException(status_code=400, detail="合同ID不匹配")
+        raise ValidationError(message="合同ID不匹配", field_errors={"contract_id": "路径参数与请求体中的合同ID不一致"})
         
     invoice = FinanceManagementInvoice(**invoice_in.model_dump())
     db.add(invoice)
@@ -276,7 +275,7 @@ async def update_invoice(
     result = await db.execute(query)
     invoice = result.scalar_one_or_none()
     if not invoice:
-        raise HTTPException(status_code=404, detail="发票记录不存在")
+        raise ResourceNotFoundError(resource_type="发票记录", resource_id=invoice_id)
     
     for key, value in invoice_in.model_dump(exclude={'contract_id'}).items():
         setattr(invoice, key, value)
@@ -299,7 +298,7 @@ async def delete_invoice(
     result = await db.execute(query)
     invoice = result.scalar_one_or_none()
     if not invoice:
-        raise HTTPException(status_code=404, detail="发票记录不存在")
+        raise ResourceNotFoundError(resource_type="发票记录", resource_id=invoice_id)
     
     await db.delete(invoice)
     await db.commit()
@@ -316,7 +315,7 @@ async def create_payment(
     service: ContractManagementService = Depends(get_contract_service)
 ):
     if contract_id != payment_in.contract_id:
-        raise HTTPException(status_code=400, detail="合同ID不匹配")
+        raise ValidationError(message="合同ID不匹配", field_errors={"contract_id": "路径参数与请求体中的合同ID不一致"})
         
     payment = FinanceManagementPayment(**payment_in.model_dump())
     db.add(payment)
@@ -353,7 +352,7 @@ async def update_payment(
     result = await db.execute(query)
     payment = result.scalar_one_or_none()
     if not payment:
-        raise HTTPException(status_code=404, detail="付款记录不存在")
+        raise ResourceNotFoundError(resource_type="付款记录", resource_id=payment_id)
     
     for key, value in payment_in.model_dump(exclude={'contract_id'}).items():
         setattr(payment, key, value)
@@ -379,7 +378,7 @@ async def delete_payment(
     result = await db.execute(query)
     payment = result.scalar_one_or_none()
     if not payment:
-        raise HTTPException(status_code=404, detail="付款记录不存在")
+        raise ResourceNotFoundError(resource_type="付款记录", resource_id=payment_id)
     
     await db.delete(payment)
     await db.commit()
@@ -398,7 +397,7 @@ async def create_settlement(
     service: ContractManagementService = Depends(get_contract_service)
 ):
     if contract_id != settlement_in.contract_id:
-        raise HTTPException(status_code=400, detail="合同ID不匹配")
+        raise ValidationError(message="合同ID不匹配", field_errors={"contract_id": "路径参数与请求体中的合同ID不一致"})
         
     settlement = ManagementSettlement(**settlement_in.model_dump())
     db.add(settlement)
@@ -435,7 +434,7 @@ async def update_settlement(
     result = await db.execute(query)
     settlement = result.scalar_one_or_none()
     if not settlement:
-        raise HTTPException(status_code=404, detail="结算记录不存在")
+        raise ResourceNotFoundError(resource_type="结算记录", resource_id=settlement_id)
     
     for key, value in settlement_in.model_dump(exclude={'contract_id'}).items():
         setattr(settlement, key, value)
@@ -461,7 +460,7 @@ async def delete_settlement(
     result = await db.execute(query)
     settlement = result.scalar_one_or_none()
     if not settlement:
-        raise HTTPException(status_code=404, detail="结算记录不存在")
+        raise ResourceNotFoundError(resource_type="结算记录", resource_id=settlement_id)
     
     await db.delete(settlement)
     await db.commit()

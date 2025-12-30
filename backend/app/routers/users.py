@@ -1,11 +1,13 @@
 """
 User Management Router
+Refactored to use standardized AppException
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, status, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import List, Optional
+from sqlalchemy.exc import IntegrityError
 
 from app.database import get_db
 from app.models.user import User, UserRole, ROLE_DISPLAY_NAMES
@@ -15,6 +17,14 @@ from app.services.auth import (
     get_current_active_user,
 )
 from app.core.permissions import Permission, require_permission, require_roles, get_user_permissions
+from app.core.errors import (
+    AppException, ErrorCode, 
+    ResourceNotFoundError, 
+    PermissionDeniedError, 
+    DuplicateRecordError,
+    DatabaseError,
+    ValidationError
+)
 
 router = APIRouter()
 
@@ -59,7 +69,7 @@ async def read_users(
         return user_responses
     except Exception as e:
         print(f"Error fetching users: {e}")
-        raise HTTPException(status_code=500, detail=f"获取用户列表失败: {str(e)}")
+        raise DatabaseError(message="获取用户列表失败", detail=str(e))
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -72,18 +82,20 @@ async def create_user(
     # Check if username exists
     result = await db.execute(select(User).where(User.username == user_in.username))
     if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=400,
-            detail="用户名已存在"
+        raise DuplicateRecordError(
+            resource_type="用户",
+            field_name="用户名",
+            field_value=user_in.username
         )
     
     # Check if email exists (only if email is provided)
     if user_in.email:
         result = await db.execute(select(User).where(User.email == user_in.email))
         if result.scalar_one_or_none():
-            raise HTTPException(
-                status_code=400,
-                detail="邮箱已被注册"
+            raise DuplicateRecordError(
+                resource_type="用户",
+                field_name="邮箱",
+                field_value=user_in.email
             )
     
     hashed_password = get_password_hash(user_in.password)
@@ -111,12 +123,12 @@ async def read_user(
     """Get specific user details"""
     # Allow users to read their own profile, otherwise require admin
     if current_user.id != user_id and current_user.role != UserRole.ADMIN and not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="权限不足")
+        raise PermissionDeniedError(detail="您只能查看自己的用户信息")
         
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        raise ResourceNotFoundError(resource_type="用户", resource_id=user_id)
     
     return UserResponse.from_orm_with_permissions(user, get_user_permissions(user))
 
@@ -133,12 +145,12 @@ async def update_user(
     is_admin = current_user.role == UserRole.ADMIN or current_user.is_superuser
     
     if current_user.id != user_id and not is_admin:
-        raise HTTPException(status_code=403, detail="权限不足")
+        raise PermissionDeniedError(detail="您只能修改自己的用户信息")
         
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        raise ResourceNotFoundError(resource_type="用户", resource_id=user_id)
         
         
     # Update fields - Use model_dump to check which fields were explicitly set
@@ -151,7 +163,11 @@ async def update_user(
         if new_email and new_email != user.email:
             email_check = await db.execute(select(User).where(User.email == new_email))
             if email_check.scalar_one_or_none():
-                raise HTTPException(status_code=400, detail="邮箱已被占用")
+                raise DuplicateRecordError(
+                    resource_type="用户",
+                    field_name="邮箱",
+                    field_value=new_email
+                )
         # Set to new value (could be None to clear it)
         user.email = new_email if new_email else None
         
@@ -171,8 +187,6 @@ async def update_user(
     return UserResponse.from_orm_with_permissions(user, get_user_permissions(user))
 
 
-from sqlalchemy.exc import IntegrityError
-
 @router.delete("/{user_id}")
 async def delete_user(
     user_id: int,
@@ -181,27 +195,32 @@ async def delete_user(
 ):
     """Delete (deactivate) user"""
     if current_user.id == user_id:
-        raise HTTPException(status_code=400, detail="不能删除当前登录用户")
+        raise ValidationError(
+            message="不能删除当前登录用户",
+            field_errors={"user_id": "不能删除自己的账户"}
+        )
         
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        raise ResourceNotFoundError(resource_type="用户", resource_id=user_id)
         
     try:
         await db.delete(user)
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise HTTPException(
-            status_code=400, 
-            detail="无法删除该用户：该用户已关联业务数据（如创建了合同或财务记录）。为保持数据完整性，请将其状态修改为 [禁用] 即可。"
+        raise AppException(
+            error_code=ErrorCode.CONSTRAINT_VIOLATION,
+            message="无法删除该用户",
+            detail="该用户已关联业务数据（如创建了合同或财务记录）。为保持数据完整性，请将其状态修改为 [禁用] 即可。",
+            status_code=400
         )
     except Exception as e:
         await db.rollback()
         # Log the full error for debugging
         print(f"Error deleting user {user_id}: {e}")
-        raise HTTPException(status_code=500, detail="数据库操作失败，请重试或联系管理员")
+        raise DatabaseError(message="数据库操作失败", detail="请重试或联系管理员")
     
     return {"message": "用户已删除"}
 
@@ -221,10 +240,11 @@ async def reset_user_password(
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        raise ResourceNotFoundError(resource_type="用户", resource_id=user_id)
     
     user.hashed_password = get_password_hash(password_data.new_password)
     await db.commit()
     
     return {"message": "密码重置成功"}
+
 

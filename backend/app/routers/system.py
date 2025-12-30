@@ -3,6 +3,10 @@ from fastapi.responses import FileResponse
 from app.services.auth import get_current_active_user
 from app.models.user import User
 from app.config import settings
+from app.core.errors import (
+    PermissionDeniedError, DatabaseError, ResourceNotFoundError, 
+    ValidationError, DuplicateRecordError, AppException, ErrorCode
+)
 import shutil
 import subprocess
 import os
@@ -42,7 +46,7 @@ def get_pg_dump_cmd(db_url: str, output_file: str):
     """
     pg_dump_exe = find_pg_dump()
     if not pg_dump_exe:
-        raise HTTPException(status_code=500, detail="未找到 pg_dump 工具，无法进行备份。请安装 PostgreSQL 客户端。")
+        raise DatabaseError(message="未找到 pg_dump 工具", detail="无法进行备份。请安装 PostgreSQL 客户端。")
 
     # Remove driver part
     clean_url = db_url.replace("+asyncpg", "")
@@ -87,7 +91,7 @@ async def backup_database(
     Backup database to SQL file and return it
     """
     if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="需要管理员权限")
+        raise PermissionDeniedError(detail="需要超级管理员权限")
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"lh_contract_db_{timestamp}.sql"
@@ -109,7 +113,7 @@ async def backup_database(
         print(f"Backup error: {str(e)}")
         # Check if it is our custom error detail or generic
         detail_msg = f"数据库备份失败: {str(e)}"
-        raise HTTPException(status_code=500, detail=detail_msg)
+        raise DatabaseError(message="数据库备份失败", detail=str(e))
 
 
 @router.get("/backup/full")
@@ -120,7 +124,7 @@ async def backup_system(
     Full system backup: Database + Uploaded files (ZIP)
     """
     if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="需要管理员权限")
+        raise PermissionDeniedError(detail="需要超级管理员权限")
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     base_filename = f"lh_system_backup_{timestamp}"
@@ -163,7 +167,7 @@ async def backup_system(
         print(f"Full backup error: {str(e)}")
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
-        raise HTTPException(status_code=500, detail=f"系统备份失败: {str(e)}")
+        raise DatabaseError(message="系统备份失败", detail=str(e))
 
 @router.post("/logo")
 async def upload_logo(
@@ -174,11 +178,11 @@ async def upload_logo(
     Upload system logo
     """
     if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="需要管理员权限")
+        raise PermissionDeniedError(detail="需要超级管理员权限")
     
     # Validate file type
     if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="请上传图片文件")
+        raise ValidationError(message="文件类型错误", field_errors={"file": "请上传图片文件"})
     
     # Save to uploads/system/logo.png
     system_dir = os.path.join(settings.UPLOAD_DIR, "system")
@@ -209,7 +213,7 @@ async def upload_logo(
                     
         return {"message": "Logo上传成功", "path": f"/uploads/system/{filename}"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Logo上传失败: {str(e)}")
+        raise DatabaseError(message="Logo上传失败", detail=str(e))
 
 @router.get("/logo")
 async def get_logo():
@@ -270,7 +274,7 @@ async def update_system_config(
 ):
     """Update system configuration"""
     if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Need admin privileges")
+        raise PermissionDeniedError(detail="需要超级管理员权限")
         
     async def upsert_config(key, value):
         if value is not None:
@@ -324,7 +328,7 @@ async def create_option(
 ):
     """Create a new dictionary option"""
     if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Need admin privileges")
+        raise PermissionDeniedError(detail="需要超级管理员权限")
         
     # Check duplicate in category
     res = await db.execute(select(SysDictionary).where(
@@ -332,7 +336,7 @@ async def create_option(
         SysDictionary.value == option.value
     ))
     if res.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Option value already exists in this category")
+        raise DuplicateRecordError(resource_type="字典选项", field_name="存储值", field_value=option.value)
         
     new_opt = SysDictionary(
         category=option.category,
@@ -354,12 +358,12 @@ async def update_option(
 ):
     """Update an option"""
     if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Need admin privileges")
+        raise PermissionDeniedError(detail="需要超级管理员权限")
         
     res = await db.execute(select(SysDictionary).where(SysDictionary.id == id))
     obj = res.scalar_one_or_none()
     if not obj:
-        raise HTTPException(status_code=404, detail="Option not found")
+        raise ResourceNotFoundError(resource_type="字典选项", resource_id=id)
         
     if option.label is not None: obj.label = option.label
     if option.value is not None: obj.value = option.value
@@ -378,12 +382,12 @@ async def delete_option(
 ):
     """Delete (Hard delete) an option"""
     if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Need admin privileges")
+        raise PermissionDeniedError(detail="需要超级管理员权限")
         
     res = await db.execute(select(SysDictionary).where(SysDictionary.id == id))
     obj = res.scalar_one_or_none()
     if not obj:
-        raise HTTPException(status_code=404, detail="Option not found")
+        raise ResourceNotFoundError(resource_type="字典选项", resource_id=id)
         
     await db.delete(obj)
     await db.commit()
@@ -401,7 +405,7 @@ async def export_options(
     from starlette.responses import StreamingResponse
     
     if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="需要管理员权限")
+        raise PermissionDeniedError(detail="需要超级管理员权限")
     
     # Category code to Chinese name mapping
     category_names = {
@@ -485,10 +489,10 @@ async def import_options(
     import io
     
     if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="需要管理员权限")
+        raise PermissionDeniedError(detail="需要超级管理员权限")
     
     if not file.filename.endswith(('.xlsx', '.xls')):
-        raise HTTPException(status_code=400, detail="请上传Excel文件 (.xlsx 或 .xls)")
+        raise ValidationError(message="文件格式错误", field_errors={"file": "请上传Excel文件 (.xlsx 或 .xls)"})
     
     try:
         content = await file.read()
@@ -498,7 +502,7 @@ async def import_options(
         required_cols = ["分类代码", "显示名称", "存储值"]
         for col in required_cols:
             if col not in df.columns:
-                raise HTTPException(status_code=400, detail=f"缺少必需列: {col}")
+                raise ValidationError(message="缺少必需列", field_errors={"columns": f"缺少: {col}"})
         
         imported_count = 0
         updated_count = 0
@@ -556,7 +560,7 @@ async def import_options(
         raise
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=500, detail=f"导入失败: {str(e)}")
+        raise DatabaseError(message="导入失败", detail=str(e))
 
 
 @router.post("/reset")
@@ -570,10 +574,10 @@ async def reset_system(
     WARNING: This will delete ALL data except superusers.
     """
     if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="Need admin privileges")
+        raise PermissionDeniedError(detail="需要超级管理员权限")
         
     if confirm_code != "RESET":
-        raise HTTPException(status_code=400, detail="Invalid confirmation code")
+        raise ValidationError(message="确认码错误", field_errors={"confirm_code": "请输入正确的确认码 'RESET'"})
 
     try:
         from sqlalchemy import text
@@ -622,4 +626,4 @@ async def reset_system(
     except Exception as e:
         await db.rollback()
         print(f"Reset error: {e}")
-        raise HTTPException(status_code=500, detail=f"System reset failed: {str(e)}")
+        raise DatabaseError(message="系统重置失败", detail=str(e))

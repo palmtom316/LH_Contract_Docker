@@ -1,5 +1,6 @@
 """
 Upstream Contract Management Router
+Refactored to use standardized AppException
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
@@ -32,7 +33,7 @@ from app.schemas.contract_upstream import (
 from app.services.auth import get_current_active_user
 from app.services.contract_upstream_service import ContractUpstreamService
 from app.core.permissions import require_permission, Permission
-from app.core.errors import ResourceNotFoundError, DuplicateRecordError, ValidationError
+from app.core.errors import ResourceNotFoundError, DuplicateRecordError, ValidationError, DatabaseError, AppException, ErrorCode
 
 router = APIRouter()
 
@@ -110,7 +111,7 @@ async def export_contracts(
     except Exception as e:
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"导出失败: {str(e)}")
+        raise DatabaseError(message="导出失败", detail=str(e))
 
 
 @router.get("/next-serial-number", response_model=Dict[str, int])
@@ -154,7 +155,7 @@ async def create_contract(
         import traceback
         print(f"Create Contract Error: {e}")
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"服务器内部错误: {str(e)}")
+        raise DatabaseError(message="服务器内部错误", detail=str(e))
 
 
 @router.get("/{contract_id}", response_model=ContractUpstreamResponse)
@@ -183,7 +184,7 @@ async def get_contract_summary(
     contract = await service.get_contract(contract_id)
     
     if not contract:
-        raise HTTPException(status_code=404, detail="合同不存在")
+        raise ResourceNotFoundError(resource_type="合同", resource_id=contract_id)
         
     return {
         "id": contract.id,
@@ -211,7 +212,7 @@ async def update_contract(
     except Exception as e:
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"更新合同失败: {str(e)}")
+        raise DatabaseError(message="更新合同失败", detail=str(e))
 
 
 @router.delete("/{contract_id}")
@@ -240,7 +241,7 @@ async def create_receivable(
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
     if contract_id != receivable_in.contract_id:
-        raise HTTPException(status_code=400, detail="合同ID不匹配")
+        raise ValidationError(message="合同ID不匹配", field_errors={"contract_id": "路径参数与请求体中的合同ID不一致"})
     
     try:
         receivable = FinanceUpstreamReceivable(
@@ -260,7 +261,7 @@ async def create_receivable(
         import traceback
         print(f"Create Receivable Error: {e}")
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Database Error: {str(e)}")
+        raise DatabaseError(message="数据库错误", detail=str(e))
 
 
 @router.get("/{contract_id}/receivables", response_model=List[ReceivableResponse])
@@ -289,7 +290,7 @@ async def update_receivable(
     result = await db.execute(query)
     receivable = result.scalar_one_or_none()
     if not receivable:
-        raise HTTPException(status_code=404, detail="应收款记录不存在")
+        raise ResourceNotFoundError(resource_type="应收款记录", resource_id=receivable_id)
     
     # Update receivable with new values (category is stored as string)
     data = receivable_in.model_dump(exclude={'contract_id'})
@@ -321,7 +322,7 @@ async def delete_receivable(
     result = await db.execute(query)
     receivable = result.scalar_one_or_none()
     if not receivable:
-        raise HTTPException(status_code=404, detail="应收款记录不存在")
+        raise ResourceNotFoundError(resource_type="应收款记录", resource_id=receivable_id)
     
     await db.delete(receivable)
     await db.commit()
@@ -341,7 +342,7 @@ async def create_invoice(
     db: AsyncSession = Depends(get_db)
 ):
     if contract_id != invoice_in.contract_id:
-        raise HTTPException(status_code=400, detail="合同ID不匹配")
+        raise ValidationError(message="合同ID不匹配", field_errors={"contract_id": "路径参数与请求体中的合同ID不一致"})
         
     invoice = FinanceUpstreamInvoice(**invoice_in.model_dump(), created_by=current_user.id, updated_by=current_user.id)
     db.add(invoice)
@@ -375,7 +376,7 @@ async def update_invoice(
     result = await db.execute(query)
     invoice = result.scalar_one_or_none()
     if not invoice:
-        raise HTTPException(status_code=404, detail="发票记录不存在")
+        raise ResourceNotFoundError(resource_type="发票记录", resource_id=invoice_id)
     
     for key, value in invoice_in.model_dump(exclude={'contract_id'}).items():
         setattr(invoice, key, value)
@@ -399,7 +400,7 @@ async def delete_invoice(
     result = await db.execute(query)
     invoice = result.scalar_one_or_none()
     if not invoice:
-        raise HTTPException(status_code=404, detail="发票记录不存在")
+        raise ResourceNotFoundError(resource_type="发票记录", resource_id=invoice_id)
     
     await db.delete(invoice)
     await db.commit()
@@ -416,7 +417,7 @@ async def create_receipt(
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
     if contract_id != receipt_in.contract_id:
-        raise HTTPException(status_code=400, detail="合同ID不匹配")
+        raise ValidationError(message="合同ID不匹配", field_errors={"contract_id": "路径参数与请求体中的合同ID不一致"})
         
     receipt = FinanceUpstreamReceipt(**receipt_in.model_dump(), created_by=current_user.id, updated_by=current_user.id)
     db.add(receipt)
@@ -455,7 +456,7 @@ async def update_receipt(
     result = await db.execute(query)
     receipt = result.scalar_one_or_none()
     if not receipt:
-        raise HTTPException(status_code=404, detail="回款记录不存在")
+        raise ResourceNotFoundError(resource_type="回款记录", resource_id=receipt_id)
     
     for key, value in receipt_in.model_dump(exclude={'contract_id'}).items():
         setattr(receipt, key, value)
@@ -484,7 +485,7 @@ async def delete_receipt(
     result = await db.execute(query)
     receipt = result.scalar_one_or_none()
     if not receipt:
-        raise HTTPException(status_code=404, detail="回款记录不存在")
+        raise ResourceNotFoundError(resource_type="回款记录", resource_id=receipt_id)
     
     await db.delete(receipt)
     await db.commit()
@@ -505,7 +506,7 @@ async def create_settlement(
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
     if contract_id != settlement_in.contract_id:
-        raise HTTPException(status_code=400, detail="合同ID不匹配")
+        raise ValidationError(message="合同ID不匹配", field_errors={"contract_id": "路径参数与请求体中的合同ID不一致"})
         
     settlement = ProjectSettlement(**settlement_in.model_dump(), created_by=current_user.id, updated_by=current_user.id)
     db.add(settlement)
@@ -544,7 +545,7 @@ async def update_settlement(
     result = await db.execute(query)
     settlement = result.scalar_one_or_none()
     if not settlement:
-        raise HTTPException(status_code=404, detail="结算记录不存在")
+        raise ResourceNotFoundError(resource_type="结算记录", resource_id=settlement_id)
     
     for key, value in settlement_in.model_dump(exclude={'contract_id'}).items():
         setattr(settlement, key, value)
@@ -573,7 +574,7 @@ async def delete_settlement(
     result = await db.execute(query)
     settlement = result.scalar_one_or_none()
     if not settlement:
-        raise HTTPException(status_code=404, detail="结算记录不存在")
+        raise ResourceNotFoundError(resource_type="结算记录", resource_id=settlement_id)
     
     await db.delete(settlement)
     await db.commit()
@@ -654,7 +655,7 @@ async def import_contracts_from_excel(
     """Batch import upstream contracts from Excel file"""
     # Check file type
     if not file.filename.endswith(('.xlsx', '.xls')):
-        raise HTTPException(status_code=400, detail="只支持 Excel 文件格式 (.xlsx, .xls)")
+        raise ValidationError(message="文件格式错误", field_errors={"file": "只支持 Excel 文件格式 (.xlsx, .xls)"})
     
     try:
         # Read Excel file
@@ -665,7 +666,7 @@ async def import_contracts_from_excel(
         required_columns = ["合同编号", "合同名称", "甲方单位", "乙方单位", "合同金额"]
         missing_columns = [col for col in required_columns if col not in df.columns]
         if missing_columns:
-            raise HTTPException(status_code=400, detail=f"缺少必填列: {', '.join(missing_columns)}")
+            raise ValidationError(message="缺少必填列", field_errors={"columns": f"缺少: {', '.join(missing_columns)}"})
         
         # Parse Rows into candidate list
         candidates = []
@@ -731,4 +732,4 @@ async def import_contracts_from_excel(
     except Exception as e:
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"导入失败: {str(e)}")
+        raise DatabaseError(message="导入失败", detail=str(e))

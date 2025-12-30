@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
@@ -9,6 +9,7 @@ import urllib.parse
 
 from app.database import get_db
 from app.core.permissions import require_permission, Permission
+from app.core.errors import DatabaseError
 from app.models.user import User
 from app.schemas.zero_hour_labor import (
     ZeroHourLaborCreate,
@@ -103,7 +104,7 @@ async def export_zero_hour_labor(
     except Exception as e:
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"导出失败: {str(e)}")
+        raise DatabaseError(message="导出失败", detail=str(e))
 
 @router.get("", response_model=ZeroHourLaborListResponse)
 async def list_zero_hour_labor(

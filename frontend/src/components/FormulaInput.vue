@@ -14,6 +14,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { evaluate } from 'mathjs'
 
 const props = defineProps({
   modelValue: [Number, String],
@@ -43,13 +44,18 @@ function handleBlur() {
     }
     
     // Check if formula characters are present
-    if (/^[\d+\-*/.()\s]+$/.test(raw)) {
+    if (/^[\d+\-*/.()x×÷\s]+$/i.test(raw)) {
         try {
-            // Safe eval using Function constructor with restricted scope
-            // But 'eval' or 'Function' with arithmetic is mostly what we need
-            // "100+200"
-            const result = new Function('return ' + raw)()
-            if (!isNaN(result) && isFinite(result)) {
+            // Normalize multiplication/division symbols
+            const normalized = raw
+                .replace(/×/g, '*')
+                .replace(/÷/g, '/')
+                .replace(/x/gi, '*')
+            
+            // Use mathjs for safe evaluation
+            const result = evaluate(normalized)
+            
+            if (typeof result === 'number' && !isNaN(result) && isFinite(result)) {
                 // Round to 2 decimals usually involved in money
                 const rounded = Math.round(result * 100) / 100
                 displayValue.value = rounded
@@ -57,7 +63,8 @@ function handleBlur() {
                 return
             }
         } catch (e) {
-            // console.error(e)
+            // If mathjs fails to parse, fall through to simple parsing
+            console.debug('Formula evaluation failed:', e.message)
         }
     }
     

@@ -1,5 +1,6 @@
 """
 Audit Log Router - 审计日志API
+Refactored to use standardized AppException
 """
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +12,7 @@ from app.schemas.audit_log import AuditLogListResponse
 from app.services.auth import get_current_active_user
 from app.core.permissions import require_roles
 from app.services.audit_service import get_audit_logs
+from app.core.errors import ValidationError, DatabaseError
 
 router = APIRouter()
 
@@ -116,8 +118,76 @@ async def delete_audit_logs_before_date(
             "before_date": before_date
         }
     except ValueError:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=400, detail="日期格式错误，请使用 YYYY-MM-DD 格式")
+        raise ValidationError(
+            message="日期格式错误",
+            field_errors={"before_date": "请使用 YYYY-MM-DD 格式"}
+        )
     except Exception as e:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=500, detail=f"删除失败: {str(e)}")
+        raise DatabaseError(message="删除失败", detail=str(e))
+
+
+@router.get("/statistics")
+async def get_audit_statistics(
+    current_user: User = Depends(require_roles([UserRole.ADMIN])),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get audit log statistics (Admin only)"""
+    from app.services.audit_archive_service import AuditLogArchiveService
+    
+    service = AuditLogArchiveService(db)
+    return await service.get_log_statistics()
+
+
+@router.post("/archive")
+async def archive_old_logs(
+    days: int = Query(90, ge=30, description="Archive logs older than this many days"),
+    export_format: str = Query("json", description="Export format: json or csv"),
+    delete_after_export: bool = Query(True, description="Delete logs after exporting"),
+    current_user: User = Depends(require_roles([UserRole.ADMIN])),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Archive old audit logs (Admin only).
+    
+    Exports logs to JSON/CSV and optionally deletes them from database.
+    """
+    from app.services.audit_archive_service import AuditLogArchiveService
+    
+    if export_format not in ["json", "csv"]:
+        raise ValidationError(
+            message="不支持的导出格式",
+            field_errors={"export_format": "只支持 json 或 csv 格式"}
+        )
+    
+    service = AuditLogArchiveService(db)
+    result = await service.archive_old_logs(
+        days=days,
+        export_format=export_format,
+        delete_after_export=delete_after_export
+    )
+    
+    return result
+
+
+@router.get("/archives")
+async def list_archives(
+    current_user: User = Depends(require_roles([UserRole.ADMIN]))
+):
+    """List all archive files (Admin only)"""
+    from app.services.audit_archive_service import AuditLogArchiveService, ARCHIVE_DIR
+    from sqlalchemy.ext.asyncio import AsyncSession
+    
+    # Don't need DB for this operation, just list files
+    archives = []
+    if ARCHIVE_DIR.exists():
+        for filepath in sorted(ARCHIVE_DIR.glob("audit_logs_archive_*"), reverse=True):
+            if filepath.is_file():
+                stat = filepath.stat()
+                archives.append({
+                    "filename": filepath.name,
+                    "size_mb": round(stat.st_size / (1024 * 1024), 2),
+                    "created_at": datetime.fromtimestamp(stat.st_mtime).isoformat()
+                })
+    
+    return {"archives": archives, "total": len(archives)}
+

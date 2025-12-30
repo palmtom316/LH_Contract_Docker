@@ -1,7 +1,8 @@
 """
 Expense Management Router
+Refactored to use standardized AppException
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, status, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
@@ -18,6 +19,7 @@ from app.schemas.expense import (
 from app.services.auth import get_current_active_user
 from app.core.permissions import require_permission, require_roles, Permission
 from app.services.expense_service import ExpenseService
+from app.core.errors import ResourceNotFoundError, DatabaseError
 
 router = APIRouter()
 
@@ -76,7 +78,7 @@ async def export_expenses(
     except Exception as e:
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"导出失败: {str(e)}")
+        raise DatabaseError(message="导出失败", detail=str(e))
 
 
 @router.get("/", response_model=ExpenseListResponse)
@@ -117,7 +119,7 @@ async def get_expense(
     """Get expense details"""
     expense = await service.get_expense(expense_id)
     if not expense:
-        raise HTTPException(status_code=404, detail="费用记录不存在")
+        raise ResourceNotFoundError(resource_type="费用记录", resource_id=expense_id)
     return expense
 
 

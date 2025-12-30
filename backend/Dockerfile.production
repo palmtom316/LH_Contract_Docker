@@ -1,0 +1,85 @@
+# ============================================
+# Multi-Stage Build for Backend (Production)
+# ============================================
+# Stage 1: Build Python wheels
+# Stage 2: Production runtime
+# 
+# Benefits:
+# - Final image size: ~350MB vs ~800MB
+# - No gcc/dev tools in production
+# - Faster startup and deployment
+# ============================================
+
+# ========== Stage 1: Build Dependencies ==========
+FROM python:3.11-slim AS builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create wheel directory
+WORKDIR /wheels
+
+# Copy requirements
+COPY requirements.txt .
+
+# Build wheels for all dependencies
+RUN pip wheel --no-cache-dir --wheel-dir /wheels -r requirements.txt \
+    -i https://mirrors.aliyun.com/pypi/simple/ \
+    --trusted-host mirrors.aliyun.com
+
+
+# ========== Stage 2: Production Runtime ==========
+FROM python:3.11-slim AS production
+
+# Labels
+LABEL maintainer="LH Contract Management System"
+LABEL version="1.3.0"
+LABEL description="Backend production image"
+
+# Install runtime dependencies only (no gcc)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Set working directory
+WORKDIR /app
+
+# Copy wheels from builder stage
+COPY --from=builder /wheels /wheels
+
+# Install dependencies from wheels (no compilation needed)
+RUN pip install --no-cache-dir --no-index --find-links=/wheels /wheels/* \
+    && rm -rf /wheels
+
+# Copy application code
+COPY --chown=appuser:appuser . .
+
+# Create necessary directories
+RUN mkdir -p /app/uploads /app/logs /app/archives \
+    && chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Expose port
+EXPOSE 8000
+
+# Run with production settings (no --reload)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

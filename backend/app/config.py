@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     """Application settings"""
     # Application
     APP_NAME: str = "LH Contract Management System"
-    APP_VERSION: str = "1.1.0"  # Updated to V1.1
+    APP_VERSION: str = "1.3.0"  # Updated to V1.3
     DEBUG: bool = False  # Default to False for security
     
     # Database - MUST be set via environment variable in production
@@ -28,7 +28,29 @@ class Settings(BaseSettings):
     
     # Security - MUST be set via environment variable in production
     # Generate strong key: python -c "import secrets; print(secrets.token_urlsafe(64))"
-    SECRET_KEY: str = os.getenv("SECRET_KEY", secrets.token_urlsafe(64))
+    # In production, SECRET_KEY MUST be set as environment variable
+    # In development, a warning will be logged if using default key
+    _SECRET_KEY_ENV: str = os.getenv("SECRET_KEY", "")
+    _IS_PRODUCTION: bool = os.getenv("DEBUG", "false").lower() != "true"
+    
+    @property
+    def SECRET_KEY(self) -> str:
+        """Get SECRET_KEY with production safety check"""
+        if self._SECRET_KEY_ENV:
+            return self._SECRET_KEY_ENV
+        elif self._IS_PRODUCTION:
+            raise ValueError(
+                "SECRET_KEY 环境变量在生产环境中必须设置! "
+                "使用以下命令生成: python -c \"import secrets; print(secrets.token_urlsafe(64))\""
+            )
+        else:
+            # Development mode: use a fixed development key (NOT for production!)
+            import logging
+            logging.warning(
+                "⚠️ 使用开发模式默认 SECRET_KEY，请勿在生产环境使用！"
+            )
+            return "DEV_ONLY_KEY_DO_NOT_USE_IN_PRODUCTION_abc123xyz789"
+    
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 2  # 2 hours (shortened for security)
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # 7 days for refresh token

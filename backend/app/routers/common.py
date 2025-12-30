@@ -2,8 +2,9 @@
 Common Utility Router
 1. Company Autocomplete Source
 2. File Upload
+Refactored to use standardized AppException
 """
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, distinct, union
 from typing import List
@@ -19,6 +20,7 @@ from app.models.contract_upstream import ContractUpstream
 from app.models.contract_downstream import ContractDownstream
 from app.models.contract_management import ContractManagement
 from app.services.auth import get_current_active_user
+from app.core.errors import ValidationError, DatabaseError
 
 router = APIRouter()
 
@@ -107,7 +109,10 @@ async def upload_file(
     # Validate extension
     ext = file.filename.split('.')[-1].lower()
     if ext not in settings.ALLOWED_EXTENSIONS:
-        raise HTTPException(status_code=400, detail=f"不支持的文件类型: {ext}")
+        raise ValidationError(
+            message="不支持的文件类型",
+            field_errors={"file": f"不支持的文件类型: {ext}，支持的类型: {', '.join(settings.ALLOWED_EXTENSIONS)}"}
+        )
     
     # Generate unique filename using UUID to avoid encoding issues
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -140,7 +145,7 @@ async def upload_file(
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
     except Exception as e:
-        raise HTTPException(status_code=500, detail="文件保存失败")
+        raise DatabaseError(message="文件保存失败", detail=str(e))
         
     # Generate relative URL (assuming static mount at /uploads)
     relative_url = f"/uploads/{sub_folder}/{new_filename}"
@@ -150,4 +155,5 @@ async def upload_file(
         "path": relative_url,
         "content_type": file.content_type
     }
+
 

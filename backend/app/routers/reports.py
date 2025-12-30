@@ -51,11 +51,11 @@ async def invalidate_cache(
         Number of cache entries invalidated
     """
     # Only admin can invalidate cache
-    from fastapi import HTTPException, status
+    from app.core.errors import PermissionDeniedError
     if not current_user.is_superuser and current_user.role.value != "ADMIN":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="只有管理员可以清除缓存"
+        raise PermissionDeniedError(
+            message="只有管理员可以清除缓存",
+            detail="需要管理员权限"
         )
     
     count = await invalidate_report_cache(report_type, year)

@@ -80,6 +80,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Setup rate limiting (optional - requires slowapi)
+try:
+    from app.core.rate_limit import setup_rate_limiting
+    setup_rate_limiting(app)
+except Exception as e:
+    logger.warning(f"Rate limiting setup failed: {e}")
 # Mount static files
 try:
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)

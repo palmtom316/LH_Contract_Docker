@@ -25,8 +25,8 @@ from app.services.auth import (
 from app.core.permissions import get_user_permissions
 from app.services.audit_service import create_audit_log, AuditAction, ResourceType, get_client_ip, get_user_agent
 from app.config import settings
-from app.core.rate_limit import limiter
-from app.core.errors import AuthenticationError, PermissionDeniedError, DuplicateRecordError, ErrorCode
+from app.core.rate_limit import limiter, RATE_LIMITS
+from app.core.errors import AuthenticationError, PermissionDeniedError, DuplicateRecordError, ValidationError, ResourceNotFoundError, ErrorCode
 
 router = APIRouter()
 
@@ -79,7 +79,7 @@ async def register(
 
 
 @router.post("/login", response_model=Token)
-# @limiter.limit("5/minute")  # Strict rate limit for login attempts
+@limiter.limit(RATE_LIMITS["login"])  # 5 requests per minute for login
 async def login(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -135,7 +135,7 @@ async def login(
 
 
 @router.post("/login/json", response_model=Token)
-# @limiter.limit("5/minute")  # Strict rate limit for login attempts
+@limiter.limit(RATE_LIMITS["login"])  # 5 requests per minute for login
 async def login_json(
     request: Request,
     user_in: UserLogin,
@@ -213,9 +213,9 @@ async def change_password(
 ):
     """Change user password"""
     if not verify_password(password_data.old_password, current_user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="原密码错误"
+        raise ValidationError(
+            message="原密码错误",
+            field_errors={"old_password": "请输入正确的原密码"}
         )
     
     current_user.hashed_password = get_password_hash(password_data.new_password)
@@ -241,9 +241,9 @@ async def init_admin(db: AsyncSession = Depends(get_db)):
     # Check if any users exist
     result = await db.execute(select(User))
     if result.first():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="系统已初始化，无法再次创建管理员"
+        raise ValidationError(
+            message="系统已初始化",
+            field_errors={"system": "无法再次创建管理员"}
         )
     
     # Create admin user
@@ -303,19 +303,18 @@ async def refresh_access_token(
     # Verify the refresh token
     payload = verify_refresh_token(token_request.refresh_token)
     if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="无效或已过期的刷新令牌",
-            headers={"WWW-Authenticate": "Bearer"}
+        raise AuthenticationError(
+            message="无效或已过期的刷新令牌",
+            detail="请重新登录"
         )
     
     # Get user from token payload
     try:
         user_id = int(payload.get("sub"))
     except (ValueError, TypeError):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="无效的刷新令牌"
+        raise AuthenticationError(
+            message="无效的刷新令牌",
+            detail="Token 数据异常"
         )
     
     # Fetch user from database to ensure they still exist and are active
@@ -323,15 +322,12 @@ async def refresh_access_token(
     user = result.scalar_one_or_none()
     
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用户不存在"
-        )
+        raise ResourceNotFoundError(resource_type="用户", resource_id=user_id)
     
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="用户已被禁用"
+        raise PermissionDeniedError(
+            message="用户已被禁用",
+            detail="请联系管理员"
         )
     
     # Create new access token (refresh token remains the same)
