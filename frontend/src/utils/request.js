@@ -107,14 +107,22 @@ service.interceptors.response.use(
                 case 429:
                     ElMessage.error('请求过于频繁，请稍后再试')
                     break
+                case 400:
+                    ElMessage.error(errorMsg || '请求参数错误')
+                    break
                 case 500:
                     ElMessage.error(errorMsg || '服务器内部错误')
+                    break
+                case 502:
+                case 503:
+                case 504:
+                    ElMessage.error('服务暂时不可用，请稍后重试')
                     break
                 case 422:
                     ElMessage.error(typeof errorMsg === 'object' ? JSON.stringify(errorMsg) : (errorMsg || '参数验证错误'))
                     break
                 default:
-                    ElMessage.error(errorMsg || '发生未知错误')
+                    ElMessage.error(errorMsg || `发生未知错误 (HTTP ${response.status})`)
             }
         } else {
             ElMessage.error('网络连接错误: ' + error.message)

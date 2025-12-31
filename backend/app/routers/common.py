@@ -4,7 +4,8 @@ Common Utility Router
 2. File Upload
 Refactored to use standardized AppException
 """
-from fastapi import APIRouter, Depends, status, UploadFile, File
+from fastapi import APIRouter, Depends, status, UploadFile, File, Form
+import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, distinct, union
 from typing import List
@@ -90,10 +91,12 @@ async def get_companies(
     return all_names[:50]
 
 
+logger = logging.getLogger(__name__)
+
 @router.post("/upload", response_model=dict)
 async def upload_file(
     file: UploadFile = File(...),
-    upload_dir: str = None,
+    upload_dir: str = Form(default=None),
     current_user: User = Depends(get_current_active_user)
 ):
     """
@@ -106,9 +109,12 @@ async def upload_file(
     
     Returns: {"filename": str, "path": str, "content_type": str}
     """
+    logger.info(f"[UPLOAD] Start: filename={file.filename}, content_type={file.content_type}, upload_dir={upload_dir}, user={current_user.username}")
+    
     # Validate extension
     ext = file.filename.split('.')[-1].lower()
     if ext not in settings.ALLOWED_EXTENSIONS:
+        logger.warning(f"[UPLOAD] Invalid file type: {ext}")
         raise ValidationError(
             message="不支持的文件类型",
             field_errors={"file": f"不支持的文件类型: {ext}，支持的类型: {', '.join(settings.ALLOWED_EXTENSIONS)}"}
@@ -144,7 +150,9 @@ async def upload_file(
     try:
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+        logger.info(f"[UPLOAD] Success: saved to {file_path}")
     except Exception as e:
+        logger.error(f"[UPLOAD] Failed to save file: {e}")
         raise DatabaseError(message="文件保存失败", detail=str(e))
         
     # Generate relative URL (assuming static mount at /uploads)

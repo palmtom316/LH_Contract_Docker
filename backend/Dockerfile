@@ -7,6 +7,7 @@ RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debi
 RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
+    libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for caching
