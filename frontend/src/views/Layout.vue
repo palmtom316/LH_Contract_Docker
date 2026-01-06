@@ -74,6 +74,10 @@
           <template #title>审计日志</template>
         </el-menu-item>
       </el-menu>
+      
+      <div v-if="!isCollapse" class="sidebar-info">
+        <span>v{{ version }}</span>
+      </div>
     </div>
 
     <!-- Main Container -->
@@ -158,6 +162,9 @@ import request from '@/utils/request'
 import { useSystemStore } from '@/stores/system'
 import logoNew from '@/assets/logo_new.png'
 import ContractQueryBot from '@/components/ContractQueryBot.vue'
+import pkg from '../../package.json'
+
+const version = pkg.version
 
 const route = useRoute()
 const router = useRouter()
@@ -406,6 +413,16 @@ onBeforeUnmount(() => {
   .el-menu-vertical {
     border-right: none;
     flex: 1;
+  }
+
+  .sidebar-info {
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 12px;
+    background-color: #002140;
   }
 }
 
