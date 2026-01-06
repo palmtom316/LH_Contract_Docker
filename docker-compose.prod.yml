@@ -106,16 +106,13 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.production
     container_name: lh_contract_frontend_prod
     restart: always
-    environment:
-      # In production logic here, this usually builds static files, 
-      # but for consistency with your working setup we run the node server.
-      # If your frontend Dockerfile runs `npm run dev` or `preview`, this works.
-      VITE_API_BASE_URL: /api/v1
-    ports:
-      - "3000:3000"
+    # In production, this container runs Nginx on port 80
+    # The external Nginx proxy will route traffic to it
+    expose:
+      - "80"
     networks:
       - lh_network
     depends_on:

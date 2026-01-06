@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     """Application settings"""
     # Application
     APP_NAME: str = "LH Contract Management System"
-    APP_VERSION: str = "1.3.0"  # Updated to V1.3
+    APP_VERSION: str = "1.3.2"  # Updated to V1.3.2
     DEBUG: bool = False  # Default to False for security
     
     # Database - MUST be set via environment variable in production
