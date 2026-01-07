@@ -135,6 +135,10 @@ app.include_router(zero_hour_labor.router, prefix="/api/v1/zero-hour-labor", tag
 from app.routers import contract_search
 app.include_router(contract_search.router, prefix="/api/v1/contracts", tags=["Contract Search"])
 
+# Feishu Integration (V1.4)
+from app.routers import feishu
+app.include_router(feishu.router, prefix="/api/feishu", tags=["Feishu Integration"])
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=settings.DEBUG)

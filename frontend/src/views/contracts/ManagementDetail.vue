@@ -78,6 +78,25 @@
             <span v-else style="color: #909399">未上传</span>
           </el-descriptions-item>
           <el-descriptions-item label="备注" :span="2">{{ contract.notes }}</el-descriptions-item>
+
+          <!-- Feishu Approval Integration (V1.4) -->
+          <el-descriptions-item label="审批状态">
+            <el-tag v-if="contract.approval_status && contract.approval_status !== 'DRAFT'" :type="getApprovalStatusType(contract.approval_status)">
+              {{ formatApprovalStatus(contract.approval_status) }}
+            </el-tag>
+            <span v-else style="color: #909399">未审批</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="审批文件">
+            <el-button 
+              v-if="contract.approval_pdf_path" 
+              link 
+              type="primary" 
+              @click="openFile(contract.approval_pdf_path)"
+            >
+              <el-icon class="el-icon--left"><Document /></el-icon> 查看审批单
+            </el-button>
+            <span v-else style="color: #909399">无电子审批单</span>
+          </el-descriptions-item>
         </el-descriptions>
       </el-tab-pane>
 
@@ -655,6 +674,27 @@ const openEditDialog = (type, row) => {
     financeForm.file_path = row.file_path || ''
     fileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
   }
+}
+
+// Feishu Approval Helpers (V1.4)
+const getApprovalStatusType = (status) => {
+  const map = {
+    'DRAFT': 'info',
+    'PENDING': 'warning',
+    'APPROVED': 'success',
+    'REJECTED': 'danger'
+  }
+  return map[status] || 'info'
+}
+
+const formatApprovalStatus = (status) => {
+  const map = {
+    'DRAFT': '草稿',
+    'PENDING': '审批中',
+    'APPROVED': '已通过',
+    'REJECTED': '已拒绝'
+  }
+  return map[status] || status
 }
 
 const openFile = (path) => {

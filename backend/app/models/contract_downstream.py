@@ -59,6 +59,11 @@ class ContractDownstream(Base):
     status = Column(String(50), default="执行中", index=True)              # 合同状态
     notes = Column(Text, nullable=True)                       # 备注
     
+    # Feishu Approval Integration (V1.4) - All nullable for backward compatibility
+    approval_status = Column(String(50), nullable=True, default="DRAFT")  # DRAFT, PENDING, APPROVED, REJECTED
+    feishu_instance_code = Column(String(100), nullable=True)  # 飞书审批实例ID
+    approval_pdf_path = Column(String(500), nullable=True)  # 审批PDF本地路径
+    
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

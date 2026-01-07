@@ -108,9 +108,9 @@
         class="custom-footer-table"
         :footer-cell-style="footerCellStyle"
       >
-        <el-table-column prop="expense_code" label="编号" width="140" fixed />
-        <el-table-column prop="expense_date" label="日期" width="120" sortable />
-        <el-table-column label="费用归属" width="120">
+        <el-table-column prop="expense_code" label="编号" width="120" fixed />
+        <el-table-column prop="expense_date" label="日期" width="110" sortable />
+        <el-table-column label="费用归属" width="100">
           <template #default="scope">
             {{ translateCategory(scope.row.category) }}
           </template>
@@ -120,7 +120,7 @@
             <el-tag effect="plain">{{ translateExpenseType(scope.row.expense_type) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="上游合同名称" min-width="180">
+        <el-table-column label="上游合同名称" min-width="150">
           <template #default="scope">
             <div v-if="scope.row.upstream_contract" :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">
               {{ scope.row.upstream_contract.contract_name }}
@@ -128,13 +128,13 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="description" label="说明" min-width="200">
+        <el-table-column prop="description" label="说明" min-width="150">
           <template #default="scope">
             <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.description }}</div>
           </template>
         </el-table-column>
 
-        <el-table-column label="费用文件" width="100" align="center">
+        <el-table-column label="费用文件" width="80" align="center">
           <template #default="scope">
             <el-button 
               v-if="scope.row.file_path" 
@@ -147,13 +147,37 @@
             <span v-else class="text-gray">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="amount" label="金额" width="140" align="right">
+
+        <!-- Feishu Approval Integration (V1.4) -->
+        <el-table-column label="审批状态" width="100" align="center">
+          <template #default="scope">
+            <el-tag v-if="scope.row.approval_status && scope.row.approval_status !== 'DRAFT'" :type="getApprovalStatusType(scope.row.approval_status)">
+              {{ formatApprovalStatus(scope.row.approval_status) }}
+            </el-tag>
+            <span v-else class="text-gray">-</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="审批单" width="80" align="center">
+          <template #default="scope">
+            <el-button 
+              v-if="scope.row.approval_pdf_path" 
+              link 
+              type="primary" 
+              size="small"
+              icon="Document"
+              @click="viewExpenseFile(scope.row.approval_pdf_path)"
+            >查看</el-button>
+            <span v-else class="text-gray">-</span>
+          </template>
+        </el-table-column>
+
+        <el-table-column prop="amount" label="金额" width="120" align="right">
           <template #default="scope">
              ¥ {{ Number(scope.row.amount).toLocaleString() }}
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column label="操作" width="140" fixed="right">
           <template #default="scope">
             <el-button link type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
 
@@ -268,7 +292,7 @@
           <el-input v-model="form.description" type="textarea" :rows="2" />
         </el-form-item>
 
-        <el-form-item label="费用文件" prop="file_path">
+          <el-form-item label="费用文件" prop="file_path">
           <el-upload
             v-model:file-list="fileList"
             class="upload-demo"
@@ -286,6 +310,30 @@
             </template>
           </el-upload>
         </el-form-item>
+
+        <!-- Feishu Approval Info (Read Only) -->
+        <el-row :gutter="20" v-if="form.approval_status && form.approval_status !== 'DRAFT'">
+          <el-col :span="12">
+            <el-form-item label="审批状态">
+              <el-tag :type="getApprovalStatusType(form.approval_status)">
+                {{ formatApprovalStatus(form.approval_status) }}
+              </el-tag>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="审批单">
+              <el-button 
+                v-if="form.approval_pdf_path" 
+                link 
+                type="primary" 
+                @click="viewExpenseFile(form.approval_pdf_path)"
+              >
+                <el-icon class="el-icon--left"><Document /></el-icon> 查看审批单
+              </el-button>
+              <span v-else class="text-gray">无电子审批单</span>
+            </el-form-item>
+          </el-col>
+        </el-row>
 
 
 
@@ -659,6 +707,27 @@ const translateExpenseType = (expenseType) => {
     '其他费用': '其他费用'
   }
   return map[expenseType] || expenseType || '-'
+}
+
+// Feishu Approval Helpers (V1.4)
+const getApprovalStatusType = (status) => {
+  const map = {
+    'DRAFT': 'info',
+    'PENDING': 'warning',
+    'APPROVED': 'success',
+    'REJECTED': 'danger'
+  }
+  return map[status] || 'info'
+}
+
+const formatApprovalStatus = (status) => {
+  const map = {
+    'DRAFT': '草稿',
+    'PENDING': '审批中',
+    'APPROVED': '已通过',
+    'REJECTED': '已拒绝'
+  }
+  return map[status] || status
 }
 
 onMounted(() => {

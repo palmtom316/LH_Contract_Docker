@@ -90,6 +90,28 @@
             </template>
         </el-table-column>
 
+        <el-table-column label="审批状态" width="100">
+            <template #default="{ row }">
+                <el-tag :type="getApprovalStatusType(row.approval_status)" v-if="row.approval_status">
+                    {{ formatApprovalStatus(row.approval_status) }}
+                </el-tag>
+                <span v-else>-</span>
+            </template>
+        </el-table-column>
+        <el-table-column label="审批单" width="100" align="center">
+            <template #default="{ row }">
+                 <el-button 
+                    v-if="row.approval_pdf_path" 
+                    link 
+                    type="primary" 
+                    size="small" 
+                    :icon="Document" 
+                    @click="viewFile(row.approval_pdf_path)"
+                >查看</el-button>
+                <span v-else class="text-gray">-</span>
+            </template>
+        </el-table-column>
+
 
         <el-table-column label="用工费用" width="120" align="right">
             <template #default="{ row }">¥ {{ formatMoney(row.labor_price_total) }}</template>
@@ -150,6 +172,44 @@
                     </el-form-item>
                 </el-col>
             </el-row>
+
+            <!-- Approval Status (Read Only) -->
+            <div v-if="form.approval_status && form.approval_status !== 'DRAFT'" style="margin-bottom: 18px; padding: 10px; background-color: #f0f9eb; border-radius: 4px;">
+                <el-row :gutter="20">
+                    <el-col :span="12">
+                        <el-form-item label="审批状态" style="margin-bottom: 0;">
+                             <el-tag :type="getApprovalStatusType(form.approval_status)">
+                                {{ formatApprovalStatus(form.approval_status) }}
+                            </el-tag>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="12">
+                        <el-form-item label="审批单" style="margin-bottom: 0;">
+                             <el-button 
+                                v-if="form.approval_pdf_path" 
+                                link 
+                                type="primary" 
+                                :icon="Document" 
+                                @click="viewFile(form.approval_pdf_path)"
+                            >查看审批单</el-button>
+                             <span v-else>暂无</span>
+                        </el-form-item>
+                    </el-col>
+                </el-row>
+            </div>
+
+            <!-- Manually Bind Feishu Instance (Optional) -->
+            <el-form-item label="飞书审批实例" prop="feishu_instance_code">
+                <el-input v-model="form.feishu_instance_code" placeholder="手动绑定审批实例ID (Instance Code)" clearable>
+                     <template #append>
+                        <el-button :icon="item" @click="viewFile(form.approval_pdf_path)" v-if="form.approval_pdf_path" />
+                        <span v-else>可选</span>
+                    </template>
+                </el-input>
+                <div style="font-size: 12px; color: #909399; line-height: 1.2; margin-top: 4px;">
+                    用于关联飞书审批流程。若为空，则无法通过Webhook自动同步审批状态。
+                </div>
+            </el-form-item>
 
             <div v-if="form.attribution === 'PROJECT'" style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-bottom: 18px;">
                  <el-row :gutter="20">
@@ -372,6 +432,10 @@ const form = reactive({
     dispatch_unit: '',
     dispatch_file_path: '',
     
+    approval_status: '',
+    feishu_instance_code: '',
+    approval_pdf_path: '',
+    
     // Skilled
     skilled_unit_price: 0,
     skilled_quantity: 0,
@@ -571,6 +635,10 @@ const resetForm = () => {
     form.upstream_contract_id = undefined
     form.dispatch_unit = ''
     form.dispatch_file_path = ''
+
+    form.approval_status = ''
+    form.feishu_instance_code = ''
+    form.approval_pdf_path = ''
     
     form.skilled_unit_price = 0
     form.skilled_quantity = 0
@@ -745,6 +813,25 @@ const viewFile = (path) => {
     if (path) {
         const url = getFileUrl(path)
         window.open(url, '_blank')
+    }
+}
+
+const getApprovalStatusType = (status) => {
+    switch (status) {
+        case 'APPROVED': return 'success'
+        case 'REJECTED': return 'danger'
+        case 'PENDING': return 'warning'
+        default: return 'info'
+    }
+}
+
+const formatApprovalStatus = (status) => {
+    switch (status) {
+        case 'APPROVED': return '已通过'
+        case 'REJECTED': return '已拒绝'
+        case 'PENDING': return '审批中'
+        case 'DRAFT': return '草稿'
+        default: return status || '-'
     }
 }
 

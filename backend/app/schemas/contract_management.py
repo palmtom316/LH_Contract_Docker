@@ -88,6 +88,11 @@ class ContractManagementResponse(ContractManagementBase):
     total_invoiced: Optional[Decimal] = None
     total_paid: Optional[Decimal] = None
     total_settlement: Optional[Decimal] = None
+    
+    # Feishu Approval Integration (V1.4)
+    approval_status: Optional[str] = None
+    feishu_instance_code: Optional[str] = None
+    approval_pdf_path: Optional[str] = None
 
     class Config:
         from_attributes = True

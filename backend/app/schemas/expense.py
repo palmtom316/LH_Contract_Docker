@@ -62,6 +62,12 @@ class ExpenseResponse(ExpenseBase):
     approved_by: Optional[int] = None
     approved_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
+    
+    # Feishu Approval Integration (V1.4)
+    approval_status: Optional[str] = None
+    feishu_instance_code: Optional[str] = None
+    approval_pdf_path: Optional[str] = None
+    
     updated_at: Optional[datetime] = None
     created_by: Optional[int] = None
     upstream_contract: Optional[UpstreamContractRef] = None

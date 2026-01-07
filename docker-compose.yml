@@ -62,6 +62,31 @@ services:
       db:
         condition: service_healthy
 
+  # Sync Worker (Feishu Integration V1.4)
+  sync-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lh_contract_sync_worker
+    restart: always
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-lh_admin}:${POSTGRES_PASSWORD:-LanHai2024Secure!}@db:5432/${POSTGRES_DB:-lh_contract_db}
+      FEISHU_APP_ID: ${FEISHU_APP_ID:-}
+      FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:-}
+      FEISHU_BASE_APP_TOKEN: ${FEISHU_BASE_APP_TOKEN:-}
+      FEISHU_BASE_TABLE_ID: ${FEISHU_BASE_TABLE_ID:-}
+    command: python run_sync.py
+    volumes:
+      - ./backend/app:/app/app
+      - ${HOST_UPLOAD_DIR:-./backend/uploads}:/app/uploads
+    networks:
+      - lh_network
+    depends_on:
+      db:
+        condition: service_healthy
+
   # Frontend
   frontend:
     build:

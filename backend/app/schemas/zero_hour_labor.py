@@ -93,6 +93,10 @@ class ZeroHourLaborResponse(ZeroHourLaborBase):
     
     material_price_total: Decimal = 0
     
+    approval_status: Optional[str] = None
+    feishu_instance_code: Optional[str] = None
+    approval_pdf_path: Optional[str] = None
+    
     class Config:
         from_attributes = True
 

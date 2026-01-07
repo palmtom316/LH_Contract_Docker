@@ -43,6 +43,11 @@ class ExpenseNonContract(Base):
     approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     approved_at = Column(DateTime(timezone=True), nullable=True)
     
+    # Feishu Approval Integration (V1.4)
+    approval_status = Column(String(50), nullable=True, default="DRAFT")  # DRAFT, PENDING, APPROVED, REJECTED
+    feishu_instance_code = Column(String(100), nullable=True)  # 飞书审批实例ID
+    approval_pdf_path = Column(String(500), nullable=True)  # 审批PDF本地路径
+    
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

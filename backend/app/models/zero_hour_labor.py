@@ -51,6 +51,11 @@ class ZeroHourLabor(Base):
     # Summary
     total_amount = Column(Numeric(15, 2), nullable=False, default=0)
     
+    # Approval Status
+    approval_status = Column(String(50), nullable=True, default="DRAFT")
+    feishu_instance_code = Column(String(100), nullable=True)
+    approval_pdf_path = Column(String(500), nullable=True)
+    
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
