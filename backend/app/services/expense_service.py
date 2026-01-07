@@ -17,17 +17,38 @@ class ExpenseService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    def _can_view_all_expenses(self, user: User) -> bool:
+        """
+        Check if user can view all expenses.
+        ADMIN, CONTRACT_MANAGER, and FINANCE roles can view all data.
+        Other roles (ENGINEERING, AUDIT, BIDDING, GENERAL_AFFAIRS) can only see their own data.
+        """
+        if user.is_superuser:
+            return True
+        return user.role in [
+            UserRole.ADMIN,
+            UserRole.CONTRACT_MANAGER,
+            UserRole.FINANCE,
+        ]
+
     async def _invalidate_dashboard_cache(self):
         """Clear dashboard cache when data changes"""
         await cache.delete(dashboard_cache_key())
 
-    async def get_expense(self, expense_id: int) -> Optional[ExpenseNonContract]:
-        """Get expense by ID"""
+    async def get_expense(self, expense_id: int, current_user: User = None) -> Optional[ExpenseNonContract]:
+        """Get expense by ID with optional ownership check"""
         query = select(ExpenseNonContract).options(
             joinedload(ExpenseNonContract.upstream_contract)
         ).where(ExpenseNonContract.id == expense_id)
         result = await self.db.execute(query)
-        return result.scalar_one_or_none()
+        expense = result.scalar_one_or_none()
+        
+        # If current_user provided and not allowed to view all, check ownership
+        if expense and current_user and not self._can_view_all_expenses(current_user):
+            if expense.created_by != current_user.id:
+                return None  # Return None to simulate "not found" for unauthorized access
+        
+        return expense
 
     async def list_expenses(
         self,
@@ -38,7 +59,8 @@ class ExpenseService:
         expense_type: Optional[str] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
-        upstream_contract_id: Optional[int] = None
+        upstream_contract_id: Optional[int] = None,
+        current_user: User = None
     ) -> Dict[str, Any]:
         """List expenses with filtering and pagination"""
         query = select(ExpenseNonContract).options(
@@ -87,6 +109,10 @@ class ExpenseService:
             except ValueError:
                 pass
 
+        # Data isolation: non-admin users can only see their own records
+        if current_user and not self._can_view_all_expenses(current_user):
+            query = query.where(ExpenseNonContract.created_by == current_user.id)
+
         # Count total
         count_query = select(func.count()).select_from(query.subquery())
         total = (await self.db.execute(count_query)).scalar_one()
@@ -110,7 +136,8 @@ class ExpenseService:
         expense_type: Optional[str] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
-        upstream_contract_id: Optional[int] = None
+        upstream_contract_id: Optional[int] = None,
+        current_user: User = None
     ) -> List[ExpenseNonContract]:
         """List all expenses for export"""
         query = select(ExpenseNonContract).options(
@@ -159,6 +186,10 @@ class ExpenseService:
             except ValueError:
                 pass
 
+        # Data isolation: non-admin users can only see their own records
+        if current_user and not self._can_view_all_expenses(current_user):
+            query = query.where(ExpenseNonContract.created_by == current_user.id)
+
         query = query.order_by(desc(ExpenseNonContract.created_at))
         result = await self.db.execute(query)
         return result.scalars().all()
@@ -201,10 +232,21 @@ class ExpenseService:
         return await self.get_expense(expense.id)
 
     async def update_expense(self, expense_id: int, expense_in: ExpenseUpdate, user: User) -> ExpenseNonContract:
-        """Update existing expense"""
-        expense = await self.get_expense(expense_id)
+        """Update existing expense with ownership check"""
+        # Use get_expense without user param first to get the raw expense
+        query = select(ExpenseNonContract).options(
+            joinedload(ExpenseNonContract.upstream_contract)
+        ).where(ExpenseNonContract.id == expense_id)
+        result = await self.db.execute(query)
+        expense = result.scalar_one_or_none()
+        
         if not expense:
             raise HTTPException(status_code=404, detail="费用记录不存在")
+        
+        # Ownership check: non-admin users can only edit their own records
+        if not self._can_view_all_expenses(user):
+            if expense.created_by != user.id:
+                raise HTTPException(status_code=403, detail="权限不足：您只能编辑自己创建的费用记录")
 
         # 检查费用编号是否更新且是否与其他记录重复
         update_data = expense_in.model_dump(exclude_unset=True)
@@ -248,10 +290,21 @@ class ExpenseService:
         return expense
 
     async def delete_expense(self, expense_id: int, user: User) -> None:
-        """Delete expense"""
-        expense = await self.get_expense(expense_id)
+        """Delete expense with ownership check"""
+        # Use get_expense without user param first to get the raw expense
+        query = select(ExpenseNonContract).options(
+            joinedload(ExpenseNonContract.upstream_contract)
+        ).where(ExpenseNonContract.id == expense_id)
+        result = await self.db.execute(query)
+        expense = result.scalar_one_or_none()
+        
         if not expense:
             raise HTTPException(status_code=404, detail="费用记录不存在")
+        
+        # Ownership check: non-admin users can only delete their own records
+        if not self._can_view_all_expenses(user):
+            if expense.created_by != user.id:
+                raise HTTPException(status_code=403, detail="权限不足：您只能删除自己创建的费用记录")
         
         expense_code = expense.expense_code
         expense_data = {

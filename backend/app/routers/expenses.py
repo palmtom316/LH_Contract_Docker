@@ -41,7 +41,8 @@ async def export_expenses(
     """Export expenses to Excel"""
     try:
         expenses = await service.list_all_expenses(
-            keyword, category, expense_type, start_date, end_date, upstream_contract_id
+            keyword, category, expense_type, start_date, end_date, upstream_contract_id,
+            current_user=current_user
         )
         
         # Create DataFrame
@@ -96,7 +97,8 @@ async def list_expenses(
 ):
     """List expenses with pagination and filtering"""
     return await service.list_expenses(
-        page, page_size, keyword, category, expense_type, start_date, end_date, upstream_contract_id
+        page, page_size, keyword, category, expense_type, start_date, end_date, upstream_contract_id,
+        current_user=current_user
     )
 
 
@@ -117,7 +119,7 @@ async def get_expense(
     service: ExpenseService = Depends(get_expense_service)
 ):
     """Get expense details"""
-    expense = await service.get_expense(expense_id)
+    expense = await service.get_expense(expense_id, current_user=current_user)
     if not expense:
         raise ResourceNotFoundError(resource_type="费用记录", resource_id=expense_id)
     return expense

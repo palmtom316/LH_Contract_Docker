@@ -15,8 +15,8 @@ class UserRole(str, enum.Enum):
     CONTRACT_MANAGER = "CONTRACT_MANAGER"  # 合同管理 - 合同CRUD、财务记录CRUD、无合同费用CRUD、查看报表
     FINANCE = "FINANCE"                 # 财务部 - 查看报表、财务记录CRUD、无合同费用CRUD
     ENGINEERING = "ENGINEERING"         # 工程部 - 查看合同基本信息、应收应付结算CRUD、无合同费用CRUD
-    AUDIT = "AUDIT"                     # 审计部 - 查看合同基本信息、结算记录CRUD
-    BIDDING = "BIDDING"                 # 投标部 - 仅查看上游合同基本信息
+    AUDIT = "AUDIT"                     # 审计部 - 查看合同基本信息、结算记录CRUD、无合同费用CRUD（仅限本人数据）
+    BIDDING = "BIDDING"                 # 投标部 - 查看上游合同基本信息、无合同费用CRUD（仅限本人数据）
     GENERAL_AFFAIRS = "GENERAL_AFFAIRS" # 综合部 - 无合同费用CRUD、管理合同财务记录CRUD
 
 

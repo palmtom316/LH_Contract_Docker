@@ -162,18 +162,22 @@ ROLE_PERMISSIONS: dict[UserRole, Set[Permission]] = {
         Permission.VIEW_EXPENSES, Permission.CREATE_EXPENSES, Permission.EDIT_EXPENSES, Permission.DELETE_EXPENSES,
     },
     
-    # 审计部 - 查看合同基本信息、结算记录CRUD
+    # 审计部 - 查看合同基本信息、结算记录CRUD、无合同费用CRUD（仅限本人数据）
     UserRole.AUDIT: {
         Permission.VIEW_UPSTREAM_BASIC_INFO,
         Permission.VIEW_DOWNSTREAM_BASIC_INFO,
         Permission.VIEW_MANAGEMENT_BASIC_INFO,
         # Settlements only
         Permission.VIEW_SETTLEMENTS, Permission.CREATE_SETTLEMENTS, Permission.EDIT_SETTLEMENTS, Permission.DELETE_SETTLEMENTS,
+        # Expenses (user can only see own data - enforced in service layer)
+        Permission.VIEW_EXPENSES, Permission.CREATE_EXPENSES, Permission.EDIT_EXPENSES, Permission.DELETE_EXPENSES,
     },
     
-    # 投标部 - 仅查看上游合同基本信息
+    # 投标部 - 查看上游合同基本信息、无合同费用CRUD（仅限本人数据）
     UserRole.BIDDING: {
         Permission.VIEW_UPSTREAM_BASIC_INFO,
+        # Expenses (user can only see own data - enforced in service layer)
+        Permission.VIEW_EXPENSES, Permission.CREATE_EXPENSES, Permission.EDIT_EXPENSES, Permission.DELETE_EXPENSES,
     },
     
     # 综合部 - 无合同费用CRUD、管理合同财务记录CRUD
