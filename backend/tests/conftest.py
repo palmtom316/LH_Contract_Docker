@@ -88,7 +88,7 @@ async def test_user(test_db: AsyncSession) -> User:
         email="test@example.com",
         hashed_password=get_password_hash("testpass123"),
         full_name="Test User",
-        role=UserRole.VIEWER,
+        role=UserRole.BIDDING,  # Changed from VIEWER (deprecated) to BIDDING
         is_active=True
     )
     test_db.add(user)
