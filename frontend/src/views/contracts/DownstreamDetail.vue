@@ -723,7 +723,13 @@ const submitFinance = async () => {
 
 // Force reload to avoid router freeze
 const handleBack = () => {
-  location.href = '/contracts/downstream'
+  const query = route.query
+  const params = new URLSearchParams()
+  if (query.page) params.append('page', query.page)
+  if (query.keyword) params.append('keyword', query.keyword)
+  if (query.status) params.append('status', query.status)
+  const queryString = params.toString()
+  location.href = '/contracts/downstream' + (queryString ? '?' + queryString : '')
 }
 
 // Resize handler function (named so we can remove it properly)

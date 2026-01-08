@@ -554,10 +554,29 @@ const submitForm = async () => {
 
 
 const handleDetail = (row) => {
-  router.push({ name: 'ManagementDetail', params: { id: row.id }})
+  router.push({ 
+    name: 'ManagementDetail', 
+    params: { id: row.id },
+    query: {
+      page: queryParams.page,
+      keyword: queryParams.keyword || undefined,
+      status: queryParams.status || undefined
+    }
+  })
 }
 
 onMounted(() => {
+  // 从 URL 参数恢复查询条件
+  if (route.query.page) {
+    queryParams.page = parseInt(route.query.page, 10)
+  }
+  if (route.query.keyword) {
+    queryParams.keyword = route.query.keyword
+  }
+  if (route.query.status) {
+    queryParams.status = route.query.status
+  }
+  
   checkIsMobile()
   window.addEventListener('resize', handleResize)
   getList()

@@ -527,7 +527,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { getContracts, createContract, updateContract, deleteContract, exportContracts, downloadImportTemplate, importContracts, getNextSerialNumber } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
 import { getFileUrl } from '@/utils/common'
@@ -543,6 +543,7 @@ import FormulaInput from '@/components/FormulaInput.vue'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
+const route = useRoute()
 const { getSummaries, footerCellStyle } = useTableSummary()
 const { isMobile, checkIsMobile } = useMobileDetection()
 
@@ -823,7 +824,15 @@ const submitForm = async () => {
 const router = useRouter() // Ensure router is imported or available
 
 const handleDetail = (row) => {
-  router.push({ name: 'UpstreamDetail', params: { id: row.id } })
+  router.push({ 
+    name: 'UpstreamDetail', 
+    params: { id: row.id },
+    query: {
+      page: queryParams.page,
+      keyword: queryParams.keyword || undefined,
+      status: queryParams.status || undefined
+    }
+  })
 }
 
 
@@ -881,6 +890,17 @@ const handleImportFileChange = async (event) => {
 }
 
 onMounted(() => {
+  // 从 URL 参数恢复查询条件
+  if (route.query.page) {
+    queryParams.page = parseInt(route.query.page, 10)
+  }
+  if (route.query.keyword) {
+    queryParams.keyword = route.query.keyword
+  }
+  if (route.query.status) {
+    queryParams.status = route.query.status
+  }
+  
   checkIsMobile()
   window.addEventListener('resize', handleResize)
   getList()
