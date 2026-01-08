@@ -17,13 +17,14 @@ class Settings(BaseSettings):
     """Application settings"""
     # Application
     APP_NAME: str = "LH Contract Management System"
-    APP_VERSION: str = "1.3.2"  # Updated to V1.3.2
+    APP_VERSION: str = "1.4.1"  # Updated to V1.4.1
     DEBUG: bool = False  # Default to False for security
     
     # Database - MUST be set via environment variable in production
+    # Development default uses placeholder credentials (NOT for production!)
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL",
-        "postgresql+asyncpg://lh_admin:LanHai2024Secure!@db:5432/lh_contract_db"
+        "postgresql+asyncpg://lh_admin:dev_password_change_me@db:5432/lh_contract_db"
     )
     
     # Security - MUST be set via environment variable in production
