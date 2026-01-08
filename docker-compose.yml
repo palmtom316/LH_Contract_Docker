@@ -8,7 +8,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-lh_admin}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-LanHai2024Secure!}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_password_change_me}
       POSTGRES_DB: ${POSTGRES_DB:-lh_contract_db}
       # Critical for data persistence on existing volume structure
       PGDATA: /var/lib/postgresql/data/pgdata
@@ -45,7 +45,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-lh_admin}:${POSTGRES_PASSWORD:-LanHai2024Secure!}@db:5432/${POSTGRES_DB:-lh_contract_db}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-lh_admin}:${POSTGRES_PASSWORD:-dev_password_change_me}@db:5432/${POSTGRES_DB:-lh_contract_db}
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: ${SECRET_KEY}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:80,http://127.0.0.1:3000}
@@ -72,7 +72,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-lh_admin}:${POSTGRES_PASSWORD:-LanHai2024Secure!}@db:5432/${POSTGRES_DB:-lh_contract_db}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-lh_admin}:${POSTGRES_PASSWORD:-dev_password_change_me}@db:5432/${POSTGRES_DB:-lh_contract_db}
       FEISHU_APP_ID: ${FEISHU_APP_ID:-}
       FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:-}
       FEISHU_BASE_APP_TOKEN: ${FEISHU_BASE_APP_TOKEN:-}
