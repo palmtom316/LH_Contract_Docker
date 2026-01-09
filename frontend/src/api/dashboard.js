@@ -6,3 +6,10 @@ export function getStats() {
         method: 'get'
     })
 }
+
+export function getPeriodStats() {
+    return request({
+        url: '/dashboard/stats/period',
+        method: 'get'
+    })
+}

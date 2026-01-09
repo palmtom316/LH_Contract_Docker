@@ -23,6 +23,8 @@ class ContractUpstreamBase(BaseModel):
     management_mode: Optional[str] = None
     
     responsible_person: Optional[str] = Field(None, max_length=100)
+    contract_handler: Optional[str] = Field(None, max_length=100)
+    archive_number: Optional[str] = Field(None, max_length=100)
     
     party_a_contact: Optional[str] = Field(None, max_length=100)
     party_a_phone: Optional[str] = Field(None, max_length=20)
@@ -58,6 +60,8 @@ class ContractUpstreamUpdate(BaseModel):
     pricing_mode: Optional[str] = None
     management_mode: Optional[str] = None
     responsible_person: Optional[str] = Field(None, max_length=100)
+    contract_handler: Optional[str] = Field(None, max_length=100)
+    archive_number: Optional[str] = Field(None, max_length=100)
 
     party_a_contact: Optional[str] = Field(None, max_length=100)
     party_a_phone: Optional[str] = Field(None, max_length=20)

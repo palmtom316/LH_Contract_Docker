@@ -28,7 +28,9 @@ class ContractUpstream(Base):
     management_mode = Column(String(100), nullable=True)  # 管理模式 - 使用字典值
     
     # Details
-    responsible_person = Column(String(100), nullable=True) # 负责人
+    responsible_person = Column(String(100), nullable=True) # 合同负责人 (原负责人)
+    contract_handler = Column(String(100), nullable=True)  # 合同经办人
+    archive_number = Column(String(100), nullable=True)    # 合同原件档案号
     
     party_a_contact = Column(String(100), nullable=True)
     party_a_phone = Column(String(20), nullable=True)

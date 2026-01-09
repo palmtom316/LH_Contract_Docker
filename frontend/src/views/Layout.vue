@@ -26,7 +26,7 @@
         :collapse-transition="false"
         router
       >
-        <!-- 首页概览 - 需要 view_dashboard 权限 -->
+        <!-- 首页概览 -->
         <el-menu-item v-if="userStore.canViewDashboard" index="/">
           <el-icon><HomeFilled /></el-icon>
           <template #title>首页概览</template>
@@ -55,12 +55,14 @@
           <el-icon><Money /></el-icon>
           <template #title>无合同费用</template>
         </el-menu-item>
-        
-        <!-- 报表统计 - 需要 view_reports 权限 -->
+
+        <!-- 报表导出 -->
         <el-menu-item v-if="userStore.canViewReports" index="/reports">
           <el-icon><DataAnalysis /></el-icon>
-          <template #title>报表统计</template>
+          <template #title>报表导出</template>
         </el-menu-item>
+        
+
         
         <!-- 系统管理 - 仅管理员可见 -->
         <el-menu-item v-if="userStore.canManageUsers" index="/system">
@@ -323,11 +325,13 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
+/* Modern Layout Styles */
 .app-wrapper {
   display: flex;
   width: 100%;
   height: 100vh;
   position: relative;
+  background-color: #f0f2f5;
   
   &.mobile.openSidebar {
     position: fixed;
@@ -336,25 +340,28 @@ onBeforeUnmount(() => {
 }
 
 .drawer-bg {
-  background: #000;
-  opacity: 0.3;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
   width: 100%;
   top: 0;
   height: 100%;
   position: absolute;
   z-index: 999;
+  transition: all 0.3s;
 }
 
+/* Sidebar Modernization */
 .sidebar-container {
   width: var(--sidebar-width);
   height: 100%;
-  background-color: #001529;
-  transition: width 0.3s;
+  background: linear-gradient(180deg, #001529 0%, #00284d 100%);
+  transition: width 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   z-index: 1001;
   overflow: hidden;
+  box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
   
   &.collapsed {
     width: 64px;
@@ -372,7 +379,7 @@ onBeforeUnmount(() => {
     color: #fff;
     font-weight: bold;
     font-size: 16px;
-    background-color: #002140;
+    background: rgba(255, 255, 255, 0.05); /* Glass effect */
     white-space: nowrap;
     overflow: hidden;
     padding: 0 10px;
@@ -382,12 +389,13 @@ onBeforeUnmount(() => {
       height: 40px;
       margin-right: 12px;
       object-fit: contain;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
     }
 
     .logo-icon {
       font-size: 24px;
       margin-right: 12px;
-      color: #fff;
+      color: #409EFF; /* Accent color */
     }
 
     .logo-text-container {
@@ -399,13 +407,15 @@ onBeforeUnmount(() => {
 
       .logo-text {
         font-size: 16px;
+        letter-spacing: 1px;
       }
       
       .logo-text-sub {
         font-size: 12px;
         font-weight: normal;
-        opacity: 0.8;
+        opacity: 0.6;
         margin-top: 2px;
+        font-family: 'Helvetica Neue', Arial, sans-serif;
       }
     }
   }
@@ -413,6 +423,16 @@ onBeforeUnmount(() => {
   .el-menu-vertical {
     border-right: none;
     flex: 1;
+    
+    :deep(.el-menu-item) {
+       &:hover {
+         background-color: rgba(255, 255, 255, 0.05) !important;
+       }
+       &.is-active {
+         background: linear-gradient(90deg, #1890FF 0%, rgba(24, 144, 255, 0.1) 100%) !important;
+         border-right: 3px solid #1890FF;
+       }
+    }
   }
 
   .sidebar-info {
@@ -420,12 +440,15 @@ onBeforeUnmount(() => {
     display: flex;
     justify-content: center;
     align-items: center;
-    color: rgba(255, 255, 255, 0.45);
-    font-size: 12px;
-    background-color: #002140;
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 10px;
+    background: transparent;
+    letter-spacing: 1px;
+    border-top: 1px solid rgba(255,255,255,0.05);
   }
 }
 
+/* Main Container & Navbar */
 .main-container {
   flex: 1;
   display: flex;
@@ -433,29 +456,46 @@ onBeforeUnmount(() => {
   min-width: 0;
   transition: margin-left 0.3s;
   position: relative;
+  background-color: #f5f7fa;
   
   .navbar {
     height: var(--header-height);
-    background: #fff;
-    box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 0 20px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    transition: all 0.3s;
+    
+    &:hover {
+        background: #fff;
+        box-shadow: 0 4px 25px rgba(0, 0, 0, 0.05);
+    }
     
     .left-panel {
       display: flex;
       align-items: center;
       
       .hamburger {
-        font-size: 20px;
+        font-size: 22px;
         cursor: pointer;
         margin-right: 20px;
-        color: var(--color-text-main);
+        color: #606266;
+        transition: color 0.3s;
         
         &:hover {
-          color: var(--color-primary);
+          color: #409EFF;
         }
+      }
+      
+      .breadcrumb {
+          font-size: 14px;
+          line-height: normal;
       }
     }
     
@@ -464,11 +504,19 @@ onBeforeUnmount(() => {
         display: flex;
         align-items: center;
         cursor: pointer;
+        padding: 5px 10px;
+        border-radius: 20px;
+        transition: background-color 0.3s;
+        
+        &:hover {
+            background-color: #f5f7fa;
+        }
         
         .user-name {
           margin: 0 8px;
           font-size: 14px;
-          color: var(--color-text-main);
+          color: #303133;
+          font-weight: 500;
         }
       }
     }
@@ -478,7 +526,9 @@ onBeforeUnmount(() => {
     flex: 1;
     padding: 20px;
     overflow-y: auto;
-    background-color: var(--color-bg);
+    background-color: transparent;
+    /* Optional: Add a subtle texture or gradient to the main user area if desired, 
+       but typically 'clean' means solid color */
   }
 }
 
@@ -491,9 +541,8 @@ onBeforeUnmount(() => {
     height: 100%;
     width: var(--sidebar-width) !important;
     transform: translate3d(-100%, 0, 0);
-    transition: transform 0.3s;
-    
-    /* &.collapsed logic handled by transform */
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+    box-shadow: 2px 0 8px rgba(0,0,0,0.15);
   }
   
   &.openSidebar {
@@ -516,14 +565,14 @@ onBeforeUnmount(() => {
 
 .fade-transform-leave-active,
 .fade-transform-enter-active {
-  transition: all 0.3s;
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.5, 1);
 }
 .fade-transform-enter-from {
   opacity: 0;
-  transform: translateX(-20px);
+  transform: translateX(-30px);
 }
 .fade-transform-leave-to {
   opacity: 0;
-  transform: translateX(20px);
+  transform: translateX(30px);
 }
 </style>

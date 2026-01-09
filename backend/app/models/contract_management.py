@@ -37,7 +37,9 @@ class ContractManagement(Base):
     management_mode = Column(String(100), nullable=True)
     
     # Details
-    responsible_person = Column(String(100), nullable=True)
+    responsible_person = Column(String(100), nullable=True) # 负责人 (保留兼容)
+    contract_handler = Column(String(100), nullable=True)   # 合同经办人
+    contract_manager = Column(String(100), nullable=True)   # 合同负责人
     
     party_a_contact = Column(String(100), nullable=True)
     party_a_phone = Column(String(20), nullable=True)

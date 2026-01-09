@@ -26,6 +26,8 @@ class ContractDownstreamBase(BaseModel):
     management_mode: Optional[str] = None
     
     responsible_person: Optional[str] = Field(None, max_length=100)
+    contract_handler: Optional[str] = Field(None, max_length=100)
+    contract_manager: Optional[str] = Field(None, max_length=100)
     
     party_a_contact: Optional[str] = Field(None, max_length=100)
     party_a_phone: Optional[str] = Field(None, max_length=20)
@@ -64,6 +66,8 @@ class ContractDownstreamUpdate(BaseModel):
     pricing_mode: Optional[str] = None
     management_mode: Optional[str] = None
     responsible_person: Optional[str] = Field(None, max_length=100)
+    contract_handler: Optional[str] = Field(None, max_length=100)
+    contract_manager: Optional[str] = Field(None, max_length=100)
     
     party_a_contact: Optional[str] = Field(None, max_length=100)
     party_a_phone: Optional[str] = Field(None, max_length=20)

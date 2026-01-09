@@ -64,6 +64,8 @@
           <el-descriptions-item label="签约金额">¥ {{ formatMoney(contract.contract_amount) }}</el-descriptions-item>
           <el-descriptions-item label="合同类别">{{ contract.category }}</el-descriptions-item>
           <el-descriptions-item label="计价模式">{{ contract.pricing_mode || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="合同经办人">{{ contract.contract_handler || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="合同负责人">{{ contract.contract_manager || '-' }}</el-descriptions-item>
           <el-descriptions-item label="合同文件" :span="2">
             <el-link 
               v-if="contract.contract_file_path" 

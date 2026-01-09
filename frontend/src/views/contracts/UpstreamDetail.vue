@@ -67,7 +67,9 @@
           <el-descriptions-item label="公司合同分类">{{ contract.company_category || '-' }}</el-descriptions-item>
           <el-descriptions-item label="计价模式">{{ contract.pricing_mode || '-' }}</el-descriptions-item>
           <el-descriptions-item label="管理模式">{{ contract.management_mode || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="负责人">{{ contract.responsible_person || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="合同负责人">{{ contract.responsible_person || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="合同经办人">{{ contract.contract_handler || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="合同原件档案号">{{ contract.archive_number || '-' }}</el-descriptions-item>
           <el-descriptions-item label="合同文件" :span="2">
             <el-link 
               v-if="contract.contract_file_path" 

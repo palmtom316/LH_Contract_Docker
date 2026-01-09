@@ -259,6 +259,7 @@
             </el-table-column>
             <el-table-column prop="sign_date" label="签约时间" width="120" align="center" />
             <el-table-column prop="completion_date" label="完工时间" width="120" align="center" />
+            <el-table-column prop="archive_number" label="合同原件档案号" width="140" align="center" show-overflow-tooltip />
             
             <el-table-column label="合同文件" width="120" align="center">
               <template #default="scope">
@@ -426,8 +427,21 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-             <el-form-item label="负责人" prop="responsible_person">
-              <el-input v-model="form.responsible_person" placeholder="请输入负责人姓名" />
+             <el-form-item label="合同负责人" prop="responsible_person">
+              <el-input v-model="form.responsible_person" placeholder="请输入合同负责人姓名" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+             <el-form-item label="合同经办人" prop="contract_handler">
+              <el-input v-model="form.contract_handler" placeholder="请输入合同经办人姓名" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+             <el-form-item label="合同原件档案号" prop="archive_number">
+              <el-input v-model="form.archive_number" placeholder="请输入合同原件档案号" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -611,7 +625,9 @@ const form = reactive({
   company_category: '', // 公司合同分类
   pricing_mode: '',     // 计价模式
   management_mode: '',  // 管理模式
-  responsible_person: '', // 负责人
+  responsible_person: '', // 合同负责人
+  contract_handler: '',   // 合同经办人
+  archive_number: '',     // 合同原件档案号
   notes: '',
   status: '执行中',
   contract_file_path: ''
@@ -739,6 +755,8 @@ const resetForm = () => {
   form.pricing_mode = ''
   form.management_mode = ''
   form.responsible_person = ''
+  form.contract_handler = ''
+  form.archive_number = ''
   form.notes = ''
   form.status = '执行中'
   form.contract_file_path = ''

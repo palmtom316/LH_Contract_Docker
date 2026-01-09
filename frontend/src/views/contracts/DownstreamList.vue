@@ -316,6 +316,19 @@
           </el-upload>
         </el-form-item>
 
+        <el-row :gutter="20">
+          <el-col :span="12">
+             <el-form-item label="合同经办人" prop="contract_handler">
+              <el-input v-model="form.contract_handler" placeholder="请输入合同经办人姓名" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+             <el-form-item label="合同负责人" prop="contract_manager">
+              <el-input v-model="form.contract_manager" placeholder="请输入合同负责人姓名" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
         <el-form-item label="备注">
           <el-input v-model="form.notes" type="textarea" :rows="3" />
         </el-form-item>
@@ -405,6 +418,8 @@ const form = reactive({
   sign_date: '',
   category: '其他合同',
   pricing_mode: '',
+  contract_handler: '',   // 合同经办人
+  contract_manager: '',   // 合同负责人
   contract_file_path: '',
   notes: '',
   status: '执行中'
@@ -493,6 +508,8 @@ const resetForm = () => {
   form.sign_date = new Date().toISOString().split('T')[0]
   form.category = '其他合同'
   form.pricing_mode = ''
+  form.contract_handler = ''
+  form.contract_manager = ''
   form.contract_file_path = ''
   form.notes = ''
   form.status = '执行中'
