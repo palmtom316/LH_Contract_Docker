@@ -570,6 +570,12 @@ const submitForm = async () => {
 }
 
 
+const openPdfInNewTab = (path) => {
+  if (path) {
+    window.open(getFileUrl(path), '_blank')
+  }
+}
+
 const handleDetail = (row) => {
   router.push({ 
     name: 'ManagementDetail', 

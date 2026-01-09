@@ -13,7 +13,7 @@ export const getFileUrl = (path) => {
     if (path.startsWith('http') || path.startsWith('blob:')) return path
 
     // Use VITE_API_BASE_URL if available
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
     // Strip '/api/v1' suffix to get the root URL
     // Regex: replace /api/v1 (optional trailing slash) at the end of string
