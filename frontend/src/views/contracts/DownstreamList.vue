@@ -2,13 +2,13 @@
   <div class="app-container">
     <!-- Search Bar -->
     <el-card class="filter-container" shadow="never">
-      <el-form :inline="true" :model="queryParams" class="demo-form-inline">
+      <el-form :inline="!isMobile" :model="queryParams" class="demo-form-inline" :label-position="isMobile ? 'top' : 'right'">
         <el-form-item label="关键词">
-          <el-input v-model="queryParams.keyword" placeholder="合同序号/编号/名称/乙方" clearable @keyup.enter="handleSearch" />
+          <el-input v-model="queryParams.keyword" placeholder="合同序号/编号/名称/乙方" clearable @keyup.enter="handleSearch" :style="{ width: isMobile ? '100%' : '200px' }" />
         </el-form-item>
 
         <el-form-item label="状态">
-          <el-select v-model="queryParams.status" placeholder="合同状态" clearable style="width: 120px">
+          <el-select v-model="queryParams.status" placeholder="合同状态" clearable :style="{ width: isMobile ? '100%' : '120px' }">
             <el-option label="执行中" value="执行中" />
             <el-option label="已完工" value="已完工" />
             <el-option label="已结算" value="已结算" />
@@ -18,10 +18,26 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" icon="Search" @click="handleSearch">搜索</el-button>
-          <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-          <el-button v-if="userStore.canManageDownstreamContracts" type="success" icon="Plus" @click="handleAdd">新建合同</el-button>
-          <el-button type="warning" icon="Download" @click="handleExport">导出Excel</el-button>
+          <div class="filter-actions" :class="{ 'mobile-actions': isMobile }">
+            <el-button type="primary" icon="Search" @click="handleSearch">搜索</el-button>
+            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+            
+            <template v-if="!isMobile">
+              <el-button v-if="userStore.canManageDownstreamContracts" type="success" icon="Plus" @click="handleAdd">新建合同</el-button>
+              <el-button type="warning" icon="Download" @click="handleExport">导出Excel</el-button>
+            </template>
+            
+            <!-- Mobile Menu -->
+            <el-dropdown v-if="isMobile" trigger="click" class="action-item">
+              <el-button type="info" icon="More" circle />
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-if="userStore.canManageDownstreamContracts" @click="handleAdd"><el-icon><Plus /></el-icon> 新建合同</el-dropdown-item>
+                  <el-dropdown-item @click="handleExport"><el-icon><Download /></el-icon> 导出Excel</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
         </el-form-item>
       </el-form>
     </el-card>
@@ -358,7 +374,7 @@ const openPdfInNewTab = (path) => {
   window.open(getFileUrl(path), '_blank')
 }
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Document, Refresh, Search, Plus, Download, QuestionFilled } from '@element-plus/icons-vue'
+import { Document, Refresh, Search, Plus, Download, QuestionFilled, More } from '@element-plus/icons-vue'
 import SmartAutocomplete from '@/components/SmartAutocomplete.vue'
 import DictSelect from '@/components/DictSelect.vue'
 import SmartDateInput from '@/components/SmartDateInput.vue'
@@ -618,6 +634,27 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .filter-container {
   margin-bottom: 20px;
+}
+
+.filter-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.mobile-actions {
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 10px;
+  
+  .el-button {
+    margin-left: 0 !important;
+  }
+  
+  .action-item {
+    margin-left: 0;
+  }
 }
 
 .pagination-container {

@@ -5,12 +5,12 @@
       <el-tab-pane label="合同管理" name="management">
         <!-- Search Bar -->
         <el-card class="filter-container" shadow="never">
-          <el-form :inline="true" :model="queryParams" class="demo-form-inline">
+          <el-form :inline="!isMobile" :model="queryParams" class="demo-form-inline" :label-position="isMobile ? 'top' : 'right'">
             <el-form-item label="关键词">
-              <el-input v-model="queryParams.keyword" placeholder="合同序号/编号/名称/甲方" clearable @keyup.enter="handleQuery" />
+              <el-input v-model="queryParams.keyword" placeholder="合同序号/编号/名称/甲方" clearable @keyup.enter="handleQuery" :style="{ width: isMobile ? '100%' : '200px' }" />
             </el-form-item>
             <el-form-item label="状态">
-              <el-select v-model="queryParams.status" placeholder="合同状态" clearable style="width: 120px">
+              <el-select v-model="queryParams.status" placeholder="合同状态" clearable :style="{ width: isMobile ? '100%' : '120px' }">
                 <el-option label="执行中" value="执行中" />
                 <el-option label="已完工" value="已完工" />
                 <el-option label="已结算" value="已结算" />
@@ -20,21 +20,37 @@
               </el-select>
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-              <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-              <el-button type="warning" icon="Download" @click="handleExport">导出Excel</el-button>
-              <el-dropdown @command="handleImportCommand" style="margin-left: 10px;" v-if="userStore.canManageUpstreamContracts">
-                <el-button type="info" icon="Upload">
-                  导入Excel<el-icon class="el-icon--right"><arrow-down /></el-icon>
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="template">下载导入模板</el-dropdown-item>
-                    <el-dropdown-item command="import">选择Excel文件导入</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-              <el-button v-if="userStore.canManageUpstreamContracts" type="success" icon="Plus" @click="handleAdd" style="margin-left: 10px;">新建合同</el-button>
+              <div class="filter-actions" :class="{ 'mobile-actions': isMobile }">
+                <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+                <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+                <el-button type="warning" icon="Download" @click="handleExport" v-if="!isMobile">导出Excel</el-button>
+                
+                <el-dropdown @command="handleImportCommand" class="action-item" v-if="userStore.canManageUpstreamContracts && !isMobile">
+                  <el-button type="info" icon="Upload">
+                    导入Excel<el-icon class="el-icon--right"><arrow-down /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="template">下载导入模板</el-dropdown-item>
+                      <el-dropdown-item command="import">选择Excel文件导入</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+                
+                <el-button v-if="userStore.canManageUpstreamContracts" type="success" icon="Plus" @click="handleAdd" class="action-item">新建合同</el-button>
+                
+                <!-- Mobile Only Extra Actions Dropdown -->
+                <el-dropdown v-if="isMobile" trigger="click" class="action-item">
+                  <el-button type="info" icon="More" circle />
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item @click="handleExport"><el-icon><Download /></el-icon> 导出Excel</el-dropdown-item>
+                      <el-dropdown-item v-if="userStore.canManageUpstreamContracts" @click="handleImportCommand('template')">下载模板</el-dropdown-item>
+                      <el-dropdown-item v-if="userStore.canManageUpstreamContracts" @click="handleImportCommand('import')">导入Excel</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
             </el-form-item>
           </el-form>
         </el-card>
@@ -548,7 +564,7 @@ import { getFileUrl } from '@/utils/common'
 import { downloadExcel } from '@/utils/download'
 import { useContractList, useTableSummary, useMobileDetection } from '@/composables/useContractList'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowDown, QuestionFilled } from '@element-plus/icons-vue'
+import { ArrowDown, QuestionFilled, Download, More, Search, Refresh, Upload, Plus } from '@element-plus/icons-vue'
 import SmartAutocomplete from '@/components/SmartAutocomplete.vue'
 import PdfViewer from '@/components/PdfViewer.vue'
 import DictSelect from '@/components/DictSelect.vue'
@@ -698,7 +714,6 @@ const handleUploadRequest = async (option) => {
     console.log('Upload response:', res)
     if (res && res.path) {
       form.contract_file_path = res.path
-      console.log('File path set to:', form.contract_file_path)
       // Update file list to display the name
       fileList.value = [{
         name: option.file.name,
@@ -817,9 +832,6 @@ const submitForm = async () => {
       if (!dataToSubmit.party_a_phone) dataToSubmit.party_a_phone = null
       if (!dataToSubmit.contract_file_path) dataToSubmit.contract_file_path = null
       
-      // Debug: Log the contract_file_path value
-      console.log('Submitting contract with file path:', dataToSubmit.contract_file_path)
-      
       try {
         if (dialog.isEdit) {
             // Use the original ID for the URL, because the new ID might be different
@@ -866,9 +878,7 @@ const handleImportCommand = (command) => {
 const handleDownloadTemplate = async () => {
   try {
     ElMessage.info('正在下载模板...')
-    console.log('Starting template download...')
     const res = await downloadImportTemplate()
-    console.log('Template download response:', res)
     downloadExcel(res, '上游合同导入模板.xlsx')
     ElMessage.success('模板下载成功')
   } catch (e) {
@@ -932,6 +942,27 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .filter-container {
   margin-bottom: 20px;
+}
+
+.filter-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.mobile-actions {
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 10px;
+  
+  .el-button {
+    margin-left: 0 !important;
+  }
+  
+  .action-item {
+    margin-left: 0;
+  }
 }
 
 .pagination-container {

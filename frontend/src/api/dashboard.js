@@ -13,3 +13,11 @@ export function getPeriodStats() {
         method: 'get'
     })
 }
+
+export function getPeriodTrend(period) {
+    return request({
+        url: '/dashboard/stats/trend/period',
+        method: 'get',
+        params: { period }
+    })
+}

@@ -11,7 +11,7 @@ import shutil
 import subprocess
 import os
 from datetime import datetime
-from typing import List
+from typing import List, Optional, Union
 from urllib.parse import urlparse, unquote
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -235,8 +235,8 @@ async def get_logo():
 # --- System Configuration & Dictionary Endpoints ---
 
 class SystemConfigUpdate(BaseModel):
-    system_name: str | None = None
-    system_name_line_2: str | None = None
+    system_name: Optional[str] = None
+    system_name_line_2: Optional[str] = None
     # Add other config fields if needed
 
 @router.get("/config")
@@ -301,14 +301,14 @@ class OptionCreate(BaseModel):
     sort_order: int = 0
 
 class OptionUpdate(BaseModel):
-    label: str | None = None
-    value: str | None = None
-    sort_order: int | None = None
-    is_active: bool | None = None
+    label: Optional[str] = None
+    value: Optional[str] = None
+    sort_order: Optional[int] = None
+    is_active: Optional[bool] = None
 
 @router.get("/options")
 async def get_all_options(
-    category: str | None = None,
+    category: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
 ):
     """Get options, optionally filtered by category"""

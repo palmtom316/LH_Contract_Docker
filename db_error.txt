@@ -1,0 +1,84 @@
+Traceback (most recent call last):
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 522, in _prepare_and_execute
+    prepared_stmt, attributes = await adapt_connection._prepare(
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 773, in _prepare
+    prepared_stmt = await self._connection.prepare(
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/asyncpg/connection.py", line 636, in prepare
+    return await self._prepare(
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/asyncpg/connection.py", line 654, in _prepare
+    stmt = await self._get_statement(
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/asyncpg/connection.py", line 433, in _get_statement
+    statement = await self._protocol.prepare(
+  File "asyncpg/protocol/protocol.pyx", line 166, in prepare
+asyncpg.exceptions.UndefinedColumnError: column contracts_upstream.feishu_instance_code does not exist
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/engine/default.py", line 922, in do_execute
+    cursor.execute(statement, parameters)
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 580, in execute
+    self._adapt_connection.await_(
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 130, in await_only
+    return current.driver.switch(awaitable)  # type: ignore[no-any-return]
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 195, in greenlet_spawn
+    value = await result
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 558, in _prepare_and_execute
+    self._handle_exception(error)
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 509, in _handle_exception
+    self._adapt_connection._handle_exception(error)
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 797, in _handle_exception
+    raise translated_error from error
+sqlalchemy.dialects.postgresql.asyncpg.AsyncAdapt_asyncpg_dbapi.ProgrammingError: <class 'asyncpg.exceptions.UndefinedColumnError'>: column contracts_upstream.feishu_instance_code does not exist
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/palmtom/Projects/LH_Contract_Docker/debug_upstream.py", line 36, in debug_query
+    result = await session.execute(query)
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/ext/asyncio/session.py", line 455, in execute
+    result = await greenlet_spawn(
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 200, in greenlet_spawn
+    result = context.throw(*sys.exc_info())
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 2308, in execute
+    return self._execute_internal(
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 2190, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/orm/context.py", line 293, in orm_execute_statement
+    result = conn.execute(
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 1416, in execute
+    return meth(
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/sql/elements.py", line 517, in _execute_on_connection
+    return connection._execute_clauseelement(
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 1639, in _execute_clauseelement
+    ret = self._execute_context(
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 1848, in _execute_context
+    return self._exec_single_context(
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 1988, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 2344, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/engine/default.py", line 922, in do_execute
+    cursor.execute(statement, parameters)
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 580, in execute
+    self._adapt_connection.await_(
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 130, in await_only
+    return current.driver.switch(awaitable)  # type: ignore[no-any-return]
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 195, in greenlet_spawn
+    value = await result
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 558, in _prepare_and_execute
+    self._handle_exception(error)
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 509, in _handle_exception
+    self._adapt_connection._handle_exception(error)
+  File "/Users/palmtom/Projects/LH_Contract_Docker/backend/venv/lib/python3.9/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 797, in _handle_exception
+    raise translated_error from error
+sqlalchemy.exc.ProgrammingError: (sqlalchemy.dialects.postgresql.asyncpg.ProgrammingError) <class 'asyncpg.exceptions.UndefinedColumnError'>: column contracts_upstream.feishu_instance_code does not exist
+[SQL: SELECT contracts_upstream.id, contracts_upstream.serial_number, contracts_upstream.contract_code, contracts_upstream.contract_name, contracts_upstream.party_a_name, contracts_upstream.party_b_name, contracts_upstream.category, contracts_upstream.company_category, contracts_upstream.pricing_mode, contracts_upstream.management_mode, contracts_upstream.responsible_person, contracts_upstream.contract_handler, contracts_upstream.archive_number, contracts_upstream.party_a_contact, contracts_upstream.party_a_phone, contracts_upstream.project_name, contracts_upstream.project_location, contracts_upstream.contract_amount, contracts_upstream.sign_date, contracts_upstream.start_date, contracts_upstream.end_date, contracts_upstream.status, contracts_upstream.notes, contracts_upstream.contract_file_path, contracts_upstream.approval_status, contracts_upstream.feishu_instance_code, contracts_upstream.approval_pdf_path, contracts_upstream.created_at, contracts_upstream.updated_at, contracts_upstream.created_by 
+FROM contracts_upstream 
+ LIMIT $1::INTEGER]
+[parameters: (5,)]
+(Background on this error at: https://sqlalche.me/e/20/f405)

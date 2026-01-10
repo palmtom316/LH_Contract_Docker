@@ -576,20 +576,9 @@ const formatApprovalStatus = (status) => {
 }
 
 const handleUploadRequest = async (option) => {
-  console.log('===== handleUploadRequest START =====')
-  console.log('Uploading file:', option.file.name)
-  console.log('financeForm BEFORE upload:', JSON.parse(JSON.stringify(financeForm)))
-  
   try {
     const res = await uploadFile(option.file)
-    console.log('Upload response:', res)
-    console.log('Setting file_path to:', res.path)
-    
     financeForm.file_path = res.path
-    
-    console.log('financeForm AFTER setting file_path:', JSON.parse(JSON.stringify(financeForm)))
-    console.log('financeForm.file_path value:', financeForm.file_path)
-    
     fileList.value = [{ name: option.file.name, url: res.path }]
     option.onSuccess(res)
     ElMessage.success('上传成功')
@@ -598,15 +587,12 @@ const handleUploadRequest = async (option) => {
     ElMessage.error('上传失败')
     option.onError(e)
   }
-  console.log('===== handleUploadRequest END =====')
 }
 
 const handleInvoiceUpload = async (option) => {
   try {
     const res = await uploadFile(option.file)
-    console.log('Invoice upload result:', res)
     financeForm.file_path = res.path
-    console.log('Invoice file path set to:', financeForm.file_path)
     invoiceFileList.value = [{ name: option.file.name, url: res.path }]
     ElMessage.success('上传成功')
   } catch (e) {
@@ -803,10 +789,6 @@ const openEditDialog = (type, row) => {
 
 const submitFinance = async () => {
   try {
-    console.log('Submitting finance form:', financeForm)
-    console.log('Finance type:', financeDialog.type)
-    console.log('File path:', financeForm.file_path)
-    
     if (financeDialog.type === 'receivable') {
       if (financeDialog.isEdit) {
         await updateReceivable(contractId, financeDialog.editingId, financeForm)

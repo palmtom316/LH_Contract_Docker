@@ -2,10 +2,10 @@
   <div class="app-container">
     <!-- Search Bar -->
     <el-card class="filter-container" shadow="never">
-      <el-form :inline="true" :model="queryParams" class="demo-form-inline">
+      <el-form :inline="!isMobile" :model="queryParams" class="demo-form-inline" :label-position="isMobile ? 'top' : 'right'">
 
         <el-form-item label="费用归属">
-          <el-select v-model="queryParams.attribution" placeholder="费用归属" clearable style="width: 140px">
+          <el-select v-model="queryParams.attribution" placeholder="费用归属" clearable :style="{ width: isMobile ? '100%' : '140px' }">
             <el-option label="公司费用" value="公司费用" />
             <el-option label="项目费用" value="项目费用" />
           </el-select>
@@ -18,12 +18,12 @@
             start-placeholder="开始日期"
             end-placeholder="结束日期"
             value-format="YYYY-MM-DD"
-            style="width: 240px"
+            :style="{ width: isMobile ? '100%' : '240px' }"
             clearable
           />
         </el-form-item>
         <el-form-item label="上游合同序号">
-          <el-input v-model="queryParams.upstream_contract_id" placeholder="上游合同序号" clearable style="width: 120px" @keyup.enter="handleQuery" />
+          <el-input v-model="queryParams.upstream_contract_id" placeholder="上游合同序号" clearable :style="{ width: isMobile ? '100%' : '120px' }" @keyup.enter="handleQuery" />
         </el-form-item>
         <el-form-item label="费用分类">
           <DictSelect 
@@ -31,14 +31,29 @@
             category="expense_type" 
             placeholder="费用分类" 
             clearable 
-            style="width: 140px" 
+            :style="{ width: isMobile ? '100%' : '140px' }" 
           />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-          <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-          <el-button type="warning" icon="Download" @click="handleExport">导出Excel</el-button>
-          <el-button type="success" icon="Plus" @click="handleAdd">新增无合同费用</el-button>
+          <div class="filter-actions" :class="{ 'mobile-actions': isMobile }">
+            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+            <template v-if="!isMobile">
+              <el-button type="success" icon="Plus" @click="handleAdd">新增无合同费用</el-button>
+              <el-button type="warning" icon="Download" @click="handleExport">导出Excel</el-button>
+            </template>
+            
+             <!-- Mobile Menu -->
+            <el-dropdown v-if="isMobile" trigger="click" class="action-item">
+              <el-button type="info" icon="More" circle />
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="handleAdd"><el-icon><Plus /></el-icon> 新增费用</el-dropdown-item>
+                  <el-dropdown-item @click="handleExport"><el-icon><Download /></el-icon> 导出Excel</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
         </el-form-item>
       </el-form>
     </el-card>
@@ -355,7 +370,7 @@ import { getContracts, getContract } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
 import { getFileUrl, formatMoney } from '@/utils/common'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, Download, Document, Edit, Delete, QuestionFilled } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Download, Document, Edit, Delete, QuestionFilled, More } from '@element-plus/icons-vue'
 
 const loading = ref(false)
 const total = ref(0)
@@ -432,12 +447,6 @@ const getList = async () => {
     const res = await getExpenses(params)
     expenseList.value = res.items
     total.value = res.total
-    
-    // Debug: Log expense data
-    console.log('Loaded expenses:', expenseList.value.length)
-    if (expenseList.value.length > 0) {
-      console.log('First expense file_path:', expenseList.value[0].file_path)
-    }
   } finally {
     loading.value = false
   }
@@ -571,9 +580,6 @@ const submitForm = async () => {
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
     if (valid) {
-      console.log('Submitting expense form:', form)
-      console.log('File path:', form.file_path)
-      
       if (dialog.isEdit) {
         await updateExpense(form.id, form)
         ElMessage.success('更新成功')
@@ -626,9 +632,7 @@ const searchUpstreamContracts = async (query) => {
 const handleUploadRequest = async (option) => {
   try {
     const res = await uploadFile(option.file)
-    console.log('Upload result:', res)
     form.file_path = res.path
-    console.log('File path set to:', form.file_path)
     fileList.value = [{ name: option.file.name, url: res.path }]
     ElMessage.success('上传成功')
   } catch (e) {
@@ -744,6 +748,27 @@ onUnmounted(() => {
 <style scoped>
 .filter-container {
   margin-bottom: 20px;
+}
+
+.filter-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.mobile-actions {
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 10px;
+  
+  .el-button {
+    margin-left: 0 !important;
+  }
+  
+  .action-item {
+    margin-left: 0;
+  }
 }
 .pagination-container {
   margin-top: 20px;

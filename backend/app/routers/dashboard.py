@@ -328,3 +328,123 @@ async def get_period_stats(
         "quarterly": quarterly_data
     }
 
+
+@router.get("/stats/trend/period")
+@cache_manager.cached(ttl=300, key_prefix="dashboard_period_trend")
+async def get_period_trend(
+    period: str = "monthly",
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Get trend data (Income vs Expense) for a specific period (monthly=30days, quarterly=90days).
+    Returns daily aggregation.
+    """
+    from datetime import timedelta
+    
+    today = date.today()
+    if period == "quarterly":
+        start_date = today - timedelta(days=90)
+    else: # default monthly
+        start_date = today - timedelta(days=30)
+        
+    end_date = today
+
+    # Prepare complete date range list to ensure continuity
+    date_range = []
+    curr = start_date
+    while curr <= end_date:
+        date_range.append(curr)
+        curr += timedelta(days=1)
+    
+    # 1. Income: Upstream Receipts
+    stmt_income = select(
+        FinanceUpstreamReceipt.receipt_date,
+        func.sum(FinanceUpstreamReceipt.amount)
+    ).where(
+        FinanceUpstreamReceipt.receipt_date >= start_date,
+        FinanceUpstreamReceipt.receipt_date <= end_date
+    ).group_by(FinanceUpstreamReceipt.receipt_date)
+    
+    income_res = await db.execute(stmt_income)
+    income_map = {row[0]: float(row[1] or 0) for row in income_res.all()}
+    
+    # Format Response
+    dates = []
+    incomes = []
+    # Breakdown arrays
+    downstream_list = []
+    management_list = []
+    non_contract_list = []
+    labor_list = []
+    
+    # Maps for individual components - reusing the logic to populate them
+    downstream_map = {}
+    management_map = {}
+    non_contract_map = {}
+    labor_map = {}
+    
+    async def fill_map(stmt, target_map):
+        res = await db.execute(stmt)
+        for row in res.all():
+            d, amt = row[0], float(row[1] or 0)
+            target_map[d] = target_map.get(d, 0) + amt
+
+    # Downstream Payment
+    await fill_map(select(
+        FinanceDownstreamPayment.payment_date,
+        func.sum(FinanceDownstreamPayment.amount)
+    ).where(
+        FinanceDownstreamPayment.payment_date >= start_date,
+        FinanceDownstreamPayment.payment_date <= end_date
+    ).group_by(FinanceDownstreamPayment.payment_date), downstream_map)
+    
+    # Management Payment
+    await fill_map(select(
+        FinanceManagementPayment.payment_date,
+        func.sum(FinanceManagementPayment.amount)
+    ).where(
+        FinanceManagementPayment.payment_date >= start_date,
+        FinanceManagementPayment.payment_date <= end_date
+    ).group_by(FinanceManagementPayment.payment_date), management_map)
+    
+    # Non-Contract Expense
+    await fill_map(select(
+        ExpenseNonContract.expense_date,
+        func.sum(ExpenseNonContract.amount)
+    ).where(
+        ExpenseNonContract.expense_date >= start_date,
+        ExpenseNonContract.expense_date <= end_date
+    ).group_by(ExpenseNonContract.expense_date), non_contract_map)
+    
+    # Zero Hour Labor
+    from app.models.zero_hour_labor import ZeroHourLabor
+    await fill_map(select(
+        ZeroHourLabor.labor_date,
+        func.sum(ZeroHourLabor.total_amount)
+    ).where(
+        ZeroHourLabor.labor_date >= start_date,
+        ZeroHourLabor.labor_date <= end_date
+    ).group_by(ZeroHourLabor.labor_date), labor_map)
+    
+    for d in date_range:
+        dates.append(d.strftime("%Y-%m-%d"))
+        incomes.append(income_map.get(d, 0))
+        
+        # Populate breakdown lists
+        downstream_list.append(downstream_map.get(d, 0))
+        management_list.append(management_map.get(d, 0))
+        non_contract_list.append(non_contract_map.get(d, 0))
+        labor_list.append(labor_map.get(d, 0))
+        
+    return {
+        "dates": dates,
+        "income": incomes,
+        "expense_breakdown": {
+            "downstream": downstream_list,
+            "management": management_list,
+            "non_contract": non_contract_list,
+            "labor": labor_list
+        }
+    }
+

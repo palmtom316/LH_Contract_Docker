@@ -1,7 +1,7 @@
 <template>
   <div class="app-container">
     <el-card class="filter-container" shadow="never">
-      <el-form :inline="true" :model="queryParams" class="demo-form-inline">
+      <el-form :inline="!isMobile" :model="queryParams" class="demo-form-inline" :label-position="isMobile ? 'top' : 'right'">
         <el-form-item label="用工日期">
           <el-date-picker
             v-model="queryParams.dateRange"
@@ -10,12 +10,12 @@
             start-placeholder="开始日期"
             end-placeholder="结束日期"
             value-format="YYYY-MM-DD"
-            style="width: 240px"
+            :style="{ width: isMobile ? '100%' : '240px' }"
             clearable
           />
         </el-form-item>
         <el-form-item label="用工归属">
-          <el-select v-model="queryParams.attribution" placeholder="全部" clearable style="width: 140px">
+          <el-select v-model="queryParams.attribution" placeholder="全部" clearable :style="{ width: isMobile ? '100%' : '140px' }">
             <el-option label="公司用工" value="COMPANY" />
             <el-option label="项目用工" value="PROJECT" />
           </el-select>
@@ -29,7 +29,7 @@
             clearable
             :remote-method="searchUpstreamContractsForFilter"
             :loading="loadingContracts"
-            style="width: 200px"
+            :style="{ width: isMobile ? '100%' : '200px' }"
           >
             <el-option
               v-for="item in filterUpstreamContracts"
@@ -40,13 +40,29 @@
           </el-select>
         </el-form-item>
         <el-form-item label="关键词">
-            <el-input v-model="queryParams.keyword" placeholder="派工单位/材料名称" clearable style="width: 180px" @keyup.enter="handleQuery" />
+            <el-input v-model="queryParams.keyword" placeholder="派工单位/材料名称" clearable :style="{ width: isMobile ? '100%' : '180px' }" @keyup.enter="handleQuery" />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" :icon="Search" @click="handleQuery">搜索</el-button>
-          <el-button :icon="Refresh" @click="resetQuery">重置</el-button>
-          <el-button type="success" :icon="Plus" @click="handleAdd">新增零星用工</el-button>
-          <el-button type="warning" :icon="Download" @click="handleExport" :loading="exporting">导出Excel</el-button>
+          <div class="filter-actions" :class="{ 'mobile-actions': isMobile }">
+            <el-button type="primary" :icon="Search" @click="handleQuery">搜索</el-button>
+            <el-button :icon="Refresh" @click="resetQuery">重置</el-button>
+            
+            <template v-if="!isMobile">
+              <el-button type="success" :icon="Plus" @click="handleAdd">新增零星用工</el-button>
+              <el-button type="warning" :icon="Download" @click="handleExport" :loading="exporting">导出Excel</el-button>
+            </template>
+            
+            <!-- Mobile Menu -->
+            <el-dropdown v-if="isMobile" trigger="click" class="action-item">
+              <el-button type="info" :icon="More" circle />
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="handleAdd"><el-icon><Plus /></el-icon> 新增用工</el-dropdown-item>
+                  <el-dropdown-item @click="handleExport"><el-icon><Download /></el-icon> 导出Excel</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
         </el-form-item>
       </el-form>
     </el-card>
@@ -393,7 +409,10 @@ import { getContracts } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
 import { formatMoney, getFileUrl } from '@/utils/common'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Upload, Document, Plus, Delete, Search, Refresh, Download } from '@element-plus/icons-vue'
+import { Upload, Document, Plus, Delete, Search, Refresh, Download, More } from '@element-plus/icons-vue'
+import { useMobileDetection } from '@/composables/useContractList'
+
+const { isMobile } = useMobileDetection()
 
 const loading = ref(false)
 const exporting = ref(false)
@@ -875,5 +894,58 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+</style>
+
+<style scoped lang="scss">
+.filter-container {
+  margin-bottom: 20px;
+}
+
+.filter-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.mobile-actions {
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 10px;
+  
+  .el-button {
+    margin-left: 0 !important;
+  }
+  
+  .action-item {
+    margin-left: 0;
+  }
+}
+
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+</style>
+
+<style>
+/* Global override for table footer - Bold black text with yellow background */
+.custom-footer-table .el-table__footer-wrapper tbody td,
+.custom-footer-table .el-table__fixed-footer-wrapper tbody td,
+.custom-footer-table .el-table__footer-wrapper tbody tr,
+.custom-footer-table .el-table__fixed-footer-wrapper tbody tr {
+    background-color: #FFFF00 !important; /* Bright Yellow */
+    color: #000000 !important; /* Black */
+    font-weight: bold !important;
+    font-size: 16px !important;
+    --el-table-row-hover-bg-color: #FFFF00 !important;
+}
+.custom-footer-table .el-table__footer-wrapper tbody td .cell,
+.custom-footer-table .el-table__fixed-footer-wrapper tbody td .cell {
+    background-color: #FFFF00 !important;
+    color: #000000 !important; /* Black */
+    font-weight: bold !important;
 }
 </style>

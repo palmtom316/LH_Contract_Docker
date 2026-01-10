@@ -58,6 +58,7 @@
           <el-descriptions-item label="合同序号">{{ contract.serial_number }}</el-descriptions-item>
           <el-descriptions-item label="合同编号">{{ contract.contract_code }}</el-descriptions-item>
           <el-descriptions-item label="合同名称">{{ contract.contract_name }}</el-descriptions-item>
+          <el-descriptions-item label="关联上游合同">{{ contract.upstream_contract_name || '-' }}</el-descriptions-item>
           <el-descriptions-item label="合同甲方单位">{{ contract.party_a_name }}</el-descriptions-item>
           <el-descriptions-item label="合同乙方单位">{{ contract.party_b_name || '-' }}</el-descriptions-item>
           <el-descriptions-item label="签约日期">{{ contract.sign_date }}</el-descriptions-item>
@@ -482,29 +483,14 @@ const loadData = async () => {
 const loadPayables = async () => { payables.value = await getPayables(contractId) }
 const loadInvoices = async () => { 
   invoices.value = await getInvoices(contractId)
-  console.log('Loaded invoices:', invoices.value)
-  if (invoices.value.length > 0) {
-    console.log('First invoice file_path:', invoices.value[0].file_path)
-  }
 }
 const loadPayments = async () => { payments.value = await getPayments(contractId) }
 const loadSettlements = async () => { settlements.value = await getSettlements(contractId) }
 
 const handleUpload = async (option) => {
-  console.log('===== handleUpload START =====')
-  console.log('Uploading file:', option.file.name)
-  console.log('financeForm BEFORE upload:', JSON.parse(JSON.stringify(financeForm)))
-  
   try {
     const result = await uploadFile(option.file)
-    console.log('Upload result:', result)
-    console.log('Setting file_path to:', result.path)
-    
     financeForm.file_path = result.path
-    
-    console.log('financeForm AFTER setting file_path:', JSON.parse(JSON.stringify(financeForm)))
-    console.log('financeForm.file_path value:', financeForm.file_path)
-    
     fileList.value = [{ name: option.file.name, url: result.path }]
     option.onSuccess(result)
     ElMessage.success('上传成功')
@@ -513,7 +499,6 @@ const handleUpload = async (option) => {
     ElMessage.error('上传失败')
     option.onError(e)
   }
-  console.log('===== handleUpload END =====')
 }
 
 const openFinanceDialog = (type) => {
@@ -692,14 +677,10 @@ const handleDelete = (type, row) => {
 
 const submitFinance = async () => {
   try {
-    console.log('Submitting finance form:', financeForm)
-    console.log('Finance type:', financeDialog.type)
-    
     if (financeDialog.type === 'payable') {
       financeDialog.isEdit ? await updatePayable(contractId, financeDialog.editingId, financeForm) : await createPayable(contractId, financeForm)
       await loadPayables()
     } else if (financeDialog.type === 'invoice') {
-      console.log('Creating/updating invoice with file_path:', financeForm.file_path)
       financeDialog.isEdit ? await updateInvoice(contractId, financeDialog.editingId, financeForm) : await createInvoice(contractId, financeForm)
       await loadInvoices()
     } else if (financeDialog.type === 'payment') {
@@ -709,7 +690,6 @@ const submitFinance = async () => {
       // Clean up dates
       if (financeForm.completion_date === '') financeForm.completion_date = null
       if (financeForm.warranty_date === '') financeForm.warranty_date = null
-      console.log('Creating/updating settlement with file_path:', financeForm.file_path)
       financeDialog.isEdit ? await updateSettlement(contractId, financeDialog.editingId, financeForm) : await createSettlement(contractId, financeForm)
       await loadSettlements()
     }

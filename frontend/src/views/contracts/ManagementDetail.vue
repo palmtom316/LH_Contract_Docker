@@ -59,6 +59,7 @@
           <el-descriptions-item label="合同序号">{{ contract.serial_number }}</el-descriptions-item>
           <el-descriptions-item label="合同编号">{{ contract.contract_code }}</el-descriptions-item>
           <el-descriptions-item label="合同名称">{{ contract.contract_name }}</el-descriptions-item>
+          <el-descriptions-item label="关联上游合同">{{ contract.upstream_contract_name || '-' }}</el-descriptions-item>
           <el-descriptions-item label="合同甲方单位">{{ contract.party_a_name }}</el-descriptions-item>
           <el-descriptions-item label="合同乙方单位">{{ contract.party_b_name || '-' }}</el-descriptions-item>
           <el-descriptions-item label="签约日期">{{ contract.sign_date }}</el-descriptions-item>
@@ -496,39 +497,21 @@ const loadData = async () => {
 
 const loadPayables = async () => {
   payables.value = await getPayables(contractId)
-  console.log('Loaded payables:', payables.value.length)
-  if (payables.value.length > 0) console.log('First payable file_path:', payables.value[0].file_path)
 }
 const loadInvoices = async () => {
   invoices.value = await getInvoices(contractId)
-  console.log('Loaded invoices:', invoices.value.length)
-  if (invoices.value.length > 0) console.log('First invoice file_path:', invoices.value[0].file_path)
 }
 const loadPayments = async () => {
   payments.value = await getPayments(contractId)
-  console.log('Loaded payments:', payments.value.length)
-  if (payments.value.length > 0) console.log('First payment file_path:', payments.value[0].file_path)
 }
 const loadSettlements = async () => {
   settlements.value = await getSettlements(contractId)
-  if (settlements.value.length > 0) console.log('First settlement file_path:', settlements.value[0].file_path)
 }
 
 const handleUploadRequest = async (option) => {
-  console.log('===== handleUploadRequest START =====')
-  console.log('Uploading file:', option.file.name)
-  console.log('financeForm BEFORE upload:', JSON.parse(JSON.stringify(financeForm)))
-  
   try {
     const res = await uploadFile(option.file)
-    console.log('Upload response:', res)
-    console.log('Setting file_path to:', res.path)
-    
     financeForm.file_path = res.path
-    
-    console.log('financeForm AFTER setting file_path:', JSON.parse(JSON.stringify(financeForm)))
-    console.log('financeForm.file_path value:', financeForm.file_path)
-    
     fileList.value = [{ name: option.file.name, url: res.path }]
     option.onSuccess(res)
     ElMessage.success('上传成功')
@@ -537,7 +520,6 @@ const handleUploadRequest = async (option) => {
     ElMessage.error('上传失败')
     option.onError(e)
   }
-  console.log('===== handleUploadRequest END =====')
 }
 
 const openFinanceDialog = (type) => {

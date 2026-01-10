@@ -1,6 +1,35 @@
 """
 Database Schema Validation Module
 检查数据库结构与应用程序模型是否匹配
+
+This module validates that the database schema matches the application models
+at startup. It is crucial for detecting missing tables or columns after upgrades.
+
+=== SCHEMA VERSION HISTORY ===
+
+V1.0 (Initial):
+    - users, contracts_upstream, contracts_downstream, contracts_management
+    - expenses_non_contract, audit_logs
+
+V1.2:
+    - Added: zero_hour_labor (工时记录)
+    - Added: zero_hour_labor_materials (工时材料明细)
+    - Added: sys_dictionaries (数据字典)
+    - Added: sys_config (系统配置)
+    - New columns in zero_hour_labor:
+        dispatch_file_path, skilled_unit_price, skilled_quantity, skilled_price_total,
+        general_unit_price, general_quantity, general_price_total
+
+V1.4:
+    - Added Feishu approval columns to expenses_non_contract:
+        approval_status, feishu_instance_code, approval_pdf_path
+
+=== MAINTENANCE NOTES ===
+When adding new tables/columns in a release:
+1. Update EXPECTED_COLUMNS below
+2. Add version comment (e.g., "# V1.5 新增")
+3. Create corresponding Alembic migration
+4. Update this docstring with version history
 """
 import logging
 from sqlalchemy import text, inspect
@@ -10,6 +39,7 @@ logger = logging.getLogger("app.db_check")
 
 
 # 定义预期的表结构 - 每次版本更新时需要更新此列表
+# See module docstring for version history
 EXPECTED_COLUMNS = {
     "zero_hour_labor": [
         ("id", "integer"),
