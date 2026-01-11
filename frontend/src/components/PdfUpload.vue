@@ -130,7 +130,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'upload-success', 'upload-error', 'remove'])
+const emit = defineEmits(['update:modelValue', 'update:fileKey', 'upload-success', 'upload-error', 'remove'])
 
 const uploadRef = ref(null)
 const uploading = ref(false)
@@ -168,8 +168,11 @@ const handleUploadRequest = async (option) => {
     const res = await uploadFile(option.file, props.uploadDir)
     console.log('[PdfUpload] Upload response:', res)
     
-    if (res && res.path) {
-      emit('update:modelValue', res.path)
+    if (res && (res.path || res.key)) {
+      // Prefer key, fallback to path if key missing (legacy)
+      const val = res.key || res.path
+      emit('update:modelValue', val)
+      emit('update:fileKey', res.key) // Emit key specifically
       emit('upload-success', res)
       
       fileList.value = [{

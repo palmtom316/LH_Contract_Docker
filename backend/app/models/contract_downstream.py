@@ -55,6 +55,8 @@ class ContractDownstream(Base):
     
     # File attachments
     contract_file_path = Column(String(500), nullable=True)   # 合同文件路径 (PDF Only)
+    contract_file_key = Column(String(500), nullable=True)
+    contract_file_storage = Column(String(50), default='local')
     
     # Status and notes
     # Status and notes
@@ -65,6 +67,8 @@ class ContractDownstream(Base):
     approval_status = Column(String(50), nullable=True, default="DRAFT")  # DRAFT, PENDING, APPROVED, REJECTED
     feishu_instance_code = Column(String(100), nullable=True)  # 飞书审批实例ID
     approval_pdf_path = Column(String(500), nullable=True)  # 审批PDF本地路径
+    approval_pdf_key = Column(String(500), nullable=True)
+    approval_pdf_storage = Column(String(50), default='local')
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
@@ -118,6 +122,8 @@ class FinanceDownstreamPayable(Base):
     description = Column(String(300), nullable=True)             # 说明
     expected_date = Column(Date, nullable=True)                  # 预计付款日期
     file_path = Column(String(500), nullable=True)               # 审批文件路径
+    file_key = Column(String(500), nullable=True)
+    storage_provider = Column(String(50), default='local')
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -153,6 +159,8 @@ class FinanceDownstreamInvoice(Base):
     supplier_name = Column(String(200), nullable=True)               # 开票方名称
     description = Column(String(300), nullable=True)                 # 说明
     file_path = Column(String(500), nullable=True)                   # 发票文件路径
+    file_key = Column(String(500), nullable=True)
+    storage_provider = Column(String(50), default='local')
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -187,6 +195,8 @@ class FinanceDownstreamPayment(Base):
     
     description = Column(String(300), nullable=True)                 # 说明
     file_path = Column(String(500), nullable=True)                   # 凭证文件路径
+    file_key = Column(String(500), nullable=True)
+    storage_provider = Column(String(50), default='local')
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -223,6 +233,8 @@ class DownstreamSettlement(Base):
     status = Column(String(50), default="待审核")                       # 结算状态
     description = Column(Text, nullable=True)                          # 说明
     file_path = Column(String(500), nullable=True)                     # 结算文件路径
+    file_key = Column(String(500), nullable=True)
+    storage_provider = Column(String(50), default='local')
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())

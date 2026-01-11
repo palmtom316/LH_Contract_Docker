@@ -56,6 +56,8 @@ class ContractManagement(Base):
     
     # File attachments
     contract_file_path = Column(String(500), nullable=True)
+    contract_file_key = Column(String(500), nullable=True)
+    contract_file_storage = Column(String(50), default='local')
     
     # Status and notes
     status = Column(String(50), default="执行中", index=True)
@@ -65,6 +67,8 @@ class ContractManagement(Base):
     approval_status = Column(String(50), nullable=True, default="DRAFT")  # DRAFT, PENDING, APPROVED, REJECTED
     feishu_instance_code = Column(String(100), nullable=True)  # 飞书审批实例ID
     approval_pdf_path = Column(String(500), nullable=True)  # 审批PDF本地路径
+    approval_pdf_key = Column(String(500), nullable=True)
+    approval_pdf_storage = Column(String(50), default='local')
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
@@ -115,6 +119,8 @@ class FinanceManagementPayable(Base):
     description = Column(String(300), nullable=True)
     expected_date = Column(Date, nullable=True)
     file_path = Column(String(500), nullable=True)
+    file_key = Column(String(500), nullable=True)
+    storage_provider = Column(String(50), default='local')
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -142,6 +148,8 @@ class FinanceManagementInvoice(Base):
     supplier_name = Column(String(200), nullable=True)
     description = Column(String(300), nullable=True)
     file_path = Column(String(500), nullable=True)
+    file_key = Column(String(500), nullable=True)
+    storage_provider = Column(String(50), default='local')
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -168,6 +176,8 @@ class FinanceManagementPayment(Base):
     
     description = Column(String(300), nullable=True)
     file_path = Column(String(500), nullable=True)
+    file_key = Column(String(500), nullable=True)
+    storage_provider = Column(String(50), default='local')
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -196,6 +206,8 @@ class ManagementSettlement(Base):
     status = Column(String(50), default="待审核")
     description = Column(Text, nullable=True)
     file_path = Column(String(500), nullable=True)
+    file_key = Column(String(500), nullable=True)
+    storage_provider = Column(String(50), default='local')
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

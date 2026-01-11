@@ -646,7 +646,8 @@ const form = reactive({
   archive_number: '',     // 合同原件档案号
   notes: '',
   status: '执行中',
-  contract_file_path: ''
+  contract_file_path: '',
+  contract_file_key: ''
 })
 
 const rules = {
@@ -714,6 +715,7 @@ const handleUploadRequest = async (option) => {
     console.log('Upload response:', res)
     if (res && res.path) {
       form.contract_file_path = res.path
+      if (res.key) form.contract_file_key = res.key
       // Update file list to display the name
       fileList.value = [{
         name: option.file.name,

@@ -20,6 +20,8 @@ class ZeroHourLabor(Base):
     upstream_contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="SET NULL"), nullable=True)
     dispatch_unit = Column(String(200), nullable=True)  # 派工单位
     dispatch_file_path = Column(String(500), nullable=True)  # 派工单文件路径
+    dispatch_file_key = Column(String(500), nullable=True)
+    dispatch_file_storage = Column(String(50), default='local')
     
     # Labor Details - Skilled (技工)
     skilled_unit_price = Column(Numeric(15, 2), default=0)

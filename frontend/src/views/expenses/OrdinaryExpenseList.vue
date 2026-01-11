@@ -412,7 +412,9 @@ const form = reactive({
   tax_amount: 0,
   expense_date: '',
   description: '',
-  file_path: ''
+  notes: '',
+  file_path: '',
+  file_key: ''
 })
 
 const rules = {
@@ -631,9 +633,10 @@ const searchUpstreamContracts = async (query) => {
 
 const handleUploadRequest = async (option) => {
   try {
-    const res = await uploadFile(option.file)
-    form.file_path = res.path
-    fileList.value = [{ name: option.file.name, url: res.path }]
+    const result = await uploadFile(option.file, 'expenses')
+    form.file_path = result.path
+    if (result.key) form.file_key = result.key
+    fileList.value = [{ name: option.file.name, url: result.path }]
     ElMessage.success('上传成功')
   } catch (e) {
     console.error('Upload error:', e)

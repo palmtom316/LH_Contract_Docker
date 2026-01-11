@@ -100,67 +100,102 @@ async def upload_file(
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    Upload file (PDF, Images, Excel)
+    Upload file to MinIO storage.
     
     Args:
         file: The file to upload
-        upload_dir: Target directory (contracts, invoices, receipts, settlements, expenses)
-                    If not provided, determined by file extension
+        upload_dir: Not strictly used for folders in MinIO, but used for prefixing if needed.
+                    Allowed: contracts, invoices, receipts, settlements, expenses, etc.
     
-    Returns: {"filename": str, "path": str, "content_type": str}
+    Returns: 
+        {
+            "filename": str, 
+            "path": str (presigned url or public url), 
+            "key": str (object name),
+            "content_type": str
+        }
     """
     logger.info(f"[UPLOAD] Start: filename={file.filename}, content_type={file.content_type}, upload_dir={upload_dir}, user={current_user.username}")
     
-    # Validate extension
+    # 1. Validate extension
     ext = file.filename.split('.')[-1].lower()
     if ext not in settings.ALLOWED_EXTENSIONS:
-        logger.warning(f"[UPLOAD] Invalid file type: {ext}")
         raise ValidationError(
             message="不支持的文件类型",
             field_errors={"file": f"不支持的文件类型: {ext}，支持的类型: {', '.join(settings.ALLOWED_EXTENSIONS)}"}
         )
     
-    # Generate unique filename using UUID to avoid encoding issues
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    unique_id = str(uuid.uuid4())[:8]
-    new_filename = f"{timestamp}_{unique_id}.{ext}"
+    # 2. Generate Object Key
+    # Format: {year}/{month}/{uuid}.{ext} to avoid flat folder limit issues
+    now = datetime.now()
+    unique_id = str(uuid.uuid4())
+    object_name = f"{now.year}/{now.month:02d}/{unique_id}.{ext}"
     
-    # Determine sub-folder: use provided upload_dir or auto-detect by extension
-    allowed_dirs = ['contracts', 'invoices', 'receipts', 'settlements', 'expenses', 'docs', 'others']
+    # If upload_dir provided, maybe prefix it? 
+    # For now, let's keep all in one bucket but maybe prefix by type if helpful, 
+    # but strictly following V1.5 plan, we just need a unique key.
+    # Let's add the type as prefix for better organization: {type}/{year}/{month}/{uuid}.{ext}
+    
+    type_prefix = "others"
+    allowed_dirs = ['contracts', 'invoices', 'receipts', 'settlements', 'expenses', 'docs']
     
     if upload_dir and upload_dir in allowed_dirs:
-        sub_folder = upload_dir
+        type_prefix = upload_dir
     else:
-        # Auto-detect based on extension
-        if ext in ['pdf']:
-            sub_folder = "contracts"
-        elif ext in ['jpg', 'jpeg', 'png']:
-            sub_folder = "receipts"
-        elif ext in ['xlsx', 'xls']:
-            sub_folder = "docs"
-        else:
-            sub_folder = "others"
+        if ext in ['pdf']: type_prefix = "contracts"
+        elif ext in ['jpg', 'jpeg', 'png']: type_prefix = "receipts"
+        elif ext in ['xlsx', 'xls']: type_prefix = "docs"
         
-    save_dir = os.path.join(settings.UPLOAD_DIR, sub_folder)
-    os.makedirs(save_dir, exist_ok=True)
-    
-    file_path = os.path.join(save_dir, new_filename)
-    
-    # Save file
+    final_object_name = f"{type_prefix}/{object_name}"
+
+    # 3. Upload to MinIO
     try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        logger.info(f"[UPLOAD] Success: saved to {file_path}")
-    except Exception as e:
-        logger.error(f"[UPLOAD] Failed to save file: {e}")
-        raise DatabaseError(message="文件保存失败", detail=str(e))
+        from app.core.minio import get_minio_client, ensure_bucket_exists
         
-    # Generate relative URL (assuming static mount at /uploads)
-    relative_url = f"/uploads/{sub_folder}/{new_filename}"
+        client = get_minio_client()
+        bucket_name = settings.MINIO_BUCKET_CONTRACTS
+        
+        # Ensure bucket exists
+        ensure_bucket_exists(client, bucket_name)
+        
+        # Determine file size (files are spooled, need to check size)
+        # file.file is a SpooledTemporaryFile
+        file.file.seek(0, 2)
+        file_size = file.file.tell()
+        file.file.seek(0)
+        
+        client.put_object(
+            bucket_name,
+            final_object_name,
+            file.file,
+            file_size,
+            content_type=file.content_type
+        )
+        logger.info(f"[UPLOAD] Success: uploaded to {bucket_name}/{final_object_name}")
+        
+    except Exception as e:
+        logger.error(f"[UPLOAD] MinIO upload failed: {e}")
+        raise DatabaseError(message="文件上传失败", detail=str(e))
+
+    # 4. Generate URL
+    # For now, generate a presigned URL valid for 7 days (or less)
+    # OR if public, just return the path.
+    # Contract files are sensitive, so we should typically use presigned URLs or proxy.
+    # For simplicity in list views (high traffic), usually we proxy or use long-lived presigned.
+    # In this specific context, the Frontend expects a "path" which it might use to preview.
+    # Verification: The existing frontend uses `getFileUrl` utils.
+    
+    # Let's return a special path that the frontend can interpret or use directly if proxy is setup.
+    # Returning the key is critical for the DB update.
+    
+    # We will return the object key as 'path' essentially, or a path that our backend proxy understands.
+    # V1.5 Design: MinIO key is the source of truth.
     
     return {
         "filename": file.filename,
-        "path": relative_url,
+        "path": final_object_name,  # Frontend might show this or we return a view URL?
+        "key": final_object_name,   # Explicit key
+        "url": f"/api/v1/common/files/{final_object_name}", # Hypothetical proxy endpoint or direct minio link
         "content_type": file.content_type
     }
 

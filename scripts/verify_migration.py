@@ -193,18 +193,63 @@ class MigrationVerifier:
                     return True
                 
                 # Check files from each table
-                tables_with_files = [
-                    "contracts_upstream",
-                    "contracts_downstream", 
-                    "contracts_management",
+                # Format: (table_name, file_col, key_col, storage_col)
+                # Must match migrate_to_minio.py config
+                tables_config = [
+                    # Contracts Upstream
+                    ("contracts_upstream", "contract_file_path", "contract_file_key", "contract_file_storage"),
+                    ("contracts_upstream", "approval_pdf_path", "approval_pdf_key", "approval_pdf_storage"),
+                    
+                    # Contracts Downstream
+                    ("contracts_downstream", "contract_file_path", "contract_file_key", "contract_file_storage"),
+                    ("contracts_downstream", "approval_pdf_path", "approval_pdf_key", "approval_pdf_storage"),
+                    
+                    # Contracts Management
+                    ("contracts_management", "contract_file_path", "contract_file_key", "contract_file_storage"),
+                    ("contracts_management", "approval_pdf_path", "approval_pdf_key", "approval_pdf_storage"),
+                    
+                    # Project Settlements
+                    ("project_settlements", "file_path", "file_key", "storage_provider"),
+                    ("project_settlements", "audit_report_path", "audit_report_key", "audit_report_storage"),
+                    ("project_settlements", "start_report_path", "start_report_key", "start_report_storage"),
+                    ("project_settlements", "completion_report_path", "completion_report_key", "completion_report_storage"),
+                    
+                    # Expenses Non Contract
+                    ("expenses_non_contract", "file_path", "file_key", "storage_provider"),
+                    ("expenses_non_contract", "approval_pdf_path", "approval_pdf_key", "approval_pdf_storage"),
+                    
+                    # Generic Tables
+                    ("finance_upstream_receivables", "file_path", "file_key", "storage_provider"),
+                    ("finance_upstream_invoices", "file_path", "file_key", "storage_provider"),
+                    ("finance_upstream_receipts", "file_path", "file_key", "storage_provider"),
+                    ("finance_downstream_payables", "file_path", "file_key", "storage_provider"),
+                    ("finance_downstream_invoices", "file_path", "file_key", "storage_provider"),
+                    ("finance_downstream_payments", "file_path", "file_key", "storage_provider"),
+                    ("finance_management_payables", "file_path", "file_key", "storage_provider"),
+                    ("finance_management_invoices", "file_path", "file_key", "storage_provider"),
+                    ("finance_management_payments", "file_path", "file_key", "storage_provider"),
+                    ("downstream_settlements", "file_path", "file_key", "storage_provider"),
+                    ("management_settlements", "file_path", "file_key", "storage_provider"),
                 ]
                 
-                for table_name in tables_with_files:
+                for table_name, file_col, key_col, storage_col in tables_config:
+                    # Check if columns exist
+                    cur.execute("""
+                        SELECT column_name 
+                        FROM information_schema.columns 
+                        WHERE table_name = %s 
+                        AND column_name = %s
+                    """, (table_name, key_col))
+                    
+                    if not cur.fetchone():
+                        logger.warning(f"Key column {key_col} not found in {table_name}, skipping")
+                        continue
+
                     cur.execute(f"""
-                        SELECT id, file_key 
+                        SELECT id, {key_col} as file_key 
                         FROM {table_name} 
-                        WHERE storage_provider = 'minio' 
-                        AND file_key IS NOT NULL
+                        WHERE {storage_col} = 'minio' 
+                        AND {key_col} IS NOT NULL
                     """)
                     
                     for row in cur.fetchall():

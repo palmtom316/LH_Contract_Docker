@@ -37,6 +37,8 @@ class ExpenseNonContract(Base):
     
     # File attachments
     file_path = Column(String(500), nullable=True)                   # 凭证文件路径 (PDF Only)
+    file_key = Column(String(500), nullable=True)
+    storage_provider = Column(String(50), default='local')
     
     # Status (Optional/Standard)
     status = Column(String(50), default="待审核", index=True)
@@ -47,6 +49,8 @@ class ExpenseNonContract(Base):
     approval_status = Column(String(50), nullable=True, default="DRAFT")  # DRAFT, PENDING, APPROVED, REJECTED
     feishu_instance_code = Column(String(100), nullable=True)  # 飞书审批实例ID
     approval_pdf_path = Column(String(500), nullable=True)  # 审批PDF本地路径
+    approval_pdf_key = Column(String(500), nullable=True)
+    approval_pdf_storage = Column(String(50), default='local')
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)

@@ -15,14 +15,24 @@ export const getFileUrl = (path) => {
     // Use VITE_API_BASE_URL if available
     const apiUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
-    // Strip '/api/v1' suffix to get the root URL
-    // Regex: replace /api/v1 (optional trailing slash) at the end of string
-    const baseUrl = apiUrl.replace(/\/api\/v1\/?$/, '')
+    // Legacy local files (start with /uploads)
+    if (path.startsWith('/uploads') || path.startsWith('uploads')) {
+        // Strip '/api/v1' suffix to get the root URL
+        const baseUrl = apiUrl.replace(/\/api\/v1\/?$/, '')
+        const cleanPath = path.startsWith('/') ? path : `/${path}`
+        return `${baseUrl}${cleanPath}`
+    }
 
-    // Ensure path starts with /
-    const cleanPath = path.startsWith('/') ? path : `/${path}`
+    // New MinIO files (served via API)
+    // If path is a key like 'contracts/2026/...', use API endpoint
+    // Endpoint: /api/v1/common/files/{path}
+    // API URL is already included in axios base, but here we need full URL for href/window.open
 
-    return `${baseUrl}${cleanPath}`
+    // Remove leading slash if present for cleaner join
+    const cleanKey = path.startsWith('/') ? path.substring(1) : path
+
+    // Construct API URL: http://host:8000/api/v1/common/files/contracts/...
+    return `${apiUrl}/common/files/${cleanKey}`
 }
 
 /**

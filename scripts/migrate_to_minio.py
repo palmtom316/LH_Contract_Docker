@@ -53,25 +53,49 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Tables with file_path fields that need migration
+# Tables configuration: (table_name, file_col, key_col, storage_col)
 TABLES_WITH_FILES = [
-    # (table_name, file_path_column)
-    ("contracts_upstream", "contract_file_path"),
-    ("contracts_downstream", "contract_file_path"),
-    ("contracts_management", "contract_file_path"),
-    ("contracts_management", "approval_pdf_path"),
-    ("contracts_upstream", "approval_pdf_path"),
-    ("contracts_downstream", "approval_pdf_path"),
-    ("finance_upstream_receivables", "file_path"),
-    ("finance_upstream_invoices", "file_path"),
-    ("finance_upstream_collections", "file_path"),
-    ("finance_downstream_payables", "file_path"),
-    ("finance_downstream_invoices", "file_path"),
-    ("finance_downstream_payments", "file_path"),
-    ("finance_management_payables", "file_path"),
-    ("finance_management_invoices", "file_path"),
-    ("finance_management_payments", "file_path"),
-    ("downstream_settlements", "file_path"),
-    ("management_settlements", "file_path"),
+    # Contracts Upstream
+    ("contracts_upstream", "contract_file_path", "contract_file_key", "contract_file_storage"),
+    ("contracts_upstream", "approval_pdf_path", "approval_pdf_key", "approval_pdf_storage"),
+    
+    # Contracts Downstream
+    ("contracts_downstream", "contract_file_path", "contract_file_key", "contract_file_storage"),
+    ("contracts_downstream", "approval_pdf_path", "approval_pdf_key", "approval_pdf_storage"),
+    
+    # Contracts Management
+    ("contracts_management", "contract_file_path", "contract_file_key", "contract_file_storage"),
+    ("contracts_management", "approval_pdf_path", "approval_pdf_key", "approval_pdf_storage"),
+    
+    # Project Settlements (Upstream) - 4 files
+    ("project_settlements", "file_path", "file_key", "storage_provider"),
+    ("project_settlements", "audit_report_path", "audit_report_key", "audit_report_storage"),
+    ("project_settlements", "start_report_path", "start_report_key", "start_report_storage"),
+    ("project_settlements", "completion_report_path", "completion_report_key", "completion_report_storage"),
+    
+    # Expenses Non Contract
+    ("expenses_non_contract", "file_path", "file_key", "storage_provider"),
+    ("expenses_non_contract", "approval_pdf_path", "approval_pdf_key", "approval_pdf_storage"),
+
+    # Generic Tables (Finance, etc.) - Use standard file_key/storage_provider
+    ("finance_upstream_receivables", "file_path", "file_key", "storage_provider"),
+    ("finance_upstream_invoices", "file_path", "file_key", "storage_provider"),
+    ("finance_upstream_receipts", "file_path", "file_key", "storage_provider"), # Was missing?
+    
+    ("finance_downstream_payables", "file_path", "file_key", "storage_provider"),
+    ("finance_downstream_invoices", "file_path", "file_key", "storage_provider"),
+    ("finance_downstream_payments", "file_path", "file_key", "storage_provider"),
+    
+    ("finance_management_payables", "file_path", "file_key", "storage_provider"),
+    ("finance_management_invoices", "file_path", "file_key", "storage_provider"),
+    ("finance_management_payments", "file_path", "file_key", "storage_provider"),
+    
+    ("downstream_settlements", "file_path", "file_key", "storage_provider"),
+    ("management_settlements", "file_path", "file_key", "storage_provider"),
+    
+    # Zero Hour Labor
+    ("zero_hour_labor", "dispatch_file_path", "dispatch_file_key", "dispatch_file_storage"),
+    ("zero_hour_labor", "approval_pdf_path", "approval_pdf_key", "approval_pdf_storage"),
 ]
 
 
@@ -136,17 +160,17 @@ class MinioMigrator:
             db_url = self.db_url
         return psycopg2.connect(db_url)
     
-    def check_storage_columns_exist(self) -> bool:
-        """Check if storage migration columns exist in database"""
+    def check_storage_column_exists(self, table_name: str, column_name: str) -> bool:
+        """Check if a specific storage column exists in a table"""
         conn = self.get_db_connection()
         try:
             with conn.cursor() as cur:
                 cur.execute("""
                     SELECT column_name 
                     FROM information_schema.columns 
-                    WHERE table_name = 'contracts_upstream' 
-                    AND column_name = 'storage_provider'
-                """)
+                    WHERE table_name = %s 
+                    AND column_name = %s
+                """, (table_name, column_name))
                 return cur.fetchone() is not None
         finally:
             conn.close()
@@ -158,13 +182,13 @@ class MinioMigrator:
         
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                for table_name, column_name in TABLES_WITH_FILES:
+                for table_name, file_col, key_col, storage_col in TABLES_WITH_FILES:
                     # Check if table and column exist
                     cur.execute("""
                         SELECT column_name 
                         FROM information_schema.columns 
                         WHERE table_name = %s AND column_name = %s
-                    """, (table_name, column_name))
+                    """, (table_name, file_col))
                     
                     if not cur.fetchone():
                         logger.debug(f"Column {column_name} not found in {table_name}, skipping")
@@ -172,20 +196,20 @@ class MinioMigrator:
                     
                     # Get files that haven't been migrated yet
                     # If storage_provider column exists, filter by it
-                    if self.check_storage_columns_exist():
+                    if self.check_storage_column_exists(table_name, storage_col):
                         query = f"""
-                            SELECT id, {column_name} as file_path 
+                            SELECT id, {file_col} as file_path 
                             FROM {table_name} 
-                            WHERE {column_name} IS NOT NULL 
-                            AND {column_name} != ''
-                            AND (storage_provider IS NULL OR storage_provider = 'local')
+                            WHERE {file_col} IS NOT NULL 
+                            AND {file_col} != ''
+                            AND ({storage_col} IS NULL OR {storage_col} = 'local')
                         """
                     else:
                         query = f"""
-                            SELECT id, {column_name} as file_path 
+                            SELECT id, {file_col} as file_path 
                             FROM {table_name} 
-                            WHERE {column_name} IS NOT NULL 
-                            AND {column_name} != ''
+                            WHERE {file_col} IS NOT NULL 
+                            AND {file_col} != ''
                         """
                     
                     cur.execute(query)
@@ -193,7 +217,9 @@ class MinioMigrator:
                     for row in cur.fetchall():
                         files.append({
                             "table": table_name,
-                            "column": column_name,
+                            "column": file_col,
+                            "key_col": key_col,
+                            "storage_col": storage_col,
                             "id": row["id"],
                             "file_path": row["file_path"]
                         })
@@ -295,11 +321,11 @@ class MinioMigrator:
         try:
             with conn.cursor() as cur:
                 # Check if new columns exist
-                if self.check_storage_columns_exist():
+                if self.check_storage_column_exists(file_info['table'], file_info['storage_col']):
                     # Update with new storage info
                     cur.execute(f"""
                         UPDATE {file_info['table']} 
-                        SET file_key = %s, storage_provider = 'minio'
+                        SET {file_info['key_col']} = %s, {file_info['storage_col']} = 'minio'
                         WHERE id = %s
                     """, (minio_key, file_info['id']))
                 conn.commit()

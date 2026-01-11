@@ -437,6 +437,7 @@ const form = reactive({
   contract_handler: '',   // 合同经办人
   contract_manager: '',   // 合同负责人
   contract_file_path: '',
+  contract_file_key: '',
   notes: '',
   status: '执行中'
 })
@@ -500,6 +501,7 @@ const handleUpload = async (option) => {
   try {
     const result = await uploadFile(option.file)
     form.contract_file_path = result.path
+    if (result.key) form.contract_file_key = result.key
     fileList.value = [{ name: option.file.name, url: result.path }]
     option.onSuccess(result)
     ElMessage.success('上传成功')

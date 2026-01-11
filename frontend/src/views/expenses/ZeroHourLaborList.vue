@@ -450,6 +450,7 @@ const form = reactive({
     upstream_contract_id: undefined,
     dispatch_unit: '',
     dispatch_file_path: '',
+    dispatch_file_key: '',
     
     approval_status: '',
     feishu_instance_code: '',
@@ -806,9 +807,10 @@ const searchUpstreamContracts = async (query) => {
 
 const handleUploadRequest = async (option) => {
     try {
-        const res = await uploadFile(option.file)
-        form.dispatch_file_path = res.path
-        fileList.value = [{ name: option.file.name, url: res.path }]
+        const result = await uploadFile(option.file, 'expenses')
+    form.dispatch_file_path = result.path
+    if (result.key) form.dispatch_file_key = result.key
+    fileList.value = [{ name: option.file.name, url: result.path }]
         ElMessage.success('上传成功')
     } catch (e) {
         ElMessage.error('上传失败')
