@@ -658,4 +658,13 @@ const downloadFile = (res, filename) => {
     background: #fff;
   }
 }
+
+@media only screen and (max-width: 768px) {
+  .page-header :deep(.el-card__header) {
+    display: none;
+  }
+  .app-container {
+    padding: 10px;
+  }
+}
 </style>

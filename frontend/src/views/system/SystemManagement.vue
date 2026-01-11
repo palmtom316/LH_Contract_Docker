@@ -400,6 +400,13 @@ const handleAuditDelete = async () => {
   flex-direction: column;
 }
 
+@media only screen and (max-width: 768px) {
+  .operation-card {
+    min-height: auto;
+    margin-bottom: 15px;
+  }
+}
+
 .operation-card :deep(.el-card__body) {
   flex: 1;
   display: flex;

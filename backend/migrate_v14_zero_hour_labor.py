@@ -1,6 +1,7 @@
+
 """
 V1.4 Feishu Migration Script - Part 3
-Run this to add approval columns to the zero hour labor (zero_hour_labor) table
+Run this to add approval columns to the zero_hour_labor table
 """
 import asyncio
 import os
@@ -30,7 +31,7 @@ async def run_migration():
             await conn.execute(text(sql))
     
     await engine.dispose()
-    print("Migration for Zero Hour Labor completed successfully!")
+    print("Migration for zero_hour_labor completed successfully!")
 
 if __name__ == "__main__":
     asyncio.run(run_migration())

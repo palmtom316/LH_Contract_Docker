@@ -336,15 +336,24 @@ const initPeriodChart = (data) => {
       left: '3%', 
       right: '4%', 
       top: '10%', 
-      bottom: isMobile ? '70px' : '30px', // More space for multi-line legend on mobile if needed
+      bottom: isMobile ? '100px' : '30px', // Increased from 70px to prevent overlap with rotated labels and legend
       containLabel: true 
     },
     xAxis: { 
       type: 'category', 
       data: data.dates,
       axisLabel: { 
-        fontSize: 10,
-        interval: isMobile ? 'auto' : 0
+        fontSize: isMobile ? 9 : 10,
+        interval: 'auto',
+        hideOverlap: true,
+        rotate: isMobile ? 45 : 0,
+        formatter: function (value) {
+            // YYYY-MM-DD -> MM-DD
+            if (value && value.length > 5) {
+                return value.substring(5);
+            }
+            return value;
+        }
       }
     },
     yAxis: { 
@@ -427,15 +436,24 @@ const initTrendChart = (data) => {
       left: '3%', 
       right: '4%', 
       top: '15%', 
-      bottom: isMobile ? '45px' : '30px', 
+      bottom: isMobile ? '80px' : '30px', 
       containLabel: true 
     },
     xAxis: { 
       type: 'category', 
       data: data.months,
       axisLabel: { 
-        fontSize: 10,
-        interval: isMobile ? 'auto' : 0
+        fontSize: isMobile ? 9 : 10,
+        interval: 'auto',
+        hideOverlap: true,
+        rotate: isMobile ? 45 : 0,
+        formatter: function (value) {
+            // YYYY-MM -> MM
+            if (value && value.length > 5) {
+                return value.substring(5);
+            }
+            return value;
+        }
       }
     },
     yAxis: { 

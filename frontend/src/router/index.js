@@ -162,10 +162,13 @@ router.beforeEach((to, from, next) => {
             const isMobile = isMobileDevice()
 
             // Mobile user accessing PC route -> redirect to mobile
+            // Disabled: User wants ability to view PC lists on mobile
+            /*
             if (isMobile && !to.path.startsWith('/m') && to.path !== '/' && pcToMobile[to.path]) {
                 next(pcToMobile[to.path])
                 return
             }
+            */
 
             // PC user accessing mobile route -> redirect to PC
             if (!isMobile && to.path.startsWith('/m') && mobileToPC[to.path]) {

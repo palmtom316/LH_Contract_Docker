@@ -17,36 +17,48 @@
 
     <!-- Summary Cards -->
     <!-- Summary Cards -->
+    <!-- Summary Cards -->
     <el-row :gutter="20" class="summary-cards">
       <el-col :span="4" :xs="12">
-        <el-card shadow="hover">
-          <template #header><span>合同总额</span></template>
-          <div class="amount-text">¥ {{ formatMoney(contract.contract_amount) }}</div>
-        </el-card>
+        <StatCard
+          title="合同总额"
+          :value="contract.contract_amount"
+          icon="Document"
+          color="linear-gradient(135deg, #1890FF 0%, #36CFC9 100%)"
+        />
       </el-col>
       <el-col :span="4" :xs="12">
-        <el-card shadow="hover">
-          <template #header><span>累计应收款</span></template>
-          <div class="amount-text info-text">¥ {{ formatMoney(totalReceivables) }}</div>
-        </el-card>
+        <StatCard
+          title="累计应收款"
+          :value="totalReceivables"
+          icon="Wallet"
+          color="linear-gradient(135deg, #FAAD14 0%, #FADB14 100%)"
+        />
       </el-col>
       <el-col :span="4" :xs="12">
-        <el-card shadow="hover">
-          <template #header><span>累计回款</span></template>
-          <div class="amount-text success-text">¥ {{ formatMoney(totalReceipts) }} <span class="percentage-inline">({{ receiptPercentage }}%)</span></div>
-        </el-card>
+        <StatCard
+          title="累计回款"
+          :value="totalReceipts"
+          icon="Money"
+          color="linear-gradient(135deg, #52C41A 0%, #95D475 100%)"
+          :subInfo="`回款率: ${receiptPercentage}%`"
+        />
       </el-col>
       <el-col :span="4" :xs="12">
-        <el-card shadow="hover">
-          <template #header><span>累计开票</span></template>
-          <div class="amount-text warning-text">¥ {{ formatMoney(totalInvoices) }}</div>
-        </el-card>
+        <StatCard
+          title="累计开票"
+          :value="totalInvoices"
+          icon="Tickets"
+          color="linear-gradient(135deg, #722ED1 0%, #B37FEB 100%)"
+        />
       </el-col>
       <el-col :span="4" :xs="12">
-        <el-card shadow="hover">
-          <template #header><span>累计结算</span></template>
-          <div class="amount-text" style="color: #626aef">¥ {{ formatMoney(totalSettlements) }}</div>
-        </el-card>
+        <StatCard
+          title="累计结算"
+          :value="totalSettlements"
+          icon="CircleCheck"
+          color="linear-gradient(135deg, #F5222D 0%, #FF7875 100%)"
+        />
       </el-col>
     </el-row>
 
@@ -452,7 +464,8 @@ import DictSelect from '@/components/DictSelect.vue'
 import FormulaInput from '@/components/FormulaInput.vue'
 import SmartDateInput from '@/components/SmartDateInput.vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Document } from '@element-plus/icons-vue'
+import StatCard from '@/components/StatCard.vue'
+import { Document, ArrowLeft, Wallet, Money, Tickets, CircleCheck } from '@element-plus/icons-vue'
 import { 
   getContract, 
   getReceivables, createReceivable, updateReceivable, deleteReceivable,

@@ -24,6 +24,7 @@
         v-model:loading="listLoading"
         :finished="finished"
         finished-text="没有更多了"
+        :immediate-check="false"
         @load="loadMore"
       >
         <van-cell-group inset v-for="contract in list" :key="contract.id" class="contract-card">
@@ -182,6 +183,7 @@ const onRefresh = async () => {
   try {
     queryParams.page = 1;
     finished.value = false;
+    // For refresh, we want to replace, so getList is fine
     await getList();
   } catch (e) {
     showToast('刷新失败');
@@ -192,12 +194,18 @@ const onRefresh = async () => {
 
 // 加载更多 
 const loadMore = async () => {
-  if (finished.value || loading.value) return;
+  if (finished.value || listLoading.value) return;
   
   listLoading.value = true;
   try {
     queryParams.page += 1;
-    await getList();
+    
+    // Use API directly to append data instead of getList (which replaces)
+    const res = await upstreamApi.getContracts(queryParams) as any;
+    const newItems = res.items || [];
+    
+    list.value = [...list.value, ...newItems];
+    total.value = res.total || 0;
     
     // Check if we've loaded all items
     if (list.value.length >= total.value) {

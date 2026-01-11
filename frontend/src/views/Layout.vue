@@ -87,10 +87,18 @@
       <!-- Navbar -->
       <div class="navbar">
         <div class="left-panel">
-          <el-icon class="hamburger" @click="toggleSidebar">
+          <!-- Mobile Back Button -->
+          <div v-if="isMobile" class="mobile-nav-back" @click="router.back()">
+            <el-icon :size="20"><ArrowLeft /></el-icon>
+            <span class="back-text">返回</span>
+          </div>
+
+          <!-- PC Hamburger -->
+          <el-icon v-else class="hamburger" @click="toggleSidebar">
             <Fold v-if="!isCollapse" />
             <Expand v-else />
           </el-icon>
+
           <el-breadcrumb separator="/" class="breadcrumb hidden-xs-only">
             <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
             <el-breadcrumb-item>{{ route.meta.title }}</el-breadcrumb-item>
@@ -164,7 +172,9 @@ import request from '@/utils/request'
 import { useSystemStore } from '@/stores/system'
 import logoNew from '@/assets/logo_new.png'
 import ContractQueryBot from '@/components/ContractQueryBot.vue'
+import { useDevice } from '@/composables/useDevice'
 import pkg from '../../package.json'
+import { Fold, Expand, Monitor, HomeFilled, Document, DocumentCopy, FolderChecked, Money, DataAnalysis, Setting, UserFilled, CaretBottom, ArrowLeft } from '@element-plus/icons-vue'
 
 const version = pkg.version
 
@@ -175,7 +185,7 @@ const userStore = useUserStore()
 const systemStore = useSystemStore()
 
 const isCollapse = ref(false)
-const isMobile = ref(false)
+// isMobile is now imported from useDevice
 // Fallback logic handled in template or computed
 const displayLogo = computed(() => {
     if (systemStore.config.system_logo) {
@@ -200,25 +210,19 @@ const variables = {
 
 const activeMenu = computed(() => route.path)
 
-const checkIsMobile = () => {
-  const rect = document.body.getBoundingClientRect()
-  return rect.width - 1 < 992
-}
+const { isMobile } = useDevice()
 
-const resizeHandler = () => {
-  if (!document.hidden) {
-    const mobile = checkIsMobile()
-    isMobile.value = mobile
-    if (mobile) {
-      isCollapse.value = true
-    } else {
-      isCollapse.value = false
-    }
+// Auto-collapse sidebar on mobile
+watch(isMobile, (val) => {
+  if (val) {
+    isCollapse.value = true
+  } else {
+    isCollapse.value = false
   }
-}
+}, { immediate: true })
 
 const toggleSidebar = () => {
-  isCollapse.value = !isCollapse.value
+    isCollapse.value = !isCollapse.value
 }
 
 const closeSidebar = () => {
@@ -311,16 +315,12 @@ watch(route, () => {
 })
 
 onMounted(() => {
-  resizeHandler()
-  window.addEventListener('resize', resizeHandler)
-  
-  // Load logo
   // Load system config
   systemStore.fetchConfig()
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', resizeHandler)
+  // Cleanup if needed
 })
 </script>
 
@@ -490,6 +490,26 @@ onBeforeUnmount(() => {
         
         &:hover {
           color: #409EFF;
+        }
+      }
+
+      .mobile-nav-back {
+        display: flex;
+        align-items: center;
+        padding: 8px;
+        margin-right: 10px;
+        cursor: pointer;
+        color: #606266;
+        border-radius: 4px;
+
+        .back-text {
+          font-size: 16px;
+          margin-left: 4px;
+          font-weight: 500;
+        }
+
+        &:active {
+          background-color: #f5f7fa;
         }
       }
       
