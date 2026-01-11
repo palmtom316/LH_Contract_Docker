@@ -10,8 +10,8 @@ import sqlalchemy as sa
 from sqlalchemy.engine.reflection import Inspector
 
 # revision identifiers, used by Alembic.
-revision = '20260111_1930_add_zero_hour_keys'
-down_revision = '20260111_1855_add_specific_minio_keys'
+revision = 'v1_5_zero_hour'
+down_revision = 'v1_5_minio_keys'
 branch_labels = None
 depends_on = None
 

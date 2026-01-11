@@ -10,6 +10,8 @@ class ZeroHourLaborBase(BaseModel):
     upstream_contract_id: Optional[int] = None
     dispatch_unit: Optional[str] = None
     dispatch_file_path: Optional[str] = None
+    dispatch_file_key: Optional[str] = None
+    dispatch_file_storage: Optional[str] = "local"
     
     # Skilled Labor (技工)
     skilled_unit_price: Decimal = 0
@@ -96,6 +98,8 @@ class ZeroHourLaborResponse(ZeroHourLaborBase):
     approval_status: Optional[str] = None
     feishu_instance_code: Optional[str] = None
     approval_pdf_path: Optional[str] = None
+    approval_pdf_key: Optional[str] = None
+    approval_pdf_storage: Optional[str] = "local"
     
     class Config:
         from_attributes = True

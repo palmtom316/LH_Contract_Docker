@@ -40,6 +40,8 @@ class ContractUpstreamBase(BaseModel):
     status: Optional[str] = Field(default="执行中", max_length=50)
     notes: Optional[str] = None
     contract_file_path: Optional[str] = None
+    contract_file_key: Optional[str] = None
+    contract_file_storage: Optional[str] = "local"
 
 
 class ContractUpstreamCreate(ContractUpstreamBase):
@@ -75,6 +77,8 @@ class ContractUpstreamUpdate(BaseModel):
     status: Optional[str] = Field(None, max_length=50)
     notes: Optional[str] = None
     contract_file_path: Optional[str] = None
+    contract_file_key: Optional[str] = None
+    contract_file_storage: Optional[str] = None
 
 
 class ContractUpstreamResponse(ContractUpstreamBase):
@@ -101,6 +105,8 @@ class ContractUpstreamResponse(ContractUpstreamBase):
     approval_status: Optional[str] = None
     feishu_instance_code: Optional[str] = None
     approval_pdf_path: Optional[str] = None
+    approval_pdf_key: Optional[str] = None
+    approval_pdf_storage: Optional[str] = "local"
 
     class Config:
         from_attributes = True
@@ -122,6 +128,8 @@ class ReceivableBase(BaseModel):
     description: Optional[str] = Field(None, max_length=300)
     expected_date: Optional[date] = None
     file_path: Optional[str] = None
+    file_key: Optional[str] = None
+    storage_provider: Optional[str] = "local"
 
 
 class ReceivableCreate(ReceivableBase):
@@ -151,6 +159,8 @@ class InvoiceUpstreamBase(BaseModel):
     invoice_type: Optional[str] = Field(None, max_length=50)
     description: Optional[str] = Field(None, max_length=300)
     file_path: Optional[str] = None
+    file_key: Optional[str] = None
+    storage_provider: Optional[str] = "local"
 
 
 class InvoiceUpstreamCreate(InvoiceUpstreamBase):
@@ -179,6 +189,8 @@ class ReceiptBase(BaseModel):
     payer_account: Optional[str] = Field(None, max_length=100)
     description: Optional[str] = Field(None, max_length=300)
     file_path: Optional[str] = None
+    file_key: Optional[str] = None
+    storage_provider: Optional[str] = "local"
 
 
 class ReceiptCreate(ReceiptBase):
@@ -211,9 +223,17 @@ class SettlementBase(BaseModel):
     status: Optional[str] = Field(default="待审核", max_length=50)
     description: Optional[str] = None
     file_path: Optional[str] = None
+    file_key: Optional[str] = None
+    storage_provider: Optional[str] = "local"
     audit_report_path: Optional[str] = None  # 结算审核报告
+    audit_report_key: Optional[str] = None
+    audit_report_storage: Optional[str] = "local"
     start_report_path: Optional[str] = None  # 开工报告
+    start_report_key: Optional[str] = None
+    start_report_storage: Optional[str] = "local"
     completion_report_path: Optional[str] = None  # 竣工报告
+    completion_report_key: Optional[str] = None
+    completion_report_storage: Optional[str] = "local"
 
 
 class SettlementCreate(SettlementBase):

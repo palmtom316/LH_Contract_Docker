@@ -4,11 +4,11 @@ Common Utility Router
 2. File Upload
 Refactored to use standardized AppException
 """
-from fastapi import APIRouter, Depends, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, status, UploadFile, File, Form, HTTPException, Request
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, distinct, union
-from typing import List
+from typing import List, Optional
 import os
 import shutil
 import uuid
@@ -198,5 +198,106 @@ async def upload_file(
         "url": f"/api/v1/common/files/{final_object_name}", # Hypothetical proxy endpoint or direct minio link
         "content_type": file.content_type
     }
+
+
+from fastapi.responses import StreamingResponse, FileResponse
+from app.core.minio import get_minio_client
+from app.services.auth import get_current_user, get_user_from_token
+import mimetypes
+
+@router.get("/files/{path:path}")
+async def get_file(
+    path: str,
+    request: Request,
+    token: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get file from MinIO or local storage.
+    Supports token in Authorization header or query parameter.
+    """
+    current_user = None
+    # Try to get user from token if provided in query
+    if not current_user and token:
+        try:
+            current_user = await get_user_from_token(token, db)
+        except Exception:
+            pass
+            
+    # If still no user, try to get from Authorization header manually
+    if not current_user:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            bearer_token = auth_header.replace("Bearer ", "")
+            try:
+                current_user = await get_user_from_token(bearer_token, db)
+            except Exception:
+                pass
+    
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无法验证凭据",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    logger.info(f"[FILE_GET] Request: path={path}, user={current_user.username}")
+    
+    # 1. Try MinIO first
+    try:
+        client = get_minio_client()
+        bucket_name = settings.MINIO_BUCKET_CONTRACTS
+        
+        # Check if object exists
+        try:
+            stat = client.stat_object(bucket_name, path)
+            
+            # Get data stream
+            response = client.get_object(bucket_name, path)
+            
+            # Guess mime type
+            mime_type, _ = mimetypes.guess_type(path)
+            if not mime_type:
+                mime_type = "application/octet-stream"
+                
+            # Use a generator to stream data in efficient chunks (1MB)
+            def data_generator():
+                try:
+                    # Stream in 1MB chunks
+                    for chunk in response.stream(1024 * 1024):
+                        yield chunk
+                finally:
+                    response.close()
+                    response.release_conn()
+                    
+            return StreamingResponse(
+                data_generator(),
+                media_type=mime_type,
+                headers={
+                    "Content-Length": str(stat.size),
+                    "Content-Disposition": f"inline; filename={os.path.basename(path)}",
+                    "Accept-Ranges": "bytes"
+                }
+            )
+        except Exception as e:
+            # Not found in MinIO or other error, fallback to local
+            logger.debug(f"[FILE_GET] MinIO fallback: {e}")
+            pass
+            
+    except Exception as e:
+        logger.error(f"[FILE_GET] MinIO error: {e}")
+        # Continue to local fallback
+    
+    # 2. Local fallback
+    local_path = os.path.join(settings.UPLOAD_DIR, path)
+    if os.path.exists(local_path) and os.path.isfile(local_path):
+        return FileResponse(local_path)
+    
+    # 3. Not found anywhere
+    logger.warning(f"[FILE_GET] Not Found: {path}")
+    raise ValidationError(
+        message="文件不存在",
+        field_errors={"path": f"文件不存在: {path}"}
+    )
 
 

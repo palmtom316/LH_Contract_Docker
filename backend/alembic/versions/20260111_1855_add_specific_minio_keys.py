@@ -10,8 +10,8 @@ import sqlalchemy as sa
 from sqlalchemy.engine.reflection import Inspector
 
 # revision identifiers, used by Alembic.
-revision = '20260111_1855_add_specific_minio_keys'
-down_revision = '20260111_1542_add_minio_storage_fields'
+revision = 'v1_5_minio_keys'
+down_revision = 'v1_5_minio_base'
 branch_labels = None
 depends_on = None
 

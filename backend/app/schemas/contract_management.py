@@ -42,6 +42,8 @@ class ContractManagementBase(BaseModel):
     status: Optional[str] = Field(default="执行中", max_length=50)
     notes: Optional[str] = None
     contract_file_path: Optional[str] = None
+    contract_file_key: Optional[str] = None
+    contract_file_storage: Optional[str] = "local"
 
 
 class ContractManagementCreate(ContractManagementBase):
@@ -97,6 +99,8 @@ class ContractManagementResponse(ContractManagementBase):
     approval_status: Optional[str] = None
     feishu_instance_code: Optional[str] = None
     approval_pdf_path: Optional[str] = None
+    approval_pdf_key: Optional[str] = None
+    approval_pdf_storage: Optional[str] = "local"
 
     class Config:
         from_attributes = True
@@ -116,6 +120,8 @@ class ManagementPayableBase(BaseModel):
     description: Optional[str] = Field(None, max_length=300)
     expected_date: Optional[date] = None
     file_path: Optional[str] = None
+    file_key: Optional[str] = None
+    storage_provider: Optional[str] = "local"
 
 
 class ManagementPayableCreate(ManagementPayableBase):
@@ -197,6 +203,8 @@ class ManagementSettlementBase(BaseModel):
     status: Optional[str] = Field(default="待审核", max_length=50)
     description: Optional[str] = None
     file_path: Optional[str] = None
+    file_key: Optional[str] = None
+    storage_provider: Optional[str] = "local"
 
 
 class ManagementSettlementCreate(ManagementSettlementBase):

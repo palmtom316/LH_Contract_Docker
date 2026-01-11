@@ -23,6 +23,8 @@ class ExpenseBase(BaseModel):
     
     description: Optional[str] = None
     file_path: Optional[str] = None
+    file_key: Optional[str] = None
+    storage_provider: Optional[str] = "local"
     status: Optional[str] = Field(default="待审核", max_length=50)
 
 
@@ -44,6 +46,8 @@ class ExpenseUpdate(BaseModel):
     
     description: Optional[str] = None
     file_path: Optional[str] = None
+    file_key: Optional[str] = None
+    storage_provider: Optional[str] = None
     status: Optional[str] = Field(None, max_length=50)
 
 
@@ -67,6 +71,8 @@ class ExpenseResponse(ExpenseBase):
     approval_status: Optional[str] = None
     feishu_instance_code: Optional[str] = None
     approval_pdf_path: Optional[str] = None
+    approval_pdf_key: Optional[str] = None
+    approval_pdf_storage: Optional[str] = "local"
     
     updated_at: Optional[datetime] = None
     created_by: Optional[int] = None

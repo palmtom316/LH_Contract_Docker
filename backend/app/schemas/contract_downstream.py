@@ -42,7 +42,9 @@ class ContractDownstreamBase(BaseModel):
     end_date: Optional[date] = None
     status: Optional[str] = Field(default="执行中", max_length=50)
     notes: Optional[str] = None
-    contract_file_path: Optional[str] = None # Added for PDF
+    contract_file_path: Optional[str] = None
+    contract_file_key: Optional[str] = None
+    contract_file_storage: Optional[str] = "local"
 
 
 class ContractDownstreamCreate(ContractDownstreamBase):
@@ -81,6 +83,8 @@ class ContractDownstreamUpdate(BaseModel):
     status: Optional[str] = Field(None, max_length=50)
     notes: Optional[str] = None
     contract_file_path: Optional[str] = None
+    contract_file_key: Optional[str] = None
+    contract_file_storage: Optional[str] = None
 
 
 class ContractDownstreamResponse(ContractDownstreamBase):
@@ -101,6 +105,8 @@ class ContractDownstreamResponse(ContractDownstreamBase):
     approval_status: Optional[str] = None
     feishu_instance_code: Optional[str] = None
     approval_pdf_path: Optional[str] = None
+    approval_pdf_key: Optional[str] = None
+    approval_pdf_storage: Optional[str] = "local"
 
     class Config:
         from_attributes = True
@@ -122,6 +128,8 @@ class PayableBase(BaseModel):
     description: Optional[str] = Field(None, max_length=300)
     expected_date: Optional[date] = None
     file_path: Optional[str] = None
+    file_key: Optional[str] = None
+    storage_provider: Optional[str] = "local"
 
 
 class PayableCreate(PayableBase):
@@ -152,6 +160,8 @@ class InvoiceDownstreamBase(BaseModel):
     supplier_name: Optional[str] = Field(None, max_length=200) # Optional override or match party B
     description: Optional[str] = Field(None, max_length=300)
     file_path: Optional[str] = None
+    file_key: Optional[str] = None
+    storage_provider: Optional[str] = "local"
 
 
 class InvoiceDownstreamCreate(InvoiceDownstreamBase):
@@ -181,6 +191,8 @@ class PaymentBase(BaseModel):
     payee_bank: Optional[str] = Field(None, max_length=200)
     description: Optional[str] = Field(None, max_length=300)
     file_path: Optional[str] = None
+    file_key: Optional[str] = None
+    storage_provider: Optional[str] = "local"
 
 
 class PaymentCreate(PaymentBase):
@@ -212,6 +224,8 @@ class DownstreamSettlementBase(BaseModel):
     status: Optional[str] = Field(default="待审核", max_length=50)
     description: Optional[str] = None
     file_path: Optional[str] = None
+    file_key: Optional[str] = None
+    storage_provider: Optional[str] = "local"
 
 
 class DownstreamSettlementCreate(DownstreamSettlementBase):

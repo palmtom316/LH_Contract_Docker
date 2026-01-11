@@ -57,6 +57,8 @@ class ZeroHourLabor(Base):
     approval_status = Column(String(50), nullable=True, default="DRAFT")
     feishu_instance_code = Column(String(100), nullable=True)
     approval_pdf_path = Column(String(500), nullable=True)
+    approval_pdf_key = Column(String(500), nullable=True)
+    approval_pdf_storage = Column(String(50), default='local')
     
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())

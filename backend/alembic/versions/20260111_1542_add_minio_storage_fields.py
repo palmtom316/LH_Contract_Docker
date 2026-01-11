@@ -16,8 +16,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '20260111_1542_add_minio_storage_fields'
-down_revision = '20260110_1952_8b42d1b51cfe_initial_baseline_empty'
+revision = 'v1_5_minio_base'
+down_revision = '8b42d1b51cfe'
 branch_labels = None
 depends_on = None
 
