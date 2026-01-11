@@ -89,18 +89,6 @@ const routes = [
                 name: 'AuditLog',
                 component: () => import('@/views/audit/AuditLog.vue'),
                 meta: { title: '审计日志', icon: 'Document' }
-            },
-            {
-                path: 'test-api',
-                name: 'TestAPI',
-                component: () => import('@/views/TestAPI.vue'),
-                meta: { title: 'API测试', hidden: true }
-            },
-            {
-                path: 'simple-test',
-                name: 'SimpleTest',
-                component: () => import('@/views/SimpleTest.vue'),
-                meta: { title: '简单测试', hidden: true }
             }
         ]
     },
