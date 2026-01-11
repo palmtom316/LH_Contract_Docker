@@ -1,6 +1,6 @@
 {
     "name": "lh-contract-frontend",
-    "version": "1.4.1",
+    "version": "1.5.0",
     "private": true,
     "type": "module",
     "scripts": {
@@ -10,6 +10,7 @@
     },
     "dependencies": {
         "@element-plus/icons-vue": "^2.3.1",
+        "@supabase/supabase-js": "^2.39.0",
         "axios": "^1.6.5",
         "dayjs": "^1.11.10",
         "echarts": "^5.4.3",
@@ -17,13 +18,17 @@
         "file-saver": "^2.0.5",
         "mathjs": "^15.1.0",
         "pinia": "^2.1.7",
+        "vant": "^4.8.0",
         "vue": "^3.4.15",
         "vue-pdf-embed": "^1.2.1",
         "vue-router": "^4.2.5"
     },
     "devDependencies": {
         "@vitejs/plugin-vue": "^6.0.2",
+        "autoprefixer": "^10.4.17",
+        "postcss": "^8.4.33",
         "sass": "^1.70.0",
+        "tailwindcss": "^3.4.1",
         "vite": "^7.2.7"
     }
 }
