@@ -62,6 +62,7 @@ uploads/*
 # Backups
 backups/
 *.sql
+!supabase/*.sql
 *.sql.gz
 *.tar.gz
 

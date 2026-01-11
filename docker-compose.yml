@@ -35,6 +35,28 @@ services:
     ports:
       - "6379:6379"
 
+  # MinIO (S3-compatible Object Storage) - V1.5 NEW
+  minio:
+    image: minio/minio:latest
+    container_name: lh_contract_minio
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # MinIO Console
+    networks:
+      - lh_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
   # Backend
   backend:
     build:
@@ -51,6 +73,12 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:80,http://127.0.0.1:3000}
       UPLOAD_DIR: /app/uploads
       DEBUG: "false"
+      # MinIO Configuration - V1.5 NEW
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_BUCKET_ACTIVE: contracts-active
+      MINIO_BUCKET_ARCHIVE: contracts-archive
     volumes:
       - ./backend/app:/app/app
       - ${HOST_UPLOAD_DIR:-./backend/uploads}:/app/uploads
@@ -60,6 +88,8 @@ services:
       - lh_network
     depends_on:
       db:
+        condition: service_healthy
+      minio:
         condition: service_healthy
 
   # Sync Worker (Feishu Integration V1.4)
@@ -131,3 +161,4 @@ volumes:
   postgres_data:
   redis_data:
   lh_frontend_node_modules:
+  minio_data:
