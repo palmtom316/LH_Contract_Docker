@@ -333,101 +333,122 @@ const initQuarterChart = (data) => {
 }
 
 const setChartOption = (chartInstance, data) => {
-  const isMobile = window.innerWidth <= 767
-  
   chartInstance.setOption({
-    tooltip: { 
-      confine: true,
-      trigger: 'axis',
-      formatter: function (params) {
-        let res = params[0].name + '<br/>'; // Date
-        let hasValue = false;
-        params.forEach(item => {
-          const val = Number(item.value);
-          if (val > 0) {
-            hasValue = true;
-            res += item.marker + item.seriesName + ': ' + val.toFixed(2) + ' 万元<br/>';
-          }
-        });
-        return hasValue ? res : '';
-      }
-    },
-    legend: { 
-      data: ['收入', '下游合同', '管理合同', '无合同费用', '零星用工'],
-      bottom: 0,
-      itemWidth: isMobile ? 10 : 15,
-      itemHeight: 10,
-      textStyle: { fontSize: isMobile ? 9 : 12 }
-    },
-    grid: { 
-      left: '3%', 
-      right: '4%', 
-      top: '10%', 
-      bottom: isMobile ? '125px' : '30px', 
-      containLabel: true 
-    },
-    xAxis: { 
-      type: 'category', 
-      data: data.dates,
-      axisLabel: { 
-        fontSize: isMobile ? 9 : 10,
-        interval: 'auto',
-        hideOverlap: true,
-        rotate: isMobile ? 45 : 0,
-        formatter: function (value) {
-            // YYYY-MM-DD -> MM-DD
-            if (value && value.length > 5) {
-                return value.substring(5);
+    baseOption: {
+      tooltip: { 
+        confine: true,
+        trigger: 'axis',
+        formatter: function (params) {
+          let res = params[0].name + '<br/>'; // Date
+          let hasValue = false;
+          params.forEach(item => {
+            const val = Number(item.value);
+            if (val > 0) {
+              hasValue = true;
+              res += item.marker + item.seriesName + ': ' + val.toFixed(2) + ' 万元<br/>';
             }
-            return value;
+          });
+          return hasValue ? res : '';
         }
-      }
+      },
+      legend: { 
+        data: ['收入', '下游合同', '管理合同', '无合同费用', '零星用工'],
+        bottom: 0,
+        itemWidth: 15,
+        itemHeight: 10,
+        textStyle: { fontSize: 12 }
+      },
+      grid: { 
+        left: '3%', 
+        right: '4%', 
+        top: '10%', 
+        bottom: '30px', 
+        containLabel: true 
+      },
+      xAxis: { 
+        type: 'category', 
+        data: data.dates,
+        axisLabel: { 
+          fontSize: 10,
+          interval: 'auto',
+          hideOverlap: true,
+          rotate: 0,
+          formatter: function (value) {
+              // YYYY-MM-DD -> MM-DD
+              if (value && value.length > 5) {
+                  return value.substring(5);
+              }
+              return value;
+          }
+        }
+      },
+      yAxis: { 
+        type: 'value',
+        name: '金额 (万元)',
+        splitLine: { show: false }
+      },
+      series: [
+        {
+          name: '收入',
+          type: 'bar',
+          data: data.income.map(v => (v / 10000).toFixed(2)),
+          itemStyle: { color: '#67C23A' },
+          barMaxWidth: 15
+        },
+        // Stacked Expense Series
+        {
+          name: '下游合同',
+          type: 'bar',
+          stack: 'expense',
+          data: data.expense_breakdown.downstream.map(v => (v / 10000).toFixed(2)),
+          itemStyle: { color: '#F56C6C' },
+          barMaxWidth: 15
+        },
+        {
+          name: '管理合同',
+          type: 'bar',
+          stack: 'expense',
+          data: data.expense_breakdown.management.map(v => (v / 10000).toFixed(2)),
+          itemStyle: { color: '#E6A23C' },
+          barMaxWidth: 15
+        },
+        {
+          name: '无合同费用',
+          type: 'bar',
+          stack: 'expense',
+          data: data.expense_breakdown.non_contract.map(v => (v / 10000).toFixed(2)),
+          itemStyle: { color: '#909399' },
+          barMaxWidth: 15
+        },
+        {
+          name: '零星用工',
+          type: 'bar',
+          stack: 'expense',
+          data: data.expense_breakdown.labor.map(v => (v / 10000).toFixed(2)),
+          itemStyle: { color: '#A0CFFF' },
+          barMaxWidth: 15
+        }
+      ]
     },
-    yAxis: { 
-      type: 'value',
-      name: '金额 (万元)',
-      splitLine: { show: false }
-    },
-    series: [
+    media: [
       {
-        name: '收入',
-        type: 'bar',
-        data: data.income.map(v => (v / 10000).toFixed(2)),
-        itemStyle: { color: '#67C23A' },
-        barMaxWidth: 15
-      },
-      // Stacked Expense Series
-      {
-        name: '下游合同',
-        type: 'bar',
-        stack: 'expense',
-        data: data.expense_breakdown.downstream.map(v => (v / 10000).toFixed(2)),
-        itemStyle: { color: '#F56C6C' },
-        barMaxWidth: 15
-      },
-      {
-        name: '管理合同',
-        type: 'bar',
-        stack: 'expense',
-        data: data.expense_breakdown.management.map(v => (v / 10000).toFixed(2)),
-        itemStyle: { color: '#E6A23C' },
-        barMaxWidth: 15
-      },
-      {
-        name: '无合同费用',
-        type: 'bar',
-        stack: 'expense',
-        data: data.expense_breakdown.non_contract.map(v => (v / 10000).toFixed(2)),
-        itemStyle: { color: '#909399' },
-        barMaxWidth: 15
-      },
-      {
-        name: '零星用工',
-        type: 'bar',
-        stack: 'expense',
-        data: data.expense_breakdown.labor.map(v => (v / 10000).toFixed(2)),
-        itemStyle: { color: '#A0CFFF' },
-        barMaxWidth: 15
+        query: { maxWidth: 767 },
+        option: {
+          legend: {
+            itemWidth: 10,
+            textStyle: { fontSize: 9 },
+            bottom: 0
+          },
+          grid: {
+            bottom: '80px',
+          },
+          xAxis: {
+            axisLabel: {
+              fontSize: 9,
+              rotate: 45
+            }
+          }
+        }
       }
     ]
   })
@@ -438,96 +459,118 @@ const initTrendChart = (data) => {
   if (barChart) barChart.dispose()
   
   barChart = echarts.init(barChartRef.value)
-  const isMobile = window.innerWidth <= 767
   
   barChart.setOption({
-    tooltip: { 
-      confine: true,
-      trigger: 'axis',
-      formatter: function (params) {
-        let res = params[0].name + '<br/>';
-        params.forEach(item => {
-          res += item.marker + item.seriesName + ': ' + Number(item.value).toFixed(2) + ' 万元<br/>';
-        });
-        return res;
-      }
-    },
-    legend: { 
-      data: ['月度收入', '下游合同', '管理合同', '无合同费用', '零星用工'],
-      bottom: 0,
-      itemWidth: isMobile ? 10 : 15,
-      itemHeight: 10,
-      textStyle: { fontSize: isMobile ? 10 : 12 }
-    },
-    grid: { 
-      left: '3%', 
-      right: '4%', 
-      top: '15%', 
-      bottom: isMobile ? '110px' : '30px', 
-      containLabel: true 
-    },
-    xAxis: { 
-      type: 'category', 
-      data: data.months,
-      axisLabel: { 
-        fontSize: isMobile ? 9 : 10,
-        interval: 'auto',
-        hideOverlap: true,
-        rotate: isMobile ? 45 : 0,
-        formatter: function (value) {
-            // YYYY-MM -> MM
-            if (value && value.length > 5) {
-                return value.substring(5);
-            }
-            return value;
+    baseOption: {
+      tooltip: { 
+        confine: true,
+        trigger: 'axis',
+        formatter: function (params) {
+          let res = params[0].name + '<br/>';
+          params.forEach(item => {
+            res += item.marker + item.seriesName + ': ' + Number(item.value).toFixed(2) + ' 万元<br/>';
+          });
+          return res;
         }
-      }
+      },
+      legend: { 
+        data: ['月度收入', '下游合同', '管理合同', '无合同费用', '零星用工'],
+        bottom: 0,
+        itemWidth: 15,
+        itemHeight: 10,
+        textStyle: { fontSize: 12 }
+      },
+      grid: { 
+        left: '3%', 
+        right: '4%', 
+        top: '15%', 
+        bottom: '30px', 
+        containLabel: true 
+      },
+      xAxis: { 
+        type: 'category', 
+        data: data.months,
+        axisLabel: { 
+          fontSize: 10,
+          interval: 'auto',
+          hideOverlap: true,
+          rotate: 0,
+          formatter: function (value) {
+              // YYYY-MM -> MM
+              if (value && value.length > 5) {
+                  return value.substring(5);
+              }
+              return value;
+          }
+        }
+      },
+      yAxis: { 
+        type: 'value',
+        name: '金额 (万元)',
+        splitLine: { show: false }
+      },
+      series: [
+        {
+          name: '月度收入',
+          type: 'bar',
+          data: data.income.map(v => (v / 10000).toFixed(2)),
+          itemStyle: { color: '#67C23A' },
+          barMaxWidth: 20
+        },
+        // Stacked Expense Series
+        {
+          name: '下游合同',
+          type: 'bar',
+          stack: 'expense',
+          data: data.expense_breakdown.downstream.map(v => (v / 10000).toFixed(2)),
+          itemStyle: { color: '#F56C6C' },
+          barMaxWidth: 20
+        },
+        {
+          name: '管理合同',
+          type: 'bar',
+          stack: 'expense',
+          data: data.expense_breakdown.management.map(v => (v / 10000).toFixed(2)),
+          itemStyle: { color: '#E6A23C' },
+          barMaxWidth: 20
+        },
+        {
+          name: '无合同费用',
+          type: 'bar',
+          stack: 'expense',
+          data: data.expense_breakdown.non_contract.map(v => (v / 10000).toFixed(2)),
+          itemStyle: { color: '#909399' },
+          barMaxWidth: 20
+        },
+        {
+          name: '零星用工',
+          type: 'bar',
+          stack: 'expense',
+          data: data.expense_breakdown.zero_hour_labor.map(v => (v / 10000).toFixed(2)),
+          itemStyle: { color: '#A0CFFF' },
+          barMaxWidth: 20
+        }
+      ]
     },
-    yAxis: { 
-      type: 'value',
-      name: '金额 (万元)',
-      splitLine: { show: false }
-    },
-    series: [
+    media: [
       {
-        name: '月度收入',
-        type: 'bar',
-        data: data.income.map(v => (v / 10000).toFixed(2)),
-        itemStyle: { color: '#67C23A' },
-        barMaxWidth: 20
-      },
-      // Stacked Expense Series
-      {
-        name: '下游合同',
-        type: 'bar',
-        stack: 'expense',
-        data: data.expense_breakdown.downstream.map(v => (v / 10000).toFixed(2)),
-        itemStyle: { color: '#F56C6C' },
-        barMaxWidth: 20
-      },
-      {
-        name: '管理合同',
-        type: 'bar',
-        stack: 'expense',
-        data: data.expense_breakdown.management.map(v => (v / 10000).toFixed(2)),
-        itemStyle: { color: '#E6A23C' },
-        barMaxWidth: 20
-      },
-      {
-        name: '无合同费用',
-        type: 'bar',
-        stack: 'expense',
-        data: data.expense_breakdown.non_contract.map(v => (v / 10000).toFixed(2)),
-        itemStyle: { color: '#909399' },
-        barMaxWidth: 20
-      },
-      {
-        name: '零星用工',
-        type: 'bar',
-        stack: 'expense',
-        data: data.expense_breakdown.zero_hour_labor.map(v => (v / 10000).toFixed(2)),
-        itemStyle: { color: '#A0CFFF' },
-        barMaxWidth: 20
+        query: { maxWidth: 767 },
+        option: {
+          legend: {
+            itemWidth: 10,
+            textStyle: { fontSize: 9 },
+            bottom: 0
+          },
+          grid: {
+            bottom: '80px',
+          },
+          xAxis: {
+            axisLabel: {
+              fontSize: 9,
+              rotate: 45
+            }
+          }
+        }
       }
     ]
   })
@@ -796,79 +839,85 @@ onBeforeUnmount(() => {
     }
   }
 
+  .period-content-wrapper {
+     /* display: flex;  Removed flex to allow wrapping on mobile if grid system fails, but el-col handles it */
+  }
+
   .period-content-row {
-    .period-col {
-      padding: 20px;
-      
-      &.left-col {
-        border-right: 1px solid #f0f2f5;
-      }
-      
-      @media (max-width: 768px) {
-        &.left-col {
-          border-right: none;
-          border-bottom: 1px solid #f0f2f5;
-        }
-      }
+     /* flex-wrap: wrap; */
+  }
+
+  .period-col {
+    padding: 20px;
+    box-sizing: border-box;
+    
+    &.left-col {
+      background: #fff;
+      border-right: 1px dashed #e4e7ed;
+    }
+    
+    &.right-col {
+      background: #fdfdfd;
+    }
+  }
+
+  .section-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    
+    &.upstream {
+      background: #effaf5;
+      color: #27ae60;
+    }
+    
+    &.downstream {
+      background: #fef0f0;
+      color: #e74c3c;
+    }
+  }
+
+  .stat-modern-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 14px;
+    color: #606266;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+    
+    &.highlight {
+      background: #f8f9fa;
+      padding: 8px;
+      border-radius: 6px;
+      margin-bottom: 8px;
     }
 
-    .section-badge {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 4px;
-      font-size: 12px;
+    .label {
+      opacity: 0.9;
+    }
+
+    .value {
       font-weight: bold;
-      margin-bottom: 15px;
+      color: #303133;
       
-      &.upstream {
-        background: #ecf5ff;
-        color: #409EFF;
-      }
-      
-      &.downstream {
-        background: #fdf6ec;
-        color: #E6A23C;
-      }
-    }
-
-    .stat-modern-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      font-size: 14px;
-      
-      &:last-child {
-        margin-bottom: 0;
+      small {
+        font-size: 12px;
+        font-weight: normal;
+        color: #909399;
+        margin-left: 2px;
       }
       
-      &.highlight {
-        padding: 8px 10px;
-        background: #f8f9fa;
-        border-radius: 6px;
-      }
-
-      .label {
-        color: #606266;
-      }
-
-      .value {
-        font-weight: 600;
-        color: #303133;
-        font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
-        
-        small {
-          font-size: 12px;
-          color: #909399;
-          font-weight: normal;
-          margin-left: 2px;
-        }
-        
-        &.income { color: #67C23A; }
-        &.expense { color: #F56C6C; }
-        &.success { color: #409EFF; }
-        &.text-gray { color: #909399; }
-      }
+      &.income { color: #67C23A; }
+      &.expense { color: #F56C6C; }
+      &.success { color: #52C41A; }
+      &.text-gray { color: #909399; }
     }
   }
 }
@@ -881,69 +930,62 @@ onBeforeUnmount(() => {
   
   :deep(.el-card__header) {
     padding: 15px 20px;
-    font-weight: bold;
     border-bottom: 1px solid #f0f2f5;
+  }
+  
+  .card-header {
+    font-weight: bold;
+    font-size: 16px;
+    color: #303133;
   }
 }
 
-/* Responsive adjustments */
+/* Mobile Responsive */
+@media only screen and (max-width: 991px) {
+  .period-col {
+    &.left-col {
+      border-right: none !important;
+      border-bottom: 1px dashed #e4e7ed;
+    }
+  }
+} 
+
 @media only screen and (max-width: 767px) {
   .stat-card-modern {
     height: 120px !important;
+    margin-bottom: 15px !important;
+    
+    :deep(.el-card__body) {
+      padding: 15px !important;
+    }
+
+    .card-modern-header {
+      .title { font-size: 14px; }
+      .icon-wrapper { padding: 4px; .el-icon { font-size: 16px; } }
+    }
+
+    .card-modern-content {
+      .amount { font-size: 22px; margin: 5px 0; }
+      .amount-sub { font-size: 12px; }
+      .sub-info { display: none; }
+    }
+    
+    .card-icon-bg { font-size: 60px; right: -10px; bottom: -10px; }
+  }
+  
+  .period-card-modern {
     margin-bottom: 15px;
-  }
-
-  .stat-card-modern :deep(.el-card__body) {
-    padding: 12px !important;
-  }
-
-  .card-modern-header .title {
-    font-size: 13px !important;
-  }
-  
-  .card-modern-content .amount {
-    font-size: 20px !important;
-    margin: 5px 0 2px !important;
     
-    small {
-      font-size: 12px !important;
-    }
-  }
-
-  .amount-sub {
-    font-size: 12px !important;
-  }
-  
-  .card-icon-bg {
-    font-size: 60px !important;
-    right: -10px !important;
-    bottom: -10px !important;
-  }
-  
-  .sub-info {
-    display: none;
-  }
-
-  .period-card-modern .card-modern-title-bar {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .period-tabs {
-    margin-top: 10px;
-    width: 100%;
-    
-    :deep(.el-radio-group) {
-      width: 100%;
-      display: flex;
+    :deep(.el-card__header) {
+       padding: 10px 12px;
     }
     
-    :deep(.el-radio-button) {
-      flex: 1;
+    .card-modern-title-bar {
+       .title-left { font-size: 14px; }
     }
     
-    :deep(.el-radio-button__inner) {
-      width: 100%;
+    .period-col {
+       padding: 15px;
     }
   }
 }

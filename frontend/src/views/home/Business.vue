@@ -726,86 +726,108 @@ const initTrendChart = (data) => {
   if (trendChart) trendChart.dispose();
 
   trendChart = echarts.init(trendChartRef.value);
-  const isMobile = window.innerWidth <= 767;
   trendChart.setOption({
-    tooltip: {
-      confine: true,
-      trigger: "axis",
-      formatter: function (params) {
-        let res = params[0].name + "<br/>";
-        params.forEach((item) => {
-          res +=
-            item.marker +
-            item.seriesName +
-            ": " +
-            Number(item.value).toFixed(2) +
-            " 万元<br/>";
-        });
-        return res;
+    baseOption: {
+      tooltip: {
+        confine: true,
+        trigger: "axis",
+        formatter: function (params) {
+          let res = params[0].name + "<br/>";
+          params.forEach((item) => {
+            res +=
+              item.marker +
+              item.seriesName +
+              ": " +
+              Number(item.value).toFixed(2) +
+              " 万元<br/>";
+          });
+          return res;
+        },
       },
-    },
-    legend: {
-      data: ["月度收入", "下游合同", "管理合同", "无合同费用"],
-      bottom: 0,
-      itemWidth: isMobile ? 10 : 15,
-      itemHeight: 10,
-      textStyle: { fontSize: isMobile ? 9 : 10 },
-    },
-    grid: {
-      left: "3%",
-      right: "4%",
-      top: "15%",
-      bottom: isMobile ? "100px" : "25px", // Increase bottom space for potentially wrapped legend
-      containLabel: true,
-    },
-    xAxis: {
-      type: "category",
-      data: data.months,
-      axisLabel: { interval: isMobile ? "auto" : 0, fontSize: 10 },
-    },
-    yAxis: {
-      type: "value",
-      name: "金额 (万元)",
-      splitLine: { show: false },
-    },
-    series: [
-      {
-        name: "月度收入",
-        type: "bar",
-        data: data.income.map((v) => (v / 10000).toFixed(2)),
-        itemStyle: { color: "#67C23A" },
-        barMaxWidth: 15,
+      legend: {
+        data: ["月度收入", "下游合同", "管理合同", "无合同费用"],
+        bottom: 0,
+        itemWidth: 15,
+        itemHeight: 10,
+        textStyle: { fontSize: 10 },
       },
-      // Stacked Expense Series
-      {
-        name: "下游合同",
-        type: "bar",
-        stack: "expense",
-        data: data.expense_breakdown.downstream.map((v) =>
-          (v / 10000).toFixed(2)
-        ),
-        itemStyle: { color: "#F56C6C" },
-        barMaxWidth: 15,
+      grid: {
+        left: "3%",
+        right: "4%",
+        top: "15%",
+        bottom: "30px",
+        containLabel: true,
       },
-      {
-        name: "管理合同",
-        type: "bar",
-        stack: "expense",
-        data: data.expense_breakdown.management.map((v) =>
-          (v / 10000).toFixed(2)
-        ),
-        itemStyle: { color: "#E6A23C" },
-        barMaxWidth: 15,
+      xAxis: {
+        type: "category",
+        data: data.months,
+        axisLabel: { interval: 0, fontSize: 10 },
       },
+      yAxis: {
+        type: "value",
+        name: "金额 (万元)",
+        splitLine: { show: false },
+      },
+      series: [
+        {
+          name: "月度收入",
+          type: "bar",
+          data: data.income.map((v) => (v / 10000).toFixed(2)),
+          itemStyle: { color: "#67C23A" },
+          barMaxWidth: 15,
+        },
+        // Stacked Expense Series
+        {
+          name: "下游合同",
+          type: "bar",
+          stack: "expense",
+          data: data.expense_breakdown.downstream.map((v) =>
+            (v / 10000).toFixed(2)
+          ),
+          itemStyle: { color: "#F56C6C" },
+          barMaxWidth: 15,
+        },
+        {
+          name: "管理合同",
+          type: "bar",
+          stack: "expense",
+          data: data.expense_breakdown.management.map((v) =>
+            (v / 10000).toFixed(2)
+          ),
+          itemStyle: { color: "#E6A23C" },
+          barMaxWidth: 15,
+        },
+        {
+          name: "无合同费用",
+          type: "bar",
+          stack: "expense",
+          data: data.expense_breakdown.non_contract.map((v) =>
+            (v / 10000).toFixed(2)
+          ),
+          itemStyle: { color: "#909399" },
+          barMaxWidth: 15,
+        },
+      ],
+    },
+    media: [
       {
-        name: "无合同费用",
-        type: "bar",
-        stack: "expense",
-        data: data.expense_breakdown.non_contract.map((v) =>
-          (v / 10000).toFixed(2)
-        ),
-        itemStyle: { color: "#909399" },
-        barMaxWidth: 15,
+        query: { maxWidth: 767 },
+        option: {
+          legend: {
+            itemWidth: 10,
+            textStyle: { fontSize: 9 },
+            bottom: 0,
+          },
+          grid: {
+            bottom: "80px",
+          },
+          xAxis: {
+            axisLabel: {
+              fontSize: 9,
+              rotate: 45,
+            },
+          },
+        },
       },
     ],
   });
