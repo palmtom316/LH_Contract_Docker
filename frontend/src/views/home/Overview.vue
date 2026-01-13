@@ -33,30 +33,24 @@
       </el-col>
     </el-row>
 
-    <!-- Period Statistics Cards (Tabbed) -->
+    <!-- Period Statistics Cards (Split) -->
     <el-row :gutter="20" style="margin-top: 10px;">
-      <el-col :span="24">
+      <!-- Monthly Card -->
+      <el-col :xs="24" :lg="12">
         <el-card shadow="hover" class="period-card-modern">
           <template #header>
             <div class="card-modern-title-bar">
               <div class="title-left">
                 <el-icon class="title-icon monthly"><TrendCharts /></el-icon>
-                <span>经营状况分析</span>
-              </div>
-              <div class="period-tabs">
-                <el-radio-group v-model="activePeriod" size="small">
-                  <el-radio-button label="monthly">近30天</el-radio-button>
-                  <el-radio-button label="quarterly">近90天</el-radio-button>
-                </el-radio-group>
+                <span>经营状况分析 (近30天)</span>
               </div>
             </div>
           </template>
 
-          <!-- Monthly Content -->
-          <div v-show="activePeriod === 'monthly'">
+          <div class="period-content-wrapper">
             <el-row :gutter="0" class="period-content-row">
               <el-col :xs="24" :sm="12" class="period-col left-col">
-                <div class="section-badge upstream">上游合同 (近一月)</div>
+                <div class="section-badge upstream">上游合同</div>
                 <div class="stat-modern-row">
                   <span class="label">签约数量</span>
                   <span class="value">{{ periodStats.monthly.upstream_count }} <small>单</small></span>
@@ -71,7 +65,7 @@
                 </div>
               </el-col>
               <el-col :xs="24" :sm="12" class="period-col right-col">
-                <div class="section-badge downstream">下游及管理合同 (近一月)</div>
+                <div class="section-badge downstream">下游及管理合同</div>
                 <div class="stat-modern-row">
                   <span class="label">签约数量</span>
                   <span class="value">{{ periodStats.monthly.downstream_mgmt_count }} <small>单</small></span>
@@ -95,12 +89,33 @@
               </el-col>
             </el-row>
           </div>
+          
+          <!-- Month Trend Chart -->
+          <div style="padding: 20px; border-top: 1px solid #f0f2f5;">
+            <div style="font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #303133;">
+              <el-icon><TrendCharts /></el-icon> 近30天收支趋势
+            </div>
+            <div ref="monthChartRef" style="height: 250px; width: 100%;"></div>
+          </div>
+        </el-card>
+      </el-col>
 
-          <!-- Quarterly Content -->
-          <div v-show="activePeriod === 'quarterly'">
+      <!-- Quarterly Card -->
+      <el-col :xs="24" :lg="12">
+        <el-card shadow="hover" class="period-card-modern">
+          <template #header>
+            <div class="card-modern-title-bar">
+              <div class="title-left">
+                <el-icon class="title-icon quarterly"><TrendCharts /></el-icon>
+                <span>经营状况分析 (近一季度)</span>
+              </div>
+            </div>
+          </template>
+
+          <div class="period-content-wrapper">
              <el-row :gutter="0" class="period-content-row">
               <el-col :xs="24" :sm="12" class="period-col left-col">
-                <div class="section-badge upstream kv-badge">上游合同 (近一季度)</div>
+                <div class="section-badge upstream kv-badge">上游合同</div>
                 <div class="stat-modern-row">
                   <span class="label">签约数量</span>
                   <span class="value">{{ periodStats.quarterly.upstream_count }} <small>单</small></span>
@@ -115,7 +130,7 @@
                 </div>
               </el-col>
               <el-col :xs="24" :sm="12" class="period-col right-col">
-                <div class="section-badge downstream kv-badge">下游及管理合同 (近一季度)</div>
+                <div class="section-badge downstream kv-badge">下游及管理合同</div>
                 <div class="stat-modern-row">
                   <span class="label">签约数量</span>
                   <span class="value">{{ periodStats.quarterly.downstream_mgmt_count }} <small>单</small></span>
@@ -140,12 +155,12 @@
             </el-row>
           </div>
           
-          <!-- Period Trend Chart -->
+          <!-- Quarter Trend Chart -->
           <div style="padding: 20px; border-top: 1px solid #f0f2f5;">
             <div style="font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #303133;">
-              <el-icon><TrendCharts /></el-icon> {{ activePeriod === 'monthly' ? '近30天' : '近90天' }}收支趋势
+              <el-icon><TrendCharts /></el-icon> 近90天收支趋势
             </div>
-            <div ref="periodChartRef" style="height: 250px; width: 100%;"></div>
+            <div ref="quarterChartRef" style="height: 250px; width: 100%;"></div>
           </div>
         </el-card>
       </el-col>
@@ -200,18 +215,22 @@ import { TrendCharts, Money, Wallet, Coin, DataAnalysis, PieChart, Document, Arr
 const barChartRef = ref(null)
 const pieCategoryChartRef = ref(null)
 const pieCompanyChartRef = ref(null)
-const periodChartRef = ref(null)
+// Rename ref to distinct names
+const monthChartRef = ref(null)
+const quarterChartRef = ref(null)
+
 let barChart = null
 let pieCategoryChart = null
 let pieCompanyChart = null
-let periodChart = null
+// Rename vars
+let monthChart = null
+let quarterChart = null
 
 const currentYear = new Date().getFullYear().toString()
-const activePeriod = ref('monthly')
+// const activePeriod = ref('monthly') - REMOVED
 
-watch(activePeriod, () => {
-  fetchPeriodTrend()
-})
+// Watcher removed because we load both now
+
 
 const cardData = ref([
   { title: '年度上游签约', value: 0, count: 0, tag: '总览', color: 'linear-gradient(135deg, #1890FF 0%, #36CFC9 100%)', icon: 'Document', subInfo: '累计签约总额' },
@@ -256,10 +275,13 @@ const formatWan = (val) => {
 
 const fetchData = async () => {
   try {
-    const [statsRes, trendRes, periodRes] = await Promise.all([
+    // Fetch everything in parallel, including both trend periods
+    const [statsRes, trendRes, periodRes, monthTrendRes, quarterTrendRes] = await Promise.all([
       getStats(),
       getFinanceTrend(currentYear),
-      getPeriodStats()
+      getPeriodStats(),
+      getPeriodTrend('monthly'),
+      getPeriodTrend('quarterly')
     ])
     
     const { cards, charts } = statsRes
@@ -284,31 +306,36 @@ const fetchData = async () => {
     if (charts.pie_category) initCategoryPie(charts.pie_category)
     if (charts.pie_company) initCompanyPie(charts.pie_company)
     
-    // Fetch Period Trend
-    fetchPeriodTrend()
+    // Init both period charts
+    initMonthChart(monthTrendRes)
+    initQuarterChart(quarterTrendRes)
+
   } catch (error) {
     console.error(error)
     ElMessage.error('获取仪表盘数据失败')
   }
 }
+// Removed fetchPeriodTrend as it's now part of fetchData
 
-const fetchPeriodTrend = async () => {
-  try {
-    const res = await getPeriodTrend(activePeriod.value)
-    initPeriodChart(res)
-  } catch (error) {
-    console.error(error)
-  }
+
+const initMonthChart = (data) => {
+  if (!monthChartRef.value) return
+  if (monthChart) monthChart.dispose()
+  monthChart = echarts.init(monthChartRef.value)
+  setChartOption(monthChart, data)
 }
 
-const initPeriodChart = (data) => {
-  if (!periodChartRef.value) return
-  if (periodChart) periodChart.dispose()
-  
-  periodChart = echarts.init(periodChartRef.value)
+const initQuarterChart = (data) => {
+  if (!quarterChartRef.value) return
+  if (quarterChart) quarterChart.dispose()
+  quarterChart = echarts.init(quarterChartRef.value)
+  setChartOption(quarterChart, data)
+}
+
+const setChartOption = (chartInstance, data) => {
   const isMobile = window.innerWidth <= 767
   
-  periodChart.setOption({
+  chartInstance.setOption({
     tooltip: { 
       confine: true,
       trigger: 'axis',
@@ -336,7 +363,7 @@ const initPeriodChart = (data) => {
       left: '3%', 
       right: '4%', 
       top: '10%', 
-      bottom: isMobile ? '100px' : '30px', // Increased from 70px to prevent overlap with rotated labels and legend
+      bottom: isMobile ? '100px' : '30px', 
       containLabel: true 
     },
     xAxis: { 
@@ -584,7 +611,8 @@ const handleResize = () => {
   barChart && barChart.resize()
   pieCategoryChart && pieCategoryChart.resize()
   pieCompanyChart && pieCompanyChart.resize()
-  periodChart && periodChart.resize()
+  monthChart && monthChart.resize()
+  quarterChart && quarterChart.resize()
 }
 
 onMounted(() => {
@@ -599,7 +627,8 @@ onBeforeUnmount(() => {
   barChart && barChart.dispose()
   pieCategoryChart && pieCategoryChart.dispose()
   pieCompanyChart && pieCompanyChart.dispose()
-  periodChart && periodChart.dispose()
+  monthChart && monthChart.dispose()
+  quarterChart && quarterChart.dispose()
 })
 </script>
 

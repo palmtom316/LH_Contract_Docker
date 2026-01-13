@@ -469,7 +469,7 @@ const searchUpstream = async (query) => {
   if (query) {
     upstreamLoading.value = true
     try {
-      const res = await getUpstreamContracts({ keyword: query, page_size: 20 })
+      const res = await getUpstreamContracts({ keyword: query, page_size: 100 })
       upstreamOptions.value = res.items
     } catch (e) {
       console.error(e)
