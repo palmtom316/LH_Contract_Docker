@@ -189,11 +189,11 @@
             </div>
           </template>
           <el-row>
-            <el-col :span="12">
+            <el-col :xs="24" :sm="12">
                <div style="text-align: center; font-size: 12px; font-weight: bold; margin-bottom: 5px;">合同类别</div>
                <div ref="pieCategoryChartRef" style="height: 320px; width: 100%;"></div>
             </el-col>
-            <el-col :span="12">
+            <el-col :xs="24" :sm="12">
                <div style="text-align: center; font-size: 12px; font-weight: bold; margin-bottom: 5px;">自定类别</div>
                <div ref="pieCompanyChartRef" style="height: 320px; width: 100%;"></div>
             </el-col>
@@ -363,7 +363,7 @@ const setChartOption = (chartInstance, data) => {
       left: '3%', 
       right: '4%', 
       top: '10%', 
-      bottom: isMobile ? '100px' : '30px', 
+      bottom: isMobile ? '125px' : '30px', 
       containLabel: true 
     },
     xAxis: { 
@@ -463,7 +463,7 @@ const initTrendChart = (data) => {
       left: '3%', 
       right: '4%', 
       top: '15%', 
-      bottom: isMobile ? '80px' : '30px', 
+      bottom: isMobile ? '110px' : '30px', 
       containLabel: true 
     },
     xAxis: { 

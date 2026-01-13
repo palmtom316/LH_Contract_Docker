@@ -755,7 +755,7 @@ const initTrendChart = (data) => {
       left: "3%",
       right: "4%",
       top: "15%",
-      bottom: isMobile ? "45px" : "25px", // Increase bottom space for potentially wrapped legend
+      bottom: isMobile ? "100px" : "25px", // Increase bottom space for potentially wrapped legend
       containLabel: true,
     },
     xAxis: {
