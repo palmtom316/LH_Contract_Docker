@@ -4,6 +4,7 @@ Application Configuration
 All sensitive values should be set via environment variables.
 See .env.example for configuration template.
 """
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
 from typing import List
 import os
@@ -22,35 +23,30 @@ class Settings(BaseSettings):
     
     # Database - MUST be set via environment variable in production
     # Development default uses placeholder credentials (NOT for production!)
-    DATABASE_URL: str = os.getenv(
-        "DATABASE_URL",
-        "postgresql+asyncpg://lh_admin:dev_password_change_me@db:5432/lh_contract_db"
-    )
+    DATABASE_URL: str = "postgresql+asyncpg://lh_admin:dev_password_change_me@db:5432/lh_contract_db"
     
     # Security - MUST be set via environment variable in production
     # Generate strong key: python -c "import secrets; print(secrets.token_urlsafe(64))"
     # In production, SECRET_KEY MUST be set as environment variable
     # In development, a warning will be logged if using default key
-    _SECRET_KEY_ENV: str = os.getenv("SECRET_KEY", "")
-    _IS_PRODUCTION: bool = os.getenv("DEBUG", "false").lower() != "true"
+    SECRET_KEY: str = ""
     
-    @property
-    def SECRET_KEY(self) -> str:
-        """Get SECRET_KEY with production safety check"""
-        if self._SECRET_KEY_ENV:
-            return self._SECRET_KEY_ENV
-        elif self._IS_PRODUCTION:
-            raise ValueError(
-                "SECRET_KEY 环境变量在生产环境中必须设置! "
-                "使用以下命令生成: python -c \"import secrets; print(secrets.token_urlsafe(64))\""
-            )
-        else:
-            # Development mode: use a fixed development key (NOT for production!)
-            import logging
-            logging.warning(
-                "⚠️ 使用开发模式默认 SECRET_KEY，请勿在生产环境使用！"
-            )
-            return "DEV_ONLY_KEY_DO_NOT_USE_IN_PRODUCTION_abc123xyz789"
+    @model_validator(mode='after')
+    def validate_security(self) -> 'Settings':
+        """Ensure SECRET_KEY is set in production"""
+        if not self.SECRET_KEY:
+            if not self.DEBUG:
+                raise ValueError(
+                    "SECRET_KEY 环境变量在生产环境中必须设置! "
+                    "使用以下命令生成: python -c \"import secrets; print(secrets.token_urlsafe(64))\""
+                )
+            else:
+                import logging
+                logging.warning(
+                    "⚠️ 使用开发模式默认 SECRET_KEY，请勿在生产环境使用！"
+                )
+                self.SECRET_KEY = "DEV_ONLY_KEY_DO_NOT_USE_IN_PRODUCTION_abc123xyz789"
+        return self
     
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 2  # 2 hours (shortened for security)

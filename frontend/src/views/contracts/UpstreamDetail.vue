@@ -122,7 +122,7 @@
         <div class="tab-actions">
           <el-button v-if="userStore.canManageReceivables" type="primary" size="small" icon="Plus" @click="openFinanceDialog('receivable')">新增应收款</el-button>
         </div>
-        <el-table :data="receivables" border style="width: 100%">
+        <el-table :data="receivables" border style="width: 100%" show-summary :summary-method="getReceivablesSummary">
           <el-table-column prop="category" label="应收款类别" width="120">
             <template #default="{ row }">{{ formatReceivableCategory(row.category) }}</template>
           </el-table-column>
@@ -157,7 +157,7 @@
           <div class="tab-actions">
           <el-button v-if="userStore.canManageInvoices" type="primary" size="small" icon="Plus" @click="openFinanceDialog('invoice')">新增挂账</el-button>
         </div>
-        <el-table :data="invoices" border style="width: 100%">
+        <el-table :data="invoices" border style="width: 100%" show-summary :summary-method="getInvoicesSummary">
           <el-table-column prop="invoice_number" label="发票号" width="150" />
           <el-table-column prop="amount" label="金额" align="right">
             <template #default="{ row }">¥ {{ formatMoney(row.amount) }}</template>
@@ -195,7 +195,7 @@
           <div class="tab-actions">
           <el-button v-if="userStore.canManagePayments" type="success" size="small" icon="Plus" @click="openFinanceDialog('receipt')">新增回款</el-button>
         </div>
-        <el-table :data="receipts" border style="width: 100%">
+        <el-table :data="receipts" border style="width: 100%" show-summary :summary-method="getReceiptsSummary">
           <el-table-column prop="receipt_date" label="到账日期" width="120" />
           <el-table-column prop="amount" label="金额" align="right">
             <template #default="{ row }">¥ {{ formatMoney(row.amount) }}</template>
@@ -229,7 +229,7 @@
           <div class="tab-actions">
           <el-button v-if="userStore.canManageSettlements" type="warning" size="small" icon="Plus" @click="openFinanceDialog('settlement')">新增结算</el-button>
         </div>
-        <el-table :data="settlements" border style="width: 100%">
+        <el-table :data="settlements" border style="width: 100%" show-summary :summary-method="getSettlementsSummary">
           <el-table-column prop="settlement_code" label="结算单号" width="150" />
           <el-table-column prop="settlement_amount" label="结算金额" align="right">
             <template #default="{ row }">¥ {{ formatMoney(row.settlement_amount) }}</template>
@@ -566,6 +566,48 @@ const formatReceivableCategory = (value) => {
   }
   return map[value] || value
 }
+
+// Summary Methods for Tables
+const getReceivablesSummary = ({ columns }) => {
+  return columns.map((column, index) => {
+    if (index === 0) return '合计'
+    if (column.property === 'amount') {
+      return '¥ ' + formatMoney(totalReceivables.value)
+    }
+    return ''
+  })
+}
+
+const getInvoicesSummary = ({ columns }) => {
+  return columns.map((column, index) => {
+    if (index === 0) return '合计'
+    if (column.property === 'amount') {
+      return '¥ ' + formatMoney(totalInvoices.value)
+    }
+    return ''
+  })
+}
+
+const getReceiptsSummary = ({ columns }) => {
+  return columns.map((column, index) => {
+    if (index === 0) return '合计'
+    if (column.property === 'amount') {
+      return '¥ ' + formatMoney(totalReceipts.value)
+    }
+    return ''
+  })
+}
+
+const getSettlementsSummary = ({ columns }) => {
+  return columns.map((column, index) => {
+    if (index === 0) return '合计'
+    if (column.property === 'settlement_amount') {
+      return '¥ ' + formatMoney(totalSettlements.value)
+    }
+    return ''
+  })
+}
+
 
 // Feishu Approval Helpers (V1.4)
 const getApprovalStatusType = (status) => {

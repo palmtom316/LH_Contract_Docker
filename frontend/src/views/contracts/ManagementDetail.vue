@@ -119,7 +119,7 @@
         <div class="tab-actions">
           <el-button v-if="userStore.canManagePayables" type="primary" size="small" icon="Plus" @click="openFinanceDialog('payable')">新增应付款</el-button>
         </div>
-        <el-table :data="payables" border style="width: 100%">
+        <el-table :data="payables" border style="width: 100%" show-summary :summary-method="getPayablesSummary">
           <el-table-column prop="category" label="应付款类别" width="120">
             <template #default="{ row }">{{ row.category }}</template>
           </el-table-column>
@@ -155,7 +155,7 @@
           <div class="tab-actions">
           <el-button v-if="userStore.canManageInvoices" type="primary" size="small" icon="Plus" @click="openFinanceDialog('invoice')">新增挂账</el-button>
         </div>
-        <el-table :data="invoices" border style="width: 100%">
+        <el-table :data="invoices" border style="width: 100%" show-summary :summary-method="getInvoicesSummary">
           <el-table-column prop="invoice_number" label="发票号" width="150" />
           <el-table-column prop="amount" label="金额" align="right">
             <template #default="{ row }">¥ {{ formatMoney(row.amount) }}</template>
@@ -195,7 +195,7 @@
           <div class="tab-actions">
           <el-button v-if="userStore.canManagePayments" type="success" size="small" icon="Plus" @click="openFinanceDialog('payment')">新增付款</el-button>
         </div>
-        <el-table :data="payments" border style="width: 100%">
+        <el-table :data="payments" border style="width: 100%" show-summary :summary-method="getPaymentsSummary">
           <el-table-column prop="payment_date" label="付款日期" width="120" />
           <el-table-column prop="amount" label="金额" align="right">
             <template #default="{ row }">¥ {{ formatMoney(row.amount) }}</template>
@@ -229,7 +229,7 @@
           <div class="tab-actions">
           <el-button v-if="userStore.canManageSettlements" type="danger" size="small" icon="Plus" @click="openFinanceDialog('settlement')">新增结算</el-button>
         </div>
-        <el-table :data="settlements" border style="width: 100%">
+        <el-table :data="settlements" border style="width: 100%" show-summary :summary-method="getSettlementsSummary">
           <el-table-column prop="settlement_code" label="结算单号" width="150" />
           <el-table-column prop="settlement_amount" label="结算金额" align="right">
             <template #default="{ row }">¥ {{ formatMoney(row.settlement_amount) }}</template>
@@ -487,6 +487,48 @@ const paymentPercentage = computed(() => {
 const totalSettlements = computed(() => {
   return settlements.value.reduce((sum, item) => sum + Number(item.settlement_amount), 0)
 })
+
+// Summary Methods for Tables
+const getPayablesSummary = ({ columns }) => {
+  return columns.map((column, index) => {
+    if (index === 0) return '合计'
+    if (column.property === 'amount') {
+      return '¥ ' + formatMoney(totalPayables.value)
+    }
+    return ''
+  })
+}
+
+const getInvoicesSummary = ({ columns }) => {
+  return columns.map((column, index) => {
+    if (index === 0) return '合计'
+    if (column.property === 'amount') {
+      return '¥ ' + formatMoney(totalInvoices.value)
+    }
+    return ''
+  })
+}
+
+const getPaymentsSummary = ({ columns }) => {
+  return columns.map((column, index) => {
+    if (index === 0) return '合计'
+    if (column.property === 'amount') {
+      return '¥ ' + formatMoney(totalPayments.value)
+    }
+    return ''
+  })
+}
+
+const getSettlementsSummary = ({ columns }) => {
+  return columns.map((column, index) => {
+    if (index === 0) return '合计'
+    if (column.property === 'settlement_amount') {
+      return '¥ ' + formatMoney(totalSettlements.value)
+    }
+    return ''
+  })
+}
+
 
 // Initial Load
 const loadData = async () => {

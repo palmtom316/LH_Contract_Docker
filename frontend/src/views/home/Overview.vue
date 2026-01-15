@@ -322,17 +322,17 @@ const initMonthChart = (data) => {
   if (!monthChartRef.value) return
   if (monthChart) monthChart.dispose()
   monthChart = echarts.init(monthChartRef.value)
-  setChartOption(monthChart, data)
+  setChartOption(monthChart, data, 4) // Show date every 5 days
 }
 
 const initQuarterChart = (data) => {
   if (!quarterChartRef.value) return
   if (quarterChart) quarterChart.dispose()
   quarterChart = echarts.init(quarterChartRef.value)
-  setChartOption(quarterChart, data)
+  setChartOption(quarterChart, data, 9) // Show date every 10 days
 }
 
-const setChartOption = (chartInstance, data) => {
+const setChartOption = (chartInstance, data, axisInterval = 'auto') => {
   chartInstance.setOption({
     baseOption: {
       tooltip: { 
@@ -359,7 +359,7 @@ const setChartOption = (chartInstance, data) => {
         textStyle: { fontSize: 12 }
       },
       grid: { 
-        left: '3%', 
+        left: '8%', 
         right: '4%', 
         top: '10%', 
         bottom: '30px', 
@@ -370,7 +370,7 @@ const setChartOption = (chartInstance, data) => {
         data: data.dates,
         axisLabel: { 
           fontSize: 10,
-          interval: 'auto',
+          interval: axisInterval,
           hideOverlap: true,
           rotate: 0,
           formatter: function (value) {
