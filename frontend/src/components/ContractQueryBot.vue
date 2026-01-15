@@ -107,21 +107,21 @@
                   <el-descriptions-item label="乙方">{{ contract.party_b_name }}</el-descriptions-item>
                 </el-descriptions>
                 <div class="finance-cards">
-                  <div class="finance-card">
+                  <div class="finance-card blue-card">
                     <span class="label">签约金额</span>
-                    <span class="value primary">{{ formatMoney(contract.finance.contract_amount) }}</span>
+                    <span class="value">{{ formatMoney(contract.finance.contract_amount) }}</span>
                   </div>
-                  <div class="finance-card">
+                  <div class="finance-card orange-card">
                     <span class="label">应收款</span>
-                    <span class="value warning">{{ formatMoney(contract.finance.payable_amount) }}</span>
+                    <span class="value">{{ formatMoney(contract.finance.payable_amount) }}</span>
                   </div>
-                  <div class="finance-card">
+                  <div class="finance-card purple-card">
                     <span class="label">挂账金额</span>
-                    <span class="value info">{{ formatMoney(contract.finance.invoiced_amount) }}</span>
+                    <span class="value">{{ formatMoney(contract.finance.invoiced_amount) }}</span>
                   </div>
-                  <div class="finance-card">
+                  <div class="finance-card green-card">
                     <span class="label">已收款</span>
-                    <span class="value success">{{ formatMoney(contract.finance.paid_amount) }}</span>
+                    <span class="value">{{ formatMoney(contract.finance.paid_amount) }}</span>
                   </div>
                 </div>
               </div>
@@ -334,7 +334,7 @@ const sumExpenses = (expenses) => {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #1890ff, #096dd9);
+  background: linear-gradient(135deg, #1890FF 0%, #36CFC9 100%);
   color: #fff;
   display: flex;
   align-items: center;
@@ -345,7 +345,7 @@ const sumExpenses = (expenses) => {
 
   &:hover {
     transform: scale(1.1);
-    box-shadow: 0 6px 24px rgba(24, 144, 255, 0.5);
+    box-shadow: 0 6px 24px rgba(54, 207, 201, 0.5);
   }
 
   &.pulse {
@@ -358,35 +358,10 @@ const sumExpenses = (expenses) => {
     box-shadow: 0 4px 16px rgba(24, 144, 255, 0.4);
   }
   50% {
-    box-shadow: 0 4px 24px rgba(24, 144, 255, 0.8);
+    box-shadow: 0 4px 24px rgba(54, 207, 201, 0.8);
   }
   100% {
     box-shadow: 0 4px 16px rgba(24, 144, 255, 0.4);
-  }
-}
-
-:deep(.bot-dialog) {
-  .el-dialog__header {
-    background: linear-gradient(135deg, #1890ff, #096dd9);
-    color: #fff;
-    padding: 16px 20px;
-    margin: 0;
-
-    .el-dialog__title {
-      color: #fff;
-      font-size: 18px;
-      font-weight: 500;
-    }
-
-    .el-dialog__close {
-      color: #fff;
-    }
-  }
-
-  .el-dialog__body {
-    padding: 20px;
-    max-height: 70vh;
-    overflow-y: auto;
   }
 }
 
@@ -512,27 +487,45 @@ const sumExpenses = (expenses) => {
   margin-top: 12px;
 
   .finance-card {
-    background: #fff;
-    padding: 12px;
-    border-radius: 6px;
+    padding: 16px 12px; /* Increased padding */
+    border-radius: 8px; /* Softer radius */
     text-align: center;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Improved shadow */
+    transition: transform 0.2s;
+
+    &:hover {
+      transform: translateY(-2px);
+    }
 
     .label {
       display: block;
-      font-size: 12px;
-      color: #8c8c8c;
-      margin-bottom: 4px;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.9); /* White text */
+      margin-bottom: 8px;
     }
 
     .value {
-      font-size: 16px;
-      font-weight: 600;
+      font-size: 18px;
+      font-weight: bold;
+      color: #fff; /* White text */
+      text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    
+    /* Card Variants */
+    &.blue-card {
+      background: linear-gradient(135deg, #2db7f5 0%, #4096ff 100%);
+    }
+    
+    &.orange-card {
+      background: linear-gradient(135deg, #faad14 0%, #ffc53d 100%);
+    }
 
-      &.primary { color: #1890ff; }
-      &.warning { color: #faad14; }
-      &.info { color: #722ed1; }
-      &.success { color: #52c41a; }
+    &.purple-card {
+      background: linear-gradient(135deg, #722ed1 0%, #9254de 100%);
+    }
+    
+    &.green-card {
+      background: linear-gradient(135deg, #52c41a 0%, #95de64 100%);
     }
   }
 }
@@ -617,24 +610,6 @@ const sumExpenses = (expenses) => {
     height: 48px;
   }
 
-  :deep(.bot-dialog) {
-    .el-dialog {
-      width: 100% !important;
-      max-width: 100% !important;
-      margin: 0 !important;
-      border-radius: 0;
-    }
-
-    .el-dialog__header {
-      padding: 12px 16px;
-    }
-
-    .el-dialog__body {
-      padding: 12px;
-      max-height: calc(100vh - 60px);
-    }
-  }
-
   .finance-cards {
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
@@ -674,4 +649,54 @@ const sumExpenses = (expenses) => {
 /* Force HMR update 2024-12-29 */
 </style>
 
+<style lang="scss">
+/* Global styles for Dialog (append-to-body) */
+.bot-dialog {
+  .el-dialog__header {
+    background: linear-gradient(135deg, #1890FF 0%, #36CFC9 100%);
+    color: #fff;
+    padding: 16px 20px;
+    margin: 0;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
 
+    .el-dialog__title {
+      color: #fff;
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .el-dialog__close {
+      color: #fff;
+      &:hover {
+        color: rgba(255,255,255,0.8);
+      }
+    }
+  }
+
+  .el-dialog__body {
+    padding: 20px;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  
+  @media (max-width: 768px) {
+    .el-dialog {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      border-radius: 0;
+    }
+
+    .el-dialog__header {
+      padding: 12px 16px;
+      border-radius: 0;
+    }
+
+    .el-dialog__body {
+      padding: 12px;
+      max-height: calc(100vh - 60px);
+    }
+  }
+}
+</style>
