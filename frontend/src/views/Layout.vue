@@ -88,13 +88,8 @@
       <div class="navbar">
         <div class="left-panel">
           <!-- Mobile Back Button -->
-          <div v-if="isMobile" class="mobile-nav-back" @click="router.back()">
-            <el-icon :size="20"><ArrowLeft /></el-icon>
-            <span class="back-text">返回</span>
-          </div>
-
-          <!-- PC Hamburger -->
-          <el-icon v-else class="hamburger" @click="toggleSidebar">
+          <!-- Hamburger (Visible on all devices) -->
+          <el-icon class="hamburger" @click="toggleSidebar">
             <Fold v-if="!isCollapse" />
             <Expand v-else />
           </el-icon>

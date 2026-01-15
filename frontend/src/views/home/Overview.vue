@@ -33,138 +33,255 @@
       </el-col>
     </el-row>
 
-    <!-- Period Statistics Cards (Split) -->
-    <el-row :gutter="20" style="margin-top: 10px;">
-      <!-- Monthly Card -->
-      <el-col :xs="24" :lg="12">
-        <el-card shadow="hover" class="period-card-modern">
-          <template #header>
-            <div class="card-modern-title-bar">
-              <div class="title-left">
-                <el-icon class="title-icon monthly"><TrendCharts /></el-icon>
-                <span>经营状况分析 (近30天)</span>
+    <!-- Period Statistics Cards (Split) - Desktop View -->
+    <template v-if="!isMobile">
+      <el-row :gutter="20" style="margin-top: 10px;">
+        <!-- Monthly Card -->
+        <el-col :span="12">
+          <el-card shadow="hover" class="period-card-modern">
+            <template #header>
+              <div class="card-modern-title-bar">
+                <div class="title-left">
+                  <el-icon class="title-icon monthly"><TrendCharts /></el-icon>
+                  <span>经营状况分析 (近30天)</span>
+                </div>
               </div>
-            </div>
-          </template>
+            </template>
 
-          <div class="period-content-wrapper">
-            <el-row :gutter="0" class="period-content-row">
-              <el-col :xs="24" :sm="12" class="period-col left-col">
-                <div class="section-badge upstream">上游合同</div>
-                <div class="stat-modern-row">
-                  <span class="label">签约数量</span>
-                  <span class="value">{{ periodStats.monthly.upstream_count }} <small>单</small></span>
-                </div>
-                <div class="stat-modern-row highlight">
-                  <span class="label">签约金额</span>
-                  <span class="value income">¥ {{ formatWan(periodStats.monthly.upstream_amount) }} <small>万</small></span>
-                </div>
-                <div class="stat-modern-row highlight">
-                  <span class="label">回款金额</span>
-                  <span class="value success">¥ {{ formatWan(periodStats.monthly.upstream_receipts) }} <small>万</small></span>
-                </div>
-              </el-col>
-              <el-col :xs="24" :sm="12" class="period-col right-col">
-                <div class="section-badge downstream">下游及管理合同</div>
-                <div class="stat-modern-row">
-                  <span class="label">签约数量</span>
-                  <span class="value">{{ periodStats.monthly.downstream_mgmt_count }} <small>单</small></span>
-                </div>
-                <div class="stat-modern-row">
-                  <span class="label">签约金额</span>
-                  <span class="value expense">¥ {{ formatWan(periodStats.monthly.downstream_mgmt_amount) }} <small>万</small></span>
-                </div>
-                <div class="stat-modern-row">
-                  <span class="label">付款金额</span>
-                  <span class="value expense">¥ {{ formatWan(periodStats.monthly.downstream_mgmt_payment) }} <small>万</small></span>
-                </div>
-                <div class="stat-modern-row">
-                  <span class="label">无合同费用</span>
-                  <span class="value text-gray">¥ {{ formatWan(periodStats.monthly.non_contract_expense) }} <small>万</small></span>
-                </div>
-                <div class="stat-modern-row">
-                  <span class="label">零星用工</span>
-                  <span class="value text-gray">¥ {{ formatWan(periodStats.monthly.zero_hour_labor) }} <small>万</small></span>
-                </div>
-              </el-col>
-            </el-row>
-          </div>
-          
-          <!-- Month Trend Chart -->
-          <div style="padding: 20px; border-top: 1px solid #f0f2f5;">
-            <div style="font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #303133;">
-              <el-icon><TrendCharts /></el-icon> 近30天收支趋势
+            <div class="period-content-wrapper">
+              <el-row :gutter="0" class="period-content-row">
+                <el-col :span="12" class="period-col left-col">
+                  <div class="section-badge upstream">上游合同</div>
+                  <div class="stat-modern-row">
+                    <span class="label">签约数量</span>
+                    <span class="value">{{ periodStats.monthly.upstream_count }} <small>单</small></span>
+                  </div>
+                  <div class="stat-modern-row highlight">
+                    <span class="label">签约金额</span>
+                    <span class="value income">¥ {{ formatWan(periodStats.monthly.upstream_amount) }} <small>万</small></span>
+                  </div>
+                  <div class="stat-modern-row highlight">
+                    <span class="label">回款金额</span>
+                    <span class="value success">¥ {{ formatWan(periodStats.monthly.upstream_receipts) }} <small>万</small></span>
+                  </div>
+                </el-col>
+                <el-col :span="12" class="period-col right-col">
+                  <div class="section-badge downstream">下游及管理合同</div>
+                  <div class="stat-modern-row">
+                    <span class="label">签约数量</span>
+                    <span class="value">{{ periodStats.monthly.downstream_mgmt_count }} <small>单</small></span>
+                  </div>
+                  <div class="stat-modern-row">
+                    <span class="label">签约金额</span>
+                    <span class="value expense">¥ {{ formatWan(periodStats.monthly.downstream_mgmt_amount) }} <small>万</small></span>
+                  </div>
+                  <div class="stat-modern-row">
+                    <span class="label">付款金额</span>
+                    <span class="value expense">¥ {{ formatWan(periodStats.monthly.downstream_mgmt_payment) }} <small>万</small></span>
+                  </div>
+                  <div class="stat-modern-row">
+                    <span class="label">无合同费用</span>
+                    <span class="value text-gray">¥ {{ formatWan(periodStats.monthly.non_contract_expense) }} <small>万</small></span>
+                  </div>
+                  <div class="stat-modern-row">
+                    <span class="label">零星用工</span>
+                    <span class="value text-gray">¥ {{ formatWan(periodStats.monthly.zero_hour_labor) }} <small>万</small></span>
+                  </div>
+                </el-col>
+              </el-row>
             </div>
-            <div ref="monthChartRef" style="height: 250px; width: 100%;"></div>
-          </div>
-        </el-card>
-      </el-col>
-
-      <!-- Quarterly Card -->
-      <el-col :xs="24" :lg="12">
-        <el-card shadow="hover" class="period-card-modern">
-          <template #header>
-            <div class="card-modern-title-bar">
-              <div class="title-left">
-                <el-icon class="title-icon quarterly"><TrendCharts /></el-icon>
-                <span>经营状况分析 (近一季度)</span>
+            
+            <!-- Month Trend Chart -->
+            <div style="padding: 20px; border-top: 1px solid #f0f2f5;">
+              <div style="font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #303133;">
+                <el-icon><TrendCharts /></el-icon> 近30天收支趋势
               </div>
+              <div ref="monthChartRef" style="height: 250px; width: 100%;"></div>
             </div>
-          </template>
+          </el-card>
+        </el-col>
 
-          <div class="period-content-wrapper">
-             <el-row :gutter="0" class="period-content-row">
-              <el-col :xs="24" :sm="12" class="period-col left-col">
-                <div class="section-badge upstream kv-badge">上游合同</div>
-                <div class="stat-modern-row">
-                  <span class="label">签约数量</span>
-                  <span class="value">{{ periodStats.quarterly.upstream_count }} <small>单</small></span>
+        <!-- Quarterly Card -->
+        <el-col :span="12">
+          <el-card shadow="hover" class="period-card-modern">
+            <template #header>
+              <div class="card-modern-title-bar">
+                <div class="title-left">
+                  <el-icon class="title-icon quarterly"><TrendCharts /></el-icon>
+                  <span>经营状况分析 (近一季度)</span>
                 </div>
-                <div class="stat-modern-row highlight">
-                  <span class="label">签约金额</span>
-                  <span class="value income">¥ {{ formatWan(periodStats.quarterly.upstream_amount) }} <small>万</small></span>
-                </div>
-                <div class="stat-modern-row highlight">
-                  <span class="label">回款金额</span>
-                  <span class="value success">¥ {{ formatWan(periodStats.quarterly.upstream_receipts) }} <small>万</small></span>
-                </div>
-              </el-col>
-              <el-col :xs="24" :sm="12" class="period-col right-col">
-                <div class="section-badge downstream kv-badge">下游及管理合同</div>
-                <div class="stat-modern-row">
-                  <span class="label">签约数量</span>
-                  <span class="value">{{ periodStats.quarterly.downstream_mgmt_count }} <small>单</small></span>
-                </div>
-                <div class="stat-modern-row">
-                  <span class="label">签约金额</span>
-                  <span class="value expense">¥ {{ formatWan(periodStats.quarterly.downstream_mgmt_amount) }} <small>万</small></span>
-                </div>
-                <div class="stat-modern-row">
-                  <span class="label">付款金额</span>
-                  <span class="value expense">¥ {{ formatWan(periodStats.quarterly.downstream_mgmt_payment) }} <small>万</small></span>
-                </div>
-                <div class="stat-modern-row">
-                  <span class="label">无合同费用</span>
-                  <span class="value text-gray">¥ {{ formatWan(periodStats.quarterly.non_contract_expense) }} <small>万</small></span>
-                </div>
-                <div class="stat-modern-row">
-                  <span class="label">零星用工</span>
-                  <span class="value text-gray">¥ {{ formatWan(periodStats.quarterly.zero_hour_labor) }} <small>万</small></span>
-                </div>
-              </el-col>
-            </el-row>
-          </div>
-          
-          <!-- Quarter Trend Chart -->
-          <div style="padding: 20px; border-top: 1px solid #f0f2f5;">
-            <div style="font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #303133;">
-              <el-icon><TrendCharts /></el-icon> 近90天收支趋势
+              </div>
+            </template>
+
+            <div class="period-content-wrapper">
+               <el-row :gutter="0" class="period-content-row">
+                <el-col :span="12" class="period-col left-col">
+                  <div class="section-badge upstream kv-badge">上游合同</div>
+                  <div class="stat-modern-row">
+                    <span class="label">签约数量</span>
+                    <span class="value">{{ periodStats.quarterly.upstream_count }} <small>单</small></span>
+                  </div>
+                  <div class="stat-modern-row highlight">
+                    <span class="label">签约金额</span>
+                    <span class="value income">¥ {{ formatWan(periodStats.quarterly.upstream_amount) }} <small>万</small></span>
+                  </div>
+                  <div class="stat-modern-row highlight">
+                    <span class="label">回款金额</span>
+                    <span class="value success">¥ {{ formatWan(periodStats.quarterly.upstream_receipts) }} <small>万</small></span>
+                  </div>
+                </el-col>
+                <el-col :span="12" class="period-col right-col">
+                  <div class="section-badge downstream kv-badge">下游及管理合同</div>
+                  <div class="stat-modern-row">
+                    <span class="label">签约数量</span>
+                    <span class="value">{{ periodStats.quarterly.downstream_mgmt_count }} <small>单</small></span>
+                  </div>
+                  <div class="stat-modern-row">
+                    <span class="label">签约金额</span>
+                    <span class="value expense">¥ {{ formatWan(periodStats.quarterly.downstream_mgmt_amount) }} <small>万</small></span>
+                  </div>
+                  <div class="stat-modern-row">
+                    <span class="label">付款金额</span>
+                    <span class="value expense">¥ {{ formatWan(periodStats.quarterly.downstream_mgmt_payment) }} <small>万</small></span>
+                  </div>
+                  <div class="stat-modern-row">
+                    <span class="label">无合同费用</span>
+                    <span class="value text-gray">¥ {{ formatWan(periodStats.quarterly.non_contract_expense) }} <small>万</small></span>
+                  </div>
+                  <div class="stat-modern-row">
+                    <span class="label">零星用工</span>
+                    <span class="value text-gray">¥ {{ formatWan(periodStats.quarterly.zero_hour_labor) }} <small>万</small></span>
+                  </div>
+                </el-col>
+              </el-row>
             </div>
-            <div ref="quarterChartRef" style="height: 250px; width: 100%;"></div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+            
+            <!-- Quarter Trend Chart -->
+            <div style="padding: 20px; border-top: 1px solid #f0f2f5;">
+              <div style="font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #303133;">
+                <el-icon><TrendCharts /></el-icon> 近90天收支趋势
+              </div>
+              <div ref="quarterChartRef" style="height: 250px; width: 100%;"></div>
+            </div>
+          </el-card>
+        </el-col>
+      </el-row>
+    </template>
+
+    <!-- Mobile Tabbed View -->
+    <template v-else>
+      <el-row style="margin-top: 10px;">
+        <el-col :span="24">
+          <el-card shadow="never" class="period-card-modern mobile-tabs-card">
+            <el-tabs v-model="mobileActiveTab" class="mobile-dashboard-tabs">
+              <el-tab-pane label="近30天分析" name="monthly">
+                <div class="period-content-wrapper">
+                  <el-row :gutter="0" class="period-content-row">
+                    <el-col :span="12" class="period-col left-col">
+                      <div class="section-badge upstream">上游合同</div>
+                       <div class="stat-modern-row">
+                        <span class="label">签约</span>
+                        <span class="value">{{ periodStats.monthly.upstream_count }} <small>单</small></span>
+                      </div>
+                      <div class="stat-modern-row highlight">
+                        <span class="label">金额</span>
+                        <span class="value income">¥ {{ formatWan(periodStats.monthly.upstream_amount) }}</span>
+                      </div>
+                      <div class="stat-modern-row highlight">
+                        <span class="label">回款</span>
+                        <span class="value success">¥ {{ formatWan(periodStats.monthly.upstream_receipts) }}</span>
+                      </div>
+                    </el-col>
+                    <el-col :span="12" class="period-col right-col">
+                      <div class="section-badge downstream">下游/管理</div>
+                       <div class="stat-modern-row">
+                        <span class="label">签约</span>
+                        <span class="value">{{ periodStats.monthly.downstream_mgmt_count }} <small>单</small></span>
+                      </div>
+                      <div class="stat-modern-row">
+                        <span class="label">金额</span>
+                        <span class="value expense">¥ {{ formatWan(periodStats.monthly.downstream_mgmt_amount) }}</span>
+                      </div>
+                      <div class="stat-modern-row">
+                        <span class="label">付款</span>
+                        <span class="value expense">¥ {{ formatWan(periodStats.monthly.downstream_mgmt_payment) }}</span>
+                      </div>
+                       <div class="stat-modern-row">
+                        <span class="label">无合同</span>
+                        <span class="value text-gray">¥ {{ formatWan(periodStats.monthly.non_contract_expense) }}</span>
+                      </div>
+                      <div class="stat-modern-row">
+                        <span class="label">零星</span>
+                        <span class="value text-gray">¥ {{ formatWan(periodStats.monthly.zero_hour_labor) }}</span>
+                      </div>
+                    </el-col>
+                  </el-row>
+                </div>
+                <!-- Month Trend Chart (Mobile) -->
+                <div style="padding: 10px; border-top: 1px solid #f0f2f5;">
+                   <div style="font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #303133;">
+                    <el-icon><TrendCharts /></el-icon> 近30天趋势
+                  </div>
+                  <div ref="mobileMonthChartRef" style="height: 250px; width: 100%;"></div>
+                </div>
+              </el-tab-pane>
+
+              <el-tab-pane label="近一季度分析" name="quarterly">
+                <div class="period-content-wrapper">
+                   <el-row :gutter="0" class="period-content-row">
+                    <el-col :span="12" class="period-col left-col">
+                      <div class="section-badge upstream kv-badge">上游合同</div>
+                       <div class="stat-modern-row">
+                        <span class="label">签约</span>
+                        <span class="value">{{ periodStats.quarterly.upstream_count }} <small>单</small></span>
+                      </div>
+                      <div class="stat-modern-row highlight">
+                        <span class="label">金额</span>
+                        <span class="value income">¥ {{ formatWan(periodStats.quarterly.upstream_amount) }}</span>
+                      </div>
+                      <div class="stat-modern-row highlight">
+                        <span class="label">回款</span>
+                        <span class="value success">¥ {{ formatWan(periodStats.quarterly.upstream_receipts) }}</span>
+                      </div>
+                    </el-col>
+                    <el-col :span="12" class="period-col right-col">
+                      <div class="section-badge downstream kv-badge">下游/管理</div>
+                       <div class="stat-modern-row">
+                        <span class="label">签约</span>
+                        <span class="value">{{ periodStats.quarterly.downstream_mgmt_count }} <small>单</small></span>
+                      </div>
+                      <div class="stat-modern-row">
+                        <span class="label">金额</span>
+                        <span class="value expense">¥ {{ formatWan(periodStats.quarterly.downstream_mgmt_amount) }}</span>
+                      </div>
+                      <div class="stat-modern-row">
+                        <span class="label">付款</span>
+                        <span class="value expense">¥ {{ formatWan(periodStats.quarterly.downstream_mgmt_payment) }}</span>
+                      </div>
+                       <div class="stat-modern-row">
+                        <span class="label">无合同</span>
+                        <span class="value text-gray">¥ {{ formatWan(periodStats.quarterly.non_contract_expense) }}</span>
+                      </div>
+                       <div class="stat-modern-row">
+                        <span class="label">零星</span>
+                        <span class="value text-gray">¥ {{ formatWan(periodStats.quarterly.zero_hour_labor) }}</span>
+                      </div>
+                    </el-col>
+                  </el-row>
+                </div>
+                 <!-- Quarter Trend Chart (Mobile) -->
+                <div style="padding: 10px; border-top: 1px solid #f0f2f5;">
+                   <div style="font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #303133;">
+                    <el-icon><TrendCharts /></el-icon> 近90天趋势
+                  </div>
+                  <div ref="mobileQuarterChartRef" style="height: 250px; width: 100%;"></div>
+                </div>
+              </el-tab-pane>
+            </el-tabs>
+          </el-card>
+        </el-col>
+      </el-row>
+    </template>
     
     <!-- Charts Section -->
     <el-row :gutter="20" style="margin-top: 20px;">
@@ -211,6 +328,10 @@ import { getStats, getPeriodStats, getPeriodTrend } from '@/api/dashboard'
 import { getFinanceTrend } from '@/api/reports'
 import { ElMessage } from 'element-plus'
 import { TrendCharts, Money, Wallet, Coin, DataAnalysis, PieChart, Document, ArrowRight } from '@element-plus/icons-vue'
+import { useDevice } from '@/composables/useDevice'
+
+const { isMobile } = useDevice()
+const mobileActiveTab = ref('monthly')
 
 const barChartRef = ref(null)
 const pieCategoryChartRef = ref(null)
@@ -218,6 +339,8 @@ const pieCompanyChartRef = ref(null)
 // Rename ref to distinct names
 const monthChartRef = ref(null)
 const quarterChartRef = ref(null)
+const mobileMonthChartRef = ref(null)
+const mobileQuarterChartRef = ref(null)
 
 let barChart = null
 let pieCategoryChart = null
@@ -225,12 +348,26 @@ let pieCompanyChart = null
 // Rename vars
 let monthChart = null
 let quarterChart = null
+let mobileMonthChart = null
+let mobileQuarterChart = null
 
 const currentYear = new Date().getFullYear().toString()
 // const activePeriod = ref('monthly') - REMOVED
 
 // Watcher removed because we load both now
 
+// Watch mobile tab change to resize/init charts
+watch(mobileActiveTab, (val) => {
+  nextTick(() => {
+    if (val === 'monthly') {
+      if (mobileMonthChart) mobileMonthChart.resize()
+      else if (monthTrendData) initMonthChart(monthTrendData)
+    } else {
+      if (mobileQuarterChart) mobileQuarterChart.resize()
+      else if (quarterTrendData) initQuarterChart(quarterTrendData)
+    }
+  })
+})
 
 const cardData = ref([
   { title: '年度上游签约', value: 0, count: 0, tag: '总览', color: 'linear-gradient(135deg, #1890FF 0%, #36CFC9 100%)', icon: 'Document', subInfo: '累计签约总额' },
@@ -273,6 +410,9 @@ const formatWan = (val) => {
   return (Number(val) / 10000).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+let monthTrendData = null
+let quarterTrendData = null
+
 const fetchData = async () => {
   try {
     // Fetch everything in parallel, including both trend periods
@@ -301,14 +441,18 @@ const fetchData = async () => {
     // Update Period Statistics
     periodStats.value = periodRes
     
+    // Save data for re-init
+    monthTrendData = monthTrendRes
+    quarterTrendData = quarterTrendRes
+
     // Init Charts
     initTrendChart(trendRes)
     if (charts.pie_category) initCategoryPie(charts.pie_category)
     if (charts.pie_company) initCompanyPie(charts.pie_company)
     
     // Init both period charts
-    initMonthChart(monthTrendRes)
-    initQuarterChart(quarterTrendRes)
+    initMonthChart(monthTrendData)
+    initQuarterChart(quarterTrendData)
 
   } catch (error) {
     console.error(error)
@@ -319,17 +463,33 @@ const fetchData = async () => {
 
 
 const initMonthChart = (data) => {
-  if (!monthChartRef.value) return
-  if (monthChart) monthChart.dispose()
-  monthChart = echarts.init(monthChartRef.value)
-  setChartOption(monthChart, data, 4) // Show date every 5 days
+  // Desktop
+  if (monthChartRef.value) {
+    if (monthChart) monthChart.dispose()
+    monthChart = echarts.init(monthChartRef.value)
+    setChartOption(monthChart, data, 4) // Show date every 5 days
+  }
+  // Mobile
+  if (mobileMonthChartRef.value) {
+    if (mobileMonthChart) mobileMonthChart.dispose()
+    mobileMonthChart = echarts.init(mobileMonthChartRef.value)
+    setChartOption(mobileMonthChart, data, 4)
+  }
 }
 
 const initQuarterChart = (data) => {
-  if (!quarterChartRef.value) return
-  if (quarterChart) quarterChart.dispose()
-  quarterChart = echarts.init(quarterChartRef.value)
-  setChartOption(quarterChart, data, 9) // Show date every 10 days
+  // Desktop
+  if (quarterChartRef.value) {
+    if (quarterChart) quarterChart.dispose()
+    quarterChart = echarts.init(quarterChartRef.value)
+    setChartOption(quarterChart, data, 9) // Show date every 10 days
+  }
+  // Mobile
+  if (mobileQuarterChartRef.value) {
+    if (mobileQuarterChart) mobileQuarterChart.dispose()
+    mobileQuarterChart = echarts.init(mobileQuarterChartRef.value)
+    setChartOption(mobileQuarterChart, data, 9)
+  }
 }
 
 const setChartOption = (chartInstance, data, axisInterval = 'auto') => {
@@ -440,7 +600,10 @@ const setChartOption = (chartInstance, data, axisInterval = 'auto') => {
             bottom: 0
           },
           grid: {
-            bottom: '80px',
+             top: '15%',
+             bottom: '60px',
+             left: '12%', // Increased left margin for Y-axis label
+             containLabel: true
           },
           xAxis: {
             axisLabel: {
