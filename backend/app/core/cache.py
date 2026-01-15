@@ -8,6 +8,7 @@ import json
 import logging
 import hashlib
 from datetime import timedelta
+import time
 
 try:
     import redis.asyncio as redis
@@ -16,17 +17,30 @@ except ImportError:
     REDIS_AVAILABLE = False
     redis = None
 
+try:
+    from cachetools import TTLCache
+    TTLCACHE_AVAILABLE = True
+except ImportError:
+    TTLCACHE_AVAILABLE = False
+    TTLCache = None
+
 from app.config import settings
 
 logger = logging.getLogger(__name__)
 
 
 class CacheManager:
-    """Async Redis cache manager with fallback to in-memory cache"""
+    """Async Redis cache manager with fallback to in-memory TTL cache"""
     
     def __init__(self):
         self.redis_client: Optional[redis.Redis] = None
-        self.memory_cache = {}  # Fallback in-memory cache
+        # Use TTLCache with 1000 max items and 5 minute default TTL
+        if TTLCACHE_AVAILABLE:
+            self.memory_cache = TTLCache(maxsize=1000, ttl=300)
+        else:
+            # Fallback to dict with manual TTL tracking
+            self.memory_cache = {}
+            self.memory_cache_expiry = {}  # Track expiry times
         self.use_redis = REDIS_AVAILABLE
         
     async def connect(self):
@@ -73,8 +87,19 @@ class CacheManager:
                 if value:
                     return json.loads(value)
             else:
-                # Fallback to memory cache
-                return self.memory_cache.get(key)
+                # Fallback to memory cache with TTL support
+                if TTLCACHE_AVAILABLE:
+                    # TTLCache handles expiry automatically
+                    return self.memory_cache.get(key)
+                else:
+                    # Manual expiry check
+                    expiry = self.memory_cache_expiry.get(key, 0)
+                    if time.time() > expiry:
+                        # Expired - remove and return None
+                        self.memory_cache.pop(key, None)
+                        self.memory_cache_expiry.pop(key, None)
+                        return None
+                    return self.memory_cache.get(key)
         except Exception as e:
             logger.error(f"[CACHE] Error getting key {key}: {e}")
         return None
@@ -87,8 +112,15 @@ class CacheManager:
             if self.use_redis and self.redis_client:
                 await self.redis_client.setex(key, ttl, json_value)
             else:
-                # Fallback to memory cache (no TTL support in simple dict)
-                self.memory_cache[key] = json.loads(json_value)
+                # Fallback to memory cache with TTL
+                if TTLCACHE_AVAILABLE:
+                    # TTLCache uses its configured TTL, but we can't set per-key TTL
+                    # For per-key TTL, we'd need a different approach
+                    self.memory_cache[key] = json.loads(json_value)
+                else:
+                    # Manual TTL tracking
+                    self.memory_cache[key] = json.loads(json_value)
+                    self.memory_cache_expiry[key] = time.time() + ttl
             
             return True
         except Exception as e:

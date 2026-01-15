@@ -40,8 +40,9 @@ python-magic==0.4.27
 
 
 # Performance & Caching
-redis==5.0.1
-hiredis==2.3.2
+redis>=5.0.1,<5.1.0
+hiredis>=2.3.2,<2.4.0
+cachetools>=5.5.0,<5.6.0
 
 xlsxwriter
 
