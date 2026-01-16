@@ -102,7 +102,7 @@ async def health_check_detailed(db: AsyncSession = Depends(get_db)):
     return {
         "status": overall_status,
         "checks": checks,
-        "version": "1.5.0"
+        "version": "1.5.1"
     }
 
 
