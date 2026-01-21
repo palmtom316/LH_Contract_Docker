@@ -385,6 +385,25 @@ const userStore = useUserStore()
 const router = useRouter()
 const route = useRoute()
 const { isMobile, checkIsMobile } = useMobileDetection()
+
+const {
+  loading,
+  list: contractList,
+  total,
+  queryParams,
+  getList,
+  handleQuery,
+  resetQuery,
+  handleDelete,
+  handleExport,
+  formatMoney,
+  getStatusType
+} = useContractList({
+  api: { getContracts, deleteContract, exportContracts },
+  contractType: '管理合同',
+  exportPrefix: '管理合同列表'
+})
+
 const { getSummaries: baseGetSummaries, footerCellStyle } = useTableSummary()
 
 const getSummaries = (param) => {
