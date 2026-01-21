@@ -106,30 +106,30 @@
                 <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.4', maxHeight: '3em', overflow: 'hidden' }">{{ scope.row.party_b_name }}</div>
               </template>
             </el-table-column>
-            <el-table-column prop="contract_amount" label="签约金额" width="120" align="right">
+            <el-table-column prop="contract_amount" label="签约金额" width="150" align="right">
               <template #default="scope">
                 <span style="white-space: nowrap;">¥ {{ formatMoney(scope.row.contract_amount) }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="total_receivable" label="应收" width="130" align="right">
+            <el-table-column prop="total_receivable" label="应收" width="140" align="right">
               <template #default="scope">
                 <span v-if="scope.row.total_receivable" style="white-space: nowrap;">¥ {{ formatMoney(scope.row.total_receivable) }}</span>
                 <span v-else class="text-gray">-</span>
               </template>
             </el-table-column>
-            <el-table-column prop="total_invoiced" label="挂账" width="130" align="right">
+            <el-table-column prop="total_invoiced" label="挂账" width="140" align="right">
               <template #default="scope">
                 <span v-if="scope.row.total_invoiced" style="white-space: nowrap;">¥ {{ formatMoney(scope.row.total_invoiced) }}</span>
                 <span v-else class="text-gray">-</span>
               </template>
             </el-table-column>
-            <el-table-column prop="total_received" label="回款" width="130" align="right">
+            <el-table-column prop="total_received" label="回款" width="140" align="right">
               <template #default="scope">
                 <span v-if="scope.row.total_received" style="white-space: nowrap;">¥ {{ formatMoney(scope.row.total_received) }}</span>
                 <span v-else class="text-gray">-</span>
               </template>
             </el-table-column>
-            <el-table-column prop="total_settlement" label="结算" width="130" align="right">
+            <el-table-column prop="total_settlement" label="结算" width="140" align="right">
               <template #default="scope">
                 <span v-if="scope.row.total_settlement" style="white-space: nowrap;">¥ {{ formatMoney(scope.row.total_settlement) }}</span>
                 <span v-else class="text-gray">-</span>
