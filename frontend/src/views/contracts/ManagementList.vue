@@ -17,6 +17,20 @@
             <el-option label="合同中止" value="合同中止" />
           </el-select>
         </el-form-item>
+        <el-form-item label="签订日期">
+          <el-date-picker
+            v-model="dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+            :style="{ width: isMobile ? '100%' : '240px' }"
+          />
+        </el-form-item>
+        <el-form-item label="分类">
+          <DictSelect v-model="queryParams.category" category="management_contract_category" placeholder="合同分类" clearable :style="{ width: isMobile ? '100%' : '150px' }" />
+        </el-form-item>
         <el-form-item>
           <div class="filter-actions" :class="{ 'mobile-actions': isMobile }">
             <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -392,8 +406,8 @@ const {
   total,
   queryParams,
   getList,
-  handleQuery,
-  resetQuery,
+  handleQuery: baseHandleQuery,
+  resetQuery: baseResetQuery,
   handleDelete,
   handleExport,
   formatMoney,
@@ -403,6 +417,28 @@ const {
   contractType: '管理合同',
   exportPrefix: '管理合同列表'
 })
+
+const dateRange = ref([])
+
+const handleQuery = () => {
+  queryParams.page = 1
+  if (dateRange.value && dateRange.value.length === 2) {
+    queryParams.start_date = dateRange.value[0]
+    queryParams.end_date = dateRange.value[1]
+  } else {
+    queryParams.start_date = undefined
+    queryParams.end_date = undefined
+  }
+  getList()
+}
+
+const resetQuery = () => {
+  dateRange.value = []
+  queryParams.start_date = undefined
+  queryParams.end_date = undefined
+  queryParams.category = undefined
+  baseResetQuery()
+}
 
 const { getSummaries: baseGetSummaries, footerCellStyle } = useTableSummary()
 

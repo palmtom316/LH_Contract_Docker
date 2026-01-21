@@ -48,7 +48,10 @@ class ContractDownstreamService:
         page: int = 1,
         page_size: int = 10,
         keyword: Optional[str] = None,
-        status: Optional[str] = None
+        status: Optional[str] = None,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        category: Optional[str] = None
     ) -> Dict[str, Any]:
         """List contracts with filtering and pagination"""
         query = select(ContractDownstream).options(
@@ -75,6 +78,15 @@ class ContractDownstreamService:
         if status:
             query = query.where(ContractDownstream.status == status)
 
+        if start_date:
+            query = query.where(ContractDownstream.sign_date >= start_date)
+        
+        if end_date:
+            query = query.where(ContractDownstream.sign_date <= end_date)
+
+        if category:
+            query = query.where(ContractDownstream.category == category)
+
         # Count total
         count_query = select(func.count()).select_from(query.subquery())
         total = (await self.db.execute(count_query)).scalar_one()
@@ -91,7 +103,14 @@ class ContractDownstreamService:
             "page_size": page_size
         }
 
-    async def list_all_contracts(self, keyword: Optional[str] = None, status: Optional[str] = None) -> List[ContractDownstream]:
+    async def list_all_contracts(
+        self, 
+        keyword: Optional[str] = None, 
+        status: Optional[str] = None,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        category: Optional[str] = None
+    ) -> List[ContractDownstream]:
         """List all contracts for export (no pagination)"""
         query = select(ContractDownstream).options(
             selectinload(ContractDownstream.upstream_contract),
@@ -115,6 +134,15 @@ class ContractDownstreamService:
 
         if status:
             query = query.where(ContractDownstream.status == status)
+
+        if start_date:
+            query = query.where(ContractDownstream.sign_date >= start_date)
+        
+        if end_date:
+            query = query.where(ContractDownstream.sign_date <= end_date)
+
+        if category:
+            query = query.where(ContractDownstream.category == category)
 
         query = query.order_by(desc(ContractDownstream.created_at))
         result = await self.db.execute(query)

@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, date
 import pandas as pd
 import io
 import urllib.parse
@@ -41,12 +41,15 @@ def get_contract_service(db: AsyncSession = Depends(get_db)) -> ContractManageme
 async def export_contracts(
     keyword: Optional[str] = None,
     status: Optional[str] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    category: Optional[str] = None,
     current_user: User = Depends(require_permission(Permission.VIEW_MANAGEMENT_BASIC_INFO)),
     service: ContractManagementService = Depends(get_contract_service)
 ):
     """Export management contracts to Excel"""
     try:
-        contracts = await service.list_all_contracts(keyword, status)
+        contracts = await service.list_all_contracts(keyword, status, start_date, end_date, category)
         
         # Create DataFrame
         data = []
@@ -95,11 +98,14 @@ async def list_contracts(
     page_size: int = Query(10, ge=1, le=100, description="Items per page (max 100)"),
     keyword: Optional[str] = None,
     status: Optional[str] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    category: Optional[str] = None,
     current_user: User = Depends(require_permission(Permission.VIEW_MANAGEMENT_BASIC_INFO)),
     service: ContractManagementService = Depends(get_contract_service)
 ):
     """List management contracts with pagination and filtering"""
-    return await service.list_contracts(page, page_size, keyword, status)
+    return await service.list_contracts(page, page_size, keyword, status, start_date, end_date, category)
 
 
 @router.post("/", response_model=ContractManagementResponse, status_code=status.HTTP_201_CREATED)
