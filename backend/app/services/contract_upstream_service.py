@@ -50,7 +50,12 @@ class ContractUpstreamService:
         keyword: Optional[str] = None, 
         status: Optional[str] = None,
         start_date: Optional[date] = None,
-        end_date: Optional[date] = None
+        end_date: Optional[date] = None,
+        company_category: Optional[str] = None,
+        category: Optional[str] = None,
+        management_mode: Optional[str] = None,
+        start_month: Optional[str] = None,
+        end_month: Optional[str] = None
     ) -> Dict[str, Any]:
         """List contracts with filtering and pagination"""
         query = select(ContractUpstream).options(
@@ -76,10 +81,43 @@ class ContractUpstreamService:
         if status:
             query = query.where(ContractUpstream.status == status)
             
+        if company_category:
+            query = query.where(ContractUpstream.company_category == company_category)
+            
+        if category:
+            query = query.where(ContractUpstream.category == category)
+            
+        if management_mode:
+            query = query.where(ContractUpstream.management_mode == management_mode)
+            
         if start_date:
             query = query.where(ContractUpstream.sign_date >= start_date)
         if end_date:
             query = query.where(ContractUpstream.sign_date <= end_date)
+            
+        if start_month:
+            # start_month format: YYYY-MM
+            try:
+                # Convert to date (first day of month)
+                s_year, s_month = map(int, start_month.split('-'))
+                s_date = date(s_year, s_month, 1)
+                query = query.where(ContractUpstream.sign_date >= s_date)
+            except ValueError:
+                pass # Ignore invalid date format
+
+        if end_month:
+            # end_month format: YYYY-MM
+            try:
+                # Convert to date (last day of month)
+                e_year, e_month = map(int, end_month.split('-'))
+                if e_month == 12:
+                    e_date = date(e_year + 1, 1, 1)
+                else:
+                    e_date = date(e_year, e_month + 1, 1)
+                # Less than first day of next month includes all of current month
+                query = query.where(ContractUpstream.sign_date < e_date)
+            except ValueError:
+                pass
             
         # Count total
         count_query = select(func.count()).select_from(query.subquery())
@@ -97,7 +135,14 @@ class ContractUpstreamService:
             "page_size": page_size
         }
 
-    async def list_all_contracts(self, keyword: Optional[str] = None, status: Optional[str] = None) -> List[ContractUpstream]:
+    async def list_all_contracts(
+        self, 
+        keyword: Optional[str] = None, 
+        status: Optional[str] = None,
+        company_category: Optional[str] = None,
+        category: Optional[str] = None,
+        management_mode: Optional[str] = None
+    ) -> List[ContractUpstream]:
         """List all contracts for export (no pagination)"""
         query = select(ContractUpstream).options(
             selectinload(ContractUpstream.receivables),

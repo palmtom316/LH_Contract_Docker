@@ -52,24 +52,37 @@ async def list_contracts(
     status: Optional[str] = None,
     start_date: Optional[date] = Query(None, description="Start date for filtering"),
     end_date: Optional[date] = Query(None, description="End date for filtering"),
+    company_category: Optional[str] = Query(None, description="Company contract category"),
+    category: Optional[str] = Query(None, description="Contract category"),
+    management_mode: Optional[str] = Query(None, description="Management mode"),
+    start_month: Optional[str] = Query(None, description="Start month (YYYY-MM)"),
+    end_month: Optional[str] = Query(None, description="End month (YYYY-MM)"),
     current_user: User = Depends(require_permission(Permission.VIEW_UPSTREAM_BASIC_INFO)),
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
     """List upstream contracts with pagination and filtering"""
-    return await service.list_contracts(page, page_size, keyword, status, start_date, end_date)
+    return await service.list_contracts(
+        page, page_size, keyword, status, start_date, end_date,
+        company_category, category, management_mode, start_month, end_month
+    )
 
 
 @router.get("/export/excel", response_class=StreamingResponse)
 async def export_contracts(
     keyword: Optional[str] = None,
     status: Optional[str] = None,
+    company_category: Optional[str] = Query(None, description="Company contract category"),
+    category: Optional[str] = Query(None, description="Contract category"),
+    management_mode: Optional[str] = Query(None, description="Management mode"),
     current_user: User = Depends(require_permission(Permission.VIEW_UPSTREAM_BASIC_INFO)),
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
     """Export contracts to Excel"""
     try:
         # 1. Get Data from Service
-        contracts = await service.list_all_contracts(keyword, status)
+        contracts = await service.list_all_contracts(
+            keyword, status, company_category, category, management_mode
+        )
         
         # 2. Convert to DataFrame
         data = []
