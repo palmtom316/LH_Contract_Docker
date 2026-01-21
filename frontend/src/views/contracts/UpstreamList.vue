@@ -608,7 +608,7 @@ const {
   total,
   queryParams,
   getList: fetchList,
-  handleQuery,
+  handleQuery: baseHandleQuery,
   resetQuery: baseResetQuery,
   handleDelete,
   handleExport,
@@ -732,12 +732,24 @@ const handleTabChange = () => {
   getList()
 }
 
+const handleQuery = () => {
+  queryParams.page = 1
+  getList()
+}
+
 const resetQuery = () => {
   dateRange.value = []
   monthRange.value = []
   queryParams.company_category = ''
   queryParams.category = ''
   queryParams.management_mode = ''
+  
+  // Clear date/month params explicitly
+  queryParams.start_date = undefined
+  queryParams.end_date = undefined
+  queryParams.start_month = undefined
+  queryParams.end_month = undefined
+
   baseResetQuery()
 }
 
