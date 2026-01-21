@@ -90,7 +90,7 @@
             :footer-cell-style="footerCellStyle"
           >
             <el-table-column prop="serial_number" label="合同序号" width="100" align="center" fixed="left" />
-            <el-table-column prop="contract_code" label="合同编号" min-width="140" show-overflow-tooltip />
+            <el-table-column prop="contract_code" label="合同编号" min-width="100" show-overflow-tooltip />
             <el-table-column prop="contract_name" label="合同名称" min-width="160" show-overflow-tooltip>
               <template #default="scope">
                 <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.4', maxHeight: '3em', overflow: 'hidden' }">{{ scope.row.contract_name }}</div>
@@ -141,7 +141,7 @@
                 <el-tag :type="getStatusType(scope.row.status)" size="small">{{ scope.row.status }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="company_category" label="分类" width="80" align="center" show-overflow-tooltip />
+            <el-table-column prop="company_category" label="分类" width="120" align="center" show-overflow-tooltip />
             <el-table-column label="文件" width="60" align="center">
               <template #default="scope">
                 <el-button 
@@ -595,8 +595,12 @@ import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
 const route = useRoute()
-const { getSummaries, footerCellStyle } = useTableSummary()
+const { getSummaries: baseGetSummaries, footerCellStyle } = useTableSummary()
 const { isMobile, checkIsMobile } = useMobileDetection()
+
+const getSummaries = (param) => {
+  return baseGetSummaries(param, ['contract_amount', 'total_receivable', 'total_invoiced', 'total_received', 'total_settlement'])
+}
 
 const {
   loading,

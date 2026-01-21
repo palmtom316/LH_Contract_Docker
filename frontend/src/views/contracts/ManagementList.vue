@@ -56,7 +56,7 @@
         :footer-cell-style="footerCellStyle"
       >
         <el-table-column prop="serial_number" label="合同序号" width="100" fixed />
-        <el-table-column prop="contract_code" label="合同编号" width="150" fixed />
+        <el-table-column prop="contract_code" label="合同编号" min-width="100" fixed />
         <el-table-column prop="contract_name" label="合同名称" min-width="220">
           <template #default="scope">
             <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.contract_name }}</div>
@@ -68,7 +68,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="company_category" label="费用归属" width="100" show-overflow-tooltip />
-        <el-table-column prop="category" label="合同类别" width="120" show-overflow-tooltip />
+        <el-table-column prop="category" label="合同类别" width="140" show-overflow-tooltip />
         <el-table-column prop="contract_amount" label="合同金额" width="120" align="right">
           <template #default="scope">
             <span style="white-space: nowrap;">¥ {{ Number(scope.row.contract_amount).toLocaleString() }}</span>
@@ -404,6 +404,12 @@ const {
   contractType: '管理合同',
   exportPrefix: '管理合同列表'
 })
+
+const { getSummaries: baseGetSummaries, footerCellStyle } = useTableSummary()
+
+const getSummaries = (param) => {
+  return baseGetSummaries(param, ['contract_amount', 'total_payable', 'total_invoiced', 'total_paid', 'total_settlement'])
+}
 
 const fileList = ref([])
 const originalId = ref(null)
