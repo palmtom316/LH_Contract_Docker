@@ -188,7 +188,7 @@
 
         <el-table-column prop="amount" label="金额" width="120" align="right">
           <template #default="scope">
-             ¥ {{ Number(scope.row.amount).toLocaleString() }}
+             <span style="white-space: nowrap;">¥ {{ Number(scope.row.amount).toLocaleString() }}</span>
           </template>
         </el-table-column>
 
@@ -852,5 +852,6 @@ onUnmounted(() => {
   background-color: #FFFF00 !important;
   color: #000000 !important; /* Black */
   font-weight: bold !important;
+  white-space: nowrap !important;
 }
 </style>

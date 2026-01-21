@@ -19,6 +19,27 @@
                 <el-option label="合同中止" value="合同中止" />
               </el-select>
             </el-form-item>
+            <el-form-item label="公司合同分类" v-if="!isMobile">
+              <DictSelect v-model="queryParams.company_category" category="project_category" placeholder="请选择" clearable :style="{ width: '140px' }" />
+            </el-form-item>
+            <el-form-item label="合同类别" v-if="!isMobile">
+              <DictSelect v-model="queryParams.category" category="contract_category" placeholder="请选择" clearable :style="{ width: '140px' }" />
+            </el-form-item>
+            <el-form-item label="管理模式" v-if="!isMobile">
+              <DictSelect v-model="queryParams.management_mode" category="management_mode" placeholder="请选择" clearable :style="{ width: '140px' }" />
+            </el-form-item>
+            <el-form-item label="签约月份" v-if="!isMobile">
+              <el-date-picker
+                v-model="monthRange"
+                type="monthrange"
+                range-separator="至"
+                start-placeholder="开始月份"
+                end-placeholder="结束月份"
+                value-format="YYYY-MM"
+                unlink-panels
+                :style="{ width: '240px' }"
+              />
+            </el-form-item>
             <el-form-item>
               <div class="filter-actions" :class="{ 'mobile-actions': isMobile }">
                 <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -70,58 +91,58 @@
           >
             <el-table-column prop="serial_number" label="合同序号" width="100" align="center" fixed="left" />
             <el-table-column prop="contract_code" label="合同编号" min-width="140" show-overflow-tooltip />
-            <el-table-column prop="contract_name" label="合同名称" min-width="220">
+            <el-table-column prop="contract_name" label="合同名称" min-width="160" show-overflow-tooltip>
               <template #default="scope">
-                <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.contract_name }}</div>
+                <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.4', maxHeight: '3em', overflow: 'hidden' }">{{ scope.row.contract_name }}</div>
               </template>
             </el-table-column>
-            <el-table-column prop="party_a_name" label="甲方单位" min-width="180">
+            <el-table-column prop="party_a_name" label="甲方" min-width="120" show-overflow-tooltip>
               <template #default="scope">
-                <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.party_a_name }}</div>
+                <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.4', maxHeight: '3em', overflow: 'hidden' }">{{ scope.row.party_a_name }}</div>
               </template>
             </el-table-column>
-            <el-table-column prop="party_b_name" label="乙方单位" min-width="180">
+            <el-table-column prop="party_b_name" label="乙方" min-width="120" show-overflow-tooltip>
               <template #default="scope">
-                <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.party_b_name }}</div>
+                <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.4', maxHeight: '3em', overflow: 'hidden' }">{{ scope.row.party_b_name }}</div>
               </template>
             </el-table-column>
-            <el-table-column prop="contract_amount" label="签约金额" width="140" align="right">
+            <el-table-column prop="contract_amount" label="签约金额" width="120" align="right">
               <template #default="scope">
-                ¥ {{ formatMoney(scope.row.contract_amount) }}
+                <span style="white-space: nowrap;">¥ {{ formatMoney(scope.row.contract_amount) }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="total_receivable" label="应收款" width="120" align="right">
+            <el-table-column prop="total_receivable" label="应收" width="105" align="right">
               <template #default="scope">
-                <span v-if="scope.row.total_receivable">¥ {{ formatMoney(scope.row.total_receivable) }}</span>
+                <span v-if="scope.row.total_receivable" style="white-space: nowrap;">¥ {{ formatMoney(scope.row.total_receivable) }}</span>
                 <span v-else class="text-gray">-</span>
               </template>
             </el-table-column>
-            <el-table-column prop="total_invoiced" label="挂账" width="120" align="right">
+            <el-table-column prop="total_invoiced" label="挂账" width="105" align="right">
               <template #default="scope">
-                <span v-if="scope.row.total_invoiced">¥ {{ formatMoney(scope.row.total_invoiced) }}</span>
+                <span v-if="scope.row.total_invoiced" style="white-space: nowrap;">¥ {{ formatMoney(scope.row.total_invoiced) }}</span>
                 <span v-else class="text-gray">-</span>
               </template>
             </el-table-column>
-            <el-table-column prop="total_received" label="回款" width="120" align="right">
+            <el-table-column prop="total_received" label="回款" width="105" align="right">
               <template #default="scope">
-                <span v-if="scope.row.total_received">¥ {{ formatMoney(scope.row.total_received) }}</span>
+                <span v-if="scope.row.total_received" style="white-space: nowrap;">¥ {{ formatMoney(scope.row.total_received) }}</span>
                 <span v-else class="text-gray">-</span>
               </template>
             </el-table-column>
-            <el-table-column prop="total_settlement" label="结算" width="120" align="right">
+            <el-table-column prop="total_settlement" label="结算" width="105" align="right">
               <template #default="scope">
-                <span v-if="scope.row.total_settlement">¥ {{ formatMoney(scope.row.total_settlement) }}</span>
+                <span v-if="scope.row.total_settlement" style="white-space: nowrap;">¥ {{ formatMoney(scope.row.total_settlement) }}</span>
                 <span v-else class="text-gray">-</span>
               </template>
             </el-table-column>
-            <el-table-column prop="sign_date" label="签约时间" width="120" align="center" />
-            <el-table-column prop="status" label="状态" width="100" align="center">
+            <el-table-column prop="sign_date" label="签约日期" width="100" align="center" />
+            <el-table-column prop="status" label="状态" width="80" align="center">
               <template #default="scope">
-                <el-tag :type="getStatusType(scope.row.status)">{{ scope.row.status }}</el-tag>
+                <el-tag :type="getStatusType(scope.row.status)" size="small">{{ scope.row.status }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="company_category" label="公司合同分类" width="130" align="center" show-overflow-tooltip />
-            <el-table-column label="合同文件" width="100" align="center">
+            <el-table-column prop="company_category" label="分类" width="80" align="center" show-overflow-tooltip />
+            <el-table-column label="文件" width="60" align="center">
               <template #default="scope">
                 <el-button 
                   v-if="scope.row.contract_file_path" 
@@ -130,11 +151,11 @@
                   size="small"
                   icon="Document"
                   @click="openPdfInNewTab(scope.row.contract_file_path)"
-                >查看</el-button>
+                />
                 <span v-else class="text-gray">-</span>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="190" fixed="right">
+            <el-table-column label="操作" width="140" fixed="right">
               <template #default="scope">
                 <el-button v-if="userStore.canManageUpstreamContracts" link type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
                 <el-button link type="primary" size="small" @click="handleDetail(scope.row)">详情</el-button>
@@ -597,6 +618,7 @@ const {
 
 const activeTab = ref('management')
 const dateRange = ref([])
+const monthRange = ref([])
 
 const dialog = reactive({
   title: '',
@@ -675,13 +697,21 @@ const handleResize = () => {
 }
 
 const getList = () => {
-  // Sync date range
+  // Sync date range for basic_info tab
   if (activeTab.value === 'basic_info' && dateRange.value && dateRange.value.length === 2) {
     queryParams.start_date = dateRange.value[0]
     queryParams.end_date = dateRange.value[1]
   } else {
     queryParams.start_date = undefined
     queryParams.end_date = undefined
+  }
+  // Sync month range for management tab
+  if (activeTab.value === 'management' && monthRange.value && monthRange.value.length === 2) {
+    queryParams.start_month = monthRange.value[0]
+    queryParams.end_month = monthRange.value[1]
+  } else {
+    queryParams.start_month = undefined
+    queryParams.end_month = undefined
   }
   fetchList()
 }
@@ -690,12 +720,20 @@ const handleTabChange = () => {
   queryParams.page = 1
   queryParams.keyword = ''
   queryParams.status = ''
+  queryParams.company_category = ''
+  queryParams.category = ''
+  queryParams.management_mode = ''
   dateRange.value = []
+  monthRange.value = []
   getList()
 }
 
 const resetQuery = () => {
   dateRange.value = []
+  monthRange.value = []
+  queryParams.company_category = ''
+  queryParams.category = ''
+  queryParams.management_mode = ''
   baseResetQuery()
 }
 
@@ -942,6 +980,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
+
 .filter-container {
   margin-bottom: 20px;
 }
@@ -1072,6 +1111,7 @@ onBeforeUnmount(() => {
   background-color: #FFFF00 !important;
   color: #000000 !important; /* Black */
   font-weight: bold !important;
+  white-space: nowrap !important;
 }
 
 /* Multi-line cell display - Force Element Plus table to allow text wrapping */

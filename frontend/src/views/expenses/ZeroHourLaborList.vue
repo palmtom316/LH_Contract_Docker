@@ -949,5 +949,6 @@ onMounted(() => {
     background-color: #FFFF00 !important;
     color: #000000 !important; /* Black */
     font-weight: bold !important;
+    white-space: nowrap !important;
 }
 </style>

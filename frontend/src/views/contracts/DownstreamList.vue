@@ -69,36 +69,36 @@
         </el-table-column>
         <el-table-column prop="category" label="合同类别" width="120" show-overflow-tooltip />
         <el-table-column prop="pricing_mode" label="计价模式" width="120" show-overflow-tooltip />
-        <el-table-column prop="contract_amount" label="合同金额" width="140" align="right">
+        <el-table-column prop="contract_amount" label="合同金额" width="120" align="right">
           <template #default="scope">
-            ¥ {{ Number(scope.row.contract_amount).toLocaleString() }}
+            <span style="white-space: nowrap;">¥ {{ Number(scope.row.contract_amount).toLocaleString() }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="total_payable" label="应付款" width="120" align="right">
+        <el-table-column prop="total_payable" label="应付款" width="105" align="right">
           <template #default="scope">
-            <span v-if="scope.row.total_payable">¥ {{ Number(scope.row.total_payable).toLocaleString() }}</span>
+            <span v-if="scope.row.total_payable" style="white-space: nowrap;">¥ {{ Number(scope.row.total_payable).toLocaleString() }}</span>
             <span v-else class="text-gray">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="total_invoiced" label="挂账" width="120" align="right">
+        <el-table-column prop="total_invoiced" label="挂账" width="105" align="right">
           <template #default="scope">
-            <span v-if="scope.row.total_invoiced">¥ {{ Number(scope.row.total_invoiced).toLocaleString() }}</span>
+            <span v-if="scope.row.total_invoiced" style="white-space: nowrap;">¥ {{ Number(scope.row.total_invoiced).toLocaleString() }}</span>
             <span v-else class="text-gray">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="total_paid" label="已付款" width="120" align="right">
+        <el-table-column prop="total_paid" label="已付款" width="105" align="right">
           <template #default="scope">
-            <span v-if="scope.row.total_paid">¥ {{ Number(scope.row.total_paid).toLocaleString() }}</span>
+            <span v-if="scope.row.total_paid" style="white-space: nowrap;">¥ {{ Number(scope.row.total_paid).toLocaleString() }}</span>
             <span v-else class="text-gray">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="total_settlement" label="结算" width="120" align="right">
+        <el-table-column prop="total_settlement" label="结算" width="105" align="right">
           <template #default="scope">
-            <span v-if="scope.row.total_settlement">¥ {{ Number(scope.row.total_settlement).toLocaleString() }}</span>
+            <span v-if="scope.row.total_settlement" style="white-space: nowrap;">¥ {{ Number(scope.row.total_settlement).toLocaleString() }}</span>
             <span v-else class="text-gray">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="sign_date" label="签订日期" width="120" sortable />
+        <el-table-column prop="sign_date" label="签订日期" width="100" sortable />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="scope">
             <el-tag :type="getStatusType(scope.row.status)">{{ scope.row.status }}</el-tag>
@@ -634,6 +634,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
+
 .filter-container {
   margin-bottom: 20px;
 }
@@ -773,5 +774,6 @@ onBeforeUnmount(() => {
   background-color: #FFFF00 !important;
   color: #000000 !important; /* Black */
   font-weight: bold !important;
+  white-space: nowrap !important;
 }
 </style>
