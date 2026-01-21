@@ -78,7 +78,7 @@
       </el-menu>
       
       <div v-if="!isCollapse" class="sidebar-info">
-        <span>Version {{ version }}</span>
+        <span>{{ systemVersion }}</span>
       </div>
     </div>
 
