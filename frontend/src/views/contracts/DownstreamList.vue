@@ -384,7 +384,7 @@ import { useUserStore } from '@/stores/user'
 const userStore = useUserStore()
 const router = useRouter()
 const route = useRoute()
-const { getSummaries, footerCellStyle } = useTableSummary()
+// Cleaned up
 const { isMobile, checkIsMobile } = useMobileDetection()
 
 const {
