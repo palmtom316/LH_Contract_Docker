@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional, Dict, Any
 from datetime import date, datetime
-import pandas as pd
 import io
+from openpyxl import Workbook
 import os
 import urllib.parse
 from app.config import settings
@@ -74,6 +74,10 @@ async def export_contracts(
     company_category: Optional[str] = Query(None, description="Company contract category"),
     category: Optional[str] = Query(None, description="Contract category"),
     management_mode: Optional[str] = Query(None, description="Management mode"),
+    start_date: Optional[date] = Query(None, description="Start date for filtering"),
+    end_date: Optional[date] = Query(None, description="End date for filtering"),
+    start_month: Optional[str] = Query(None, description="Start month (YYYY-MM)"),
+    end_month: Optional[str] = Query(None, description="End month (YYYY-MM)"),
     current_user: User = Depends(require_permission(Permission.VIEW_UPSTREAM_BASIC_INFO)),
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
@@ -81,36 +85,58 @@ async def export_contracts(
     try:
         # 1. Get Data from Service
         contracts = await service.list_all_contracts(
-            keyword, status, company_category, category, management_mode
+            keyword, status, company_category, category, management_mode,
+            start_date, end_date, start_month, end_month
         )
         
-        # 2. Convert to DataFrame
-        data = []
-        for c in contracts:
-            data.append({
-                "合同序号": c.serial_number,
-                "系统编号": c.id,
-                "合同编号": c.contract_code,
-                "合同名称": c.contract_name,
-                "甲方单位": c.party_a_name,
-                "乙方单位": c.party_b_name,
-                "合同类别": c.category.value if hasattr(c.category, 'value') else c.category,
-                "公司分类": c.company_category,
-                "计价模式": c.pricing_mode.value if hasattr(c.pricing_mode, 'value') else c.pricing_mode,
-                "管理模式": c.management_mode.value if hasattr(c.management_mode, 'value') else c.management_mode,
-                "负责人": c.responsible_person,
-                "合同金额": float(c.contract_amount) if c.contract_amount else 0,
-                "签约日期": c.sign_date,
-                "状态": c.status,
-                "备注": c.notes
-            })
-            
-        df = pd.DataFrame(data)
+        # 2. Create Excel in memory using openpyxl directly (Memory Optimized)
+        # using write_only=True avoids keeping all objects in memory if we were building large sheets,
+        # though here we still have 'contracts' list from service.
+        # Ideally service would yield items, but current optimization (SQL sums) is significant enough.
+        # This removes the intermediate list-of-dicts and pandas DataFrame overhead.
         
-        # 3. Create Excel in memory
+        wb = Workbook(write_only=True)
+        ws = wb.create_sheet("Contracts")
+        
+        # Header
+        headers = [
+            "合同序号", "合同编号", "合同名称", "甲方单位", "乙方单位", 
+            "合同类别", "公司分类", "计价模式", "管理模式", "负责人", 
+            "合同金额", "应收款金额", "挂账金额", "回款金额", "结算金额", 
+            "签约日期", "状态", "备注"
+        ]
+        ws.append(headers)
+        
+        # Rows
+        for c in contracts:
+            category_val = c.category.value if hasattr(c.category, 'value') else c.category
+            pricing_val = c.pricing_mode.value if hasattr(c.pricing_mode, 'value') else c.pricing_mode
+            mgmt_val = c.management_mode.value if hasattr(c.management_mode, 'value') else c.management_mode
+            
+            row = [
+                c.serial_number,
+                c.contract_code,
+                c.contract_name,
+                c.party_a_name,
+                c.party_b_name,
+                category_val,
+                c.company_category,
+                pricing_val,
+                mgmt_val,
+                c.responsible_person,
+                float(c.contract_amount) if c.contract_amount else 0,
+                float(c.total_receivable) if c.total_receivable else 0,
+                float(c.total_invoiced) if c.total_invoiced else 0,
+                float(c.total_received) if c.total_received else 0,
+                float(c.total_settlement) if c.total_settlement else 0,
+                c.sign_date,
+                c.status,
+                c.notes
+            ]
+            ws.append(row)
+            
         output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Contracts')
+        wb.save(output)
         output.seek(0)
         
         filename = f"上游合同列表_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"

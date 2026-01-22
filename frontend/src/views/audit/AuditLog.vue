@@ -1,5 +1,64 @@
 <template>
   <div class="app-container">
+    <!-- Mobile Card View -->
+    <div v-if="isMobile" class="mobile-list">
+      <el-card shadow="never" class="mb-2">
+        <el-form :inline="true" :model="queryParams" class="mobile-filter">
+          <el-input 
+            v-model="queryParams.keyword" 
+            placeholder="搜索..." 
+            clearable 
+            @keyup.enter="handleQuery"
+            style="width: 100%; margin-bottom: 10px;"
+          >
+             <template #append>
+                <el-button @click="handleQuery"><el-icon><Search /></el-icon></el-button>
+             </template>
+          </el-input>
+        </el-form>
+      </el-card>
+
+      <div v-loading="loading">
+        <el-card v-for="log in logList" :key="log.id" class="mobile-card" shadow="sm">
+          <div class="card-header">
+            <span class="timestamp">{{ formatDateTime(log.created_at) }}</span>
+            <el-tag :type="getActionTagType(log.action)" size="small">{{ getActionLabel(log.action) }}</el-tag>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <span class="label">用户:</span>
+              <span class="value">{{ log.username }}</span>
+            </div>
+             <div class="row">
+              <span class="label">资源:</span>
+              <span class="value">{{ log.resource_type }} / {{ log.resource_name || '-' }}</span>
+            </div>
+             <div class="row">
+              <span class="label">描述:</span>
+              <span class="value">{{ log.description || '-' }}</span>
+            </div>
+          </div>
+          <div class="card-footer" v-if="log.old_values || log.new_values">
+             <el-button link type="primary" size="small" @click="showDetail(log)">查看详情</el-button>
+          </div>
+        </el-card>
+         <el-empty v-if="!loading && logList.length === 0" description="暂无日志" />
+         
+          <div class="pagination-container">
+            <el-pagination
+              v-model:current-page="queryParams.page"
+              v-model:page-size="queryParams.page_size"
+              layout="prev, pager, next"
+              :total="total"
+              small
+              @current-change="fetchLogs"
+            />
+          </div>
+      </div>
+    </div>
+
+    <!-- PC Table View -->
+    <div v-else class="pc-view">
     <el-card class="filter-container" shadow="never">
       <el-form :inline="true" :model="queryParams">
         <el-form-item label="操作类型">
@@ -128,13 +187,67 @@
         />
       </div>
     </el-dialog>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.mobile-list {
+  padding-bottom: 20px;
+}
+.mobile-card {
+  margin-bottom: 10px;
+  border-radius: 8px;
+}
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 8px;
+}
+.timestamp {
+  font-size: 13px;
+  color: #909399;
+}
+.card-body {
+  font-size: 14px;
+}
+.row {
+  display: flex;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+.label {
+  color: #909399;
+  width: 50px;
+  flex-shrink: 0;
+}
+.value {
+  color: #606266;
+  flex: 1;
+  word-break: break-all;
+}
+.card-footer {
+  margin-top: 8px;
+  text-align: right;
+  border-top: 1px solid #f0f0f0;
+  padding-top: 8px;
+}
+.pc-view {
+  /* PC specific styles if any */
+}
+</style>
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import { useDevice } from '@/composables/useDevice'
+
+const { isMobile } = useDevice()
 
 const loading = ref(false)
 const logList = ref([])

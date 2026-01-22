@@ -15,7 +15,7 @@ class ContractUpstream(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     serial_number = Column(Integer, unique=True, nullable=True, index=True)  # new business logic key
     contract_code = Column(String(50), unique=True, nullable=False, index=True)
-    contract_name = Column(String(200), nullable=False)
+    contract_name = Column(String(200), nullable=False, index=True)
     
     # Parties
     party_a_name = Column(String(200), nullable=False, index=True)
@@ -41,7 +41,7 @@ class ContractUpstream(Base):
     contract_amount = Column(Numeric(15, 2), default=0)
     
     # Dates
-    sign_date = Column(Date, nullable=True)
+    sign_date = Column(Date, nullable=True, index=True)
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
     

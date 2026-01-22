@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 // Mobile route to PC route mapping (for auto-redirect)
 const mobileToPC = {
     '/m/contracts': '/contracts/upstream',
+    '/m/expenses': '/expenses',
     '/m/reports': '/reports',
     '/m/profile': '/system'
 }
@@ -12,6 +13,7 @@ const pcToMobile = {
     '/contracts/upstream': '/m/contracts',
     '/contracts/downstream': '/m/contracts',
     '/contracts/management': '/m/contracts',
+    '/expenses': '/m/expenses',
     '/reports': '/m/reports',
     '/system': '/m/profile'
 }
@@ -106,6 +108,12 @@ const routes = [
                 meta: { title: '合同列表' }
             },
             {
+                path: 'expenses',
+                name: 'MobileExpenseList',
+                component: () => import('@/views/mobile/ExpenseListMobile.vue'),
+                meta: { title: '费用管理' }
+            },
+            {
                 path: 'reports',
                 name: 'MobileReports',
                 component: () => import('@/views/reports/ReportDashboard.vue'),
@@ -165,12 +173,12 @@ router.beforeEach((to, from, next) => {
             }
 
             // Handle root path based on device
-            if (to.path === '/') {
-                if (isMobile) {
-                    next('/m/contracts')
-                    return
-                }
-            }
+            // if (to.path === '/') {
+            //     if (isMobile) {
+            //         next('/m/contracts')
+            //         return
+            //     }
+            // }
 
             next()
         }

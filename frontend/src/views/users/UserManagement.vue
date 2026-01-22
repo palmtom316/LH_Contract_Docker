@@ -1,5 +1,76 @@
 <template>
   <div class="app-container">
+    <!-- Mobile Card View -->
+    <div v-if="isMobile" class="mobile-list">
+       <el-card shadow="never" class="mb-2">
+         <el-button type="success" icon="Plus" @click="handleAdd" style="width: 100%">新建用户</el-button>
+         <div style="margin-top: 10px;">
+            <el-input
+                v-model="searchKeyword"
+                placeholder="搜索用户..."
+                clearable
+                @keyup.enter="fetchUsers"
+            >
+                <template #append>
+                <el-button @click="fetchUsers"><el-icon><Search /></el-icon></el-button>
+                </template>
+            </el-input>
+         </div>
+       </el-card>
+
+       <div v-loading="loading">
+         <el-card v-for="user in userList" :key="user.id" class="mobile-card" shadow="sm">
+            <div class="card-header">
+                <span class="username">{{ user.username }}</span>
+                <el-tag :type="getRoleTagType(user.role)" size="small">{{ user.role_display || user.role }}</el-tag>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <span class="label">姓名:</span>
+                    <span class="value">{{ user.full_name || '-' }}</span>
+                </div>
+                <div class="row">
+                    <span class="label">邮箱:</span>
+                    <span class="value">{{ user.email || '-' }}</span>
+                </div>
+                 <div class="row">
+                    <span class="label">状态:</span>
+                    <span class="value">
+                        <el-tag :type="user.is_active ? 'success' : 'danger'" size="small">
+                            {{ user.is_active ? '启用' : '禁用' }}
+                        </el-tag>
+                    </span>
+                </div>
+                <div class="row">
+                    <span class="label">最后登录:</span>
+                    <span class="value">{{ formatDateTime(user.last_login) }}</span>
+                </div>
+            </div>
+            <div class="card-footer">
+                <el-button link type="primary" size="small" @click="handleEdit(user)">编辑</el-button>
+                <el-button link type="warning" size="small" @click="handleResetPassword(user)">重置密码</el-button>
+                 <el-button 
+                    link 
+                    :type="user.is_active ? 'danger' : 'success'" 
+                    size="small" 
+                    @click="handleToggleStatus(user)"
+                    >
+                    {{ user.is_active ? '禁用' : '启用' }}
+                </el-button>
+                <el-button 
+                    link 
+                    type="danger" 
+                    size="small" 
+                    @click="handleDelete(user)"
+                    :disabled="user.is_superuser"
+                >删除</el-button>
+            </div>
+         </el-card>
+       </div>
+    </div>
+
+    <!-- PC Table View -->
+    <div v-else class="pc-view">
     <el-card class="filter-container" shadow="never">
       <el-row :gutter="20" justify="space-between">
         <el-col :span="16">
@@ -132,14 +203,68 @@
         <el-button type="primary" @click="handleResetSubmit" :loading="resetting">确定</el-button>
       </template>
     </el-dialog>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.mobile-list {
+  padding-bottom: 20px;
+}
+.mobile-card {
+  margin-bottom: 10px;
+  border-radius: 8px;
+}
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 8px;
+}
+.username {
+  font-weight: 600;
+  font-size: 15px;
+  color: #303133;
+}
+.card-body {
+  font-size: 14px;
+}
+.row {
+  display: flex;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+.label {
+  color: #909399;
+  width: 70px;
+  flex-shrink: 0;
+}
+.value {
+  color: #606266;
+  flex: 1;
+  word-break: break-all;
+}
+.card-footer {
+  margin-top: 8px;
+  text-align: right;
+  border-top: 1px solid #f0f0f0;
+  padding-top: 8px;
+}
+.pc-view {
+  /* PC specific styles if any */
+}
+</style>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import { useDevice } from '@/composables/useDevice'
+
+const { isMobile } = useDevice()
 
 const loading = ref(false)
 const userList = ref([])

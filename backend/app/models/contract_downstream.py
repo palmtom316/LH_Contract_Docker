@@ -18,7 +18,7 @@ class ContractDownstream(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     serial_number = Column(Integer, unique=True, nullable=True, index=True)
     contract_code = Column(String(50), unique=True, nullable=False, index=True)  # 合同编号
-    contract_name = Column(String(200), nullable=False)                           # 合同名称
+    contract_name = Column(String(200), nullable=False, index=True)                           # 合同名称
     
     # Parties
     party_a_name = Column(String(200), nullable=False)    # 甲方 (Usually Us)
@@ -49,7 +49,7 @@ class ContractDownstream(Base):
     contract_amount = Column(Numeric(15, 2), nullable=False, default=0)  # 合同金额
     
     # Dates
-    sign_date = Column(Date, nullable=True)                   # 签订日期
+    sign_date = Column(Date, nullable=True, index=True)                   # 签订日期
     start_date = Column(Date, nullable=True)                  # 开始日期
     end_date = Column(Date, nullable=True)                    # 结束日期
     

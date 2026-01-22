@@ -7,9 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional
 from datetime import datetime, date
-import pandas as pd
+from datetime import datetime, date
 import io
 import urllib.parse
+from openpyxl import Workbook
 
 from app.database import get_db
 from app.models.user import User
@@ -50,30 +51,43 @@ async def export_contracts(
     try:
         contracts = await service.list_all_contracts(keyword, status, start_date, end_date, category)
         
-        # Create DataFrame
-        data = []
+        # Create Excel in memory using openpyxl directly (Memory Optimized)
+        wb = Workbook(write_only=True)
+        ws = wb.create_sheet("下游合同")
+        
+        # Header
+        headers = [
+            "合同序号", "合同编号", "合同名称", "甲方", "乙方", "合同类别",
+            "计价模式", "合同金额", "应付款金额", "挂账金额", "付款金额",
+            "结算金额", "签订日期", "状态", "备注"
+        ]
+        ws.append(headers)
+        
+        # Rows
         for c in contracts:
-            data.append({
-                "合同序号": c.serial_number,
-                "系统编号": c.id,
-                "合同编号": c.contract_code,
-                "合同名称": c.contract_name,
-                "甲方": c.party_a_name,
-                "乙方": c.party_b_name,
-                "合同类别": c.category,
-                "计价模式": c.pricing_mode.value if hasattr(c.pricing_mode, 'value') else c.pricing_mode,
-                "合同金额": float(c.contract_amount),
-                "签订日期": c.sign_date,
-                "状态": c.status,
-                "备注": c.notes
-            })
+            pricing_val = c.pricing_mode.value if hasattr(c.pricing_mode, 'value') else c.pricing_mode
             
-        df = pd.DataFrame(data)
+            row = [
+                c.serial_number,
+                c.contract_code,
+                c.contract_name,
+                c.party_a_name,
+                c.party_b_name,
+                c.category,
+                pricing_val,
+                float(c.contract_amount),
+                float(c.total_payable) if c.total_payable else 0,
+                float(c.total_invoiced) if c.total_invoiced else 0,
+                float(c.total_paid) if c.total_paid else 0,
+                float(c.total_settlement) if c.total_settlement else 0,
+                c.sign_date,
+                c.status,
+                c.notes
+            ]
+            ws.append(row)
+            
         stream = io.BytesIO()
-        # Use pandas to write Excel to the stream
-        with pd.ExcelWriter(stream, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='下游合同')
-            
+        wb.save(stream)
         stream.seek(0)
         
         filename = f"downstream_contracts_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"

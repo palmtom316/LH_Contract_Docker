@@ -19,6 +19,7 @@
     <!-- Bottom Navigation -->
     <van-tabbar v-model="activeTab" route safe-area-inset-bottom class="mobile-tabbar">
       <van-tabbar-item to="/m/contracts" icon="orders-o">合同</van-tabbar-item>
+      <van-tabbar-item to="/m/expenses" icon="gold-coin-o">费用</van-tabbar-item>
       <van-tabbar-item to="/m/reports" icon="chart-trending-o">报表</van-tabbar-item>
       <van-tabbar-item to="/m/profile" icon="user-o">我的</van-tabbar-item>
     </van-tabbar>

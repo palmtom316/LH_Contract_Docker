@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc, or_
-from sqlalchemy.orm import selectinload
+from sqlalchemy import select, func, desc, or_, outerjoin
+from sqlalchemy.orm import selectinload, aliased
 from fastapi import HTTPException
 from typing import List, Optional, Dict, Any
 from datetime import datetime, date
@@ -9,7 +9,8 @@ from app.models.contract_upstream import (
     ContractUpstream, 
     FinanceUpstreamReceivable, 
     FinanceUpstreamReceipt, 
-    ProjectSettlement
+    ProjectSettlement,
+    FinanceUpstreamInvoice
 )
 from app.schemas.contract_upstream import ContractUpstreamCreate, ContractUpstreamUpdate
 from app.services.cache import cache, dashboard_cache_key
@@ -18,18 +19,47 @@ from app.services.status_service import calculate_contract_status
 from app.models.user import User
 from app.services.audit_service import create_audit_log, AuditAction, ResourceType
 from app.services.contract_code_generator import ContractCodeGenerator
+from app.services.base_contract_service import BaseContractService
 
 
-class ContractUpstreamService:
+class ContractWrapper:
+    """
+    Wrapper to enforce SQL-calculated totals over model properties.
+    Proxies all other attributes to the underlying contract model.
+    """
+    def __init__(self, contract, total_receivable, total_invoiced, total_received, total_settlement):
+        self._contract = contract
+        self._total_receivable = total_receivable or 0
+        self._total_invoiced = total_invoiced or 0
+        self._total_received = total_received or 0
+        self._total_settlement = total_settlement or 0
+
+    @property
+    def total_receivable(self):
+        return self._total_receivable
+
+    @property
+    def total_invoiced(self):
+        return self._total_invoiced
+
+    @property
+    def total_received(self):
+        return self._total_received
+
+    @property
+    def total_settlement(self):
+        return self._total_settlement
+
+    def __getattr__(self, name):
+        return getattr(self._contract, name)
+
+
+class ContractUpstreamService(BaseContractService[ContractUpstream]):
     def __init__(self, db: AsyncSession):
-        self.db = db
-
-    async def _invalidate_dashboard_cache(self):
-        """Clear dashboard cache when contract data changes"""
-        await cache.delete(dashboard_cache_key())
+        super().__init__(db, ContractUpstream)
 
     async def get_contract(self, contract_id: int) -> Optional[ContractUpstream]:
-        """Get contract by ID"""
+        """Get contract by ID (Override to load relations)"""
         query = select(ContractUpstream).options(
             selectinload(ContractUpstream.settlements),
             selectinload(ContractUpstream.receipts),
@@ -57,11 +87,57 @@ class ContractUpstreamService:
         start_month: Optional[str] = None,
         end_month: Optional[str] = None
     ) -> Dict[str, Any]:
-        """List contracts with filtering and pagination"""
-        query = select(ContractUpstream).options(
-            selectinload(ContractUpstream.receivables),
-            selectinload(ContractUpstream.invoices),
-            selectinload(ContractUpstream.receipts),
+        """List contracts with filtering and pagination (Optimized with SQL aggregation)"""
+        # 1. Prepare Subqueries for Totals
+        # We use strict subqueries correlated to the main table
+        
+        # Receivables Sum
+        receivables_sub = (
+            select(func.sum(FinanceUpstreamReceivable.amount))
+            .where(FinanceUpstreamReceivable.contract_id == ContractUpstream.id)
+            .correlate(ContractUpstream)
+            .scalar_subquery()
+        )
+        
+        # Invoices Sum
+        invoices_sub = (
+            select(func.sum(FinanceUpstreamInvoice.amount))
+            .where(FinanceUpstreamInvoice.contract_id == ContractUpstream.id)
+            .correlate(ContractUpstream)
+            .scalar_subquery()
+        )
+        
+        # Receipts Sum
+        receipts_sub = (
+            select(func.sum(FinanceUpstreamReceipt.amount))
+            .where(FinanceUpstreamReceipt.contract_id == ContractUpstream.id)
+            .correlate(ContractUpstream)
+            .scalar_subquery()
+        )
+        
+        # Settlements Sum
+        settlements_sub = (
+            select(func.sum(ProjectSettlement.settlement_amount))
+            .where(ProjectSettlement.contract_id == ContractUpstream.id)
+            .correlate(ContractUpstream)
+            .scalar_subquery()
+        )
+
+        # 2. Build Main Query
+        # We select the Contract model AND the calculated scalar totals
+        query = select(
+            ContractUpstream,
+            receivables_sub.label("total_receivable"),
+            invoices_sub.label("total_invoiced"),
+            receipts_sub.label("total_received"),
+            settlements_sub.label("total_settlement")
+        ).options(
+            # We ONLY lazy/eager load what's strictly necessary for the "Card/List View" basic info if any.
+            # Actually, we don't need any relationships for the list view now that totals are calculated.
+            # But we might need 'settlements' for file paths in the PC view (audit_report_path etc from properties).
+            # The properties `audit_report_path` etc rely on `latest_settlement`. 
+            # If we don't load settlements, that property access triggers a query.
+            # For performance, let's selectinload settlements (it's usually 0 or 1 record) but NOT the others.
             selectinload(ContractUpstream.settlements)
         )
         
@@ -96,40 +172,43 @@ class ContractUpstreamService:
             query = query.where(ContractUpstream.sign_date <= end_date)
             
         if start_month:
-            # start_month format: YYYY-MM
             try:
-                # Convert to date (first day of month)
                 s_year, s_month = map(int, start_month.split('-'))
                 s_date = date(s_year, s_month, 1)
                 query = query.where(ContractUpstream.sign_date >= s_date)
             except ValueError:
-                pass # Ignore invalid date format
+                pass 
 
         if end_month:
-            # end_month format: YYYY-MM
             try:
-                # Convert to date (last day of month)
                 e_year, e_month = map(int, end_month.split('-'))
                 if e_month == 12:
                     e_date = date(e_year + 1, 1, 1)
                 else:
                     e_date = date(e_year, e_month + 1, 1)
-                # Less than first day of next month includes all of current month
                 query = query.where(ContractUpstream.sign_date < e_date)
             except ValueError:
                 pass
             
         # Count total
+        # We can use the same query structure but simple count
+        # Note: count on the complex query is fine, or we can strip options
         count_query = select(func.count()).select_from(query.subquery())
         total = (await self.db.execute(count_query)).scalar_one()
         
         # Pagination
         query = query.order_by(desc(ContractUpstream.created_at)).offset((page - 1) * page_size).limit(page_size)
         result = await self.db.execute(query)
-        contracts = result.scalars().all()
+        rows = result.all() # returns list of (ContractUpstream, t_rec, t_inv, t_receipt, t_settle)
+        
+        # 3. Wrap results
+        items = [
+            ContractWrapper(r[0], r[1], r[2], r[3], r[4]) 
+            for r in rows
+        ]
         
         return {
-            "items": contracts,
+            "items": items,
             "total": total,
             "page": page,
             "page_size": page_size
@@ -141,13 +220,53 @@ class ContractUpstreamService:
         status: Optional[str] = None,
         company_category: Optional[str] = None,
         category: Optional[str] = None,
-        management_mode: Optional[str] = None
+        management_mode: Optional[str] = None,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        start_month: Optional[str] = None,
+        end_month: Optional[str] = None
     ) -> List[ContractUpstream]:
-        """List all contracts for export (no pagination)"""
-        query = select(ContractUpstream).options(
-            selectinload(ContractUpstream.receivables),
-            selectinload(ContractUpstream.invoices),
-            selectinload(ContractUpstream.receipts),
+        """List all contracts for export (no pagination) - Optimized"""
+        
+        # Receivables Sum
+        receivables_sub = (
+            select(func.sum(FinanceUpstreamReceivable.amount))
+            .where(FinanceUpstreamReceivable.contract_id == ContractUpstream.id)
+            .correlate(ContractUpstream)
+            .scalar_subquery()
+        )
+        
+        # Invoices Sum
+        invoices_sub = (
+            select(func.sum(FinanceUpstreamInvoice.amount))
+            .where(FinanceUpstreamInvoice.contract_id == ContractUpstream.id)
+            .correlate(ContractUpstream)
+            .scalar_subquery()
+        )
+        
+        # Receipts Sum
+        receipts_sub = (
+            select(func.sum(FinanceUpstreamReceipt.amount))
+            .where(FinanceUpstreamReceipt.contract_id == ContractUpstream.id)
+            .correlate(ContractUpstream)
+            .scalar_subquery()
+        )
+        
+        # Settlements Sum
+        settlements_sub = (
+            select(func.sum(ProjectSettlement.settlement_amount))
+            .where(ProjectSettlement.contract_id == ContractUpstream.id)
+            .correlate(ContractUpstream)
+            .scalar_subquery()
+        )
+
+        query = select(
+            ContractUpstream,
+            receivables_sub.label("total_receivable"),
+            invoices_sub.label("total_invoiced"),
+            receipts_sub.label("total_received"),
+            settlements_sub.label("total_settlement")
+        ).options(
             selectinload(ContractUpstream.settlements)
         )
         
@@ -166,9 +285,47 @@ class ContractUpstreamService:
         if status:
             query = query.where(ContractUpstream.status == status)
             
+        if company_category:
+            query = query.where(ContractUpstream.company_category == company_category)
+            
+        if category:
+            query = query.where(ContractUpstream.category == category)
+            
+        if management_mode:
+            query = query.where(ContractUpstream.management_mode == management_mode)
+            
+        if start_date:
+            query = query.where(ContractUpstream.sign_date >= start_date)
+        if end_date:
+            query = query.where(ContractUpstream.sign_date <= end_date)
+            
+        if start_month:
+            try:
+                s_year, s_month = map(int, start_month.split('-'))
+                s_date = date(s_year, s_month, 1)
+                query = query.where(ContractUpstream.sign_date >= s_date)
+            except ValueError:
+                pass
+
+        if end_month:
+            try:
+                e_year, e_month = map(int, end_month.split('-'))
+                if e_month == 12:
+                    e_date = date(e_year + 1, 1, 1)
+                else:
+                    e_date = date(e_year, e_month + 1, 1)
+                query = query.where(ContractUpstream.sign_date < e_date)
+            except ValueError:
+                pass
+            
         query = query.order_by(desc(ContractUpstream.created_at))
         result = await self.db.execute(query)
-        return result.scalars().all()
+        rows = result.all()
+        
+        return [
+            ContractWrapper(r[0], r[1], r[2], r[3], r[4]) 
+            for r in rows
+        ]
 
     async def create_contract(self, contract_in: ContractUpstreamCreate, user: User) -> ContractUpstream:
         """Create a new contract"""
@@ -192,18 +349,12 @@ class ContractUpstreamService:
             # Check unique serial_number
             if contract_in.serial_number:
                 logger.info(f"Checking serial_number: {contract_in.serial_number}")
-                existing_sn = await self.db.execute(
-                    select(ContractUpstream).where(ContractUpstream.serial_number == contract_in.serial_number)
-                )
-                if existing_sn.scalar_one_or_none():
+                if await self.check_serial_number_exists(contract_in.serial_number):
                     raise HTTPException(status_code=400, detail=f"合同序号 {contract_in.serial_number} 已存在")
             
             # Check unique contract_code
             logger.info(f"Checking contract_code: {data['contract_code']}")
-            existing = await self.db.execute(
-                select(ContractUpstream).where(ContractUpstream.contract_code == data['contract_code'])
-            )
-            existing_contract = existing.scalar_one_or_none()
+            existing_contract = await self.check_contract_code_exists(data['contract_code'])
             if existing_contract:
                 raise HTTPException(
                     status_code=400, 
@@ -261,22 +412,12 @@ class ContractUpstreamService:
         
         # Check serial_number uniqueness
         if 'serial_number' in update_data and update_data['serial_number'] != contract.serial_number:
-            if update_data['serial_number']:
-                existing_sn = await self.db.execute(
-                    select(ContractUpstream).where(ContractUpstream.serial_number == update_data['serial_number'])
-                )
-                if existing_sn.scalar_one_or_none():
-                    raise HTTPException(status_code=400, detail=f"合同序号 {update_data['serial_number']} 已存在")
+            if await self.check_serial_number_exists(update_data['serial_number'], exclude_id=contract_id):
+                 raise HTTPException(status_code=400, detail=f"合同序号 {update_data['serial_number']} 已存在")
         
         # Check contract_code uniqueness
         if 'contract_code' in update_data and update_data['contract_code'] != contract.contract_code:
-            existing = await self.db.execute(
-                select(ContractUpstream).where(
-                    ContractUpstream.contract_code == update_data['contract_code'],
-                    ContractUpstream.id != contract_id
-                )
-            )
-            existing_contract = existing.scalar_one_or_none()
+            existing_contract = await self.check_contract_code_exists(update_data['contract_code'], exclude_id=contract_id)
             if existing_contract:
                 raise HTTPException(
                     status_code=400, 
@@ -400,9 +541,4 @@ class ContractUpstreamService:
             
         return {"success": success_count, "errors": errors}
 
-    async def get_next_serial_number(self) -> int:
-        """Get the next available serial number"""
-        query = select(func.max(ContractUpstream.serial_number))
-        result = await self.db.execute(query)
-        max_sn = result.scalar_one_or_none()
-        return (max_sn or 0) + 1
+

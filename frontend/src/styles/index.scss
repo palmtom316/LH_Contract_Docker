@@ -1,0 +1,35 @@
+@import './variables.scss';
+
+// Global Styles
+
+body {
+    margin: 0;
+    padding: 0;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-font-smoothing: antialiased;
+    font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
+    background-color: $bg-color;
+    color: $text-main;
+}
+
+// Global utilities can go here
+
+// Global Mobile Overrides
+@media only screen and (max-width: $mobile-width) {
+
+    // Fix Element Plus Dialog on mobile
+    .el-dialog {
+        width: 90% !important;
+        max-width: none !important;
+    }
+
+    // Adjust padding for app containers
+    .app-container {
+        padding: 10px !important;
+    }
+
+    // Make cards cleaner on mobile
+    .el-card__body {
+        padding: 10px !important;
+    }
+}

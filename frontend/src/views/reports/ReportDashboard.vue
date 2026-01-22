@@ -26,11 +26,11 @@
           start-placeholder="开始日期"
           end-placeholder="结束日期"
           value-format="YYYY-MM-DD"
-          style="margin-right: 20px; width: 240px;"
+          class="filter-item"
         />
         
         <span class="filter-label">合同状态:</span>
-        <el-select v-model="exportFilters.status" style="width: 150px; margin-right: 20px;">
+        <el-select v-model="exportFilters.status" class="filter-item short">
           <el-option label="全部" value="全部" />
           <el-option label="执行中" value="执行中" />
           <el-option label="已完工" value="已完工" />
@@ -64,7 +64,7 @@
               v-model="assocQuery"
               placeholder="请输入合同序号/编号/名称"
               clearable
-              style="margin-right: 20px; width: 240px;"
+              class="filter-item"
             />
             <el-button type="primary" :loading="assocLoading" @click="handleExportAssociation">
               <el-icon class="el-icon--right"><Download /></el-icon> 导出 Excel
@@ -637,6 +637,17 @@ const downloadFile = (res, filename) => {
     color: #606266;
     margin-right: 10px;
     font-size: 14px;
+    white-space: nowrap; // Prevent label breaking
+  }
+
+  // Common styles for inputs in filters
+  .filter-item {
+    margin-right: 20px; 
+    width: 240px;
+    
+    &.short {
+        width: 150px;
+    }
   }
 }
 
@@ -661,10 +672,37 @@ const downloadFile = (res, filename) => {
 
 @media only screen and (max-width: 768px) {
   .page-header :deep(.el-card__header) {
-    display: none;
+    display: block; // Show header on mobile but maybe simplified
+    padding: 10px;
   }
+  
   .app-container {
     padding: 10px;
+  }
+
+  .filter-container {
+      flex-direction: column;
+      align-items: stretch; // Full width items
+      
+      .filter-label {
+          margin-bottom: 5px;
+          margin-right: 0;
+      }
+      
+      .filter-item {
+          width: 100% !important; // Force full width
+          margin-right: 0;
+          margin-bottom: 10px;
+          
+          &.short {
+              width: 100% !important;
+          }
+      }
+      
+      .el-button {
+          width: 100%;
+          margin-left: 0 !important;
+      }
   }
 }
 </style>

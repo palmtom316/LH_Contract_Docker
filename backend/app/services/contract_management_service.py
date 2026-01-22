@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc, or_
+from sqlalchemy import select, func, desc, or_, outerjoin
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException
 from typing import List, Optional, Dict, Any
@@ -9,7 +9,8 @@ from app.models.contract_management import (
     ContractManagement,
     FinanceManagementPayable,
     FinanceManagementPayment,
-    ManagementSettlement
+    ManagementSettlement,
+    FinanceManagementInvoice
 )
 from app.models.contract_upstream import ContractUpstream
 from app.schemas.contract_management import ContractManagementCreate, ContractManagementUpdate
@@ -18,17 +19,46 @@ from app.services.status_service import calculate_contract_status
 from app.models.user import User
 from app.services.audit_service import create_audit_log, AuditAction, ResourceType
 from app.services.contract_code_generator import ContractCodeGenerator
+from app.services.base_contract_service import BaseContractService
 
-class ContractManagementService:
+
+class ContractWrapper:
+    """
+    Wrapper to enforce SQL-calculated totals over model properties.
+    Proxies all other attributes to the underlying contract model.
+    """
+    def __init__(self, contract, total_payable, total_invoiced, total_paid, total_settlement):
+        self._contract = contract
+        self._total_payable = total_payable or 0
+        self._total_invoiced = total_invoiced or 0
+        self._total_paid = total_paid or 0
+        self._total_settlement = total_settlement or 0
+
+    @property
+    def total_payable(self):
+        return self._total_payable
+
+    @property
+    def total_invoiced(self):
+        return self._total_invoiced
+
+    @property
+    def total_paid(self):
+        return self._total_paid
+
+    @property
+    def total_settlement(self):
+        return self._total_settlement
+
+    def __getattr__(self, name):
+        return getattr(self._contract, name)
+
+class ContractManagementService(BaseContractService[ContractManagement]):
     def __init__(self, db: AsyncSession):
-        self.db = db
-
-    async def _invalidate_dashboard_cache(self):
-        """Clear dashboard cache when contract data changes"""
-        await cache.delete(dashboard_cache_key())
+        super().__init__(db, ContractManagement)
 
     async def get_contract(self, contract_id: int) -> Optional[ContractManagement]:
-        """Get contract by ID (with upstream relation for common usage)"""
+        """Get contract by ID (Override to load relations)"""
         query = select(ContractManagement).options(
             selectinload(ContractManagement.upstream_contract),
             selectinload(ContractManagement.payables),
@@ -53,12 +83,44 @@ class ContractManagementService:
         end_date: Optional[date] = None,
         category: Optional[str] = None
     ) -> Dict[str, Any]:
-        """List contracts with filtering and pagination"""
-        query = select(ContractManagement).options(
+        """List contracts with filtering and pagination (Optimized)"""
+        
+        payables_sub = (
+            select(func.sum(FinanceManagementPayable.amount))
+            .where(FinanceManagementPayable.contract_id == ContractManagement.id)
+            .correlate(ContractManagement)
+            .scalar_subquery()
+        )
+        
+        invoices_sub = (
+            select(func.sum(FinanceManagementInvoice.amount))
+            .where(FinanceManagementInvoice.contract_id == ContractManagement.id)
+            .correlate(ContractManagement)
+            .scalar_subquery()
+        )
+        
+        payments_sub = (
+            select(func.sum(FinanceManagementPayment.amount))
+            .where(FinanceManagementPayment.contract_id == ContractManagement.id)
+            .correlate(ContractManagement)
+            .scalar_subquery()
+        )
+        
+        settlements_sub = (
+            select(func.sum(ManagementSettlement.settlement_amount))
+            .where(ManagementSettlement.contract_id == ContractManagement.id)
+            .correlate(ContractManagement)
+            .scalar_subquery()
+        )
+
+        query = select(
+            ContractManagement,
+            payables_sub.label("total_payable"),
+            invoices_sub.label("total_invoiced"),
+            payments_sub.label("total_paid"),
+            settlements_sub.label("total_settlement")
+        ).options(
             selectinload(ContractManagement.upstream_contract),
-            selectinload(ContractManagement.payables),
-            selectinload(ContractManagement.invoices),
-            selectinload(ContractManagement.payments),
             selectinload(ContractManagement.settlements)
         )
 
@@ -94,10 +156,15 @@ class ContractManagementService:
         # Pagination
         query = query.order_by(desc(ContractManagement.created_at)).offset((page - 1) * page_size).limit(page_size)
         result = await self.db.execute(query)
-        contracts = result.scalars().all()
+        rows = result.all()
+        
+        items = [
+            ContractWrapper(r[0], r[1], r[2], r[3], r[4])
+            for r in rows
+        ]
 
         return {
-            "items": contracts,
+            "items": items,
             "total": total,
             "page": page,
             "page_size": page_size
@@ -111,12 +178,44 @@ class ContractManagementService:
         end_date: Optional[date] = None,
         category: Optional[str] = None
     ) -> List[ContractManagement]:
-        """List all contracts for export (no pagination)"""
-        query = select(ContractManagement).options(
+        """List all contracts for export (no pagination) - Optimized"""
+        
+        payables_sub = (
+            select(func.sum(FinanceManagementPayable.amount))
+            .where(FinanceManagementPayable.contract_id == ContractManagement.id)
+            .correlate(ContractManagement)
+            .scalar_subquery()
+        )
+        
+        invoices_sub = (
+            select(func.sum(FinanceManagementInvoice.amount))
+            .where(FinanceManagementInvoice.contract_id == ContractManagement.id)
+            .correlate(ContractManagement)
+            .scalar_subquery()
+        )
+        
+        payments_sub = (
+            select(func.sum(FinanceManagementPayment.amount))
+            .where(FinanceManagementPayment.contract_id == ContractManagement.id)
+            .correlate(ContractManagement)
+            .scalar_subquery()
+        )
+        
+        settlements_sub = (
+            select(func.sum(ManagementSettlement.settlement_amount))
+            .where(ManagementSettlement.contract_id == ContractManagement.id)
+            .correlate(ContractManagement)
+            .scalar_subquery()
+        )
+
+        query = select(
+            ContractManagement,
+            payables_sub.label("total_payable"),
+            invoices_sub.label("total_invoiced"),
+            payments_sub.label("total_paid"),
+            settlements_sub.label("total_settlement")
+        ).options(
             selectinload(ContractManagement.upstream_contract),
-            selectinload(ContractManagement.payables),
-            selectinload(ContractManagement.invoices),
-            selectinload(ContractManagement.payments),
             selectinload(ContractManagement.settlements)
         )
 
@@ -146,7 +245,12 @@ class ContractManagementService:
 
         query = query.order_by(desc(ContractManagement.created_at))
         result = await self.db.execute(query)
-        return result.scalars().all()
+        rows = result.all()
+        
+        return [
+            ContractWrapper(r[0], r[1], r[2], r[3], r[4])
+            for r in rows
+        ]
 
     async def create_contract(self, contract_in: ContractManagementCreate, user: User) -> ContractManagement:
         """Create new management contract"""
@@ -160,17 +264,11 @@ class ContractManagementService:
         
         # Check unique serial_number
         if contract_in.serial_number:
-            existing_sn = await self.db.execute(
-                select(ContractManagement).where(ContractManagement.serial_number == contract_in.serial_number)
-            )
-            if existing_sn.scalar_one_or_none():
+            if await self.check_serial_number_exists(contract_in.serial_number):
                 raise HTTPException(status_code=400, detail=f"合同序号 {contract_in.serial_number} 已存在")
 
         # Check unique contract_code
-        existing = await self.db.execute(
-            select(ContractManagement).where(ContractManagement.contract_code == data['contract_code'])
-        )
-        if existing.scalar_one_or_none():
+        if await self.check_contract_code_exists(data['contract_code']):
             raise HTTPException(status_code=400, detail="合同编号已存在")
 
         contract = ContractManagement(**data, created_by=user.id)
@@ -210,22 +308,12 @@ class ContractManagementService:
 
         # Check serial_number uniqueness
         if 'serial_number' in update_data and update_data['serial_number'] != contract.serial_number:
-            if update_data['serial_number']:
-                existing_sn = await self.db.execute(
-                    select(ContractManagement).where(ContractManagement.serial_number == update_data['serial_number'])
-                )
-                if existing_sn.scalar_one_or_none():
-                    raise HTTPException(status_code=400, detail=f"合同序号 {update_data['serial_number']} 已存在")
+            if await self.check_serial_number_exists(update_data['serial_number'], exclude_id=contract_id):
+                raise HTTPException(status_code=400, detail=f"合同序号 {update_data['serial_number']} 已存在")
 
         # Check contract_code uniqueness
         if 'contract_code' in update_data and update_data['contract_code'] != contract.contract_code:
-            existing = await self.db.execute(
-                select(ContractManagement).where(
-                    ContractManagement.contract_code == update_data['contract_code'],
-                    ContractManagement.id != contract_id
-                )
-            )
-            if existing.scalar_one_or_none():
+            if await self.check_contract_code_exists(update_data['contract_code'], exclude_id=contract_id):
                 raise HTTPException(status_code=400, detail="合同编号已存在")
 
         for field, value in update_data.items():

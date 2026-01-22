@@ -1,5 +1,17 @@
 <template>
   <div class="mobile-contract-list">
+    <!-- 顶部导航栏 -->
+    <van-nav-bar fixed placeholder z-index="100">
+      <template #title>
+        <van-dropdown-menu>
+          <van-dropdown-item v-model="contractType" :options="contractTypeOptions" @change="handleTypeChange" />
+        </van-dropdown-menu>
+      </template>
+      <template #right>
+        <van-icon name="plus" size="18" @click="showActionSheet = true" v-if="canCreate" />
+      </template>
+    </van-nav-bar>
+
     <!-- 搜索栏 -->
     <van-search
       v-model="queryParams.keyword"
@@ -10,7 +22,7 @@
     />
 
     <!-- 筛选标签 -->
-    <van-tabs v-model:active="activeTab" sticky @change="handleTabChange">
+    <van-tabs v-model:active="activeStatusTab" sticky offset-top="90" @change="handleTabChange">
       <van-tab title="全部" name="all" />
       <van-tab title="执行中" name="执行中" />
       <van-tab title="已完成" name="已完成" />
@@ -36,7 +48,7 @@
           >
             <template #value>
               <van-tag 
-                :type="getVantTagType(contract.status)"
+                :type="getVantTagType(contract.status) as any"
                 class="status-tag"
               >
                 {{ contract.status }}
@@ -69,18 +81,11 @@
 
         <!-- 空状态 -->
         <van-empty
-          v-if="!loading && list.length === 0"
+          v-if="!listLoading && list.length === 0"
           description="暂无合同数据"
         />
       </van-list>
     </van-pull-refresh>
-
-    <!-- 新建合同按钮 -->
-    <van-floating-bubble
-      v-if="canCreate"
-      icon="plus"
-      @click="showActionSheet = true"
-    />
 
     <!-- 新建合同操作菜单 -->
     <van-action-sheet
@@ -93,16 +98,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 import { showToast } from 'vant';
 import * as upstreamApi from '@/api/contractUpstream';
-import { useContractList } from '@/composables/useContractList';
+import * as downstreamApi from '@/api/contractDownstream';
+import * as managementApi from '@/api/contractManagement';
 import { useUserStore } from '@/stores/user';
+import { formatMoney } from '@/utils/common';
+import type { ContractItem, PaginatedResponse } from '@/types/api';
 
 // Vant 组件
 import {
+  NavBar as VanNavBar,
+  DropdownMenu as VanDropdownMenu,
+  DropdownItem as VanDropdownItem,
+  Icon as VanIcon,
   Search as VanSearch,
   Tabs as VanTabs,
   Tab as VanTab,
@@ -112,45 +124,66 @@ import {
   CellGroup as VanCellGroup,
   Tag as VanTag,
   Empty as VanEmpty,
-  FloatingBubble as VanFloatingBubble,
   ActionSheet as VanActionSheet,
 } from 'vant';
 
 const router = useRouter();
 const userStore = useUserStore();
 
-// Use the shared composable for API operations
-const {
-  loading,
-  list,
-  total,
-  queryParams,
-  getList,
-  handleQuery,
-  resetQuery,
-  formatMoney,
-} = useContractList({
-  api: upstreamApi,
-  contractType: '上游合同',
-  exportPrefix: '上游合同导出'
-});
+// State
+const contractType = ref('upstream'); // upstream, downstream, management
+const contractTypeOptions = [
+  { text: '上游合同', value: 'upstream' },
+  { text: '下游合同', value: 'downstream' },
+  { text: '管理合同', value: 'management' },
+];
 
-// Local state for mobile-specific behavior
-const activeTab = ref('all');
+const activeStatusTab = ref('all');
 const refreshing = ref(false);
 const listLoading = ref(false);
 const finished = ref(false);
 const showActionSheet = ref(false);
+const list = ref<ContractItem[]>([]);
+const total = ref(0);
 
-// Check if user can create contracts
-const canCreate = computed(() => userStore.canManageUpstreamContracts);
+const queryParams = reactive({
+  page: 1,
+  page_size: 10,
+  keyword: '',
+  status: ''
+});
+
+// Computed API based on type
+const currentApi = computed(() => {
+  switch (contractType.value) {
+    case 'upstream': return upstreamApi;
+    case 'downstream': return downstreamApi;
+    case 'management': return managementApi;
+    default: return upstreamApi;
+  }
+});
+
+// Check permission
+const canCreate = computed(() => {
+  switch (contractType.value) {
+    case 'upstream': return userStore.canManageUpstreamContracts;
+    case 'downstream': return userStore.canManageDownstreamContracts;
+    case 'management': return userStore.canManageManagementContracts;
+    default: return false;
+  }
+});
 
 // 新建合同操作
-const createActions = [
-  { name: '新建上游合同', value: 'upstream' },
-  { name: '新建下游合同', value: 'downstream' },
-  { name: '新建管理合同', value: 'management' },
-];
+const createActions = computed(() => {
+    // Show only the action for the current type to keep it simple, or keep all?
+    // Let's keep it simple: "New [Current Type] Contract"
+    const labelMap = {
+        'upstream': '新建上游合同',
+        'downstream': '新建下游合同',
+        'management': '新建管理合同'
+    };
+    return [{ name: labelMap[contractType.value], value: contractType.value }];
+});
 
 // Map contract status to Vant tag types
 const getVantTagType = (status: string) => {
@@ -170,7 +203,65 @@ const formatDate = (date: string | null) => {
   return dayjs(date).format('YYYY-MM-DD');
 };
 
-// Handle tab change - filter by status
+// Fetch Data
+const getList = async (isLoadMore = false) => {
+  if (!isLoadMore) {
+    listLoading.value = true; // Show loading for initial fetch/refresh
+  }
+
+  try {
+    const api = currentApi.value;
+    const res = await api.getContracts(queryParams) as unknown as PaginatedResponse<ContractItem>;
+    const newItems = res.items || [];
+
+    if (isLoadMore) {
+        list.value = [...list.value, ...newItems];
+    } else {
+        list.value = newItems;
+    }
+    
+    total.value = res.total || 0;
+
+    if (list.value.length >= total.value) {
+        finished.value = true;
+    } else {
+        finished.value = false;
+    }
+  } catch (e) {
+    showToast('加载失败');
+    if (isLoadMore) {
+        queryParams.page -= 1; // Revert if load more failed
+        finished.value = true; // Stop infinite load loop on error
+    }
+  } finally {
+    listLoading.value = false;
+    refreshing.value = false;
+  }
+};
+
+// Type Change
+const handleTypeChange = () => {
+    resetQuery(false); // Reset params, don't auto fetch yet
+    getList(); // Fetch new type
+};
+
+// Search
+const handleQuery = () => {
+    queryParams.page = 1;
+    finished.value = false;
+    getList();
+};
+
+const resetQuery = (fetch = true) => {
+    queryParams.keyword = '';
+    queryParams.status = '';
+    activeStatusTab.value = 'all';
+    queryParams.page = 1;
+    finished.value = false;
+    if (fetch) getList();
+};
+
+// Tab Change
 const handleTabChange = (name: string) => {
   queryParams.status = name === 'all' ? '' : name;
   queryParams.page = 1;
@@ -178,68 +269,33 @@ const handleTabChange = (name: string) => {
   getList();
 };
 
-// 下拉刷新
-const onRefresh = async () => {
-  try {
-    queryParams.page = 1;
-    finished.value = false;
-    // For refresh, we want to replace, so getList is fine
-    await getList();
-  } catch (e) {
-    showToast('刷新失败');
-  } finally {
-    refreshing.value = false;
-  }
+// Pull Refresh
+const onRefresh = () => {
+  queryParams.page = 1;
+  finished.value = false;
+  getList();
 };
 
-// 加载更多 
-const loadMore = async () => {
-  if (finished.value || listLoading.value) return;
-  
-  listLoading.value = true;
-  try {
-    queryParams.page += 1;
-    
-    // Use API directly to append data instead of getList (which replaces)
-    const res = await upstreamApi.getContracts(queryParams) as any;
-    const newItems = res.items || [];
-    
-    list.value = [...list.value, ...newItems];
-    total.value = res.total || 0;
-    
-    // Check if we've loaded all items
-    if (list.value.length >= total.value) {
-      finished.value = true;
-    }
-  } catch (e) {
-    showToast('加载失败');
-    queryParams.page -= 1; // Revert page on error
-  } finally {
-    listLoading.value = false;
-  }
+// Infinite Scroll
+const loadMore = () => {
+  if (listLoading.value || finished.value) return;
+  queryParams.page += 1;
+  getList(true);
 };
 
-// 跳转到详情
+// Go to Detail
 const goToDetail = (id: number) => {
-  router.push(`/contracts/upstream/${id}`);
+  router.push(`/contracts/${contractType.value}/${id}`);
 };
 
-// 新建合同
+// Create
 const onCreateSelect = (action: { value: string }) => {
   router.push(`/contracts/${action.value}/new`);
   showActionSheet.value = false;
 };
 
-// 初始化
 onMounted(() => {
   getList();
-});
-
-// Watch loading state from composable
-watch(loading, (val) => {
-  if (!val && !refreshing.value) {
-    listLoading.value = false;
-  }
 });
 </script>
 
@@ -299,15 +355,16 @@ watch(loading, (val) => {
   margin-left: 8px;
 }
 
-:deep(.van-cell-group--inset) {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+/* Customize Dropdown Menu to blend with NavBar */
+:deep(.van-dropdown-menu__bar) {
+    background-color: transparent;
+    box-shadow: none;
+    height: 46px; /* Match navbar height */
 }
-
-:deep(.van-tabs__wrap) {
-  background-color: #fff;
-}
-
-:deep(.van-floating-bubble) {
-  --van-floating-bubble-background: #1890ff;
+:deep(.van-dropdown-menu__title) {
+    font-weight: 600;
+    font-size: 16px;
+    color: #323233;
 }
 </style>
+

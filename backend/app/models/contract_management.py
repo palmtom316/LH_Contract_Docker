@@ -19,7 +19,7 @@ class ContractManagement(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     serial_number = Column(Integer, unique=True, nullable=True, index=True)
     contract_code = Column(String(50), unique=True, nullable=False, index=True)
-    contract_name = Column(String(200), nullable=False)
+    contract_name = Column(String(200), nullable=False, index=True)
     
     # Parties
     party_a_name = Column(String(200), nullable=False)    # 甲方 (Us)
@@ -50,7 +50,7 @@ class ContractManagement(Base):
     contract_amount = Column(Numeric(15, 2), nullable=False, default=0)
     
     # Dates
-    sign_date = Column(Date, nullable=True)
+    sign_date = Column(Date, nullable=True, index=True)
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
     
