@@ -58,8 +58,8 @@ async def lifespan(app: FastAPI):
     await close_db()
 
 app = FastAPI(
-    title="LH Contract Management",
-    version="1.5.4",
+    title=settings.APP_NAME,
+    version=settings.APP_VERSION,
     lifespan=lifespan,
     redirect_slashes=False,
     docs_url="/docs",
