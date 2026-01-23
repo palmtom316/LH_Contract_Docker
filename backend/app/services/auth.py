@@ -108,22 +108,139 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 
-def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """Create JWT refresh token with longer expiration"""
+def create_refresh_token_sync(data: dict, jti: str, expires_delta: Optional[timedelta] = None) -> str:
+    """Create JWT refresh token with JTI for tracking (sync version for token generation only)"""
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire, "type": "refresh"})
+    to_encode.update({"exp": expire, "type": "refresh", "jti": jti})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return encoded_jwt
+    return encoded_jwt, expire
 
 
+async def create_refresh_token_with_db(
+    data: dict, 
+    db: AsyncSession,
+    expires_delta: Optional[timedelta] = None
+) -> str:
+    """
+    Create JWT refresh token and store in database for rotation/revocation support.
+    
+    Returns:
+        The encoded JWT refresh token string
+    """
+    import uuid
+    from app.models.refresh_token import RefreshToken
+    
+    # Generate unique JTI
+    jti = str(uuid.uuid4())
+    
+    # Create the token
+    token, expires_at = create_refresh_token_sync(data, jti, expires_delta)
+    
+    # Store in database
+    user_id = int(data.get("sub"))
+    refresh_token_record = RefreshToken(
+        jti=jti,
+        user_id=user_id,
+        expires_at=expires_at,
+        revoked=False
+    )
+    db.add(refresh_token_record)
+    await db.commit()
+    
+    logger.info(f"[AUTH] Created refresh token with JTI {jti[:8]}... for user {user_id}")
+    return token
+
+
+async def verify_refresh_token_with_db(token: str, db: AsyncSession) -> Optional[dict]:
+    """
+    Verify refresh token and check if it's revoked in the database.
+    Returns payload if valid, None otherwise.
+    """
+    from app.models.refresh_token import RefreshToken
+    
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        
+        # Ensure this is a refresh token
+        if payload.get("type") != "refresh":
+            logger.warning("Token is not a refresh token")
+            return None
+        
+        # Check JTI in database
+        jti = payload.get("jti")
+        if not jti:
+            logger.warning("Refresh token missing JTI - legacy token")
+            # For backwards compatibility, allow tokens without JTI but log warning
+            return payload
+        
+        # Verify token is not revoked
+        result = await db.execute(
+            select(RefreshToken).where(RefreshToken.jti == jti)
+        )
+        token_record = result.scalar_one_or_none()
+        
+        if not token_record:
+            logger.warning(f"Refresh token JTI {jti[:8]}... not found in database")
+            return None
+        
+        if token_record.revoked:
+            logger.warning(f"Refresh token JTI {jti[:8]}... has been revoked")
+            return None
+        
+        return payload
+        
+    except jwt.ExpiredSignatureError:
+        logger.info("Refresh token has expired")
+        return None
+    except jwt.PyJWTError as e:
+        logger.error(f"Refresh token verification failed: {e}")
+        return None
+
+
+async def revoke_refresh_token(jti: str, db: AsyncSession) -> bool:
+    """Revoke a specific refresh token by its JTI"""
+    from app.models.refresh_token import RefreshToken
+    from sqlalchemy import update
+    
+    result = await db.execute(
+        update(RefreshToken)
+        .where(RefreshToken.jti == jti)
+        .values(revoked=True)
+    )
+    await db.commit()
+    
+    if result.rowcount > 0:
+        logger.info(f"[AUTH] Revoked refresh token JTI {jti[:8]}...")
+        return True
+    return False
+
+
+async def revoke_all_user_tokens(user_id: int, db: AsyncSession) -> int:
+    """Revoke all refresh tokens for a user (e.g., on logout or password change)"""
+    from app.models.refresh_token import RefreshToken
+    from sqlalchemy import update
+    
+    result = await db.execute(
+        update(RefreshToken)
+        .where(RefreshToken.user_id == user_id, RefreshToken.revoked == False)
+        .values(revoked=True)
+    )
+    await db.commit()
+    
+    logger.info(f"[AUTH] Revoked {result.rowcount} refresh tokens for user {user_id}")
+    return result.rowcount
+
+
+# Keep legacy function for backwards compatibility
 def verify_refresh_token(token: str) -> Optional[dict]:
     """
-    Verify refresh token and return payload if valid.
+    Verify refresh token and return payload if valid (legacy sync version).
     Returns None if token is invalid or not a refresh token.
+    NOTE: This does NOT check database revocation. Use verify_refresh_token_with_db for full security.
     """
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])

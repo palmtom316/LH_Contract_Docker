@@ -17,8 +17,10 @@ from app.services.auth import (
     verify_password, 
     get_password_hash, 
     create_access_token,
-    create_refresh_token,
-    verify_refresh_token,
+    create_refresh_token_with_db,
+    verify_refresh_token_with_db,
+    revoke_refresh_token,
+    revoke_all_user_tokens,
     get_current_user,
     get_current_active_user
 )
@@ -123,7 +125,7 @@ async def login(
     token_data = {"sub": str(user.id), "username": user.username, "role": user.role.value}
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(data=token_data, expires_delta=access_token_expires)
-    refresh_token = create_refresh_token(data=token_data)
+    refresh_token = await create_refresh_token_with_db(data=token_data, db=db)
     
     return Token(
         access_token=access_token,
@@ -178,7 +180,7 @@ async def login_json(
     token_data = {"sub": str(user.id), "username": user.username, "role": user.role.value}
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(data=token_data, expires_delta=access_token_expires)
-    refresh_token = create_refresh_token(data=token_data)
+    refresh_token = await create_refresh_token_with_db(data=token_data, db=db)
     
     return Token(
         access_token=access_token,
@@ -310,12 +312,10 @@ async def refresh_access_token(
 ):
     """
     Refresh access token using a valid refresh token.
-    
-    This endpoint allows clients to obtain a new access token without
-    requiring the user to re-authenticate with their credentials.
+    Implements token rotation: old token is revoked, new token is issued.
     """
-    # Verify the refresh token
-    payload = verify_refresh_token(token_request.refresh_token)
+    # Verify the refresh token (with database revocation check)
+    payload = await verify_refresh_token_with_db(token_request.refresh_token, db)
     if not payload:
         raise AuthenticationError(
             message="无效或已过期的刷新令牌",
@@ -344,19 +344,47 @@ async def refresh_access_token(
             detail="请联系管理员"
         )
     
-    # Create new access token (refresh token remains the same)
+    # Revoke old refresh token (if it has JTI)
+    old_jti = payload.get("jti")
+    if old_jti:
+        await revoke_refresh_token(old_jti, db)
+    
+    # Create new access token and rotated refresh token
     token_data = {"sub": str(user.id), "username": user.username, "role": user.role.value}
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(data=token_data, expires_delta=access_token_expires)
-    
-    # Optionally create a new refresh token (sliding expiration)
-    # Uncomment the next line if you want to rotate refresh tokens
-    # new_refresh_token = create_refresh_token(data=token_data)
+    new_refresh_token = await create_refresh_token_with_db(data=token_data, db=db)
     
     return Token(
         access_token=access_token,
-        refresh_token=token_request.refresh_token,  # Return the same refresh token
+        refresh_token=new_refresh_token,  # Rotated: new token issued
         token_type="bearer",
         expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         user=UserResponse.from_orm_with_permissions(user, get_user_permissions(user))
     )
+
+
+@router.post("/logout")
+async def logout(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Logout user by revoking all their refresh tokens.
+    This forces re-authentication on all devices.
+    """
+    revoked_count = await revoke_all_user_tokens(current_user.id, db)
+    
+    # Audit log
+    await create_audit_log(
+        db=db,
+        user=current_user,
+        action=AuditAction.LOGOUT,
+        resource_type=ResourceType.SYSTEM,
+        description=f"用户 {current_user.username} 登出系统 (撤销 {revoked_count} 个令牌)",
+        ip_address=get_client_ip(request),
+        user_agent=get_user_agent(request)
+    )
+    
+    return {"message": "登出成功", "revoked_tokens": revoked_count}
