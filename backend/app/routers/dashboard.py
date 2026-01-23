@@ -15,6 +15,8 @@ from app.models.contract_management import FinanceManagementPayment, ContractMan
 from app.models.expense import ExpenseNonContract
 from app.services.report_cache import get_cached_dashboard_stats, set_cached_dashboard_stats
 from app.core.permissions import require_permission, Permission
+from app.core.cache import cache_manager
+from app.services.auth import get_current_active_user
 
 router = APIRouter()
 
