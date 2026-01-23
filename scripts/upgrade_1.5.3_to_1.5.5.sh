@@ -78,15 +78,15 @@ log "✓ 备份完成: $BACKUP_DIR"
 # =============================================================================
 log "Step 3: 拉取新代码..."
 
-git fetch origin
-git checkout $TARGET_BRANCH
-git pull origin $TARGET_BRANCH
+# git fetch origin
+# git checkout $TARGET_BRANCH
+# git pull origin $TARGET_BRANCH
 
-CURRENT_BRANCH=$(git branch --show-current)
-if [ "$CURRENT_BRANCH" != "$TARGET_BRANCH" ]; then
-    error "无法切换到分支 $TARGET_BRANCH"
-    exit 1
-fi
+# CURRENT_BRANCH=$(git branch --show-current)
+# if [ "$CURRENT_BRANCH" != "$TARGET_BRANCH" ]; then
+#     error "无法切换到分支 $TARGET_BRANCH"
+#     exit 1
+# fi
 
 log "✓ 代码已更新到 $TARGET_BRANCH"
 
@@ -150,6 +150,12 @@ fi
 if ! grep -q "TRUSTED_PROXIES=" .env; then
     echo "TRUSTED_PROXIES=" >> .env
     log "  - 已添加 TRUSTED_PROXIES (空值，需手动配置)"
+fi
+
+# 清理硬编码的版本号（使用代码中的默认值）
+if grep -q "APP_VERSION=" .env; then
+    sed -i '/APP_VERSION=/d' .env
+    log "  - 已从 .env 中移除 APP_VERSION（使用代码内置版本号）"
 fi
 
 log "✓ 环境配置检查完成"
