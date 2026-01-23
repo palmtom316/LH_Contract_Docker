@@ -171,7 +171,7 @@ import { useDevice } from '@/composables/useDevice'
 import pkg from '../../package.json'
 import { Fold, Expand, Monitor, HomeFilled, Document, DocumentCopy, FolderChecked, Money, DataAnalysis, Setting, UserFilled, CaretBottom, ArrowLeft } from '@element-plus/icons-vue'
 
-const systemVersion = ref('Version 1.5.3')
+const systemVersion = ref(`Version ${pkg.version}`)
 
 const route = useRoute()
 const router = useRouter()
