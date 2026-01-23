@@ -201,7 +201,7 @@ async def get_current_user_info(
 
 class ChangePasswordRequest(BaseModel):
     old_password: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=6, max_length=100)
+    new_password: str = Field(..., min_length=8, max_length=100)
 
 
 @router.post("/change-password")
@@ -236,8 +236,22 @@ async def change_password(
 
 
 @router.post("/init-admin")
-async def init_admin(db: AsyncSession = Depends(get_db)):
+async def init_admin(request: Request, db: AsyncSession = Depends(get_db)):
     """Initialize admin user (only works if no users exist)"""
+    # Protect init in production: require token unless DEBUG
+    if not settings.DEBUG:
+        if not settings.INIT_ADMIN_TOKEN:
+            raise PermissionDeniedError(
+                message="未配置管理员初始化令牌",
+                detail="请设置 INIT_ADMIN_TOKEN 环境变量后重试"
+            )
+        provided = request.headers.get("X-Init-Admin-Token", "")
+        if provided != settings.INIT_ADMIN_TOKEN:
+            raise PermissionDeniedError(
+                message="初始化令牌无效",
+                detail="缺少或错误的 X-Init-Admin-Token"
+            )
+
     # Check if any users exist
     result = await db.execute(select(User))
     if result.first():

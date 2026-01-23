@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 from app.services.auth import get_current_active_user
 from app.models.user import User
 from app.config import settings
@@ -20,6 +21,14 @@ from app.database import get_db
 from app.models.system import SysDictionary, SystemConfig
 
 router = APIRouter()
+
+def _safe_remove_file(path: str) -> None:
+    """Best-effort file removal to avoid backup accumulation."""
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except Exception:
+        pass
 
 def find_pg_dump():
     """Find pg_dump executable in PATH or common Windows locations"""
@@ -102,11 +111,12 @@ async def backup_database(
     
     try:
         run_db_dump(filepath)
-        
+
         return FileResponse(
-            path=filepath, 
-            filename=filename, 
-            media_type='application/sql'
+            path=filepath,
+            filename=filename,
+            media_type='application/sql',
+            background=BackgroundTask(_safe_remove_file, filepath)
         )
         
     except Exception as e:
@@ -160,7 +170,8 @@ async def backup_system(
         return FileResponse(
             path=zip_filepath,
             filename=zip_filename,
-            media_type='application/zip'
+            media_type='application/zip',
+            background=BackgroundTask(_safe_remove_file, zip_filepath)
         )
 
     except Exception as e:

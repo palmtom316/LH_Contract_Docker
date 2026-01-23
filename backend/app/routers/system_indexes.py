@@ -9,7 +9,7 @@ from sqlalchemy import text
 from app.database import get_db
 from app.models.user import User
 from app.services.auth import get_current_active_user
-from app.core.permissions import require_permission, Permission
+from app.core.errors import PermissionDeniedError
 from app.core.db_indexes import SQL_SCRIPT
 
 router = APIRouter()
@@ -17,10 +17,12 @@ router = APIRouter()
 
 @router.post("/indexes/apply")
 async def apply_performance_indexes(
-    current_user: User = Depends(require_permission(Permission.MANAGE_SYSTEM)),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Apply performance indexes to database (Admin only)"""
+    if not current_user.is_superuser:
+        raise PermissionDeniedError(detail="需要超级管理员权限")
     statements = [
         s.strip()
         for s in SQL_SCRIPT.split(';')

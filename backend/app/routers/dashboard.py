@@ -13,16 +13,15 @@ from app.models.contract_upstream import ContractUpstream, FinanceUpstreamReceip
 from app.models.contract_downstream import ContractDownstream, FinanceDownstreamPayment
 from app.models.contract_management import FinanceManagementPayment, ContractManagement
 from app.models.expense import ExpenseNonContract
-from app.services.auth import get_current_active_user
-from app.core.cache import cache_manager
+from app.services.report_cache import get_cached_dashboard_stats, set_cached_dashboard_stats
+from app.core.permissions import require_permission, Permission
 
 router = APIRouter()
 
 @router.get("/stats")
-@cache_manager.cached(ttl=300, key_prefix="dashboard_stats")
 async def get_dashboard_stats(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(require_permission(Permission.VIEW_DASHBOARD))
 ):
     """
     Get dashboard statistics with caching (5 minute TTL):
@@ -32,6 +31,11 @@ async def get_dashboard_stats(
     """
     current_year = datetime.now().year
     
+    # Cache by year (dashboard is same for all users with permission)
+    cached = await get_cached_dashboard_stats(current_year, None)
+    if cached:
+        return cached
+
     # --- 1. Top Cards (Annual Statistics for Current Year) ---
     
     # Annual Upstream Contracts (signed in current year)
@@ -184,7 +188,7 @@ async def get_dashboard_stats(
     bar_data["expense"][current_month - 1] = month_out
     
     
-    return {
+    result = {
         "cards": {
             "annual_upstream_count": annual_upstream_count,
             "annual_upstream_amount": float(annual_upstream_amount),
@@ -200,12 +204,14 @@ async def get_dashboard_stats(
         }
     }
 
+    await set_cached_dashboard_stats(current_year, None, result)
+    return result
+
 
 @router.get("/stats/period")
-@cache_manager.cached(ttl=300, key_prefix="dashboard_period_stats")
 async def get_period_stats(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(require_permission(Permission.VIEW_DASHBOARD))
 ):
     """
     获取近一月和近一季度的经营统计数据
@@ -447,4 +453,3 @@ async def get_period_trend(
             "labor": labor_list
         }
     }
-

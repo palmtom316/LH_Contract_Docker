@@ -10,6 +10,7 @@ import asyncio
 
 from app.database import get_db
 from app.core.cache import cache_manager
+from app.config import settings
 
 router = APIRouter()
 
@@ -102,7 +103,7 @@ async def health_check_detailed(db: AsyncSession = Depends(get_db)):
     return {
         "status": overall_status,
         "checks": checks,
-        "version": "1.5.1"
+        "version": settings.APP_VERSION
     }
 
 

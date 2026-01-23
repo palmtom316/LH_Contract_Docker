@@ -16,6 +16,7 @@ from app.models.contract_downstream import ContractDownstream, FinanceDownstream
 from app.models.contract_management import ContractManagement, FinanceManagementPayment, FinanceManagementPayable
 from app.models.expense import ExpenseNonContract
 from app.services.auth import get_current_active_user
+from app.core.permissions import require_permission, Permission
 from app.services.report_cache import (
     get_cached_report, 
     set_cached_report,
@@ -23,7 +24,7 @@ from app.services.report_cache import (
 )
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_permission(Permission.VIEW_REPORTS))])
 
 
 @router.post("/cache/invalidate")

@@ -1,7 +1,7 @@
-"""
+/*
 Optimized Token Refresh with Lock Mechanism
 Prevents multiple simultaneous refresh requests
-"""
+*/
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'

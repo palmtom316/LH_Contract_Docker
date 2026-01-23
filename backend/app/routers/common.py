@@ -22,6 +22,7 @@ from app.models.contract_downstream import ContractDownstream
 from app.models.contract_management import ContractManagement
 from app.services.auth import get_current_active_user
 from app.core.errors import ValidationError, DatabaseError
+from app.core.validators import FileValidators
 
 router = APIRouter()
 
@@ -163,6 +164,12 @@ async def upload_file(
         file.file.seek(0, 2)
         file_size = file.file.tell()
         file.file.seek(0)
+
+        if file_size > settings.MAX_FILE_SIZE:
+            raise ValidationError(
+                message="文件过大",
+                field_errors={"file": f"文件大小超过限制 {settings.MAX_FILE_SIZE // (1024 * 1024)}MB"}
+            )
         
         client.put_object(
             bucket_name,
@@ -217,8 +224,22 @@ async def get_file(
     Supports token in Authorization header or query parameter.
     """
     current_user = None
-    # Try to get user from token if provided in query
+    # Validate path to prevent traversal
+    try:
+        safe_path = FileValidators.validate_file_path(path)
+    except ValueError:
+        raise ValidationError(
+            message="非法的文件路径",
+            field_errors={"path": "文件路径非法"}
+        )
+
+    # Try to get user from token if provided in query (only if enabled)
     if not current_user and token:
+        if not settings.ALLOW_QUERY_TOKEN:
+            raise ValidationError(
+                message="不允许使用查询参数令牌",
+                field_errors={"token": "请使用 Authorization 头部"}
+            )
         try:
             current_user = await get_user_from_token(token, db)
         except Exception:
@@ -241,7 +262,7 @@ async def get_file(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    logger.info(f"[FILE_GET] Request: path={path}, user={current_user.username}")
+    logger.info(f"[FILE_GET] Request: path={safe_path}, user={current_user.username}")
     
     # 1. Try MinIO first
     try:
@@ -250,13 +271,13 @@ async def get_file(
         
         # Check if object exists
         try:
-            stat = client.stat_object(bucket_name, path)
+            stat = client.stat_object(bucket_name, safe_path)
             
             # Get data stream
-            response = client.get_object(bucket_name, path)
+            response = client.get_object(bucket_name, safe_path)
             
             # Guess mime type
-            mime_type, _ = mimetypes.guess_type(path)
+            mime_type, _ = mimetypes.guess_type(safe_path)
             if not mime_type:
                 mime_type = "application/octet-stream"
                 
@@ -275,7 +296,7 @@ async def get_file(
                 media_type=mime_type,
                 headers={
                     "Content-Length": str(stat.size),
-                    "Content-Disposition": f"inline; filename={os.path.basename(path)}",
+                    "Content-Disposition": f"inline; filename={os.path.basename(safe_path)}",
                     "Accept-Ranges": "bytes"
                 }
             )
@@ -289,12 +310,18 @@ async def get_file(
         # Continue to local fallback
     
     # 2. Local fallback
-    local_path = os.path.join(settings.UPLOAD_DIR, path)
+    local_path = os.path.normpath(os.path.join(settings.UPLOAD_DIR, safe_path))
+    uploads_root = os.path.abspath(settings.UPLOAD_DIR)
+    if not local_path.startswith(uploads_root + os.sep):
+        raise ValidationError(
+            message="非法的文件路径",
+            field_errors={"path": "文件路径非法"}
+        )
     if os.path.exists(local_path) and os.path.isfile(local_path):
         return FileResponse(local_path)
     
     # 3. Not found anywhere
-    logger.warning(f"[FILE_GET] Not Found: {path}")
+    logger.warning(f"[FILE_GET] Not Found: {safe_path}")
     raise ValidationError(
         message="文件不存在",
         field_errors={"path": f"文件不存在: {path}"}

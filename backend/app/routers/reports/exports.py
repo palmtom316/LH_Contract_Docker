@@ -29,9 +29,10 @@ from app.models.contract_management import (
 )
 from app.models.expense import ExpenseNonContract
 from app.services.auth import get_current_active_user
+from app.core.permissions import require_permission, Permission
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_permission(Permission.DOWNLOAD_REPORTS))])
 
 
 def _create_excel_response(df: pd.DataFrame, sheet_name: str, filename: str) -> StreamingResponse:

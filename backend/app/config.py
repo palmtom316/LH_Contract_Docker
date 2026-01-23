@@ -67,6 +67,7 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", os.path.join(BASE_DIR, "uploads"))
     MAX_FILE_SIZE: int = 50 * 1024 * 1024  # 50MB
     ALLOWED_EXTENSIONS: List[str] = ["pdf", "xlsx", "xls", "doc", "docx", "jpg", "jpeg", "png"]
+    ALLOW_QUERY_TOKEN: bool = os.getenv("ALLOW_QUERY_TOKEN", "false").lower() == "true"
     
     # MinIO / S3 Storage
     MINIO_ENDPOINT: str = os.getenv("MINIO_ENDPOINT", "minio:9000")
@@ -79,6 +80,17 @@ class Settings(BaseSettings):
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     CACHE_DEFAULT_TTL: int = 300  # 5 minutes
     CACHE_ENABLED: bool = os.getenv("CACHE_ENABLED", "true").lower() == "true"
+
+    # Admin initialization (production should require a token)
+    INIT_ADMIN_TOKEN: str = os.getenv("INIT_ADMIN_TOKEN", "")
+
+    # Trusted proxy IPs for client IP resolution (comma-separated). Use "*" to trust all.
+    TRUSTED_PROXIES: str = os.getenv("TRUSTED_PROXIES", "")
+
+    @property
+    def trusted_proxies_list(self) -> List[str]:
+        """Parse TRUSTED_PROXIES into a list"""
+        return [ip.strip() for ip in self.TRUSTED_PROXIES.split(",") if ip.strip()]
     
     class Config:
         env_file = ".env"

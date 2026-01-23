@@ -12,6 +12,7 @@ from typing import Callable, Optional
 from functools import wraps
 
 logger = logging.getLogger(__name__)
+from app.config import settings
 
 # Check if slowapi is available
 try:
@@ -30,18 +31,23 @@ def get_client_ip(request) -> str:
     Get the real client IP address from request.
     Handles X-Forwarded-For header for requests behind proxy/load balancer.
     """
-    forwarded_for = request.headers.get("X-Forwarded-For")
-    if forwarded_for:
-        # Take the first IP (original client)
-        return forwarded_for.split(",")[0].strip()
-    
-    # Also check X-Real-IP (used by some proxies)
-    real_ip = request.headers.get("X-Real-IP")
-    if real_ip:
-        return real_ip.strip()
-    
+    client_host = request.client.host if request.client else "unknown"
+    trusted = settings.trusted_proxies_list
+    trust_all = "*" in trusted
+
+    if trust_all or client_host in trusted:
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            # Take the first IP (original client)
+            return forwarded_for.split(",")[0].strip()
+
+        # Also check X-Real-IP (used by some proxies)
+        real_ip = request.headers.get("X-Real-IP")
+        if real_ip:
+            return real_ip.strip()
+
     # Fallback to direct connection IP
-    return request.client.host if request.client else "unknown"
+    return client_host
 
 
 # Rate limit configuration
