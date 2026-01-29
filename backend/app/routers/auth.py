@@ -221,7 +221,6 @@ async def change_password(
         )
     
     current_user.hashed_password = get_password_hash(password_data.new_password)
-    await db.commit()
     
     # Audit log
     await create_audit_log(
@@ -233,6 +232,8 @@ async def change_password(
         ip_address=get_client_ip(request),
         user_agent=get_user_agent(request)
     )
+
+    await db.commit()
     
     return {"message": "密码修改成功"}
 
@@ -386,5 +387,7 @@ async def logout(
         ip_address=get_client_ip(request),
         user_agent=get_user_agent(request)
     )
+
+    await db.commit()
     
     return {"message": "登出成功", "revoked_tokens": revoked_count}

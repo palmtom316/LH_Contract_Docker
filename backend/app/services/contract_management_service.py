@@ -273,12 +273,7 @@ class ContractManagementService(BaseContractService[ContractManagement]):
 
         contract = ContractManagement(**data, created_by=user.id)
         self.db.add(contract)
-        await self.db.commit()
-        await self.db.refresh(contract)
-        
-        await self._invalidate_dashboard_cache()
-
-        # Audit Log
+        await self.db.flush()
         await create_audit_log(
             db=self.db,
             user=user,
@@ -289,6 +284,10 @@ class ContractManagementService(BaseContractService[ContractManagement]):
             new_values=contract_in.model_dump(mode='json'),
             description=f"创建管理合同: {contract.contract_name}"
         )
+        await self.db.commit()
+        await self.db.refresh(contract)
+        
+        await self._invalidate_dashboard_cache()
         
         # Return partial loaded object
         return await self.get_contract(contract.id)
@@ -319,12 +318,6 @@ class ContractManagementService(BaseContractService[ContractManagement]):
         for field, value in update_data.items():
             setattr(contract, field, value)
 
-        await self.db.commit()
-        await self.db.refresh(contract)
-        
-        await self._invalidate_dashboard_cache()
-
-        # Audit Log
         await create_audit_log(
             db=self.db,
             user=user,
@@ -336,6 +329,10 @@ class ContractManagementService(BaseContractService[ContractManagement]):
             new_values=update_data,
             description=f"更新管理合同: {contract.contract_name}"
         )
+        await self.db.commit()
+        await self.db.refresh(contract)
+        
+        await self._invalidate_dashboard_cache()
 
         return contract
 
@@ -354,11 +351,6 @@ class ContractManagementService(BaseContractService[ContractManagement]):
         }
 
         await self.db.delete(contract)
-        await self.db.commit()
-        
-        await self._invalidate_dashboard_cache()
-
-        # Audit Log
         await create_audit_log(
             db=self.db,
             user=user,
@@ -369,6 +361,9 @@ class ContractManagementService(BaseContractService[ContractManagement]):
             old_values=contract_data,
             description=f"删除管理合同: {contract_name}"
         )
+        await self.db.commit()
+        
+        await self._invalidate_dashboard_cache()
 
     async def refresh_contract_status(self, contract_id: int) -> None:
         """Recalculate and update contract status"""

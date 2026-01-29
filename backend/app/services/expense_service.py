@@ -211,12 +211,7 @@ class ExpenseService:
             
         expense = ExpenseNonContract(**data, created_by=user.id, updated_by=user.id)
         self.db.add(expense)
-        await self.db.commit()
-        await self.db.refresh(expense)
-        
-        await self._invalidate_dashboard_cache()
-
-        # Audit Log
+        await self.db.flush()
         await create_audit_log(
             db=self.db,
             user=user,
@@ -227,6 +222,10 @@ class ExpenseService:
             new_values=expense_in.model_dump(mode='json'),
             description=f"创建无合同费用: {expense.expense_code}"
         )
+        await self.db.commit()
+        await self.db.refresh(expense)
+        
+        await self._invalidate_dashboard_cache()
         
         # Return with relationship
         return await self.get_expense(expense.id)
@@ -269,12 +268,6 @@ class ExpenseService:
             setattr(expense, field, value)
         expense.updated_by = user.id
             
-        await self.db.commit()
-        await self.db.refresh(expense)
-        
-        await self._invalidate_dashboard_cache()
-
-        # Audit Log
         await create_audit_log(
             db=self.db,
             user=user,
@@ -286,6 +279,10 @@ class ExpenseService:
             new_values=update_data,
             description=f"更新无合同费用: {expense.expense_code}"
         )
+        await self.db.commit()
+        await self.db.refresh(expense)
+        
+        await self._invalidate_dashboard_cache()
 
         return expense
 
@@ -314,11 +311,6 @@ class ExpenseService:
         }
             
         await self.db.delete(expense)
-        await self.db.commit()
-        
-        await self._invalidate_dashboard_cache()
-
-        # Audit Log
         await create_audit_log(
             db=self.db,
             user=user,
@@ -329,6 +321,9 @@ class ExpenseService:
             old_values=expense_data,
             description=f"删除无合同费用: {expense_code}"
         )
+        await self.db.commit()
+        
+        await self._invalidate_dashboard_cache()
 
     async def approve_expense(self, expense_id: int, approved: bool, user: User) -> None:
         """Approve or reject expense"""
@@ -339,9 +334,6 @@ class ExpenseService:
         expense.status = "已审核" if approved else "已驳回"
         expense.approved_by = user.id
         expense.approved_at = datetime.utcnow()
-        
-        await self.db.commit()
-        await self._invalidate_dashboard_cache()
 
         # Audit Log
         action = AuditAction.APPROVE if approved else AuditAction.REJECT
@@ -354,3 +346,6 @@ class ExpenseService:
             resource_name=expense.expense_code,
             description=f"{'审核通过' if approved else '驳回'}无合同费用: {expense.expense_code}"
         )
+        
+        await self.db.commit()
+        await self._invalidate_dashboard_cache()

@@ -132,10 +132,7 @@ class ZeroHourLaborService:
                 obj.materials.append(material)
                 
         obj.updated_at = datetime.utcnow()
-        
-        await self.db.commit()
-        await self.db.refresh(obj)
-        
+
         await create_audit_log(
             db=self.db,
             user=user,
@@ -147,6 +144,9 @@ class ZeroHourLaborService:
             new_values=update_data,
             description="更新零星用工"
         )
+        
+        await self.db.commit()
+        await self.db.refresh(obj)
         return await self.get(obj.id)
 
     async def delete(self, id: int, user: User) -> None:
@@ -157,8 +157,6 @@ class ZeroHourLaborService:
         resource_name = f"Labor-{obj.labor_date}"
         
         await self.db.delete(obj)
-        await self.db.commit()
-        
         await create_audit_log(
             db=self.db,
             user=user,
@@ -168,3 +166,4 @@ class ZeroHourLaborService:
             resource_name=resource_name,
             description="删除零星用工"
         )
+        await self.db.commit()

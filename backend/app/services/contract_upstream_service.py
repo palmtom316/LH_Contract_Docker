@@ -366,17 +366,9 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
             
             logger.info("Adding to database...")
             self.db.add(contract)
-            
-            logger.info("Committing...")
-            await self.db.commit()
-            
-            logger.info("Refreshing...")
-            await self.db.refresh(contract)
-            
-            logger.info("Invalidating cache...")
-            await self._invalidate_dashboard_cache()
 
             # Audit Log
+            await self.db.flush()
             await create_audit_log(
                 db=self.db,
                 user=user,
@@ -387,6 +379,15 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
                 new_values=contract_in.model_dump(mode='json'),
                 description=f"创建上游合同: {contract.contract_name}"
             )
+            
+            logger.info("Committing...")
+            await self.db.commit()
+            
+            logger.info("Refreshing...")
+            await self.db.refresh(contract)
+            
+            logger.info("Invalidating cache...")
+            await self._invalidate_dashboard_cache()
             
             logger.info(f"Contract created successfully: ID={contract.id}")
             return contract
@@ -426,11 +427,6 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
         
         for field, value in update_data.items():
             setattr(contract, field, value)
-            
-        await self.db.commit()
-        await self.db.refresh(contract)
-        
-        await self._invalidate_dashboard_cache()
 
         # Audit Log
         await create_audit_log(
@@ -444,6 +440,11 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
             new_values=update_data,
             description=f"更新上游合同: {contract.contract_name}"
         )
+        
+        await self.db.commit()
+        await self.db.refresh(contract)
+        
+        await self._invalidate_dashboard_cache()
 
         return contract
 
@@ -462,11 +463,6 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
         }
             
         await self.db.delete(contract)
-        await self.db.commit()
-        
-        await self._invalidate_dashboard_cache()
-
-        # Audit Log
         await create_audit_log(
             db=self.db,
             user=user,
@@ -477,6 +473,9 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
             old_values=contract_data,
             description=f"删除上游合同: {contract_name}"
         )
+        await self.db.commit()
+        
+        await self._invalidate_dashboard_cache()
 
     async def refresh_contract_status(self, contract_id: int) -> None:
         """Recalculate and update contract status"""
@@ -540,5 +539,4 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
             await self._invalidate_dashboard_cache()
             
         return {"success": success_count, "errors": errors}
-
 

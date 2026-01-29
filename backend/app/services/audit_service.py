@@ -82,7 +82,7 @@ async def create_audit_log(
         user_agent=user_agent
     )
     db.add(log)
-    await db.commit()
+    await db.flush()
     return log
 
 
