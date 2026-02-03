@@ -36,6 +36,7 @@ from app.models.expense import (
 )
 from app.models.audit_log import AuditLog
 from app.models.system import SysDictionary, SystemConfig
+from app.models.refresh_token import RefreshToken
 
 __all__ = [
     # User
@@ -72,6 +73,8 @@ __all__ = [
     "AuditLog",
     # System
     "SysDictionary",
-    "SystemConfig"
+    "SystemConfig",
+    # Auth
+    "RefreshToken"
 ]
 

@@ -24,6 +24,7 @@ from app.models.expense import ExpenseNonContract
 from app.models.audit_log import AuditLog
 from app.models.system import SysDictionary, SystemConfig
 from app.models.zero_hour_labor import ZeroHourLabor, ZeroHourLaborMaterial
+from app.models.refresh_token import RefreshToken
 
 # Alembic Config object
 config = context.config

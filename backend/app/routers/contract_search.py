@@ -5,17 +5,32 @@ Contract Search Router (合同查询机器人后端)
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy import select, or_, and_, cast, String
+from sqlalchemy import select, or_, and_, cast, String, func
 from typing import Optional, List
 from pydantic import BaseModel
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from app.database import get_db
 from app.services.auth import get_current_active_user
 from app.models.user import User
-from app.models.contract_upstream import ContractUpstream
-from app.models.contract_downstream import ContractDownstream
-from app.models.contract_management import ContractManagement
+from app.models.contract_upstream import (
+    ContractUpstream,
+    FinanceUpstreamReceivable,
+    FinanceUpstreamInvoice,
+    FinanceUpstreamReceipt
+)
+from app.models.contract_downstream import (
+    ContractDownstream,
+    FinanceDownstreamPayable,
+    FinanceDownstreamInvoice,
+    FinanceDownstreamPayment
+)
+from app.models.contract_management import (
+    ContractManagement,
+    FinanceManagementPayable,
+    FinanceManagementInvoice,
+    FinanceManagementPayment
+)
 from app.models.expense import ExpenseNonContract
 from app.models.zero_hour_labor import ZeroHourLabor
 
@@ -23,6 +38,24 @@ import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _to_decimal(value) -> Decimal:
+    if value is None:
+        return Decimal("0")
+    if isinstance(value, Decimal):
+        return value
+    return Decimal(str(value))
+
+
+def _money(value) -> float:
+    amount = _to_decimal(value)
+    return float(amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
+
+async def _scalar(db: AsyncSession, stmt):
+    result = await db.execute(stmt)
+    return result.scalar_one() or 0
 
 
 # Response Models
@@ -162,32 +195,26 @@ async def search_contracts(
     if not conditions:
         return SearchResponse(total=0, results=[], summary=None)
     
-    # Query upstream contracts with fuzzy matching
+    base_conditions = and_(*conditions)
+
+    total = await _scalar(
+        db,
+        select(func.count()).select_from(ContractUpstream).where(base_conditions)
+    )
+
+    # Query upstream contracts with fuzzy matching (limited)
     stmt = select(ContractUpstream).options(
         selectinload(ContractUpstream.receivables),
         selectinload(ContractUpstream.invoices),
         selectinload(ContractUpstream.receipts),
         selectinload(ContractUpstream.settlements)
-    ).where(and_(*conditions)).order_by(ContractUpstream.serial_number.desc().nulls_last()).limit(limit)
+    ).where(base_conditions).order_by(ContractUpstream.serial_number.desc().nulls_last()).limit(limit)
     
     result = await db.execute(stmt)
     upstream_contracts = result.scalars().all()
     
     results = []
-    party_a_totals = {
-        "contract_amount": 0.0,
-        "payable_amount": 0.0,
-        "invoiced_amount": 0.0,
-        "paid_amount": 0.0
-    }
-    party_b_totals = {
-        "contract_amount": 0.0,
-        "payable_amount": 0.0,
-        "invoiced_amount": 0.0,
-        "paid_amount": 0.0
-    }
-    party_a_count = 0
-    party_b_count = 0
+    upstream_ids_subq = select(ContractUpstream.id).where(base_conditions).subquery()
     
     # Expense type translation mapping
     expense_type_map = {
@@ -205,25 +232,18 @@ async def search_contracts(
     for up in upstream_contracts:
         # Calculate upstream finance summary
         # 应收款 = sum of receivables
-        receivable_total = sum(float(r.amount or 0) for r in up.receivables)
+        receivable_total = sum((_to_decimal(r.amount) for r in up.receivables), Decimal("0"))
         # 挂账金额 = sum of invoices
-        invoiced_total = sum(float(i.amount or 0) for i in up.invoices)
+        invoiced_total = sum((_to_decimal(i.amount) for i in up.invoices), Decimal("0"))
         # 已收款 = sum of receipts
-        received_total = sum(float(r.amount or 0) for r in up.receipts)
+        received_total = sum((_to_decimal(r.amount) for r in up.receipts), Decimal("0"))
         
         up_finance = FinanceSummary(
-            contract_amount=float(up.contract_amount or 0),
-            payable_amount=receivable_total,  # 对于上游合同，应收款 = 应付方的应付
-            invoiced_amount=invoiced_total,
-            paid_amount=received_total
+            contract_amount=_money(up.contract_amount),
+            payable_amount=_money(receivable_total),  # 对于上游合同，应收款 = 应付方的应付
+            invoiced_amount=_money(invoiced_total),
+            paid_amount=_money(received_total)
         )
-
-        if has_party_a:
-            party_a_count += 1
-            party_a_totals["contract_amount"] += up_finance.contract_amount
-            party_a_totals["payable_amount"] += up_finance.payable_amount
-            party_a_totals["invoiced_amount"] += up_finance.invoiced_amount
-            party_a_totals["paid_amount"] += up_finance.paid_amount
         
         # Get associated downstream contracts
         stmt_down = select(ContractDownstream).options(
@@ -240,9 +260,9 @@ async def search_contracts(
         
         downstream_list = []
         for d in downs:
-            d_payable = sum(float(p.amount or 0) for p in d.payables)
-            d_invoiced = sum(float(i.amount or 0) for i in d.invoices)
-            d_paid = sum(float(p.amount or 0) for p in d.payments)
+            d_payable = sum((_to_decimal(p.amount) for p in d.payables), Decimal("0"))
+            d_invoiced = sum((_to_decimal(i.amount) for i in d.invoices), Decimal("0"))
+            d_paid = sum((_to_decimal(p.amount) for p in d.payments), Decimal("0"))
             
             downstream_list.append(AssociatedContract(
                 id=d.id,
@@ -252,19 +272,12 @@ async def search_contracts(
                 party_b_name=d.party_b_name,
                 contract_type="downstream",
                 finance=FinanceSummary(
-                    contract_amount=float(d.contract_amount or 0),
-                    payable_amount=d_payable,
-                    invoiced_amount=d_invoiced,
-                    paid_amount=d_paid
+                    contract_amount=_money(d.contract_amount),
+                    payable_amount=_money(d_payable),
+                    invoiced_amount=_money(d_invoiced),
+                    paid_amount=_money(d_paid)
                 )
             ))
-
-            if has_party_b:
-                party_b_count += 1
-                party_b_totals["contract_amount"] += float(d.contract_amount or 0)
-                party_b_totals["payable_amount"] += d_payable
-                party_b_totals["invoiced_amount"] += d_invoiced
-                party_b_totals["paid_amount"] += d_paid
         
         # Get associated management contracts
         stmt_mgmt = select(ContractManagement).options(
@@ -281,9 +294,9 @@ async def search_contracts(
         
         management_list = []
         for m in mgmts:
-            m_payable = sum(float(p.amount or 0) for p in m.payables)
-            m_invoiced = sum(float(i.amount or 0) for i in m.invoices)
-            m_paid = sum(float(p.amount or 0) for p in m.payments)
+            m_payable = sum((_to_decimal(p.amount) for p in m.payables), Decimal("0"))
+            m_invoiced = sum((_to_decimal(i.amount) for i in m.invoices), Decimal("0"))
+            m_paid = sum((_to_decimal(p.amount) for p in m.payments), Decimal("0"))
             
             management_list.append(AssociatedContract(
                 id=m.id,
@@ -293,19 +306,12 @@ async def search_contracts(
                 party_b_name=m.party_b_name,
                 contract_type="management",
                 finance=FinanceSummary(
-                    contract_amount=float(m.contract_amount or 0),
-                    payable_amount=m_payable,
-                    invoiced_amount=m_invoiced,
-                    paid_amount=m_paid
+                    contract_amount=_money(m.contract_amount),
+                    payable_amount=_money(m_payable),
+                    invoiced_amount=_money(m_invoiced),
+                    paid_amount=_money(m_paid)
                 )
             ))
-
-            if has_party_b:
-                party_b_count += 1
-                party_b_totals["contract_amount"] += float(m.contract_amount or 0)
-                party_b_totals["payable_amount"] += m_payable
-                party_b_totals["invoiced_amount"] += m_invoiced
-                party_b_totals["paid_amount"] += m_paid
         
         # Get associated expenses (无合同费用)
         stmt_exp = select(ExpenseNonContract).where(
@@ -318,7 +324,7 @@ async def search_contracts(
         for e in exps:
             exp_type = e.expense_type or "未分类"
             exp_type_cn = expense_type_map.get(exp_type, exp_type)
-            exp_summary[exp_type_cn] = exp_summary.get(exp_type_cn, 0.0) + float(e.amount or 0)
+            exp_summary[exp_type_cn] = exp_summary.get(exp_type_cn, Decimal("0")) + _to_decimal(e.amount)
         
         # Get zero hour labor
         stmt_zhl = select(ZeroHourLabor).where(
@@ -328,11 +334,11 @@ async def search_contracts(
         zhls = res_zhl.scalars().all()
         
         if zhls:
-            zhl_total = sum(float(z.total_amount or 0) for z in zhls)
-            exp_summary["零星用工"] = exp_summary.get("零星用工", 0.0) + zhl_total
+            zhl_total = sum((_to_decimal(z.total_amount) for z in zhls), Decimal("0"))
+            exp_summary["零星用工"] = exp_summary.get("零星用工", Decimal("0")) + zhl_total
         
         expenses_list = [
-            ExpenseCategory(category=cat, amount=amt)
+            ExpenseCategory(category=cat, amount=_money(amt))
             for cat, amt in exp_summary.items()
         ]
         
@@ -352,22 +358,141 @@ async def search_contracts(
         ))
     
     summary = None
-    if results and (has_party_a or has_party_b):
-        summary = SearchSummary(
-            party_a=PartySummary(
+    if has_party_a or has_party_b:
+        party_a_summary = None
+        party_b_summary = None
+
+        if has_party_a:
+            contract_amount_sum = await _scalar(
+                db,
+                select(func.coalesce(func.sum(ContractUpstream.contract_amount), 0)).where(base_conditions)
+            )
+            receivable_sum = await _scalar(
+                db,
+                select(func.coalesce(func.sum(FinanceUpstreamReceivable.amount), 0)).where(
+                    FinanceUpstreamReceivable.contract_id.in_(select(upstream_ids_subq.c.id))
+                )
+            )
+            invoiced_sum = await _scalar(
+                db,
+                select(func.coalesce(func.sum(FinanceUpstreamInvoice.amount), 0)).where(
+                    FinanceUpstreamInvoice.contract_id.in_(select(upstream_ids_subq.c.id))
+                )
+            )
+            received_sum = await _scalar(
+                db,
+                select(func.coalesce(func.sum(FinanceUpstreamReceipt.amount), 0)).where(
+                    FinanceUpstreamReceipt.contract_id.in_(select(upstream_ids_subq.c.id))
+                )
+            )
+            party_a_summary = PartySummary(
                 party_name=party_a_name,
-                contract_count=party_a_count,
-                finance=FinanceSummary(**party_a_totals)
-            ) if has_party_a else None,
-            party_b=PartySummary(
+                contract_count=int(total),
+                finance=FinanceSummary(
+                    contract_amount=_money(contract_amount_sum),
+                    payable_amount=_money(receivable_sum),
+                    invoiced_amount=_money(invoiced_sum),
+                    paid_amount=_money(received_sum)
+                )
+            )
+
+        if has_party_b:
+            downstream_ids_stmt = select(ContractDownstream.id).where(
+                ContractDownstream.upstream_contract_id.in_(select(upstream_ids_subq.c.id))
+            )
+            management_ids_stmt = select(ContractManagement.id).where(
+                ContractManagement.upstream_contract_id.in_(select(upstream_ids_subq.c.id))
+            )
+            if has_party_b:
+                downstream_ids_stmt = downstream_ids_stmt.where(
+                    ContractDownstream.party_b_name.ilike(f"%{party_b_name}%")
+                )
+                management_ids_stmt = management_ids_stmt.where(
+                    ContractManagement.party_b_name.ilike(f"%{party_b_name}%")
+                )
+
+            downstream_ids_subq = downstream_ids_stmt.subquery()
+            management_ids_subq = management_ids_stmt.subquery()
+
+            down_count = await _scalar(
+                db,
+                select(func.count()).select_from(downstream_ids_subq)
+            )
+            mgmt_count = await _scalar(
+                db,
+                select(func.count()).select_from(management_ids_subq)
+            )
+
+            down_contract_sum = await _scalar(
+                db,
+                select(func.coalesce(func.sum(ContractDownstream.contract_amount), 0)).where(
+                    ContractDownstream.id.in_(select(downstream_ids_subq.c.id))
+                )
+            )
+            mgmt_contract_sum = await _scalar(
+                db,
+                select(func.coalesce(func.sum(ContractManagement.contract_amount), 0)).where(
+                    ContractManagement.id.in_(select(management_ids_subq.c.id))
+                )
+            )
+
+            down_payable_sum = await _scalar(
+                db,
+                select(func.coalesce(func.sum(FinanceDownstreamPayable.amount), 0)).where(
+                    FinanceDownstreamPayable.contract_id.in_(select(downstream_ids_subq.c.id))
+                )
+            )
+            mgmt_payable_sum = await _scalar(
+                db,
+                select(func.coalesce(func.sum(FinanceManagementPayable.amount), 0)).where(
+                    FinanceManagementPayable.contract_id.in_(select(management_ids_subq.c.id))
+                )
+            )
+
+            down_invoiced_sum = await _scalar(
+                db,
+                select(func.coalesce(func.sum(FinanceDownstreamInvoice.amount), 0)).where(
+                    FinanceDownstreamInvoice.contract_id.in_(select(downstream_ids_subq.c.id))
+                )
+            )
+            mgmt_invoiced_sum = await _scalar(
+                db,
+                select(func.coalesce(func.sum(FinanceManagementInvoice.amount), 0)).where(
+                    FinanceManagementInvoice.contract_id.in_(select(management_ids_subq.c.id))
+                )
+            )
+
+            down_paid_sum = await _scalar(
+                db,
+                select(func.coalesce(func.sum(FinanceDownstreamPayment.amount), 0)).where(
+                    FinanceDownstreamPayment.contract_id.in_(select(downstream_ids_subq.c.id))
+                )
+            )
+            mgmt_paid_sum = await _scalar(
+                db,
+                select(func.coalesce(func.sum(FinanceManagementPayment.amount), 0)).where(
+                    FinanceManagementPayment.contract_id.in_(select(management_ids_subq.c.id))
+                )
+            )
+
+            party_b_summary = PartySummary(
                 party_name=party_b_name,
-                contract_count=party_b_count,
-                finance=FinanceSummary(**party_b_totals)
-            ) if has_party_b else None
+                contract_count=int(down_count + mgmt_count),
+                finance=FinanceSummary(
+                    contract_amount=_money(_to_decimal(down_contract_sum) + _to_decimal(mgmt_contract_sum)),
+                    payable_amount=_money(_to_decimal(down_payable_sum) + _to_decimal(mgmt_payable_sum)),
+                    invoiced_amount=_money(_to_decimal(down_invoiced_sum) + _to_decimal(mgmt_invoiced_sum)),
+                    paid_amount=_money(_to_decimal(down_paid_sum) + _to_decimal(mgmt_paid_sum))
+                )
+            )
+
+        summary = SearchSummary(
+            party_a=party_a_summary,
+            party_b=party_b_summary
         )
 
     return SearchResponse(
-        total=len(results),
+        total=int(total),
         results=results,
         summary=summary
     )

@@ -1098,6 +1098,7 @@ onBeforeUnmount(() => {
   white-space: normal;
   word-break: break-word;
   line-height: 1.5;
+  display: block;
 }
 
 .multi-line-cell {
@@ -1136,11 +1137,11 @@ onBeforeUnmount(() => {
   white-space: nowrap !important;
 }
 
-/* Multi-line cell display - Force Element Plus table to allow text wrapping */
+/* Keep default table cells single-line; allow specific cells to override */
 .custom-footer-table td .cell {
-  overflow: visible !important;
-  text-overflow: unset !important;
-  white-space: normal !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 
 .custom-footer-table .el-table__row {

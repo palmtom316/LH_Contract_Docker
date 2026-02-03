@@ -15,6 +15,7 @@ import logging
 from app.config import settings
 from app.database import init_db, close_db, get_db
 from app.init_data import init_data
+import app.models  # ensure all models are registered with SQLAlchemy metadata
 from app.core.errors import AppException
 from app.core.exceptions import (
     global_exception_handler, 
