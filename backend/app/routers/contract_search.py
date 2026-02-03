@@ -5,7 +5,7 @@ Contract Search Router (合同查询机器人后端)
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy import select, or_, cast, String
+from sqlalchemy import select, or_, and_, cast, String
 from typing import Optional, List
 from pydantic import BaseModel
 from decimal import Decimal
@@ -40,6 +40,7 @@ class AssociatedContract(BaseModel):
     serial_number: Optional[int] = None
     contract_code: str
     contract_name: str
+    party_b_name: Optional[str] = None
     contract_type: str  # "downstream" or "management"
     finance: FinanceSummary
 
@@ -69,16 +70,32 @@ class UpstreamContractResult(BaseModel):
         from_attributes = True
 
 
+class PartySummary(BaseModel):
+    """甲/乙方单位汇总"""
+    party_name: str
+    contract_count: int = 0
+    finance: FinanceSummary
+
+
+class SearchSummary(BaseModel):
+    """搜索汇总"""
+    party_a: Optional[PartySummary] = None
+    party_b: Optional[PartySummary] = None
+
+
 class SearchResponse(BaseModel):
     """搜索响应"""
     total: int
     results: List[UpstreamContractResult]
+    summary: Optional[SearchSummary] = None
 
 
 @router.get("/search", response_model=SearchResponse)
 async def search_contracts(
     query: str = Query("", description="搜索关键词（合同序号、名称或编号）"),
     company_category: str = Query("", description="公司合同分类"),
+    party_a_name: str = Query("", description="上游合同甲方单位"),
+    party_b_name: str = Query("", description="下游/管理合同乙方单位"),
     limit: int = Query(10, ge=1, le=50, description="返回结果数量限制"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -89,11 +106,21 @@ async def search_contracts(
     Args:
         query: 搜索关键词，支持合同序号、合同名称或合同编号模糊匹配
         company_category: 公司合同分类筛选
+        party_a_name: 上游合同甲方单位模糊匹配
+        party_b_name: 下游/管理合同乙方单位模糊匹配
         limit: 返回结果数量限制
         
     Returns:
         匹配的上游合同列表，包含财务汇总和关联合同信息
     """
+    # Normalize inputs
+    query = (query or "").strip()
+    company_category = (company_category or "").strip()
+    party_a_name = (party_a_name or "").strip()
+    party_b_name = (party_b_name or "").strip()
+    has_party_a = bool(party_a_name)
+    has_party_b = bool(party_b_name)
+
     # Build query conditions
     conditions = []
     
@@ -110,13 +137,32 @@ async def search_contracts(
     # Company category filter
     if company_category:
         conditions.append(ContractUpstream.company_category.ilike(f"%{company_category}%"))
+
+    # Party A filter (Upstream)
+    if has_party_a:
+        conditions.append(ContractUpstream.party_a_name.ilike(f"%{party_a_name}%"))
+
+    # Party B filter (Downstream/Management)
+    if has_party_b:
+        party_b_condition = or_(
+            ContractUpstream.id.in_(
+                select(ContractDownstream.upstream_contract_id).where(
+                    ContractDownstream.party_b_name.ilike(f"%{party_b_name}%")
+                )
+            ),
+            ContractUpstream.id.in_(
+                select(ContractManagement.upstream_contract_id).where(
+                    ContractManagement.party_b_name.ilike(f"%{party_b_name}%")
+                )
+            )
+        )
+        conditions.append(party_b_condition)
     
     # At least one condition is required
     if not conditions:
-        return SearchResponse(total=0, results=[])
+        return SearchResponse(total=0, results=[], summary=None)
     
     # Query upstream contracts with fuzzy matching
-    from sqlalchemy import and_
     stmt = select(ContractUpstream).options(
         selectinload(ContractUpstream.receivables),
         selectinload(ContractUpstream.invoices),
@@ -128,6 +174,20 @@ async def search_contracts(
     upstream_contracts = result.scalars().all()
     
     results = []
+    party_a_totals = {
+        "contract_amount": 0.0,
+        "payable_amount": 0.0,
+        "invoiced_amount": 0.0,
+        "paid_amount": 0.0
+    }
+    party_b_totals = {
+        "contract_amount": 0.0,
+        "payable_amount": 0.0,
+        "invoiced_amount": 0.0,
+        "paid_amount": 0.0
+    }
+    party_a_count = 0
+    party_b_count = 0
     
     # Expense type translation mapping
     expense_type_map = {
@@ -157,6 +217,13 @@ async def search_contracts(
             invoiced_amount=invoiced_total,
             paid_amount=received_total
         )
+
+        if has_party_a:
+            party_a_count += 1
+            party_a_totals["contract_amount"] += up_finance.contract_amount
+            party_a_totals["payable_amount"] += up_finance.payable_amount
+            party_a_totals["invoiced_amount"] += up_finance.invoiced_amount
+            party_a_totals["paid_amount"] += up_finance.paid_amount
         
         # Get associated downstream contracts
         stmt_down = select(ContractDownstream).options(
@@ -165,6 +232,8 @@ async def search_contracts(
             selectinload(ContractDownstream.payments),
             selectinload(ContractDownstream.settlements)
         ).where(ContractDownstream.upstream_contract_id == up.id)
+        if has_party_b:
+            stmt_down = stmt_down.where(ContractDownstream.party_b_name.ilike(f"%{party_b_name}%"))
         
         res_down = await db.execute(stmt_down)
         downs = res_down.scalars().all()
@@ -180,6 +249,7 @@ async def search_contracts(
                 serial_number=d.serial_number,
                 contract_code=d.contract_code,
                 contract_name=d.contract_name,
+                party_b_name=d.party_b_name,
                 contract_type="downstream",
                 finance=FinanceSummary(
                     contract_amount=float(d.contract_amount or 0),
@@ -188,6 +258,13 @@ async def search_contracts(
                     paid_amount=d_paid
                 )
             ))
+
+            if has_party_b:
+                party_b_count += 1
+                party_b_totals["contract_amount"] += float(d.contract_amount or 0)
+                party_b_totals["payable_amount"] += d_payable
+                party_b_totals["invoiced_amount"] += d_invoiced
+                party_b_totals["paid_amount"] += d_paid
         
         # Get associated management contracts
         stmt_mgmt = select(ContractManagement).options(
@@ -196,6 +273,8 @@ async def search_contracts(
             selectinload(ContractManagement.payments),
             selectinload(ContractManagement.settlements)
         ).where(ContractManagement.upstream_contract_id == up.id)
+        if has_party_b:
+            stmt_mgmt = stmt_mgmt.where(ContractManagement.party_b_name.ilike(f"%{party_b_name}%"))
         
         res_mgmt = await db.execute(stmt_mgmt)
         mgmts = res_mgmt.scalars().all()
@@ -211,6 +290,7 @@ async def search_contracts(
                 serial_number=m.serial_number,
                 contract_code=m.contract_code,
                 contract_name=m.contract_name,
+                party_b_name=m.party_b_name,
                 contract_type="management",
                 finance=FinanceSummary(
                     contract_amount=float(m.contract_amount or 0),
@@ -219,6 +299,13 @@ async def search_contracts(
                     paid_amount=m_paid
                 )
             ))
+
+            if has_party_b:
+                party_b_count += 1
+                party_b_totals["contract_amount"] += float(m.contract_amount or 0)
+                party_b_totals["payable_amount"] += m_payable
+                party_b_totals["invoiced_amount"] += m_invoiced
+                party_b_totals["paid_amount"] += m_paid
         
         # Get associated expenses (无合同费用)
         stmt_exp = select(ExpenseNonContract).where(
@@ -264,7 +351,23 @@ async def search_contracts(
             expenses_by_category=expenses_list
         ))
     
+    summary = None
+    if results and (has_party_a or has_party_b):
+        summary = SearchSummary(
+            party_a=PartySummary(
+                party_name=party_a_name,
+                contract_count=party_a_count,
+                finance=FinanceSummary(**party_a_totals)
+            ) if has_party_a else None,
+            party_b=PartySummary(
+                party_name=party_b_name,
+                contract_count=party_b_count,
+                finance=FinanceSummary(**party_b_totals)
+            ) if has_party_b else None
+        )
+
     return SearchResponse(
         total=len(results),
-        results=results
+        results=results,
+        summary=summary
     )

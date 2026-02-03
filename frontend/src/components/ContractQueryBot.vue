@@ -38,6 +38,24 @@
             class="category-input"
           />
         </div>
+        <div class="input-row">
+          <el-input
+            v-model="partyAName"
+            placeholder="上游合同甲方单位"
+            size="large"
+            clearable
+            @keyup.enter="handleSearch"
+            class="party-a-input"
+          />
+          <el-input
+            v-model="partyBName"
+            placeholder="下游/管理合同乙方单位"
+            size="large"
+            clearable
+            @keyup.enter="handleSearch"
+            class="party-b-input"
+          />
+        </div>
         <el-button type="primary" size="large" @click="handleSearch" :loading="loading" class="search-btn">
           <el-icon><Search /></el-icon> 查询
         </el-button>
@@ -55,6 +73,8 @@
             <li>合同名称的任意部分（如：装修、建设）</li>
             <li>合同编号的任意部分</li>
             <li><strong>公司合同分类</strong>（如：劳务合同、材料合同）</li>
+            <li><strong>上游合同甲方单位</strong>（如：某某电力公司）</li>
+            <li><strong>下游/管理合同乙方单位</strong>（如：某某供应商）</li>
           </ul>
           <p>可同时输入多个条件进行组合查询。</p>
         </el-alert>
@@ -219,6 +239,63 @@
             </div>
           </el-collapse-item>
         </el-collapse>
+
+        <!-- Overall Summary -->
+        <div class="summary-section" v-if="hasSummary">
+          <div class="summary-title">金额汇总</div>
+          <div class="summary-list">
+            <div class="summary-card" v-if="summary.party_a">
+              <div class="summary-header">
+                <span class="summary-label">甲方单位汇总</span>
+                <span class="summary-keyword" v-if="summary.party_a.party_name">关键词：{{ summary.party_a.party_name }}</span>
+                <span class="summary-count">合同数：{{ summary.party_a.contract_count }}</span>
+              </div>
+              <div class="summary-metrics">
+                <div class="summary-metric">
+                  <span class="metric-label">签约金额</span>
+                  <span class="metric-value">{{ formatMoney(summary.party_a.finance.contract_amount) }}</span>
+                </div>
+                <div class="summary-metric">
+                  <span class="metric-label">应收款</span>
+                  <span class="metric-value">{{ formatMoney(summary.party_a.finance.payable_amount) }}</span>
+                </div>
+                <div class="summary-metric">
+                  <span class="metric-label">挂账金额</span>
+                  <span class="metric-value">{{ formatMoney(summary.party_a.finance.invoiced_amount) }}</span>
+                </div>
+                <div class="summary-metric">
+                  <span class="metric-label">已收款</span>
+                  <span class="metric-value">{{ formatMoney(summary.party_a.finance.paid_amount) }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="summary-card" v-if="summary.party_b">
+              <div class="summary-header">
+                <span class="summary-label">乙方单位汇总</span>
+                <span class="summary-keyword" v-if="summary.party_b.party_name">关键词：{{ summary.party_b.party_name }}</span>
+                <span class="summary-count">合同数：{{ summary.party_b.contract_count }}</span>
+              </div>
+              <div class="summary-metrics">
+                <div class="summary-metric">
+                  <span class="metric-label">签约金额</span>
+                  <span class="metric-value">{{ formatMoney(summary.party_b.finance.contract_amount) }}</span>
+                </div>
+                <div class="summary-metric">
+                  <span class="metric-label">应付款</span>
+                  <span class="metric-value">{{ formatMoney(summary.party_b.finance.payable_amount) }}</span>
+                </div>
+                <div class="summary-metric">
+                  <span class="metric-label">挂账金额</span>
+                  <span class="metric-value">{{ formatMoney(summary.party_b.finance.invoiced_amount) }}</span>
+                </div>
+                <div class="summary-metric">
+                  <span class="metric-label">已付款</span>
+                  <span class="metric-value">{{ formatMoney(summary.party_b.finance.paid_amount) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </el-dialog>
   </div>
@@ -234,9 +311,12 @@ import { searchContracts } from '@/api/contractSearch'
 const dialogVisible = ref(false)
 const searchQuery = ref('')
 const companyCategory = ref('')  // 公司合同分类
+const partyAName = ref('') // 上游合同甲方单位
+const partyBName = ref('') // 下游/管理合同乙方单位
 const loading = ref(false)
 const hasSearched = ref(false)
 const results = shallowRef([])
+const summary = ref(null)
 const activeNames = ref([0])
 const showPulse = ref(true)
 const windowWidth = ref(window.innerWidth)
@@ -244,6 +324,7 @@ const windowWidth = ref(window.innerWidth)
 // Computed
 const isMobile = computed(() => windowWidth.value < 768)
 const dialogWidth = computed(() => isMobile.value ? '100%' : '900px')
+const hasSummary = computed(() => summary.value && (summary.value.party_a || summary.value.party_b))
 
 // Handle window resize
 const handleResize = () => {
@@ -267,8 +348,10 @@ const openDialog = () => {
 const handleSearch = async () => {
   const query = searchQuery.value.trim()
   const category = companyCategory.value.trim()
-  
-  if (!query && !category) {
+  const partyA = partyAName.value.trim()
+  const partyB = partyBName.value.trim()
+
+  if (!query && !category && !partyA && !partyB) {
     ElMessage.warning('请至少输入一个搜索条件')
     return
   }
@@ -276,14 +359,18 @@ const handleSearch = async () => {
   loading.value = true
   hasSearched.value = true
   results.value = []
+  summary.value = null
 
   try {
     const response = await searchContracts({
       query: query,
       companyCategory: category,
+      partyAName: partyA,
+      partyBName: partyB,
       limit: 20
     })
     results.value = response.results || []
+    summary.value = response.summary || null
     
     if (results.value.length === 0) {
       ElMessage.info('未找到匹配的合同')
@@ -385,6 +472,12 @@ const sumExpenses = (expenses) => {
       flex: 1;
       min-width: 120px;
     }
+
+    .party-a-input,
+    .party-b-input {
+      flex: 1;
+      min-width: 160px;
+    }
   }
 
   .search-btn {
@@ -395,7 +488,7 @@ const sumExpenses = (expenses) => {
     .input-row {
       flex-direction: column;
 
-      .search-input, .category-input {
+      .search-input, .category-input, .party-a-input, .party-b-input {
         width: 100%;
         flex: none;
       }
@@ -553,6 +646,80 @@ const sumExpenses = (expenses) => {
     strong {
       color: #1890ff;
       margin-left: 4px;
+    }
+  }
+}
+
+.summary-section {
+  margin-top: 20px;
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 8px;
+
+  .summary-title {
+    font-weight: 600;
+    color: #262626;
+    margin-bottom: 10px;
+  }
+
+  .summary-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+  }
+
+  .summary-card {
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    padding: 12px;
+  }
+
+  .summary-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 10px;
+
+    .summary-label {
+      font-weight: 600;
+      color: #262626;
+    }
+
+    .summary-keyword {
+      color: #8c8c8c;
+      font-size: 12px;
+    }
+
+    .summary-count {
+      color: #595959;
+      font-size: 12px;
+    }
+  }
+
+  .summary-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .summary-metric {
+    background: #f5f5f5;
+    border-radius: 6px;
+    padding: 8px 10px;
+
+    .metric-label {
+      display: block;
+      font-size: 12px;
+      color: #8c8c8c;
+    }
+
+    .metric-value {
+      display: block;
+      margin-top: 4px;
+      font-weight: 600;
+      color: #1890ff;
     }
   }
 }

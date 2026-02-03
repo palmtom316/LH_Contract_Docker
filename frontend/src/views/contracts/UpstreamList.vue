@@ -91,9 +91,9 @@
           >
             <el-table-column prop="serial_number" label="合同序号" width="100" align="center" fixed="left" />
             <el-table-column prop="contract_code" label="合同编号" min-width="100" show-overflow-tooltip />
-            <el-table-column prop="contract_name" label="合同名称" min-width="160" show-overflow-tooltip>
+            <el-table-column prop="contract_name" label="合同名称" min-width="220" show-overflow-tooltip>
               <template #default="scope">
-                <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.4', maxHeight: '3em', overflow: 'hidden' }">{{ scope.row.contract_name }}</div>
+                <div class="contract-name-cell">{{ scope.row.contract_name }}</div>
               </template>
             </el-table-column>
             <el-table-column prop="party_a_name" label="甲方" min-width="120" show-overflow-tooltip>
@@ -275,7 +275,7 @@
             <el-table-column prop="contract_code" label="合同编号" min-width="140" show-overflow-tooltip />
             <el-table-column prop="contract_name" label="合同名称" min-width="220" show-overflow-tooltip>
               <template #default="scope">
-                <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.contract_name }}</div>
+                <div class="contract-name-cell">{{ scope.row.contract_name }}</div>
               </template>
             </el-table-column>
             <el-table-column prop="party_a_name" label="合同甲方单位" min-width="200" show-overflow-tooltip>
@@ -1094,6 +1094,12 @@ onBeforeUnmount(() => {
 /* Summary Row Styling removed in favor of footer-cell-style prop */
 
 /* Multi-line cell display for long text */
+.contract-name-cell {
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.5;
+}
+
 .multi-line-cell {
   white-space: normal;
   word-break: break-word;
