@@ -55,9 +55,14 @@
             class="party-b-input"
           />
         </div>
-        <el-button type="primary" size="large" @click="handleSearch" :loading="loading" class="search-btn">
-          <el-icon><Search /></el-icon> 查询
-        </el-button>
+        <div class="action-row">
+          <el-button type="primary" size="large" @click="handleSearch" :loading="loading" class="search-btn">
+            <el-icon><Search /></el-icon> 查询
+          </el-button>
+          <el-button size="large" @click="handleClear" class="clear-btn">
+            清除
+          </el-button>
+        </div>
       </div>
 
       <!-- Tip -->
@@ -456,6 +461,20 @@ const handleSearch = async () => {
   }
 }
 
+const handleClear = () => {
+  searchQuery.value = ''
+  companyCategory.value = ''
+  partyAName.value = ''
+  partyBName.value = ''
+  results.value = []
+  downstreamResults.value = []
+  managementResults.value = []
+  summary.value = null
+  hasSearched.value = false
+  loading.value = false
+  activeNames.value = [0]
+}
+
 const formatMoney = (value) => {
   if (value == null || isNaN(value)) return '¥0.00'
   return '¥' + Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -555,6 +574,16 @@ const sumExpenses = (expenses) => {
     align-self: flex-start;
   }
 
+  .action-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .clear-btn {
+    align-self: flex-start;
+  }
+
   @media (max-width: 768px) {
     .input-row {
       flex-direction: column;
@@ -565,7 +594,13 @@ const sumExpenses = (expenses) => {
       }
     }
 
-    .search-btn {
+    .action-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .search-btn,
+    .clear-btn {
       width: 100%;
     }
   }

@@ -378,13 +378,8 @@ async def search_contracts(
                     cast(ContractManagement.serial_number, String).ilike(f"%{query}%")
                 )
             )
-        if upstream_ids_subq is not None:
-            downstream_conditions.append(
-                ContractDownstream.upstream_contract_id.in_(select(upstream_ids_subq.c.id))
-            )
-            management_conditions.append(
-                ContractManagement.upstream_contract_id.in_(select(upstream_ids_subq.c.id))
-            )
+        # Note: When searching by party_b_name, do not restrict by upstream filters.
+        # This ensures all downstream/management contracts for the matched party are returned.
 
         downstream_ids_subq = select(ContractDownstream.id).where(and_(*downstream_conditions)).subquery()
         management_ids_subq = select(ContractManagement.id).where(and_(*management_conditions)).subquery()
