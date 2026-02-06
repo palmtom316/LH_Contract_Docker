@@ -336,7 +336,7 @@
       </el-col>
 
       <!-- 2. Upstream Contracts (Company Category) -->
-      <el-col :xs="24" :sm="24" :md="24" class="stat-col-5">
+      <el-col :xs="24" :sm="12" class="stat-col-5">
         <el-card shadow="hover" class="chart-card">
           <template #header>
             <div class="card-header-simple">
@@ -385,7 +385,7 @@
       </el-col>
 
       <!-- 3. Downstream Contracts Summary -->
-      <el-col :xs="24" :sm="12" class="stat-col-5">
+      <el-col :xs="24" :sm="24" :md="24" class="stat-col-5">
         <el-card shadow="hover" class="chart-card">
           <template #header>
             <div class="card-header-simple">
@@ -405,7 +405,7 @@
               </el-tag>
             </div>
           </template>
-          <div class="card-list-modern">
+          <div class="card-list-modern expense-grid">
             <div
               v-for="item in downstreamSummary.slice(0, 20)"
               :key="item.name"
@@ -1210,6 +1210,70 @@ onBeforeUnmount(() => {
       font-weight: 500;
       color: #303133;
     }
+  }
+}
+
+/* Non-contract expense grid (4-6 columns on wide screens) */
+.expense-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px 12px;
+  padding: 10px 0 5px;
+
+  .list-item {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    border: 1px dashed #ebeef5;
+    border-radius: 6px;
+    border-bottom: none;
+    padding: 8px 10px;
+    margin: 0;
+
+    &:hover {
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+
+    .item-name {
+      margin: 0 0 4px 0;
+      font-weight: 500;
+    }
+
+    .item-value {
+      font-size: 12px;
+      color: #606266;
+    }
+  }
+}
+
+@media only screen and (min-width: 1400px) {
+  .expense-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media only screen and (min-width: 1700px) {
+  .expense-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media only screen and (max-width: 1100px) {
+  .expense-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media only screen and (max-width: 800px) {
+  .expense-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media only screen and (max-width: 560px) {
+  .expense-grid {
+    grid-template-columns: 1fr;
   }
 }
 
