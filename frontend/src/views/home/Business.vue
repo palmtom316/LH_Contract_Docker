@@ -385,7 +385,7 @@
       </el-col>
 
       <!-- 3. Downstream Contracts Summary -->
-      <el-col :xs="24" :sm="24" :md="24" class="stat-col-5">
+      <el-col :xs="24" :sm="12" class="stat-col-5">
         <el-card shadow="hover" class="chart-card">
           <template #header>
             <div class="card-header-simple">
@@ -405,7 +405,7 @@
               </el-tag>
             </div>
           </template>
-          <div class="card-list-modern expense-grid">
+          <div class="card-list-modern">
             <div
               v-for="item in downstreamSummary.slice(0, 20)"
               :key="item.name"
@@ -457,7 +457,7 @@
       </el-col>
 
       <!-- 5. Non-Contract Expenses Summary -->
-      <el-col :xs="24" :sm="12" class="stat-col-5">
+      <el-col :xs="24" :sm="24" :md="24" class="stat-col-5">
         <el-card shadow="hover" class="chart-card">
           <template #header>
             <div class="card-header-simple">
@@ -475,7 +475,7 @@
               </el-tag>
             </div>
           </template>
-          <div class="card-list-modern">
+          <div class="card-list-modern expense-grid">
             <div
               v-for="item in expenseSummary.slice(0, 20)"
               :key="item.name"
