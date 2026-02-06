@@ -752,13 +752,21 @@ const initCategoryPie = (data) => {
         return `${params.name}: ${wanValue}万元 (${params.percent}%)`
       }
     },
-    legend: { bottom: 0, left: 'center' },
+    legend: {
+      bottom: 0,
+      left: 'center',
+      width: '92%',
+      itemWidth: 10,
+      itemHeight: 10,
+      itemGap: 12,
+      textStyle: { fontSize: 11, lineHeight: 14 }
+    },
     series: [
       {
         name: '合同分类',
         type: 'pie',
         radius: ['35%', '60%'],
-        center: ['50%', '45%'],
+        center: ['50%', '42%'],
         avoidLabelOverlap: false,
         itemStyle: {
           borderRadius: 5,
@@ -789,13 +797,21 @@ const initCompanyPie = (data) => {
         return `${params.name}: ${wanValue}万元 (${params.percent}%)`
       }
     },
-    legend: { bottom: 0, left: 'center' },
+    legend: {
+      bottom: 0,
+      left: 'center',
+      width: '92%',
+      itemWidth: 10,
+      itemHeight: 10,
+      itemGap: 12,
+      textStyle: { fontSize: 11, lineHeight: 14 }
+    },
     series: [
       {
         name: '公司分类',
         type: 'pie',
         radius: ['35%', '60%'],
-        center: ['50%', '45%'],
+        center: ['50%', '42%'],
         avoidLabelOverlap: false,
         itemStyle: {
           borderRadius: 5,
