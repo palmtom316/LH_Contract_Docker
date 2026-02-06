@@ -300,7 +300,7 @@
     <!-- Row 2: Contract Summaries (5 Cards) -->
     <el-row :gutter="20" style="margin-top: 20px" class="summary-card-row">
       <!-- 1. Upstream Contracts (Category) -->
-      <el-col :xs="24" :sm="24" :md="24" class="stat-col-5">
+      <el-col :xs="24" :sm="12" class="stat-col-5">
         <el-card shadow="hover" class="chart-card">
           <template #header>
             <div class="card-header-simple">
@@ -336,7 +336,7 @@
       </el-col>
 
       <!-- 2. Upstream Contracts (Company Category) -->
-      <el-col :xs="24" :sm="12" class="stat-col-5">
+      <el-col :xs="24" :sm="24" :md="24" class="stat-col-5">
         <el-card shadow="hover" class="chart-card">
           <template #header>
             <div class="card-header-simple">
