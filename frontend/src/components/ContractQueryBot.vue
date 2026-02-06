@@ -29,12 +29,11 @@
             :prefix-icon="Search"
             class="search-input"
           />
-          <el-input
+          <DictSelect
             v-model="companyCategory"
+            category="project_category"
             placeholder="公司合同分类"
             size="large"
-            clearable
-            @keyup.enter="handleSearch"
             class="category-input"
           />
         </div>
@@ -86,17 +85,17 @@
       </div>
 
       <!-- No Results -->
-      <div class="no-results" v-if="hasSearched && !loading && !results.length">
+      <div class="no-results" v-if="hasSearched && !loading && !hasAnyResults">
         <el-empty description="未找到匹配的合同，请尝试其他关键词" />
       </div>
 
       <!-- Results Section -->
-      <div class="results-section" v-if="!loading && results.length">
+      <div class="results-section" v-if="!loading && hasAnyResults">
         <div class="results-count">
-          <el-tag type="success">找到 {{ results.length }} 个上游合同</el-tag>
+          <el-tag type="success">找到 {{ resultCount }} 个{{ resultLabel }}</el-tag>
         </div>
 
-        <el-collapse v-model="activeNames" accordion>
+        <el-collapse v-if="showUpstreamResults" v-model="activeNames" accordion>
           <el-collapse-item 
             v-for="(contract, index) in results" 
             :key="contract.id" 
@@ -240,6 +239,59 @@
           </el-collapse-item>
         </el-collapse>
 
+        <!-- Downstream / Management Results -->
+        <div v-else>
+          <div class="section" v-if="downstreamResults.length">
+            <div class="section-header">
+              <el-icon><DocumentCopy /></el-icon>
+              <span>下游合同 ({{ downstreamResults.length }})</span>
+            </div>
+            <el-table :data="downstreamResults" border size="small" class="compact-table">
+              <el-table-column prop="serial_number" label="序号" width="70" />
+              <el-table-column prop="contract_name" label="合同名称" min-width="180" show-overflow-tooltip />
+              <el-table-column prop="contract_code" label="合同编号" min-width="140" show-overflow-tooltip />
+              <el-table-column prop="party_b_name" label="乙方单位" min-width="160" show-overflow-tooltip />
+              <el-table-column label="签约金额" width="110" align="right">
+                <template #default="{ row }">{{ formatMoney(row.finance.contract_amount) }}</template>
+              </el-table-column>
+              <el-table-column label="应付款" width="110" align="right">
+                <template #default="{ row }">{{ formatMoney(row.finance.payable_amount) }}</template>
+              </el-table-column>
+              <el-table-column label="挂账金额" width="110" align="right">
+                <template #default="{ row }">{{ formatMoney(row.finance.invoiced_amount) }}</template>
+              </el-table-column>
+              <el-table-column label="已付款" width="110" align="right">
+                <template #default="{ row }">{{ formatMoney(row.finance.paid_amount) }}</template>
+              </el-table-column>
+            </el-table>
+          </div>
+
+          <div class="section" v-if="managementResults.length">
+            <div class="section-header">
+              <el-icon><FolderChecked /></el-icon>
+              <span>管理合同 ({{ managementResults.length }})</span>
+            </div>
+            <el-table :data="managementResults" border size="small" class="compact-table">
+              <el-table-column prop="serial_number" label="序号" width="70" />
+              <el-table-column prop="contract_name" label="合同名称" min-width="180" show-overflow-tooltip />
+              <el-table-column prop="contract_code" label="合同编号" min-width="140" show-overflow-tooltip />
+              <el-table-column prop="party_b_name" label="乙方单位" min-width="160" show-overflow-tooltip />
+              <el-table-column label="签约金额" width="110" align="right">
+                <template #default="{ row }">{{ formatMoney(row.finance.contract_amount) }}</template>
+              </el-table-column>
+              <el-table-column label="应付款" width="110" align="right">
+                <template #default="{ row }">{{ formatMoney(row.finance.payable_amount) }}</template>
+              </el-table-column>
+              <el-table-column label="挂账金额" width="110" align="right">
+                <template #default="{ row }">{{ formatMoney(row.finance.invoiced_amount) }}</template>
+              </el-table-column>
+              <el-table-column label="已付款" width="110" align="right">
+                <template #default="{ row }">{{ formatMoney(row.finance.paid_amount) }}</template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </div>
+
         <!-- Overall Summary -->
         <div class="summary-section" v-if="hasSummary">
           <div class="summary-title">金额汇总</div>
@@ -247,7 +299,8 @@
             <div class="summary-card" v-if="summary.party_a">
               <div class="summary-header">
                 <span class="summary-label">甲方单位汇总</span>
-                <span class="summary-keyword" v-if="summary.party_a.party_name">关键词：{{ summary.party_a.party_name }}</span>
+                <span class="summary-keyword" v-if="hasPartyAFilter">关键词：{{ summary.party_a.party_name }}</span>
+                <span class="summary-keyword" v-else>范围：{{ summary.party_a.party_name }}</span>
                 <span class="summary-count">合同数：{{ summary.party_a.contract_count }}</span>
               </div>
               <div class="summary-metrics">
@@ -272,7 +325,8 @@
             <div class="summary-card" v-if="summary.party_b">
               <div class="summary-header">
                 <span class="summary-label">乙方单位汇总</span>
-                <span class="summary-keyword" v-if="summary.party_b.party_name">关键词：{{ summary.party_b.party_name }}</span>
+                <span class="summary-keyword" v-if="hasPartyBFilter">关键词：{{ summary.party_b.party_name }}</span>
+                <span class="summary-keyword" v-else>范围：{{ summary.party_b.party_name }}</span>
                 <span class="summary-count">合同数：{{ summary.party_b.contract_count }}</span>
               </div>
               <div class="summary-metrics">
@@ -306,6 +360,7 @@ import { ref, shallowRef, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Document, DocumentCopy, FolderChecked, Money } from '@element-plus/icons-vue'
 import { searchContracts } from '@/api/contractSearch'
+import DictSelect from '@/components/DictSelect.vue'
 
 // State
 const dialogVisible = ref(false)
@@ -316,6 +371,8 @@ const partyBName = ref('') // 下游/管理合同乙方单位
 const loading = ref(false)
 const hasSearched = ref(false)
 const results = shallowRef([])
+const downstreamResults = shallowRef([])
+const managementResults = shallowRef([])
 const summary = ref(null)
 const activeNames = ref([0])
 const showPulse = ref(true)
@@ -325,6 +382,17 @@ const windowWidth = ref(window.innerWidth)
 const isMobile = computed(() => windowWidth.value < 768)
 const dialogWidth = computed(() => isMobile.value ? '100%' : '900px')
 const hasSummary = computed(() => summary.value && (summary.value.party_a || summary.value.party_b))
+const hasPartyAFilter = computed(() => !!partyAName.value.trim())
+const hasPartyBFilter = computed(() => !!partyBName.value.trim())
+const showUpstreamResults = computed(() => !hasPartyBFilter.value)
+const resultCount = computed(() => {
+  if (showUpstreamResults.value) return results.value.length
+  return downstreamResults.value.length + managementResults.value.length
+})
+const resultLabel = computed(() => (showUpstreamResults.value ? '上游合同' : '下游/管理合同'))
+const hasAnyResults = computed(() => {
+  return results.value.length > 0 || downstreamResults.value.length > 0 || managementResults.value.length > 0
+})
 
 // Handle window resize
 const handleResize = () => {
@@ -359,6 +427,8 @@ const handleSearch = async () => {
   loading.value = true
   hasSearched.value = true
   results.value = []
+  downstreamResults.value = []
+  managementResults.value = []
   summary.value = null
 
   try {
@@ -366,13 +436,14 @@ const handleSearch = async () => {
       query: query,
       companyCategory: category,
       partyAName: partyA,
-      partyBName: partyB,
-      limit: 20
+      partyBName: partyB
     })
     results.value = response.results || []
+    downstreamResults.value = response.downstream_results || []
+    managementResults.value = response.management_results || []
     summary.value = response.summary || null
     
-    if (results.value.length === 0) {
+    if (results.value.length === 0 && downstreamResults.value.length === 0 && managementResults.value.length === 0) {
       ElMessage.info('未找到匹配的合同')
     } else {
       activeNames.value = [0]  // Expand first result
