@@ -124,6 +124,144 @@ class TestContractAPIEndpoints:
 
 
 @pytest.mark.asyncio
+class TestContractSearchEndpoint:
+    """Test contract search assistant endpoint"""
+
+    async def test_search_with_sign_date_and_category_filters(
+        self,
+        client: AsyncClient,
+        admin_token: str,
+        test_db: AsyncSession,
+        test_admin: User
+    ):
+        """Search should support sign_date range and combine with company_category/query filters."""
+        in_range = ContractUpstream(
+            serial_number=9101,
+            contract_code="SEARCH-DATE-001",
+            contract_name="日期筛选命中合同",
+            party_a_name="甲方A",
+            party_b_name="乙方A",
+            company_category="市区配网",
+            category="工程类",
+            contract_amount=Decimal("1000.00"),
+            sign_date=date(2026, 1, 15),
+            status="执行中",
+            created_by=test_admin.id
+        )
+        out_of_range = ContractUpstream(
+            serial_number=9102,
+            contract_code="SEARCH-DATE-002",
+            contract_name="日期筛选超范围合同",
+            party_a_name="甲方A",
+            party_b_name="乙方A",
+            company_category="市区配网",
+            category="工程类",
+            contract_amount=Decimal("2000.00"),
+            sign_date=date(2026, 3, 1),
+            status="执行中",
+            created_by=test_admin.id
+        )
+        wrong_category = ContractUpstream(
+            serial_number=9103,
+            contract_code="SEARCH-DATE-003",
+            contract_name="日期范围内但分类不匹配",
+            party_a_name="甲方A",
+            party_b_name="乙方A",
+            company_category="用户工程",
+            category="工程类",
+            contract_amount=Decimal("3000.00"),
+            sign_date=date(2026, 1, 20),
+            status="执行中",
+            created_by=test_admin.id
+        )
+        test_db.add_all([in_range, out_of_range, wrong_category])
+        await test_db.commit()
+
+        response = await client.get(
+            "/api/v1/contracts/search",
+            params={
+                "query": "SEARCH-DATE",
+                "company_category": "市区配网",
+                "sign_date_start": "2026-01-01",
+                "sign_date_end": "2026-01-31",
+            },
+            headers={"Authorization": f"Bearer {admin_token}"}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert len(data["results"]) == 1
+        assert data["results"][0]["contract_code"] == "SEARCH-DATE-001"
+
+    async def test_search_party_b_with_sign_date_range(
+        self,
+        client: AsyncClient,
+        admin_token: str,
+        test_db: AsyncSession,
+        test_admin: User
+    ):
+        """Party B search should support combining with sign_date range."""
+        up = ContractUpstream(
+            serial_number=9201,
+            contract_code="SEARCH-DS-UP-001",
+            contract_name="下游筛选上游合同",
+            party_a_name="甲方B",
+            party_b_name="乙方B",
+            category="工程类",
+            contract_amount=Decimal("5000.00"),
+            sign_date=date(2026, 1, 10),
+            status="执行中",
+            created_by=test_admin.id
+        )
+        test_db.add(up)
+        await test_db.commit()
+        await test_db.refresh(up)
+
+        down_in_range = ContractDownstream(
+            serial_number=9301,
+            contract_code="SEARCH-DS-001",
+            contract_name="下游命中合同",
+            party_a_name="蓝海",
+            party_b_name="供应商日期筛选A",
+            upstream_contract_id=up.id,
+            contract_amount=Decimal("800.00"),
+            sign_date=date(2026, 1, 18),
+            status="执行中",
+            created_by=test_admin.id
+        )
+        down_out_of_range = ContractDownstream(
+            serial_number=9302,
+            contract_code="SEARCH-DS-002",
+            contract_name="下游超范围合同",
+            party_a_name="蓝海",
+            party_b_name="供应商日期筛选A",
+            upstream_contract_id=up.id,
+            contract_amount=Decimal("900.00"),
+            sign_date=date(2026, 3, 2),
+            status="执行中",
+            created_by=test_admin.id
+        )
+        test_db.add_all([down_in_range, down_out_of_range])
+        await test_db.commit()
+
+        response = await client.get(
+            "/api/v1/contracts/search",
+            params={
+                "party_b_name": "供应商日期筛选A",
+                "sign_date_start": "2026-01-01",
+                "sign_date_end": "2026-01-31",
+            },
+            headers={"Authorization": f"Bearer {admin_token}"}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["downstream_results"]) == 1
+        assert data["downstream_results"][0]["contract_code"] == "SEARCH-DS-001"
+
+
+@pytest.mark.asyncio
 class TestReportAPIEndpoints:
     """Test report API endpoints"""
     

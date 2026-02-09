@@ -9,6 +9,7 @@ from sqlalchemy import select, or_, and_, cast, String, func
 from typing import Optional, List
 from pydantic import BaseModel
 from decimal import Decimal, ROUND_HALF_UP
+from datetime import date
 
 from app.database import get_db
 from app.services.auth import get_current_active_user
@@ -131,6 +132,8 @@ async def search_contracts(
     company_category: str = Query("", description="公司合同分类"),
     party_a_name: str = Query("", description="上游合同甲方单位"),
     party_b_name: str = Query("", description="下游/管理合同乙方单位"),
+    sign_date_start: Optional[date] = Query(None, description="签约时间开始日期（YYYY-MM-DD）"),
+    sign_date_end: Optional[date] = Query(None, description="签约时间结束日期（YYYY-MM-DD）"),
     limit: Optional[int] = Query(None, ge=1, le=5000, description="返回结果数量限制（为空不限制）"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -143,6 +146,8 @@ async def search_contracts(
         company_category: 公司合同分类筛选
         party_a_name: 上游合同甲方单位模糊匹配
         party_b_name: 下游/管理合同乙方单位模糊匹配
+        sign_date_start: 签约时间起始日期
+        sign_date_end: 签约时间结束日期
         limit: 返回结果数量限制（为空不限制）
         
     Returns:
@@ -155,7 +160,8 @@ async def search_contracts(
     party_b_name = (party_b_name or "").strip()
     has_party_a = bool(party_a_name)
     has_party_b = bool(party_b_name)
-    has_any = bool(query or company_category or party_a_name or party_b_name)
+    has_sign_date_filter = bool(sign_date_start or sign_date_end)
+    has_any = bool(query or company_category or party_a_name or party_b_name or has_sign_date_filter)
 
     # Build upstream query conditions
     upstream_conditions = []
@@ -177,6 +183,12 @@ async def search_contracts(
     # Party A filter (Upstream)
     if has_party_a:
         upstream_conditions.append(ContractUpstream.party_a_name.ilike(f"%{party_a_name}%"))
+
+    # Sign date range filter (Upstream)
+    if sign_date_start:
+        upstream_conditions.append(ContractUpstream.sign_date >= sign_date_start)
+    if sign_date_end:
+        upstream_conditions.append(ContractUpstream.sign_date <= sign_date_end)
     
     # At least one condition is required
     if not has_any:
@@ -378,6 +390,14 @@ async def search_contracts(
                     cast(ContractManagement.serial_number, String).ilike(f"%{query}%")
                 )
             )
+
+        # Sign date range filter (Downstream/Management)
+        if sign_date_start:
+            downstream_conditions.append(ContractDownstream.sign_date >= sign_date_start)
+            management_conditions.append(ContractManagement.sign_date >= sign_date_start)
+        if sign_date_end:
+            downstream_conditions.append(ContractDownstream.sign_date <= sign_date_end)
+            management_conditions.append(ContractManagement.sign_date <= sign_date_end)
         # Note: When searching by party_b_name, do not restrict by upstream filters.
         # This ensures all downstream/management contracts for the matched party are returned.
 

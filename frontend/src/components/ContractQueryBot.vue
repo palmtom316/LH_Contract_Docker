@@ -55,6 +55,17 @@
             class="party-b-input"
           />
         </div>
+        <div class="input-row">
+          <el-date-picker
+            v-model="signDateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="签约开始日期"
+            end-placeholder="签约结束日期"
+            value-format="YYYY-MM-DD"
+            class="sign-date-input"
+          />
+        </div>
         <div class="action-row">
           <el-button type="primary" size="large" @click="handleSearch" :loading="loading" class="search-btn">
             <el-icon><Search /></el-icon> 查询
@@ -79,6 +90,7 @@
             <li><strong>公司合同分类</strong>（如：劳务合同、材料合同）</li>
             <li><strong>上游合同甲方单位</strong>（如：某某电力公司）</li>
             <li><strong>下游/管理合同乙方单位</strong>（如：某某供应商）</li>
+            <li><strong>签约时间范围</strong>（开始/结束日期）</li>
           </ul>
           <p>可同时输入多个条件进行组合查询。</p>
         </el-alert>
@@ -373,6 +385,7 @@ const searchQuery = ref('')
 const companyCategory = ref('')  // 公司合同分类
 const partyAName = ref('') // 上游合同甲方单位
 const partyBName = ref('') // 下游/管理合同乙方单位
+const signDateRange = ref([])
 const loading = ref(false)
 const hasSearched = ref(false)
 const results = shallowRef([])
@@ -423,8 +436,11 @@ const handleSearch = async () => {
   const category = companyCategory.value.trim()
   const partyA = partyAName.value.trim()
   const partyB = partyBName.value.trim()
+  const hasDateRange = Array.isArray(signDateRange.value) && signDateRange.value.length === 2
+  const signDateStart = hasDateRange ? signDateRange.value[0] : ''
+  const signDateEnd = hasDateRange ? signDateRange.value[1] : ''
 
-  if (!query && !category && !partyA && !partyB) {
+  if (!query && !category && !partyA && !partyB && !hasDateRange) {
     ElMessage.warning('请至少输入一个搜索条件')
     return
   }
@@ -441,7 +457,9 @@ const handleSearch = async () => {
       query: query,
       companyCategory: category,
       partyAName: partyA,
-      partyBName: partyB
+      partyBName: partyB,
+      signDateStart,
+      signDateEnd
     })
     results.value = response.results || []
     downstreamResults.value = response.downstream_results || []
@@ -466,6 +484,7 @@ const handleClear = () => {
   companyCategory.value = ''
   partyAName.value = ''
   partyBName.value = ''
+  signDateRange.value = []
   results.value = []
   downstreamResults.value = []
   managementResults.value = []
@@ -568,6 +587,11 @@ const sumExpenses = (expenses) => {
       flex: 1;
       min-width: 160px;
     }
+
+    .sign-date-input {
+      flex: 1;
+      min-width: 280px;
+    }
   }
 
   .search-btn {
@@ -588,7 +612,7 @@ const sumExpenses = (expenses) => {
     .input-row {
       flex-direction: column;
 
-      .search-input, .category-input, .party-a-input, .party-b-input {
+      .search-input, .category-input, .party-a-input, .party-b-input, .sign-date-input {
         width: 100%;
         flex: none;
       }
