@@ -32,6 +32,23 @@ export function getArApStats(year, month) {
     })
 }
 
+export function getCostMonthlyQuarterlyReport(year, month) {
+    return request({
+        url: '/reports/cost/monthly-quarterly',
+        method: 'get',
+        params: { year, month }
+    })
+}
+
+export function downloadCostMonthlyQuarterlyReport(params) {
+    return request({
+        url: '/reports/export/cost/monthly-quarterly',
+        method: 'get',
+        params,
+        responseType: 'blob'
+    })
+}
+
 export function downloadComprehensiveReport(params) {
     return request({
         url: '/reports/export/comprehensive',

@@ -6,15 +6,35 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, extract, cast, Integer
 from datetime import datetime
-from typing import Optional
+from typing import Dict, List, Optional, Tuple
 import logging
 
 from app.database import get_db
 from app.models.user import User
-from app.models.contract_upstream import ContractUpstream, FinanceUpstreamReceipt, FinanceUpstreamReceivable
-from app.models.contract_downstream import ContractDownstream, FinanceDownstreamPayment, FinanceDownstreamPayable
-from app.models.contract_management import ContractManagement, FinanceManagementPayment, FinanceManagementPayable
+from app.models.system import SysDictionary
+from app.models.contract_upstream import (
+    ContractUpstream,
+    FinanceUpstreamReceipt,
+    FinanceUpstreamReceivable,
+    FinanceUpstreamInvoice,
+    ProjectSettlement,
+)
+from app.models.contract_downstream import (
+    ContractDownstream,
+    FinanceDownstreamPayment,
+    FinanceDownstreamPayable,
+    FinanceDownstreamInvoice,
+    DownstreamSettlement,
+)
+from app.models.contract_management import (
+    ContractManagement,
+    FinanceManagementPayment,
+    FinanceManagementPayable,
+    FinanceManagementInvoice,
+    ManagementSettlement,
+)
 from app.models.expense import ExpenseNonContract
+from app.models.zero_hour_labor import ZeroHourLabor
 from app.services.auth import get_current_active_user
 from app.core.permissions import require_permission, Permission
 from app.services.report_cache import (
@@ -25,6 +45,368 @@ from app.services.report_cache import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(require_permission(Permission.VIEW_REPORTS))])
+
+_COST_METRIC_KEYS = [
+    "upstream_contract_amount",
+    "upstream_receivable",
+    "upstream_invoice",
+    "upstream_receipt",
+    "upstream_settlement",
+    "down_mgmt_contract_amount",
+    "down_mgmt_payable",
+    "down_mgmt_invoice",
+    "down_mgmt_payment",
+    "down_mgmt_settlement",
+    "zero_hour_labor",
+    "non_contract_expense",
+]
+
+
+def _period_filters(column, year: int, months: List[int]):
+    filters = [cast(extract("year", column), Integer) == year]
+    if len(months) == 1:
+        filters.append(cast(extract("month", column), Integer) == months[0])
+    else:
+        filters.append(cast(extract("month", column), Integer).in_(months))
+    return filters
+
+
+async def _execute_group_sum(db: AsyncSession, stmt) -> Dict[str, float]:
+    result = await db.execute(stmt)
+    grouped: Dict[str, float] = {}
+    for category, amount in result.all():
+        key = category or "未分类"
+        grouped[key] = grouped.get(key, 0.0) + float(amount or 0)
+    return grouped
+
+
+def _merge_amounts(base: Dict[str, float], extra: Dict[str, float]) -> Dict[str, float]:
+    merged = dict(base)
+    for key, value in extra.items():
+        merged[key] = merged.get(key, 0.0) + float(value or 0)
+    return merged
+
+
+async def _get_project_category_order(db: AsyncSession) -> List[str]:
+    stmt = (
+        select(SysDictionary.value)
+        .where(
+            SysDictionary.category == "project_category",
+            SysDictionary.is_active == True,  # noqa: E712
+        )
+        .order_by(SysDictionary.sort_order, SysDictionary.id)
+    )
+    result = await db.execute(stmt)
+    return [row[0] for row in result.all() if row[0]]
+
+
+async def _collect_cost_metrics(
+    db: AsyncSession,
+    year: int,
+    months: List[int],
+) -> Tuple[Dict[str, Dict[str, float]], set]:
+    metrics: Dict[str, Dict[str, float]] = {}
+
+    metrics["upstream_contract_amount"] = await _execute_group_sum(
+        db,
+        select(
+            ContractUpstream.company_category,
+            func.sum(ContractUpstream.contract_amount),
+        )
+        .where(*_period_filters(ContractUpstream.sign_date, year, months))
+        .group_by(ContractUpstream.company_category),
+    )
+
+    metrics["upstream_receivable"] = await _execute_group_sum(
+        db,
+        select(
+            ContractUpstream.company_category,
+            func.sum(FinanceUpstreamReceivable.amount),
+        )
+        .select_from(FinanceUpstreamReceivable)
+        .join(ContractUpstream, FinanceUpstreamReceivable.contract_id == ContractUpstream.id)
+        .where(*_period_filters(FinanceUpstreamReceivable.expected_date, year, months))
+        .group_by(ContractUpstream.company_category),
+    )
+
+    metrics["upstream_invoice"] = await _execute_group_sum(
+        db,
+        select(
+            ContractUpstream.company_category,
+            func.sum(FinanceUpstreamInvoice.amount),
+        )
+        .select_from(FinanceUpstreamInvoice)
+        .join(ContractUpstream, FinanceUpstreamInvoice.contract_id == ContractUpstream.id)
+        .where(*_period_filters(FinanceUpstreamInvoice.invoice_date, year, months))
+        .group_by(ContractUpstream.company_category),
+    )
+
+    metrics["upstream_receipt"] = await _execute_group_sum(
+        db,
+        select(
+            ContractUpstream.company_category,
+            func.sum(FinanceUpstreamReceipt.amount),
+        )
+        .select_from(FinanceUpstreamReceipt)
+        .join(ContractUpstream, FinanceUpstreamReceipt.contract_id == ContractUpstream.id)
+        .where(*_period_filters(FinanceUpstreamReceipt.receipt_date, year, months))
+        .group_by(ContractUpstream.company_category),
+    )
+
+    metrics["upstream_settlement"] = await _execute_group_sum(
+        db,
+        select(
+            ContractUpstream.company_category,
+            func.sum(ProjectSettlement.settlement_amount),
+        )
+        .select_from(ProjectSettlement)
+        .join(ContractUpstream, ProjectSettlement.contract_id == ContractUpstream.id)
+        .where(*_period_filters(ProjectSettlement.settlement_date, year, months))
+        .group_by(ContractUpstream.company_category),
+    )
+
+    down_contract = await _execute_group_sum(
+        db,
+        select(
+            ContractUpstream.company_category,
+            func.sum(ContractDownstream.contract_amount),
+        )
+        .select_from(ContractDownstream)
+        .outerjoin(ContractUpstream, ContractDownstream.upstream_contract_id == ContractUpstream.id)
+        .where(*_period_filters(ContractDownstream.sign_date, year, months))
+        .group_by(ContractUpstream.company_category),
+    )
+    mgmt_contract = await _execute_group_sum(
+        db,
+        select(
+            ContractUpstream.company_category,
+            func.sum(ContractManagement.contract_amount),
+        )
+        .select_from(ContractManagement)
+        .outerjoin(ContractUpstream, ContractManagement.upstream_contract_id == ContractUpstream.id)
+        .where(*_period_filters(ContractManagement.sign_date, year, months))
+        .group_by(ContractUpstream.company_category),
+    )
+    metrics["down_mgmt_contract_amount"] = _merge_amounts(down_contract, mgmt_contract)
+
+    down_payable = await _execute_group_sum(
+        db,
+        select(
+            ContractUpstream.company_category,
+            func.sum(FinanceDownstreamPayable.amount),
+        )
+        .select_from(FinanceDownstreamPayable)
+        .join(ContractDownstream, FinanceDownstreamPayable.contract_id == ContractDownstream.id)
+        .outerjoin(ContractUpstream, ContractDownstream.upstream_contract_id == ContractUpstream.id)
+        .where(*_period_filters(FinanceDownstreamPayable.expected_date, year, months))
+        .group_by(ContractUpstream.company_category),
+    )
+    mgmt_payable = await _execute_group_sum(
+        db,
+        select(
+            ContractUpstream.company_category,
+            func.sum(FinanceManagementPayable.amount),
+        )
+        .select_from(FinanceManagementPayable)
+        .join(ContractManagement, FinanceManagementPayable.contract_id == ContractManagement.id)
+        .outerjoin(ContractUpstream, ContractManagement.upstream_contract_id == ContractUpstream.id)
+        .where(*_period_filters(FinanceManagementPayable.expected_date, year, months))
+        .group_by(ContractUpstream.company_category),
+    )
+    metrics["down_mgmt_payable"] = _merge_amounts(down_payable, mgmt_payable)
+
+    down_invoice = await _execute_group_sum(
+        db,
+        select(
+            ContractUpstream.company_category,
+            func.sum(FinanceDownstreamInvoice.amount),
+        )
+        .select_from(FinanceDownstreamInvoice)
+        .join(ContractDownstream, FinanceDownstreamInvoice.contract_id == ContractDownstream.id)
+        .outerjoin(ContractUpstream, ContractDownstream.upstream_contract_id == ContractUpstream.id)
+        .where(*_period_filters(FinanceDownstreamInvoice.invoice_date, year, months))
+        .group_by(ContractUpstream.company_category),
+    )
+    mgmt_invoice = await _execute_group_sum(
+        db,
+        select(
+            ContractUpstream.company_category,
+            func.sum(FinanceManagementInvoice.amount),
+        )
+        .select_from(FinanceManagementInvoice)
+        .join(ContractManagement, FinanceManagementInvoice.contract_id == ContractManagement.id)
+        .outerjoin(ContractUpstream, ContractManagement.upstream_contract_id == ContractUpstream.id)
+        .where(*_period_filters(FinanceManagementInvoice.invoice_date, year, months))
+        .group_by(ContractUpstream.company_category),
+    )
+    metrics["down_mgmt_invoice"] = _merge_amounts(down_invoice, mgmt_invoice)
+
+    down_payment = await _execute_group_sum(
+        db,
+        select(
+            ContractUpstream.company_category,
+            func.sum(FinanceDownstreamPayment.amount),
+        )
+        .select_from(FinanceDownstreamPayment)
+        .join(ContractDownstream, FinanceDownstreamPayment.contract_id == ContractDownstream.id)
+        .outerjoin(ContractUpstream, ContractDownstream.upstream_contract_id == ContractUpstream.id)
+        .where(*_period_filters(FinanceDownstreamPayment.payment_date, year, months))
+        .group_by(ContractUpstream.company_category),
+    )
+    mgmt_payment = await _execute_group_sum(
+        db,
+        select(
+            ContractUpstream.company_category,
+            func.sum(FinanceManagementPayment.amount),
+        )
+        .select_from(FinanceManagementPayment)
+        .join(ContractManagement, FinanceManagementPayment.contract_id == ContractManagement.id)
+        .outerjoin(ContractUpstream, ContractManagement.upstream_contract_id == ContractUpstream.id)
+        .where(*_period_filters(FinanceManagementPayment.payment_date, year, months))
+        .group_by(ContractUpstream.company_category),
+    )
+    metrics["down_mgmt_payment"] = _merge_amounts(down_payment, mgmt_payment)
+
+    down_settlement = await _execute_group_sum(
+        db,
+        select(
+            ContractUpstream.company_category,
+            func.sum(DownstreamSettlement.settlement_amount),
+        )
+        .select_from(DownstreamSettlement)
+        .join(ContractDownstream, DownstreamSettlement.contract_id == ContractDownstream.id)
+        .outerjoin(ContractUpstream, ContractDownstream.upstream_contract_id == ContractUpstream.id)
+        .where(*_period_filters(DownstreamSettlement.settlement_date, year, months))
+        .group_by(ContractUpstream.company_category),
+    )
+    mgmt_settlement = await _execute_group_sum(
+        db,
+        select(
+            ContractUpstream.company_category,
+            func.sum(ManagementSettlement.settlement_amount),
+        )
+        .select_from(ManagementSettlement)
+        .join(ContractManagement, ManagementSettlement.contract_id == ContractManagement.id)
+        .outerjoin(ContractUpstream, ContractManagement.upstream_contract_id == ContractUpstream.id)
+        .where(*_period_filters(ManagementSettlement.settlement_date, year, months))
+        .group_by(ContractUpstream.company_category),
+    )
+    metrics["down_mgmt_settlement"] = _merge_amounts(down_settlement, mgmt_settlement)
+
+    metrics["zero_hour_labor"] = await _execute_group_sum(
+        db,
+        select(
+            ContractUpstream.company_category,
+            func.sum(ZeroHourLabor.total_amount),
+        )
+        .select_from(ZeroHourLabor)
+        .outerjoin(ContractUpstream, ZeroHourLabor.upstream_contract_id == ContractUpstream.id)
+        .where(*_period_filters(ZeroHourLabor.labor_date, year, months))
+        .group_by(ContractUpstream.company_category),
+    )
+
+    metrics["non_contract_expense"] = await _execute_group_sum(
+        db,
+        select(
+            ContractUpstream.company_category,
+            func.sum(ExpenseNonContract.amount),
+        )
+        .select_from(ExpenseNonContract)
+        .outerjoin(ContractUpstream, ExpenseNonContract.upstream_contract_id == ContractUpstream.id)
+        .where(*_period_filters(ExpenseNonContract.expense_date, year, months))
+        .group_by(ContractUpstream.company_category),
+    )
+
+    categories_found = set()
+    for value_map in metrics.values():
+        categories_found.update(value_map.keys())
+
+    return metrics, categories_found
+
+
+def _build_rows_and_total(
+    categories: List[str],
+    metrics: Dict[str, Dict[str, float]],
+) -> Tuple[List[Dict[str, float]], Dict[str, float]]:
+    rows = []
+    total = {"company_category": "合计"}
+    for key in _COST_METRIC_KEYS:
+        total[key] = 0.0
+
+    for category in categories:
+        row = {"company_category": category}
+        for key in _COST_METRIC_KEYS:
+            value = float(metrics.get(key, {}).get(category, 0.0))
+            row[key] = value
+            total[key] += value
+        rows.append(row)
+
+    return rows, total
+
+
+def _get_cost_period_context(month: int) -> Dict[str, object]:
+    quarter = (month - 1) // 3 + 1
+    quarter_months = [3 * (quarter - 1) + 1, 3 * (quarter - 1) + 2, 3 * (quarter - 1) + 3]
+    half_year = 1 if month <= 6 else 2
+    half_year_months = [1, 2, 3, 4, 5, 6] if half_year == 1 else [7, 8, 9, 10, 11, 12]
+    year_months = list(range(1, 13))
+    return {
+        "quarter": quarter,
+        "quarter_months": quarter_months,
+        "half_year": half_year,
+        "half_year_months": half_year_months,
+        "year_months": year_months,
+    }
+
+
+async def _build_cost_report_payload(db: AsyncSession, year: int, month: int) -> Dict[str, object]:
+    period_ctx = _get_cost_period_context(month)
+    quarter_months = period_ctx["quarter_months"]
+    half_year_months = period_ctx["half_year_months"]
+    year_months = period_ctx["year_months"]
+
+    month_metrics, month_categories = await _collect_cost_metrics(db, year, [month])
+    quarter_metrics, quarter_categories = await _collect_cost_metrics(db, year, quarter_months)
+    half_year_metrics, half_year_categories = await _collect_cost_metrics(db, year, half_year_months)
+    year_metrics, year_categories = await _collect_cost_metrics(db, year, year_months)
+
+    dict_categories = await _get_project_category_order(db)
+    categories_found = month_categories | quarter_categories | half_year_categories | year_categories
+    extra_categories = sorted(categories_found - set(dict_categories))
+    categories = dict_categories + extra_categories
+
+    monthly_rows, monthly_total = _build_rows_and_total(categories, month_metrics)
+    quarterly_rows, quarterly_total = _build_rows_and_total(categories, quarter_metrics)
+    half_yearly_rows, half_yearly_total = _build_rows_and_total(categories, half_year_metrics)
+    yearly_rows, yearly_total = _build_rows_and_total(categories, year_metrics)
+
+    return {
+        "period": {
+            "year": year,
+            "month": month,
+            "quarter": period_ctx["quarter"],
+            "quarter_months": quarter_months,
+            "half_year": period_ctx["half_year"],
+            "half_year_months": half_year_months,
+            "year_months": year_months,
+        },
+        "monthly": {
+            "rows": monthly_rows,
+            "total": monthly_total,
+        },
+        "quarterly": {
+            "rows": quarterly_rows,
+            "total": quarterly_total,
+        },
+        "half_yearly": {
+            "rows": half_yearly_rows,
+            "total": half_yearly_total,
+        },
+        "yearly": {
+            "rows": yearly_rows,
+            "total": yearly_total,
+        },
+    }
 
 
 @router.post("/cache/invalidate")
@@ -468,4 +850,34 @@ async def get_ar_ap_stats(
     
     await set_cached_report("ar_ap_stats", year, month, result)
     
+    return result
+
+
+@router.get("/cost/monthly-quarterly")
+async def get_monthly_quarterly_cost_report(
+    year: int = None,
+    month: int = None,
+    skip_cache: bool = False,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """
+    按上游合同公司分类统计月度、季度、半年度、年度成本数据。
+    统计口径按业务日期（签约/应收应付/挂账/收付款/结算/费用发生/用工日期）。
+    """
+    now = datetime.now()
+    year = year or now.year
+    month = month or now.month
+    month = max(1, min(12, int(month)))
+    cache_key = "cost_monthly_quarterly_v2"
+
+    if not skip_cache:
+        cached_data = await get_cached_report(cache_key, year, month)
+        if cached_data:
+            logger.debug(f"[CACHE] Cost multi-period report served from cache: {year}/{month}")
+            return cached_data
+
+    result = await _build_cost_report_payload(db, year, month)
+
+    await set_cached_report(cache_key, year, month, result)
     return result

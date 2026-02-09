@@ -13,6 +13,8 @@ import pandas as pd
 import io
 from urllib.parse import quote
 
+from .summary import _build_cost_report_payload
+
 from app.database import get_db
 from app.models.user import User
 from app.models.contract_upstream import (
@@ -53,6 +55,95 @@ def _create_excel_response(df: pd.DataFrame, sheet_name: str, filename: str) -> 
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename*=utf-8''{encoded_filename}"}
+    )
+
+
+def _create_excel_multi_sheet_response(sheets: dict[str, pd.DataFrame], filename: str) -> StreamingResponse:
+    """Helper to create multi-sheet Excel file response."""
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        for sheet_name, df in sheets.items():
+            df.to_excel(writer, index=False, sheet_name=sheet_name)
+            worksheet = writer.sheets[sheet_name]
+            for idx, col in enumerate(df.columns):
+                max_len = max(
+                    df[col].astype(str).map(len).max() if not df[col].empty else 0,
+                    len(str(col))
+                ) + 2
+                worksheet.set_column(idx, idx, max_len)
+    output.seek(0)
+    encoded_filename = quote(filename)
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename*=utf-8''{encoded_filename}"}
+    )
+
+
+def _build_cost_export_df(rows: list[dict], total: dict) -> pd.DataFrame:
+    """Build cost report DataFrame with user-facing Chinese headers."""
+    ordered_columns = [
+        ("company_category", "公司合同分类"),
+        ("upstream_contract_amount", "上游合同-签约金额"),
+        ("upstream_receivable", "上游合同-应收款"),
+        ("upstream_invoice", "上游合同-挂账"),
+        ("upstream_receipt", "上游合同-收款"),
+        ("upstream_settlement", "上游合同-结算"),
+        ("down_mgmt_contract_amount", "下游及管理合同-签约金额"),
+        ("down_mgmt_payable", "下游及管理合同-应付款"),
+        ("down_mgmt_invoice", "下游及管理合同-挂账"),
+        ("down_mgmt_payment", "下游及管理合同-付款"),
+        ("down_mgmt_settlement", "下游及管理合同-结算"),
+        ("zero_hour_labor", "零星用工"),
+        ("non_contract_expense", "无合同费用"),
+    ]
+
+    records = list(rows)
+    total_row = dict(total)
+    total_row["company_category"] = "合计"
+    records.append(total_row)
+
+    result_rows = []
+    for row in records:
+        result = {}
+        for raw_key, header in ordered_columns:
+            if raw_key == "company_category":
+                result[header] = row.get(raw_key, "")
+            else:
+                result[header] = float(row.get(raw_key, 0) or 0)
+        result_rows.append(result)
+
+    return pd.DataFrame(result_rows)
+
+
+@router.get("/export/cost/monthly-quarterly")
+async def export_cost_monthly_quarterly_report(
+    year: int = None,
+    month: int = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Export monthly/quarterly/half-yearly/yearly cost report to a multi-sheet Excel file."""
+    now = datetime.now()
+    year = year or now.year
+    month = month or now.month
+    month = max(1, min(12, int(month)))
+    payload = await _build_cost_report_payload(db, year, month)
+
+    monthly_df = _build_cost_export_df(payload["monthly"]["rows"], payload["monthly"]["total"])
+    quarterly_df = _build_cost_export_df(payload["quarterly"]["rows"], payload["quarterly"]["total"])
+    half_yearly_df = _build_cost_export_df(payload["half_yearly"]["rows"], payload["half_yearly"]["total"])
+    yearly_df = _build_cost_export_df(payload["yearly"]["rows"], payload["yearly"]["total"])
+
+    filename = f"成本报表_{year}年{month:02d}月.xlsx"
+    return _create_excel_multi_sheet_response(
+        {
+            "月度成本报表": monthly_df,
+            "季度成本报表": quarterly_df,
+            "半年度成本报表": half_yearly_df,
+            "年度成本报表": yearly_df,
+        },
+        filename,
     )
 
 
