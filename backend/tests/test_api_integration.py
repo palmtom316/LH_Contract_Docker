@@ -560,10 +560,13 @@ class TestReportAPIEndpoints:
 
         with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
             workbook_xml = archive.read("xl/workbook.xml").decode("utf-8")
+            styles_xml = archive.read("xl/styles.xml").decode("utf-8")
         assert "月度成本报表" in workbook_xml
         assert "季度成本报表" in workbook_xml
         assert "半年度成本报表" in workbook_xml
         assert "年度成本报表" in workbook_xml
+        # 金额列应启用千分位数字格式
+        assert 'formatCode="#,##0.00"' in styles_xml
 
 
 @pytest.mark.asyncio

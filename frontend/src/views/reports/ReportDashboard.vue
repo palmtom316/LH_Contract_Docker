@@ -663,7 +663,16 @@ const handleExportCostReport = async () => {
   }
 }
 
-const amountFormatter = (_row, _column, value) => Number(value || 0).toFixed(2)
+const amountFormatter = (_row, _column, value) => {
+  const amount = Number(value)
+  if (!Number.isFinite(amount)) {
+    return '0.00'
+  }
+  return amount.toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })
+}
 const costRowClassName = ({ row }) => (row.is_total ? 'cost-total-row' : '')
 const costCellStyle = ({ column }) => {
   if (COST_FIELDS.includes(column.property)) {

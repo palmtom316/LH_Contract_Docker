@@ -62,6 +62,22 @@ def _create_excel_multi_sheet_response(sheets: dict[str, pd.DataFrame], filename
     """Helper to create multi-sheet Excel file response."""
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        workbook = writer.book
+        amount_format = workbook.add_format({"num_format": "#,##0.00", "align": "right"})
+        amount_columns = {
+            "上游合同-签约金额",
+            "上游合同-应收款",
+            "上游合同-挂账",
+            "上游合同-收款",
+            "上游合同-结算",
+            "下游及管理合同-签约金额",
+            "下游及管理合同-应付款",
+            "下游及管理合同-挂账",
+            "下游及管理合同-付款",
+            "下游及管理合同-结算",
+            "零星用工",
+            "无合同费用",
+        }
         for sheet_name, df in sheets.items():
             df.to_excel(writer, index=False, sheet_name=sheet_name)
             worksheet = writer.sheets[sheet_name]
@@ -70,7 +86,8 @@ def _create_excel_multi_sheet_response(sheets: dict[str, pd.DataFrame], filename
                     df[col].astype(str).map(len).max() if not df[col].empty else 0,
                     len(str(col))
                 ) + 2
-                worksheet.set_column(idx, idx, max_len)
+                col_format = amount_format if col in amount_columns else None
+                worksheet.set_column(idx, idx, max_len, col_format)
     output.seek(0)
     encoded_filename = quote(filename)
     return StreamingResponse(
