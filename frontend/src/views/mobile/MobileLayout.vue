@@ -5,7 +5,7 @@
         <van-icon name="wap-nav" />
       </button>
       <h1 class="mobile-title">{{ pageTitle }}</h1>
-      <AppTopbarActions :unread-count="unreadCount" @command="handleCommand" />
+      <AppTopbarActions :unread-count="unreadCount" />
     </header>
 
     <main class="mobile-content">
@@ -178,19 +178,6 @@ function confirmLogout() {
   })
 }
 
-function handleCommand(command) {
-  if (command === 'logout') {
-    confirmLogout()
-    return
-  }
-  if (command === 'changePassword') {
-    openChangePasswordDialog()
-    return
-  }
-  if (command === 'profile') {
-    router.push('/m/profile')
-  }
-}
 </script>
 
 <style scoped lang="scss">

@@ -79,7 +79,7 @@
             <el-breadcrumb-item>{{ route.meta.title }}</el-breadcrumb-item>
           </el-breadcrumb>
         </div>
-        <AppTopbarActions :unread-count="unreadCount" @command="handleCommand" />
+        <AppTopbarActions :unread-count="unreadCount" />
       </header>
 
       <section class="app-main">
@@ -256,20 +256,6 @@ function confirmLogout() {
     await userStore.logout()
     router.push('/login')
   })
-}
-
-function handleCommand(command) {
-  if (command === 'logout') {
-    confirmLogout()
-    return
-  }
-  if (command === 'changePassword') {
-    openChangePasswordDialog()
-    return
-  }
-  if (command === 'profile') {
-    router.push('/system')
-  }
 }
 
 onMounted(() => {
