@@ -79,7 +79,6 @@ describe('fetchNotifications API facade', () => {
             id: 33,
             contract_name: 'B合同',
             status: '质保到期',
-            warranty_date: '2026-05-01',
             updated_at: '2026-04-01T08:00:00Z'
           }
         ]
@@ -93,7 +92,31 @@ describe('fetchNotifications API facade', () => {
       id: 'upstream-33',
       type: 'contract_expiry',
       title: 'B合同',
-      createdAt: '2026-05-01'
+      createdAt: '2026-04-01T08:00:00Z'
     })
+  })
+
+  it('scopes reminder ids by source and falls back timestamp from created_at then end_date', async () => {
+    request.get
+      .mockResolvedValueOnce({ items: [] })
+      .mockResolvedValueOnce({
+        items: [{ id: 1, contract_name: '上游合同', status: '质保到期', created_at: '2026-04-02T08:00:00Z' }]
+      })
+      .mockResolvedValueOnce({
+        items: [{ id: 1, contract_name: '下游合同', status: '质保到期', end_date: '2026-04-03' }]
+      })
+      .mockResolvedValueOnce({
+        items: [{ id: 1, contract_name: '管理合同', status: '质保到期', updated_at: '2026-04-04T09:00:00Z' }]
+      })
+
+    const result = await fetchNotifications()
+
+    const ids = result.map(item => item.id)
+    expect(ids).toContain('upstream-1')
+    expect(ids).toContain('downstream-1')
+    expect(ids).toContain('management-1')
+    expect(result.find(item => item.id === 'upstream-1')?.createdAt).toBe('2026-04-02T08:00:00Z')
+    expect(result.find(item => item.id === 'downstream-1')?.createdAt).toBe('2026-04-03')
+    expect(result.find(item => item.id === 'management-1')?.createdAt).toBe('2026-04-04T09:00:00Z')
   })
 })

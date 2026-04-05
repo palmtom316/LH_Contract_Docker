@@ -1,13 +1,13 @@
 import request from '@/utils/request'
 import { buildNotifications } from '@/utils/notificationAdapter'
 
-function mapContractReminders(items = []) {
+function mapContractReminders(items = [], source = 'contract') {
     return items.map(item => ({
-        id: `upstream-${item.id}`,
+        id: `${source}-${item.id}`,
         type: 'contract_expiry',
         title: item.contract_name || item.contract_code || '合同质保到期提醒',
         subtitle: item.status || '质保到期',
-        due_at: item.warranty_date || item.end_date || item.updated_at || item.created_at
+        due_at: item.updated_at || item.created_at || item.end_date
     }))
 }
 
@@ -33,9 +33,9 @@ export async function fetchNotifications() {
 
     const audits = auditsResult.status === 'fulfilled' ? (auditsResult.value.items || auditsResult.value.results || []) : []
     const reminders = [
-        ...(upstreamResult.status === 'fulfilled' ? mapContractReminders(upstreamResult.value.items || upstreamResult.value.results || []) : []),
-        ...(downstreamResult.status === 'fulfilled' ? mapContractReminders(downstreamResult.value.items || downstreamResult.value.results || []) : []),
-        ...(managementResult.status === 'fulfilled' ? mapContractReminders(managementResult.value.items || managementResult.value.results || []) : [])
+        ...(upstreamResult.status === 'fulfilled' ? mapContractReminders(upstreamResult.value.items || upstreamResult.value.results || [], 'upstream') : []),
+        ...(downstreamResult.status === 'fulfilled' ? mapContractReminders(downstreamResult.value.items || downstreamResult.value.results || [], 'downstream') : []),
+        ...(managementResult.status === 'fulfilled' ? mapContractReminders(managementResult.value.items || managementResult.value.results || [], 'management') : [])
     ]
 
     return buildNotifications({
