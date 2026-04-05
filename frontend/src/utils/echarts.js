@@ -19,4 +19,7 @@ echarts.use([
     CanvasRenderer
 ])
 
+export { createBarChartOption } from './chartOptions'
+export { readChartTheme } from './chartTheme'
+
 export default echarts
