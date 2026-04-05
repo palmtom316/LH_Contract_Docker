@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { useUiStore } from '../ui'
+
+const testDir = dirname(fileURLToPath(import.meta.url))
+const tokensPath = resolve(testDir, '../../styles/tokens.scss')
 
 describe('ui store', () => {
   beforeEach(() => {
@@ -49,5 +55,13 @@ describe('ui store', () => {
     expect(() => store.initTheme()).not.toThrow()
     expect(() => store.setTheme('dark')).not.toThrow()
     expect(store.theme).toBe('dark')
+  })
+
+  it('keeps legacy color token aliases mapped to semantic tokens', () => {
+    const tokens = readFileSync(tokensPath, 'utf8')
+
+    expect(tokens).toContain('--color-primary: var(--brand-primary);')
+    expect(tokens).toContain('--color-text-main: var(--text-primary);')
+    expect(tokens).toContain('--color-text-secondary: var(--text-secondary);')
   })
 })

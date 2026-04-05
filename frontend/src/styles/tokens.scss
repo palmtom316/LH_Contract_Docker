@@ -36,6 +36,11 @@
   --space-8: 32px;
   --sidebar-width: 248px;
   --header-height: 72px;
+
+  /* Legacy token compatibility aliases */
+  --color-primary: var(--brand-primary);
+  --color-text-main: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
 }
 
 :root[data-theme='dark'] {
