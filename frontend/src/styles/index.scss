@@ -3,18 +3,20 @@
 
 // Global Styles
 
-html {
-    background-color: var(--surface-page);
+html,
+body,
+#app {
+    min-height: 100vh;
 }
 
 body {
     margin: 0;
-    padding: 0;
     -moz-osx-font-smoothing: grayscale;
     -webkit-font-smoothing: antialiased;
     font-family: var(--font-family-base);
-    background-color: var(--surface-page);
+    background: var(--surface-page);
     color: var(--text-primary);
+    transition: background-color 160ms ease, color 160ms ease;
 }
 
 button,
@@ -33,8 +35,12 @@ input:focus-visible,
     box-shadow: var(--shadow-focus);
 }
 
-#app {
-    min-height: 100vh;
+.el-button,
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner,
+.el-card {
+    transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, color 160ms ease;
 }
 
 .app-container {

@@ -14,6 +14,7 @@ import zhCN from 'vant/lib/locale/lang/zh-CN'
 import App from './App.vue'
 import router from './router'
 import { useUserStore } from '@/stores/user'
+import { useUiStore } from '@/stores/ui'
 import { syncAccessTokenCookie } from '@/utils/authSession'
 import './assets/main.scss'
 
@@ -31,6 +32,9 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 app.use(pinia)
 app.use(router)
 app.use(ElementPlus, { locale: zhCn })
+
+const uiStore = useUiStore(pinia)
+uiStore.initTheme()
 
 // Rehydrate the file-access cookie from the persisted session on first load.
 syncAccessTokenCookie(localStorage.getItem('token') || '')
