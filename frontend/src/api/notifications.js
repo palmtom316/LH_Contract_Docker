@@ -12,19 +12,31 @@ function mapContractReminders(items = []) {
 }
 
 export async function fetchNotifications() {
-    const [auditsResult, remindersResult] = await Promise.allSettled([
-        request.get('/audit/', { params: { page: 1, page_size: 10 } }),
-        request.get('/contracts/upstream/', { params: { page: 1, page_size: 10, status: '质保到期' } })
+    const [auditsResult, upstreamResult, downstreamResult, managementResult] = await Promise.allSettled([
+        request.get('/audit/', {
+            params: { page: 1, page_size: 10 },
+            suppressGlobalErrorMessage: true
+        }),
+        request.get('/contracts/upstream/', { params: { page: 1, page_size: 10, status: '质保到期' } }),
+        request.get('/contracts/downstream/', { params: { page: 1, page_size: 10, status: '质保到期' } }),
+        request.get('/contracts/management/', { params: { page: 1, page_size: 10, status: '质保到期' } })
     ])
 
-    if (auditsResult.status === 'rejected' && remindersResult.status === 'rejected') {
+    if (
+        auditsResult.status === 'rejected' &&
+        upstreamResult.status === 'rejected' &&
+        downstreamResult.status === 'rejected' &&
+        managementResult.status === 'rejected'
+    ) {
         throw new Error('Failed to load notifications')
     }
 
     const audits = auditsResult.status === 'fulfilled' ? (auditsResult.value.items || auditsResult.value.results || []) : []
-    const reminders = remindersResult.status === 'fulfilled'
-        ? mapContractReminders(remindersResult.value.items || remindersResult.value.results || [])
-        : []
+    const reminders = [
+        ...(upstreamResult.status === 'fulfilled' ? mapContractReminders(upstreamResult.value.items || upstreamResult.value.results || []) : []),
+        ...(downstreamResult.status === 'fulfilled' ? mapContractReminders(downstreamResult.value.items || downstreamResult.value.results || []) : []),
+        ...(managementResult.status === 'fulfilled' ? mapContractReminders(managementResult.value.items || managementResult.value.results || []) : [])
+    ]
 
     return buildNotifications({
         audits,

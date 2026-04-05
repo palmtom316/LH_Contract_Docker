@@ -44,13 +44,22 @@ describe('fetchNotifications API facade', () => {
       .mockResolvedValueOnce({
         items: [{ id: 22, contract_name: 'A合同', status: '质保到期', updated_at: '2026-04-06T08:00:00Z' }]
       })
+      .mockResolvedValueOnce({ items: [] })
+      .mockResolvedValueOnce({ items: [] })
 
     await fetchNotifications()
 
     expect(request.get).toHaveBeenNthCalledWith(1, '/audit/', {
-      params: { page: 1, page_size: 10 }
+      params: { page: 1, page_size: 10 },
+      suppressGlobalErrorMessage: true
     })
     expect(request.get).toHaveBeenNthCalledWith(2, '/contracts/upstream/', {
+      params: { page: 1, page_size: 10, status: '质保到期' }
+    })
+    expect(request.get).toHaveBeenNthCalledWith(3, '/contracts/downstream/', {
+      params: { page: 1, page_size: 10, status: '质保到期' }
+    })
+    expect(request.get).toHaveBeenNthCalledWith(4, '/contracts/management/', {
       params: { page: 1, page_size: 10, status: '质保到期' }
     })
   })
@@ -75,6 +84,8 @@ describe('fetchNotifications API facade', () => {
           }
         ]
       })
+      .mockResolvedValueOnce({ items: [] })
+      .mockResolvedValueOnce({ items: [] })
 
     const result = await fetchNotifications()
 

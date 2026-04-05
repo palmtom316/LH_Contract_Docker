@@ -39,6 +39,12 @@ service.interceptors.response.use(
     async error => {
         console.error('Response error:', error)
         const { response } = error
+        const shouldShowGlobalError = !response?.config?.suppressGlobalErrorMessage
+        const emitError = (message) => {
+            if (shouldShowGlobalError) {
+                ElMessage.error(message)
+            }
+        }
         if (response) {
 
             // Handle Blob errors (response.data is Blob, not JSON)
@@ -64,7 +70,7 @@ service.interceptors.response.use(
                 case 401:
                     if (response.config.url.includes('/login') || response.config.url.includes('/refresh')) {
                         // Login or refresh failed - show error
-                        ElMessage.error(errorMsg || '用户名或密码错误')
+                        emitError(errorMsg || '用户名或密码错误')
                     } else {
                         // Try to refresh the token
                         const refreshToken = localStorage.getItem('refresh_token')
@@ -80,43 +86,43 @@ service.interceptors.response.use(
                                 // Refresh failed, redirect to login
                                 clearSessionStorage()
                                 router.push('/login')
-                                ElMessage.error('登录已过期，请重新登录')
+                                emitError('登录已过期，请重新登录')
                             }
                         } else {
                             clearSessionStorage()
                             router.push('/login')
-                            ElMessage.error('登录已过期，请重新登录')
+                            emitError('登录已过期，请重新登录')
                         }
                     }
                     break
                 case 403:
-                    ElMessage.error(errorMsg || '权限不足')
+                    emitError(errorMsg || '权限不足')
                     break
                 case 404:
-                    ElMessage.error(errorMsg || '请求的资源不存在')
+                    emitError(errorMsg || '请求的资源不存在')
                     break
                 case 429:
-                    ElMessage.error('请求过于频繁，请稍后再试')
+                    emitError('请求过于频繁，请稍后再试')
                     break
                 case 400:
-                    ElMessage.error(errorMsg || '请求参数错误')
+                    emitError(errorMsg || '请求参数错误')
                     break
                 case 500:
-                    ElMessage.error(errorMsg || '服务器内部错误')
+                    emitError(errorMsg || '服务器内部错误')
                     break
                 case 502:
                 case 503:
                 case 504:
-                    ElMessage.error('服务暂时不可用，请稍后重试')
+                    emitError('服务暂时不可用，请稍后重试')
                     break
                 case 422:
-                    ElMessage.error(typeof errorMsg === 'object' ? JSON.stringify(errorMsg) : (errorMsg || '参数验证错误'))
+                    emitError(typeof errorMsg === 'object' ? JSON.stringify(errorMsg) : (errorMsg || '参数验证错误'))
                     break
                 default:
-                    ElMessage.error(errorMsg || `发生未知错误 (HTTP ${response.status})`)
+                    emitError(errorMsg || `发生未知错误 (HTTP ${response.status})`)
             }
         } else {
-            ElMessage.error('网络连接错误: ' + error.message)
+            emitError('网络连接错误: ' + error.message)
         }
         return Promise.reject(error)
     }
