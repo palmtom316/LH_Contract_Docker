@@ -3,7 +3,9 @@ import { setActivePinia, createPinia } from 'pinia'
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { mount } from '@vue/test-utils'
 import { useUiStore } from '../ui'
+import AppMetricCard from '@/components/ui/AppMetricCard.vue'
 
 const testDir = dirname(fileURLToPath(import.meta.url))
 const tokensPath = resolve(testDir, '../../styles/tokens.scss')
@@ -97,5 +99,17 @@ describe('ui store', () => {
     expect(loginView).toContain('var(--surface-page)')
     expect(loginView).toContain('var(--surface-panel)')
     expect(loginView).toContain('var(--surface-panel-muted)')
+  })
+
+  it('renders metric title and value content', () => {
+    const wrapper = mount(AppMetricCard, {
+      props: {
+        title: '年度上游签约',
+        value: '12 单'
+      }
+    })
+
+    expect(wrapper.text()).toContain('年度上游签约')
+    expect(wrapper.text()).toContain('12 单')
   })
 })

@@ -75,6 +75,80 @@ input:focus-visible,
     color: var(--text-primary);
 }
 
+.el-button {
+    min-height: 40px;
+    border-radius: 12px;
+    font-weight: 600;
+    padding-inline: 16px;
+    box-shadow: none;
+}
+
+.el-button:hover,
+.el-button:focus-visible {
+    transform: translateY(-1px);
+}
+
+.el-button--primary {
+    background: var(--brand-primary);
+    border-color: var(--brand-primary);
+}
+
+.el-button--primary:hover,
+.el-button--primary:focus-visible {
+    background: var(--brand-primary-strong);
+    border-color: var(--brand-primary-strong);
+}
+
+.el-card {
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--surface-panel);
+    box-shadow: var(--shadow-soft);
+}
+
+.el-card__header {
+    padding: 18px 20px 0;
+    border-bottom: 0;
+}
+
+.el-card__body {
+    padding: 20px;
+}
+
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner,
+.el-date-editor.el-input__wrapper {
+    min-height: 42px;
+    border-radius: 12px;
+    background: var(--surface-panel);
+    box-shadow: 0 0 0 1px var(--border-subtle) inset;
+}
+
+.el-input__wrapper:hover,
+.el-select__wrapper:hover,
+.el-textarea__inner:hover {
+    box-shadow: 0 0 0 1px var(--border-strong) inset;
+}
+
+.el-table {
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.el-table th.el-table__cell {
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.el-table td.el-table__cell {
+    color: var(--text-primary);
+}
+
+.el-table tr:hover > td.el-table__cell {
+    background: var(--surface-panel-muted);
+}
+
 // Global utilities can go here
 
 // Global Mobile Overrides

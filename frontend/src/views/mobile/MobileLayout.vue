@@ -264,10 +264,4 @@ function confirmLogout() {
 :deep(.topbar-actions) {
   gap: 6px;
 }
-
-:deep(.topbar-actions .user-menu-trigger) {
-  width: 36px;
-  padding: 0;
-  justify-content: center;
-}
 </style>
