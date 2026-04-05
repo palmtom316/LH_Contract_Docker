@@ -35,5 +35,11 @@
         "tailwindcss": "^3.4.1",
         "vite": "^7.2.7",
         "vitest": "^3.2.4"
+    },
+    "vitest": {
+        "environment": "jsdom",
+        "setupFiles": [
+            "src/test/setup.js"
+        ]
     }
 }
