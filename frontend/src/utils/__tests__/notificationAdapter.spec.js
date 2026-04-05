@@ -60,4 +60,29 @@ describe('fetchNotifications API facade', () => {
 
     await expect(fetchNotifications()).rejects.toThrow('Failed to load notifications')
   })
+
+  it('maps contract reminder timestamp from warranty_date', async () => {
+    request.get
+      .mockResolvedValueOnce({ items: [] })
+      .mockResolvedValueOnce({
+        items: [
+          {
+            id: 33,
+            contract_name: 'B合同',
+            status: '质保到期',
+            warranty_date: '2026-05-01',
+            updated_at: '2026-04-01T08:00:00Z'
+          }
+        ]
+      })
+
+    const result = await fetchNotifications()
+
+    expect(result[0]).toMatchObject({
+      id: 'upstream-33',
+      type: 'contract_expiry',
+      title: 'B合同',
+      createdAt: '2026-05-01'
+    })
+  })
 })

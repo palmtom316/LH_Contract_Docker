@@ -97,7 +97,7 @@ onMounted(async () => {
 
 .notification-center-header p {
   margin: 4px 0 0;
-  color: #64748b;
+  color: var(--text-secondary, #64748b);
 }
 
 .notification-list {
@@ -106,20 +106,20 @@ onMounted(async () => {
 }
 
 .notification-item {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-subtle, #e2e8f0);
   border-radius: 10px;
   padding: 14px 16px;
-  background: #fff;
+  background: var(--surface-panel, #fff);
 }
 
 .notification-item__title {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--text-primary, #0f172a);
 }
 
 .notification-item__meta {
   margin-top: 4px;
-  color: #64748b;
+  color: var(--text-secondary, #64748b);
   font-size: 13px;
 }
 
