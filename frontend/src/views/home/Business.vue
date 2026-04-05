@@ -1,557 +1,174 @@
 <template>
   <div class="business-dashboard" v-loading="loading">
-    <!-- Header / Filter -->
-    <div class="filter-container">
-      <span class="filter-label">统计周期:</span>
-
-      <!-- Year Picker -->
-      <el-date-picker
-        v-model="currentYear"
-        type="year"
-        placeholder="选择年份"
-        style="width: 120px; margin-right: 10px"
-        value-format="YYYY"
-        @change="handleFilterChange"
-      />
-
-      <!-- Month Selector -->
-      <el-select
-        v-model="currentMonth"
-        placeholder="选择月份 (默认全年)"
-        clearable
-        style="width: 180px; margin-right: 10px"
-        @change="handleFilterChange"
-      >
-        <el-option label="全年数据" :value="null" />
-        <el-option v-for="m in 12" :key="m" :label="m + '月'" :value="m" />
-      </el-select>
-
-      <el-button type="primary" icon="Refresh" @click="fetchData"
-        >查询</el-button
-      >
-    </div>
-
-    <!-- Row 1: Annual Summary Cards (4 Cards) -->
-    <el-row :gutter="20" class="summary-row">
-      <!-- 1. Annual Upstream Contract Total -->
-      <el-col :xs="12" :sm="12" :md="6">
-        <el-card
-          shadow="hover"
-          class="stat-card-modern"
-          style="background: linear-gradient(135deg, #1890ff 0%, #36cfc9 100%)"
+    <section class="dashboard-filter-bar">
+      <div class="dashboard-filter-bar__group">
+        <span class="dashboard-filter-bar__label">统计周期</span>
+        <el-date-picker
+          v-model="currentYear"
+          class="dashboard-filter-bar__control dashboard-filter-bar__control--year"
+          type="year"
+          placeholder="选择年份"
+          value-format="YYYY"
+          @change="handleFilterChange"
+        />
+        <el-select
+          v-model="currentMonth"
+          class="dashboard-filter-bar__control dashboard-filter-bar__control--month"
+          placeholder="选择月份"
+          clearable
+          @change="handleFilterChange"
         >
-          <div class="card-icon-bg">
-            <el-icon><Document /></el-icon>
-          </div>
-          <div class="card-inner">
-            <div class="card-modern-header">
-              <span class="title">年度上游合同签约</span>
-              <div class="icon-wrapper">
-                <el-icon><Document /></el-icon>
-              </div>
-            </div>
-            <div class="card-modern-content">
-              <h2 class="amount">
-                {{ annualUpstreamCount }} <small>单</small>
-              </h2>
-              <div class="amount-sub">
-                ¥ {{ formatWan(annualUpstreamAmount) }} 万
-              </div>
-              <div class="sub-info">累计签约总额</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
+          <el-option label="全年数据" :value="null" />
+          <el-option v-for="m in 12" :key="m" :label="`${m}月`" :value="m" />
+        </el-select>
+      </div>
+      <div class="dashboard-filter-bar__actions">
+        <el-button type="primary" icon="Refresh" @click="fetchData">刷新看板</el-button>
+      </div>
+    </section>
 
-      <!-- 2. Annual Receipts Total -->
-      <el-col :xs="12" :sm="12" :md="6">
-        <el-card
-          shadow="hover"
-          class="stat-card-modern"
-          style="background: linear-gradient(135deg, #52c41a 0%, #95d475 100%)"
-        >
-          <div class="card-icon-bg">
-            <el-icon><Money /></el-icon>
-          </div>
-          <div class="card-inner">
-            <div class="card-modern-header">
-              <span class="title">年度回款总额</span>
-              <div class="icon-wrapper">
-                <el-icon><Money /></el-icon>
-              </div>
-            </div>
-            <div class="card-modern-content">
-              <h2 class="amount">
-                ¥ {{ formatWan(annualReceiptsAmount) }} <small>万</small>
-              </h2>
-              <div class="sub-info">实际到账金额</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
+    <section class="metric-grid">
+      <article class="metric-card metric-card--primary">
+        <div class="metric-card__top">
+          <span class="metric-card__eyebrow">年度经营</span>
+          <div class="metric-card__icon"><el-icon><Document /></el-icon></div>
+        </div>
+        <div class="metric-card__title">上游签约</div>
+        <div class="metric-card__value">{{ annualUpstreamCount }} <small>单</small></div>
+        <div class="metric-card__meta">¥ {{ formatWan(annualUpstreamAmount) }} 万</div>
+      </article>
+      <article class="metric-card metric-card--success">
+        <div class="metric-card__top">
+          <span class="metric-card__eyebrow">年度经营</span>
+          <div class="metric-card__icon"><el-icon><Money /></el-icon></div>
+        </div>
+        <div class="metric-card__title">回款总额</div>
+        <div class="metric-card__value">¥ {{ formatWan(annualReceiptsAmount) }} <small>万</small></div>
+        <div class="metric-card__meta">实际到账金额</div>
+      </article>
+      <article class="metric-card metric-card--danger">
+        <div class="metric-card__top">
+          <span class="metric-card__eyebrow">年度经营</span>
+          <div class="metric-card__icon"><el-icon><Coin /></el-icon></div>
+        </div>
+        <div class="metric-card__title">付款总额</div>
+        <div class="metric-card__value">¥ {{ formatWan(annualPaymentsAmount) }} <small>万</small></div>
+        <div class="metric-card__meta">下游、管理及零星支出</div>
+      </article>
+      <article class="metric-card metric-card--warning">
+        <div class="metric-card__top">
+          <span class="metric-card__eyebrow">年度经营</span>
+          <div class="metric-card__icon"><el-icon><Wallet /></el-icon></div>
+        </div>
+        <div class="metric-card__title">下游及管理签约</div>
+        <div class="metric-card__value">{{ annualDownMgmtCount }} <small>单</small></div>
+        <div class="metric-card__meta">¥ {{ formatWan(annualDownMgmtAmount) }} 万</div>
+      </article>
+    </section>
 
-      <!-- 3. Annual Payments Total -->
-      <el-col :xs="12" :sm="12" :md="6">
-        <el-card
-          shadow="hover"
-          class="stat-card-modern"
-          style="background: linear-gradient(135deg, #ff4d4f 0%, #f56c6c 100%)"
-        >
-          <div class="card-icon-bg">
-            <el-icon><Coin /></el-icon>
-          </div>
-          <div class="card-inner">
-            <div class="card-modern-header">
-              <span class="title">年度付款总额</span>
-              <div class="icon-wrapper">
-                <el-icon><Coin /></el-icon>
-              </div>
-            </div>
-            <div class="card-modern-content">
-              <h2 class="amount">
-                ¥ {{ formatWan(annualPaymentsAmount) }} <small>万</small>
-              </h2>
-              <div class="sub-info">下游+管理+无合同费用+零星用工</div>
+    <section class="dashboard-main-grid">
+      <AppSectionCard class="trend-panel">
+        <template #header>
+          <div class="section-heading">
+            <div>
+              <div class="section-heading__title">{{ currentYear }} 年度收支趋势</div>
+              <div v-if="currentMonth" class="section-heading__meta">{{ currentMonth }} 月视图</div>
             </div>
           </div>
-        </el-card>
-      </el-col>
+        </template>
+        <div ref="trendChartRef" class="chart-surface chart-surface--trend"></div>
+      </AppSectionCard>
 
-      <!-- 4. Annual Downstream & Management Contract Total -->
-      <el-col :xs="12" :sm="12" :md="6">
-        <el-card
-          shadow="hover"
-          class="stat-card-modern"
-          style="background: linear-gradient(135deg, #faad14 0%, #fadb14 100%)"
-        >
-          <div class="card-icon-bg">
-            <el-icon><Wallet /></el-icon>
-          </div>
-          <div class="card-inner">
-            <div class="card-modern-header">
-              <span class="title">年度下游及管理签约</span>
-              <div class="icon-wrapper">
-                <el-icon><Wallet /></el-icon>
-              </div>
-            </div>
-            <div class="card-modern-content">
-              <h2 class="amount">
-                {{ annualDownMgmtCount }} <small>单</small>
-              </h2>
-              <div class="amount-sub">
-                ¥ {{ formatWan(annualDownMgmtAmount) }} 万
-              </div>
-              <div class="sub-info">累计支出预算</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <!-- Row 2: Trend Chart (Wide) + AR + AP -->
-    <el-row :gutter="20" style="margin-top: 20px" class="summary-row">
-      <!-- Trend Chart (Takes 12 columns = 2 cards width) -->
-      <el-col :xs="24" :sm="24" :md="12">
-        <el-card
-          shadow="hover"
-          class="chart-card"
-          style="height: 228px; display: flex; flex-direction: column"
-          :body-style="{
-            flex: '1',
-            overflow: 'hidden',
-            padding: '10px',
-            display: 'flex',
-            flexDirection: 'column',
-          }"
-        >
-          <div
-            class="card-content"
-            style="
-              flex: 1;
-              display: flex;
-              flex-direction: column;
-              overflow: hidden;
-            "
-          >
-            <div
-              class="card-header-simple"
-              style="margin-bottom: 5px; flex-shrink: 0"
-            >
-              <span>{{ currentYear }}年度 收支趋势</span>
-              <el-tag
-                v-if="currentMonth"
-                type="warning"
-                size="small"
-                style="margin-left: 10px; transform: scale(0.8)"
-              >
-                {{ currentMonth }}月
-              </el-tag>
-            </div>
-            <!-- Chart Container -->
-            <div
-              ref="trendChartRef"
-              style="width: 100%; flex: 1; min-height: 0"
-            ></div>
-          </div>
-        </el-card>
-      </el-col>
-
-      <!-- Receivables -->
-      <el-col :xs="24" :sm="12" :md="6">
-        <el-card shadow="hover" class="chart-card" style="height: 228px">
+      <div class="dashboard-side-stack">
+        <AppSectionCard>
           <template #header>
-            <div class="card-header-simple">
-              <span
-                >{{ currentMonth ? `${currentMonth}月 ` : "" }}应收账款
-                (AR)</span
-              >
-              <el-tooltip content="统计周期内应收款 vs 已收款" placement="top">
-                <el-icon><InfoFilled /></el-icon>
-              </el-tooltip>
+            <div class="section-heading">
+              <div class="section-heading__title">{{ currentMonth ? `${currentMonth}月` : '本期' }}应收账款</div>
             </div>
           </template>
-          <div class="arap-content">
-            <div class="arap-main-value text-primary">
-              ¥ {{ formatWan(arStats.outstanding) }} <small>万</small>
+          <div class="arap-panel">
+            <div class="arap-panel__value arap-panel__value--primary">¥ {{ formatWan(arStats.outstanding) }} <small>万</small></div>
+            <div class="arap-panel__stats">
+              <div class="arap-panel__row"><span>应收款</span><strong>¥ {{ formatWan(arStats.total_receivable) }} 万</strong></div>
+              <div class="arap-panel__row"><span>已收款</span><strong>¥ {{ formatWan(arStats.total_received) }} 万</strong></div>
             </div>
-            <div class="arap-sub">
-              <div class="sub-row">
-                <span class="label">应收款</span
-                ><span class="val"
-                  >¥ {{ formatWan(arStats.total_receivable) }} 万</span
-                >
-              </div>
-              <div class="sub-row">
-                <span class="label">已收款</span
-                ><span class="val text-success"
-                  >¥ {{ formatWan(arStats.total_received) }} 万</span
-                >
-              </div>
-            </div>
-            <el-progress
-              :percentage="
-                calcPercentage(arStats.total_received, arStats.total_receivable)
-              "
-              status="success"
-              :stroke-width="10"
-              class="ar-progress"
-            >
-              <template #default="{ percentage }">
-                <span style="font-size: 12px; color: #606266"
-                  >{{ percentage }}%</span
-                >
-              </template>
-            </el-progress>
+            <el-progress :percentage="calcPercentage(arStats.total_received, arStats.total_receivable)" :stroke-width="10" status="success" />
           </div>
-        </el-card>
-      </el-col>
+        </AppSectionCard>
 
-      <!-- Payables -->
-      <el-col :xs="24" :sm="12" :md="6">
-        <el-card shadow="hover" class="chart-card" style="height: 228px">
+        <AppSectionCard>
           <template #header>
-            <div class="card-header-simple">
-              <span
-                >{{ currentMonth ? `${currentMonth}月 ` : "" }}应付账款
-                (AP)</span
-              >
-              <el-tooltip content="统计周期内应付款 vs 已付款" placement="top">
-                <el-icon><InfoFilled /></el-icon>
-              </el-tooltip>
+            <div class="section-heading">
+              <div class="section-heading__title">{{ currentMonth ? `${currentMonth}月` : '本期' }}应付账款</div>
             </div>
           </template>
-          <div class="arap-content">
-            <div class="arap-main-value text-warning">
-              ¥ {{ formatWan(apStats.outstanding) }} <small>万</small>
+          <div class="arap-panel">
+            <div class="arap-panel__value arap-panel__value--warning">¥ {{ formatWan(apStats.outstanding) }} <small>万</small></div>
+            <div class="arap-panel__stats">
+              <div class="arap-panel__row"><span>应付款</span><strong>¥ {{ formatWan(apStats.total_payable) }} 万</strong></div>
+              <div class="arap-panel__row"><span>已付款</span><strong>¥ {{ formatWan(apStats.total_paid) }} 万</strong></div>
             </div>
-            <div class="arap-sub">
-              <div class="sub-row">
-                <span class="label">应付款</span
-                ><span class="val"
-                  >¥ {{ formatWan(apStats.total_payable) }} 万</span
-                >
-              </div>
-              <div class="sub-row">
-                <span class="label">已付款</span
-                ><span class="val text-success"
-                  >¥ {{ formatWan(apStats.total_paid) }} 万</span
-                >
-              </div>
-            </div>
-            <el-progress
-              :percentage="
-                calcPercentage(apStats.total_paid, apStats.total_payable)
-              "
-              status="success"
-              :stroke-width="10"
-              class="ap-progress"
-            >
-              <template #default="{ percentage }">
-                <span style="font-size: 12px; color: #606266"
-                  >{{ percentage }}%</span
-                >
-              </template>
-            </el-progress>
+            <el-progress :percentage="calcPercentage(apStats.total_paid, apStats.total_payable)" :stroke-width="10" status="success" />
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
+        </AppSectionCard>
+      </div>
+    </section>
 
-    <!-- Row 2: Contract Summaries (5 Cards) -->
-    <el-row :gutter="20" style="margin-top: 20px" class="summary-card-row">
-      <!-- 1. Upstream Contracts (Category) -->
-      <el-col :xs="24" :sm="12" class="stat-col-5">
-        <el-card shadow="hover" class="chart-card">
-          <template #header>
-            <div class="card-header-simple">
-              <span
-                >{{
-                  currentMonth ? `${currentMonth}月 ` : ""
-                }}上游概况(类别)</span
-              >
-              <el-tag effect="plain" type="primary">
-                {{ upstreamSummary.reduce((acc, cur) => acc + cur.count, 0) }}
-                单 / ¥{{
-                  formatWan(
-                    upstreamSummary.reduce((acc, cur) => acc + cur.amount, 0)
-                  )
-                }}
-                万
-              </el-tag>
-            </div>
-          </template>
-          <div class="card-list-modern">
-            <div
-              v-for="item in upstreamSummary.slice(0, 20)"
-              :key="item.name"
-              class="list-item"
-            >
-              <span class="item-name">{{ item.name }}</span>
-              <span class="item-value"
-                >{{ item.count }}单 / ¥{{ formatWan(item.amount) }}万</span
-              >
-            </div>
+    <section class="dashboard-detail-grid">
+      <AppSectionCard>
+        <template #header>
+          <div class="section-heading">
+            <div class="section-heading__title">业务分类摘要</div>
           </div>
-        </el-card>
-      </el-col>
+        </template>
+        <div class="summary-columns">
+          <section v-for="group in summaryGroups" :key="group.title" class="summary-block">
+            <div class="summary-block__header">
+              <span>{{ group.title }}</span>
+              <strong>{{ group.total }}</strong>
+            </div>
+            <div class="summary-block__list">
+              <article v-for="item in group.items" :key="`${group.title}-${item.name}`" class="summary-item">
+                <span class="summary-item__name">{{ item.name }}</span>
+                <span class="summary-item__value">{{ item.label }}</span>
+              </article>
+            </div>
+          </section>
+        </div>
+      </AppSectionCard>
 
-      <!-- 2. Upstream Contracts (Company Category) -->
-      <el-col :xs="24" :sm="12" class="stat-col-5">
-        <el-card shadow="hover" class="chart-card">
-          <template #header>
-            <div class="card-header-simple">
-              <span
-                >{{
-                  currentMonth ? `${currentMonth}月 ` : ""
-                }}上游概况(公司)</span
-              >
-              <el-tag
-                effect="plain"
-                type="primary"
-                color="#f3e5f5"
-                style="color: #8e44ad; border-color: #d7bde2"
-              >
-                {{
-                  upstreamCompanySummary.reduce(
-                    (acc, cur) => acc + cur.count,
-                    0
-                  )
-                }}
-                单 / ¥{{
-                  formatWan(
-                    upstreamCompanySummary.reduce(
-                      (acc, cur) => acc + cur.amount,
-                      0
-                    )
-                  )
-                }}
-                万
-              </el-tag>
-            </div>
-          </template>
-          <div class="card-list-modern">
-            <div
-              v-for="item in upstreamCompanySummary.slice(0, 20)"
-              :key="item.name"
-              class="list-item"
-            >
-              <span class="item-name">{{ item.name }}</span>
-              <span class="item-value"
-                >{{ item.count }}单 / ¥{{ formatWan(item.amount) }}万</span
-              >
-            </div>
+      <AppSectionCard>
+        <template #header>
+          <div class="section-heading">
+            <div class="section-heading__title">分类构成</div>
           </div>
-        </el-card>
-      </el-col>
-
-      <!-- 3. Downstream Contracts Summary -->
-      <el-col :xs="24" :sm="12" class="stat-col-5">
-        <el-card shadow="hover" class="chart-card">
-          <template #header>
-            <div class="card-header-simple">
-              <span
-                >{{
-                  currentMonth ? `${currentMonth}月 ` : ""
-                }}下游合同概况</span
-              >
-              <el-tag effect="plain" type="danger">
-                {{ downstreamSummary.reduce((acc, cur) => acc + cur.count, 0) }}
-                单 / ¥{{
-                  formatWan(
-                    downstreamSummary.reduce((acc, cur) => acc + cur.amount, 0)
-                  )
-                }}
-                万
-              </el-tag>
-            </div>
-          </template>
-          <div class="card-list-modern">
-            <div
-              v-for="item in downstreamSummary.slice(0, 20)"
-              :key="item.name"
-              class="list-item"
-            >
-              <span class="item-name">{{ item.name }}</span>
-              <span class="item-value"
-                >{{ item.count }}单 / ¥{{ formatWan(item.amount) }}万</span
-              >
-            </div>
+        </template>
+        <div class="pie-grid">
+          <div class="pie-card">
+            <div class="pie-card__title">上游合同分类</div>
+            <div ref="upstreamPieRef" class="chart-surface chart-surface--pie"></div>
           </div>
-        </el-card>
-      </el-col>
-
-      <!-- 4. Management Contracts Summary -->
-      <el-col :xs="24" :sm="12" class="stat-col-5">
-        <el-card shadow="hover" class="chart-card">
-          <template #header>
-            <div class="card-header-simple">
-              <span
-                >{{
-                  currentMonth ? `${currentMonth}月 ` : ""
-                }}管理合同概况</span
-              >
-              <el-tag effect="plain" type="warning">
-                {{ managementSummary.reduce((acc, cur) => acc + cur.count, 0) }}
-                单 / ¥{{
-                  formatWan(
-                    managementSummary.reduce((acc, cur) => acc + cur.amount, 0)
-                  )
-                }}
-                万
-              </el-tag>
-            </div>
-          </template>
-          <div class="card-list-modern">
-            <div
-              v-for="item in managementSummary.slice(0, 20)"
-              :key="item.name"
-              class="list-item"
-            >
-              <span class="item-name">{{ item.name }}</span>
-              <span class="item-value"
-                >{{ item.count }}单 / ¥{{ formatWan(item.amount) }}万</span
-              >
-            </div>
+          <div class="pie-card">
+            <div class="pie-card__title">上游公司分类</div>
+            <div ref="upstreamCompanyPieRef" class="chart-surface chart-surface--pie"></div>
           </div>
-        </el-card>
-      </el-col>
-
-      <!-- 5. Non-Contract Expenses Summary -->
-      <el-col :xs="24" :sm="24" :md="24" class="stat-col-5">
-        <el-card shadow="hover" class="chart-card">
-          <template #header>
-            <div class="card-header-simple">
-              <span
-                >{{ currentMonth ? `${currentMonth}月 ` : "" }}无合同费用</span
-              >
-              <el-tag effect="plain" type="info">
-                {{ expenseSummary.reduce((acc, cur) => acc + cur.count, 0) }} 笔
-                / ¥{{
-                  formatWan(
-                    expenseSummary.reduce((acc, cur) => acc + cur.value, 0)
-                  )
-                }}
-                万
-              </el-tag>
-            </div>
-          </template>
-          <div class="card-list-modern expense-grid">
-            <div
-              v-for="item in expenseSummary.slice(0, 20)"
-              :key="item.name"
-              class="list-item"
-            >
-              <span class="item-name">{{ item.name }}</span>
-              <span class="item-value"
-                >{{ item.count }}笔 / ¥{{ formatWan(item.value) }}万</span
-              >
-            </div>
+          <div class="pie-card">
+            <div class="pie-card__title">支出构成</div>
+            <div ref="expenseStructPieRef" class="chart-surface chart-surface--pie"></div>
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <!-- Row 3: Pie Charts (4 Charts) -->
-    <el-row :gutter="20" style="margin-top: 20px">
-      <!-- Upstream Categories Pie -->
-      <el-col :xs="24" :md="6">
-        <el-card shadow="hover" style="height: 300px">
-          <template #header
-            ><span style="font-size: 12px; font-weight: bold"
-              >上游合同分类</span
-            ></template
-          >
-          <div ref="upstreamPieRef" style="height: 200px; width: 100%"></div>
-        </el-card>
-      </el-col>
-
-      <!-- Upstream Company Categories Pie (New) -->
-      <el-col :xs="24" :md="6">
-        <el-card shadow="hover" style="height: 300px">
-          <template #header
-            ><span style="font-size: 12px; font-weight: bold"
-              >上游合同公司分类</span
-            ></template
-          >
-          <div
-            ref="upstreamCompanyPieRef"
-            style="height: 200px; width: 100%"
-          ></div>
-        </el-card>
-      </el-col>
-
-      <!-- Expense Breakdown Pie -->
-      <el-col :xs="24" :md="6">
-        <el-card shadow="hover" style="height: 300px">
-          <template #header
-            ><span style="font-size: 12px; font-weight: bold"
-              >支出构成</span
-            ></template
-          >
-          <div
-            ref="expenseStructPieRef"
-            style="height: 200px; width: 100%"
-          ></div>
-        </el-card>
-      </el-col>
-
-      <!-- Non-Contract Expense Categories Pie -->
-      <el-col :xs="24" :md="6">
-        <el-card shadow="hover" style="height: 300px">
-          <template #header
-            ><span style="font-size: 12px; font-weight: bold"
-              >无合同费用分类</span
-            ></template
-          >
-          <div ref="expenseCatPieRef" style="height: 200px; width: 100%"></div>
-        </el-card>
-      </el-col>
-    </el-row>
+          <div class="pie-card">
+            <div class="pie-card__title">无合同费用分类</div>
+            <div ref="expenseCatPieRef" class="chart-surface chart-surface--pie"></div>
+          </div>
+        </div>
+      </AppSectionCard>
+    </section>
   </div>
 </template>
 
 <script setup>
 import {
+  computed,
   ref,
   onMounted,
   onBeforeUnmount,
@@ -572,10 +189,6 @@ import {
   Money,
   Wallet,
   Coin,
-  TrendCharts,
-  DataAnalysis,
-  InfoFilled,
-  Refresh,
 } from "@element-plus/icons-vue";
 
 // State
@@ -617,6 +230,63 @@ let upstreamPieChart = null;
 let upstreamCompanyPieChart = null;
 let expenseStructChart = null;
 let expenseCatChart = null;
+
+const formatSummaryTotal = (items, valueKey = "amount", unit = "单") => {
+  const count = items.reduce((acc, cur) => acc + (cur.count || 0), 0);
+  const amount = items.reduce((acc, cur) => acc + (cur[valueKey] || 0), 0);
+  return `${count}${unit} / ¥${formatWan(amount)}万`;
+};
+
+const summaryGroups = computed(() => [
+  {
+    title: "上游合同",
+    total: formatSummaryTotal(upstreamSummary.value),
+    items: upstreamSummary.value.slice(0, 6).map((item) => ({
+      name: item.name,
+      label: `${item.count}单 / ¥${formatWan(item.amount)}万`,
+    })),
+  },
+  {
+    title: "上游公司分类",
+    total: formatSummaryTotal(upstreamCompanySummary.value),
+    items: upstreamCompanySummary.value.slice(0, 6).map((item) => ({
+      name: item.name,
+      label: `${item.count}单 / ¥${formatWan(item.amount)}万`,
+    })),
+  },
+  {
+    title: "下游合同",
+    total: formatSummaryTotal(downstreamSummary.value),
+    items: downstreamSummary.value.slice(0, 6).map((item) => ({
+      name: item.name,
+      label: `${item.count}单 / ¥${formatWan(item.amount)}万`,
+    })),
+  },
+  {
+    title: "管理合同",
+    total: formatSummaryTotal(managementSummary.value),
+    items: managementSummary.value.slice(0, 6).map((item) => ({
+      name: item.name,
+      label: `${item.count}单 / ¥${formatWan(item.amount)}万`,
+    })),
+  },
+  {
+    title: "无合同费用",
+    total: formatSummaryTotal(expenseSummary.value, "value", "笔"),
+    items: expenseSummary.value.slice(0, 6).map((item) => ({
+      name: item.name,
+      label: `${item.count}笔 / ¥${formatWan(item.value)}万`,
+    })),
+  },
+  {
+    title: "零星用工",
+    total: `${zeroHourLaborSummary.count}笔 / ¥${formatWan(zeroHourLaborSummary.total)}万`,
+    items: [
+      { name: "零星用工支出", label: `¥${formatWan(zeroHourLaborSummary.total)}万` },
+      { name: "发生笔数", label: `${zeroHourLaborSummary.count}笔` },
+    ],
+  },
+]);
 
 // Methods
 const formatWan = (val) => {
@@ -1024,412 +694,359 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
-.filter-container {
-  background-color: #fff;
-  padding: 15px;
-  margin-bottom: 20px;
-  border-radius: 8px;
+.business-dashboard {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.dashboard-filter-bar {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-
-  .filter-label {
-    font-weight: bold;
-    color: #606266;
-    margin-right: 10px;
-    font-size: 14px;
-  }
-}
-
-/* Modern Top Cards */
-.stat-card-modern {
-  border: none;
-  border-radius: 12px;
-  color: #fff;
-  position: relative;
-  overflow: hidden;
-  height: 160px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  margin-bottom: 20px;
-
-  &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 12px 20px -8px rgba(0, 0, 0, 0.2);
-
-    .card-icon-bg {
-      transform: scale(1.1) rotate(10deg);
-      opacity: 0.25;
-    }
-  }
-
-  .card-icon-bg {
-    position: absolute;
-    right: -20px;
-    bottom: -20px;
-    font-size: 100px;
-    opacity: 0.15;
-    transition: all 0.4s ease;
-
-    .el-icon {
-      color: #fff;
-    }
-  }
-
-  :deep(.el-card__body) {
-    padding: 24px;
-    height: 100%;
-    box-sizing: border-box;
-  }
-
-  .card-inner {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 100%;
-  }
-
-  .card-modern-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-
-    .title {
-      font-size: 16px;
-      font-weight: 500;
-      opacity: 0.95;
-    }
-
-    .icon-wrapper {
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 50%;
-      padding: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      .el-icon {
-        font-size: 20px;
-        color: #fff;
-      }
-    }
-  }
-
-  .card-modern-content {
-    .amount {
-      font-size: 32px;
-      margin: 0 0 8px;
-      font-weight: bold;
-      line-height: 1.2;
-
-      small {
-        font-size: 16px;
-        font-weight: normal;
-        opacity: 0.8;
-      }
-    }
-
-    .amount-sub {
-      font-size: 15px;
-      opacity: 0.95;
-      font-weight: 500;
-      margin-bottom: 4px;
-    }
-
-    .sub-info {
-      font-size: 12px;
-      opacity: 0.7;
-    }
-  }
-}
-
-/* Chart Cards */
-.chart-card {
-  border: none;
-  border-radius: 12px;
-  margin-bottom: 20px;
-  border: 1px solid #e4e7ed;
-  transition: all 0.3s;
-
-  &:hover {
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
-  }
-
-  :deep(.el-card__header) {
-    padding: 15px 20px;
-    border-bottom: 1px solid #f0f2f5;
-    background: #fff;
-  }
-}
-
-.card-header-simple {
-  display: flex;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 12px 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface-panel) 88%, var(--surface-panel-muted) 12%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.dashboard-filter-bar__group,
+.dashboard-filter-bar__actions {
+  display: flex;
   align-items: center;
-  font-weight: bold;
-  font-size: 15px;
-  color: #303133;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-/* Card Lists */
-.card-list-modern {
-  padding: 5px 0;
-
-  .list-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px 0;
-    font-size: 13px;
-    color: #606266;
-    border-bottom: 1px dashed #ebeef5;
-    transition: background-color 0.2s;
-
-    &:hover {
-      background-color: #f5f7fa;
-      padding-left: 5px;
-      padding-right: 5px;
-      border-radius: 4px;
-    }
-
-    &:last-child {
-      border-bottom: none;
-    }
-
-    .item-name {
-      flex: 1;
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      margin-right: 15px;
-    }
-
-    .item-value {
-      font-weight: 500;
-      color: #303133;
-    }
-  }
+.dashboard-filter-bar__label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  white-space: nowrap;
 }
 
-/* Non-contract expense grid (4-6 columns on wide screens) */
-.expense-grid {
+.dashboard-filter-bar__control {
+  width: 172px;
+}
+
+.dashboard-filter-bar__control--year {
+  width: 124px;
+}
+
+.metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px 12px;
-  padding: 10px 0 5px;
-
-  .list-item {
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-    border: 1px dashed #ebeef5;
-    border-radius: 6px;
-    border-bottom: none;
-    padding: 8px 10px;
-    margin: 0;
-
-    &:hover {
-      padding-left: 10px;
-      padding-right: 10px;
-    }
-
-    .item-name {
-      margin: 0 0 4px 0;
-      font-weight: 500;
-    }
-
-    .item-value {
-      font-size: 12px;
-      color: #606266;
-    }
-  }
+  gap: var(--space-4);
 }
 
-@media only screen and (min-width: 1400px) {
-  .expense-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
+.metric-card {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  min-height: 184px;
+  padding: 22px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, var(--surface-panel), color-mix(in srgb, var(--surface-panel) 88%, var(--surface-panel-muted) 12%));
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-@media only screen and (min-width: 1700px) {
-  .expense-grid {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
 }
 
-@media only screen and (max-width: 1100px) {
-  .expense-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
+.metric-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  border-radius: 22px 0 0 22px;
+  background: var(--brand-primary);
 }
 
-@media only screen and (max-width: 800px) {
-  .expense-grid {
+.metric-card--primary::before { background: #2563eb; }
+.metric-card--success::before { background: #0f9f74; }
+.metric-card--danger::before { background: #dc6a5f; }
+.metric-card--warning::before { background: #c58b22; }
+
+.metric-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.metric-card__eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.metric-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--brand-primary) 10%, var(--surface-panel) 90%);
+  color: var(--brand-primary-strong);
+}
+
+.metric-card__title {
+  color: var(--text-secondary);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.metric-card__value {
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 1.06;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.metric-card__value small,
+.arap-panel__value small {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.metric-card__meta {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.dashboard-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(300px, 0.9fr);
+  gap: var(--space-4);
+}
+
+.dashboard-side-stack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.trend-panel :deep(.el-card__body) {
+  padding-top: 18px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.section-heading__title {
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.section-heading__meta {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.chart-surface {
+  width: 100%;
+  min-width: 0;
+}
+
+.chart-surface--trend {
+  height: 360px;
+}
+
+.chart-surface--pie {
+  height: 240px;
+}
+
+.arap-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.arap-panel__value {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.08;
+}
+
+.arap-panel__value--primary {
+  color: #2563eb;
+}
+
+.arap-panel__value--warning {
+  color: #b7791f;
+}
+
+.arap-panel__stats {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface-panel-muted) 72%, var(--surface-panel) 28%);
+}
+
+.arap-panel__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.arap-panel__row strong {
+  color: var(--text-primary);
+}
+
+.dashboard-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.summary-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.summary-block {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface-panel) 82%, var(--surface-panel-muted) 18%);
+}
+
+.summary-block__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.summary-block__header strong {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.summary-block__list {
+  display: grid;
+  gap: 8px;
+}
+
+.summary-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.summary-item__name {
+  min-width: 0;
+  color: var(--text-secondary);
+}
+
+.summary-item__value {
+  flex-shrink: 0;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.pie-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.pie-card {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface-panel) 84%, var(--surface-panel-muted) 16%);
+}
+
+.pie-card__title {
+  margin-bottom: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media (max-width: 1279px) {
+  .metric-grid,
+  .summary-columns,
+  .pie-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-}
 
-@media only screen and (max-width: 560px) {
-  .expense-grid {
+  .dashboard-main-grid,
+  .dashboard-detail-grid {
     grid-template-columns: 1fr;
   }
 }
 
-/* AR/AP Content */
-.arap-content {
-  padding: 10px 0;
-
-  .arap-main-value {
-    font-size: 28px;
-    font-weight: bold;
-    margin-bottom: 15px;
-    text-align: center;
-
-    small {
-      font-size: 14px;
-      font-weight: normal;
-      color: #909399;
-    }
+@media (max-width: 767px) {
+  .business-dashboard {
+    gap: var(--space-4);
   }
 
-  .arap-sub {
-    margin-bottom: 15px;
-    background: #f8f9fa;
-    padding: 12px;
-    border-radius: 8px;
-
-    .sub-row {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 5px;
-      font-size: 13px;
-
-      &:last-child {
-        margin-bottom: 0;
-      }
-
-      .label {
-        color: #909399;
-      }
-
-      .val {
-        font-weight: bold;
-        color: #303133;
-      }
-    }
-  }
-}
-
-/* Text Colors */
-.text-primary {
-  color: #409eff;
-}
-.text-success {
-  color: #67c23a;
-}
-.text-warning {
-  color: #e6a23c;
-}
-.text-danger {
-  color: #f56c6c;
-}
-.text-info {
-  color: #909399;
-}
-.text-purple {
-  color: #8e44ad;
-}
-/* Mobile Responsive Adjustments */
-@media only screen and (max-width: 767px) {
-  .stat-card-modern {
-    height: 120px !important;
-    margin-bottom: 10px !important;
-
-    :deep(.el-card__body) {
-      padding: 12px !important;
-    }
-
-    .card-modern-header {
-      margin-bottom: 5px;
-
-      .title {
-        font-size: 13px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 85%;
-      }
-
-      .icon-wrapper {
-        padding: 4px;
-        .el-icon {
-          font-size: 14px;
-        }
-      }
-    }
-
-    .card-modern-content {
-      .amount {
-        font-size: 20px;
-        margin-bottom: 2px;
-
-        small {
-          font-size: 12px;
-        }
-      }
-
-      .amount-sub {
-        font-size: 12px;
-      }
-
-      .sub-info {
-        display: none; /* Hide sub-info on mobile to save space */
-      }
-    }
-
-    .card-icon-bg {
-      font-size: 60px;
-      right: -10px;
-      bottom: -10px;
-    }
+  .dashboard-filter-bar {
+    padding: 16px;
+    align-items: stretch;
+    flex-direction: column;
   }
 
-  /* Adjust chart and list cards on mobile */
-  .chart-card {
-    margin-bottom: 10px;
-
-    :deep(.el-card__header) {
-      padding: 10px 12px;
-    }
+  .dashboard-filter-bar__group,
+  .dashboard-filter-bar__actions {
+    width: 100%;
   }
 
-  /* Compact Filter Container */
-  .filter-container {
-    padding: 10px;
-
-    .el-select,
-    .el-date-editor {
-      width: 100% !important; /* Full width inputs on mobile */
-      margin-right: 0 !important;
-      margin-bottom: 10px;
-    }
-
-    .el-button {
-      width: 100%;
-    }
+  .dashboard-filter-bar__control,
+  .dashboard-filter-bar__actions :deep(.el-button) {
+    width: 100%;
   }
 
-  /* Reduce summary row gutters */
-  .summary-row {
-    margin-left: -5px !important;
-    margin-right: -5px !important;
+  .metric-grid,
+  .summary-columns,
+  .pie-grid {
+    grid-template-columns: 1fr;
+  }
 
-    .el-col {
-      padding-left: 5px !important;
-      padding-right: 5px !important;
-    }
+  .metric-card {
+    min-height: 156px;
+    padding: 18px;
+  }
+
+  .chart-surface--trend,
+  .chart-surface--pie {
+    height: 280px;
+  }
+
+  .summary-item,
+  .summary-block__header,
+  .arap-panel__row {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>

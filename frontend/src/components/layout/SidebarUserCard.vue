@@ -1,16 +1,17 @@
 <template>
   <section class="sidebar-user-card">
-    <div class="user-head">
-      <el-avatar :icon="UserFilled" :size="36" />
-      <div class="user-meta">
+    <el-dropdown trigger="click" placement="top-start" class="user-menu">
+      <button type="button" class="user-menu__trigger">
+        <el-avatar :icon="UserFilled" :size="34" />
         <strong class="user-name">{{ displayName }}</strong>
-        <span class="user-role">{{ userStore.roleDisplay || '成员' }}</span>
-      </div>
-    </div>
-    <div class="user-actions">
-      <button type="button" class="action-btn" @click="$emit('change-password')">修改密码</button>
-      <button type="button" class="action-btn danger" @click="$emit('logout')">退出登录</button>
-    </div>
+      </button>
+      <template #dropdown>
+        <el-dropdown-menu>
+          <el-dropdown-item @click="$emit('change-password')">修改密码</el-dropdown-item>
+          <el-dropdown-item class="danger-item" @click="$emit('logout')">退出登录</el-dropdown-item>
+        </el-dropdown-menu>
+      </template>
+    </el-dropdown>
   </section>
 </template>
 
@@ -27,25 +28,29 @@ const displayName = computed(() => userStore.user.full_name || userStore.user.us
 
 <style scoped lang="scss">
 .sidebar-user-card {
-  border-radius: 12px;
-  background: rgba(15, 23, 42, 0.25);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  padding: 12px;
+  padding: 0;
 }
 
-.user-head {
+.user-menu {
+  display: block;
+}
+
+.user-menu__trigger {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0 2px;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 10px;
-}
-
-.user-meta {
-  min-width: 0;
+  cursor: pointer;
+  min-height: 36px;
 }
 
 .user-name {
   display: block;
-  color: var(--text-inverse);
+  color: var(--text-primary);
   font-size: 13px;
   line-height: 1.3;
   overflow: hidden;
@@ -53,30 +58,7 @@ const displayName = computed(() => userStore.user.full_name || userStore.user.us
   white-space: nowrap;
 }
 
-.user-role {
-  display: block;
-  font-size: 12px;
-  color: rgba(248, 250, 252, 0.72);
-}
-
-.user-actions {
-  margin-top: 10px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.action-btn {
-  border: 0;
-  border-radius: 8px;
-  background: rgba(248, 250, 252, 0.12);
-  color: var(--text-inverse);
-  font-size: 12px;
-  line-height: 30px;
-  cursor: pointer;
-}
-
-.action-btn.danger {
-  background: rgba(239, 68, 68, 0.24);
+:deep(.danger-item) {
+  color: var(--status-danger);
 }
 </style>

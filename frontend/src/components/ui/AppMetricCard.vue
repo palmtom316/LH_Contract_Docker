@@ -37,13 +37,21 @@ defineProps({
 <style scoped lang="scss">
 .app-metric-card {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   min-height: 100%;
-  padding: 20px;
+  min-width: 0;
+  padding: 22px;
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: linear-gradient(180deg, var(--surface-panel), var(--surface-panel-muted));
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, var(--surface-panel), color-mix(in srgb, var(--surface-panel) 88%, var(--surface-panel-muted) 12%));
   box-shadow: var(--shadow-soft);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.app-metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
 }
 
 .app-metric-card__head {
@@ -55,7 +63,7 @@ defineProps({
 
 .app-metric-card__eyebrow {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--text-muted);
 }
@@ -64,6 +72,7 @@ defineProps({
   font-size: 15px;
   font-weight: 600;
   color: var(--text-secondary);
+  line-height: 1.5;
 }
 
 .app-metric-card__value {
@@ -71,6 +80,7 @@ defineProps({
   line-height: 1.05;
   font-weight: 700;
   color: var(--text-primary);
+  word-break: break-word;
 }
 
 .app-metric-card__description {

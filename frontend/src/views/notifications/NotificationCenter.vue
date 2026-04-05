@@ -1,15 +1,14 @@
 <template>
   <div class="notification-center-page app-container">
-    <el-card shadow="never" class="notification-center-card">
-      <template #header>
-        <div class="notification-center-header">
-          <div>
-            <h2>系统通知</h2>
-            <p>查看系统提醒、合同到期提醒与关键审计事件</p>
-          </div>
-          <el-segmented v-model="activeFilter" :options="filterOptions" />
-        </div>
-      </template>
+    <section class="notification-center-shell">
+      <header class="notification-center-header">
+        <span class="notification-center-header__eyebrow">消息中心</span>
+        <h2>系统通知</h2>
+      </header>
+
+      <section class="notification-center-toolbar">
+        <el-segmented v-model="activeFilter" :options="filterOptions" />
+      </section>
 
       <el-skeleton v-if="loading" :rows="4" animated />
       <el-empty
@@ -20,12 +19,15 @@
       </el-empty>
       <div v-else-if="filteredNotifications.length" class="notification-list">
         <article v-for="item in filteredNotifications" :key="item.id" class="notification-item">
-          <div class="notification-item__title">{{ item.title }}</div>
-          <div class="notification-item__meta">{{ item.subtitle }} · {{ formatTime(item.createdAt) }}</div>
+          <div class="notification-item__top">
+            <div class="notification-item__title">{{ item.title }}</div>
+            <span class="notification-item__time">{{ formatTime(item.createdAt) }}</span>
+          </div>
+          <div class="notification-item__meta">{{ item.subtitle }}</div>
         </article>
       </div>
       <el-empty v-else description="当前没有新的系统提醒。" />
-    </el-card>
+    </section>
   </div>
 </template>
 
@@ -75,58 +77,101 @@ onMounted(async () => {
 
 <style scoped>
 .notification-center-page {
-  padding: 20px;
+  padding: 0;
 }
 
-.notification-center-card {
-  border-radius: 12px;
+.notification-center-shell {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--brand-primary) 10%, transparent) 0, transparent 36%),
+    linear-gradient(180deg, var(--surface-panel), color-mix(in srgb, var(--surface-panel) 88%, var(--surface-panel-muted) 12%));
+  box-shadow: var(--shadow-soft);
 }
 
 .notification-center-header {
-  display: flex;
+  display: grid;
+  gap: 10px;
+  padding: 4px 2px 0;
+}
+
+.notification-center-header__eyebrow {
+  display: inline-flex;
+  min-height: 24px;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand-primary) 12%, var(--surface-panel) 88%);
+  color: var(--brand-primary-strong);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .notification-center-header h2 {
   margin: 0;
-  font-size: 22px;
-  line-height: 1.3;
+  font-size: clamp(22px, 3vw, 30px);
+  line-height: 1.2;
 }
 
-.notification-center-header p {
-  margin: 4px 0 0;
-  color: var(--text-secondary, #64748b);
+.notification-center-toolbar {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .notification-list {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .notification-item {
-  border: 1px solid var(--border-subtle, #e2e8f0);
-  border-radius: 10px;
-  padding: 14px 16px;
-  background: var(--surface-panel, #fff);
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 16px 18px;
+  background: color-mix(in srgb, var(--surface-panel) 94%, var(--brand-primary) 6%);
+}
+
+.notification-item__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
 }
 
 .notification-item__title {
   font-weight: 600;
-  color: var(--text-primary, #0f172a);
+  color: var(--text-primary);
 }
 
 .notification-item__meta {
-  margin-top: 4px;
-  color: var(--text-secondary, #64748b);
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
+.notification-item__time {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
 @media (max-width: 768px) {
-  .notification-center-header {
-    flex-direction: column;
+  .notification-center-shell {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .notification-center-header h2 {
+    font-size: 24px;
+  }
+
+  .notification-item__top {
     align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
   }
 }
 </style>

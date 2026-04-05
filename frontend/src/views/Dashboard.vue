@@ -1,6 +1,6 @@
 <template>
   <div class="dashboard-shell">
-    <el-tabs v-model="activeTab" class="home-tabs">
+    <el-tabs v-model="activeTab" class="home-tabs app-tabs--line">
       <el-tab-pane label="概览" name="overview" lazy>
         <Overview />
       </el-tab-pane>
@@ -36,30 +36,6 @@ const activeTab = ref('overview')
   box-shadow: var(--shadow-soft);
 }
 
-:deep(.el-tabs__header) {
-  margin: 0 0 var(--space-4);
-}
-
-:deep(.el-tabs__nav-wrap::after) {
-  background: var(--border-subtle);
-}
-
-:deep(.el-tabs__item) {
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 999px;
-  color: var(--text-secondary);
-}
-
-:deep(.el-tabs__item.is-active) {
-  color: var(--brand-primary-strong);
-  background: var(--brand-primary-soft);
-}
-
-:deep(.el-tabs__active-bar) {
-  display: none;
-}
-
 :deep(.el-tab-pane) {
   min-height: calc(100vh - 196px);
 }
@@ -74,9 +50,5 @@ const activeTab = ref('overview')
     min-height: auto;
   }
 
-  :deep(.el-tabs__item) {
-    padding: 0 12px;
-    font-size: 13px;
-  }
 }
 </style>

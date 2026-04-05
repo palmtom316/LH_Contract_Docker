@@ -1,17 +1,26 @@
 <template>
   <div class="contract-surface">
-    <AppPageHeader
-      title="上游合同"
-      description="统一查看上游合同管理、基础信息列表与移动端卡片视图。"
-    />
-    <el-tabs v-model="activeTab" class="contract-tabs" @tab-change="handleTabChange">
+    <el-tabs v-model="activeTab" class="contract-tabs app-tabs--line" @tab-change="handleTabChange">
       <!-- Tab 1: Contract Management -->
       <el-tab-pane label="合同管理" name="management">
         <!-- Search Bar -->
         <AppSectionCard>
           <template #header>合同筛选</template>
-          <AppFilterBar>
-            <el-input v-model="queryParams.keyword" placeholder="合同序号/编号/名称/甲方" clearable @keyup.enter="handleQuery" />
+          <template #actions>
+            <el-button type="primary" plain icon="Download" @click="handleExport">导出</el-button>
+            <el-dropdown @command="handleImportCommand" v-if="userStore.canManageUpstreamContracts">
+              <el-button icon="Upload">导入<el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="template">下载导入模板</el-dropdown-item>
+                  <el-dropdown-item command="import">选择 Excel 文件导入</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+            <el-button v-if="userStore.canManageUpstreamContracts" type="primary" icon="Plus" @click="handleAdd">新建合同</el-button>
+          </template>
+          <AppFilterBar inline-actions>
+            <el-input v-model="queryParams.keyword" class="filter-control--search" placeholder="合同序号/编号/名称/甲方" clearable @keyup.enter="handleQuery" />
             <el-select v-model="queryParams.status" placeholder="合同状态" clearable>
               <el-option label="执行中" value="执行中" />
               <el-option label="已完工" value="已完工" />
@@ -23,28 +32,19 @@
             <DictSelect v-model="queryParams.company_category" category="project_category" placeholder="公司合同分类" clearable />
             <DictSelect v-model="queryParams.category" category="contract_category" placeholder="合同类别" clearable />
             <DictSelect v-model="queryParams.management_mode" category="management_mode" placeholder="管理模式" clearable />
-            <el-date-picker
+            <AppRangeField
               v-model="monthRange"
-              type="monthrange"
-              range-separator="至"
+              class="filter-control--time"
+              type="month"
+              value-format="YYYY-MM"
+              display-format="YYYY年MM月"
               start-placeholder="开始月份"
               end-placeholder="结束月份"
-              value-format="YYYY-MM"
-              unlink-panels
             />
+            <template #actions>
             <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
             <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-            <el-button type="primary" plain icon="Download" @click="handleExport">导出 Excel</el-button>
-            <el-dropdown @command="handleImportCommand" v-if="userStore.canManageUpstreamContracts">
-              <el-button icon="Upload">导入 Excel<el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item command="template">下载导入模板</el-dropdown-item>
-                  <el-dropdown-item command="import">选择 Excel 文件导入</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-            <el-button v-if="userStore.canManageUpstreamContracts" type="primary" icon="Plus" @click="handleAdd">新建合同</el-button>
+            </template>
           </AppFilterBar>
         </AppSectionCard>
 
@@ -221,20 +221,18 @@
       <el-tab-pane label="上游合同基本信息" name="basic_info">
         <AppSectionCard>
           <template #header>基础信息筛选</template>
-          <AppFilterBar>
-            <el-input v-model="queryParams.keyword" placeholder="合同序号/编号/名称/甲方" clearable @keyup.enter="handleQuery" />
-            <el-date-picker
+          <AppFilterBar inline-actions>
+            <el-input v-model="queryParams.keyword" class="filter-control--search" placeholder="合同序号/编号/名称/甲方" clearable @keyup.enter="handleQuery" />
+            <AppRangeField
               v-model="dateRange"
-              type="daterange"
-              range-separator="至"
+              class="filter-control--time"
               start-placeholder="开始日期"
               end-placeholder="结束日期"
-              value-format="YYYY-MM-DD"
-              unlink-panels
-              @change="handleQuery"
             />
+            <template #actions>
             <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
             <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+            </template>
           </AppFilterBar>
         </AppSectionCard>
 
@@ -624,11 +622,11 @@ import { ArrowDown, QuestionFilled, Download, More, Search, Refresh, Upload, Plu
 import DictSelect from '@/components/DictSelect.vue'
 import SmartDateInput from '@/components/SmartDateInput.vue'
 import { useUserStore } from '@/stores/user'
-import AppPageHeader from '@/components/layout/AppPageHeader.vue'
 import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import AppFilterBar from '@/components/ui/AppFilterBar.vue'
 import AppDataTable from '@/components/ui/AppDataTable.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
+import AppRangeField from '@/components/ui/AppRangeField.vue'
 
 const SmartAutocomplete = defineAsyncComponent(() => import('@/components/SmartAutocomplete.vue'))
 const PdfViewer = defineAsyncComponent(() => import('@/components/PdfViewer.vue'))
@@ -1044,16 +1042,38 @@ onBeforeUnmount(() => {
 }
 
 .contract-tabs :deep(.el-tabs__header) {
-  margin: 0 0 var(--space-4);
+  margin-bottom: 18px;
 }
 
-.contract-tabs :deep(.el-tabs__item) {
-  height: 40px;
-  color: var(--text-secondary);
+.contract-surface :deep(.app-section-card) {
+  border-radius: 24px;
 }
 
-.contract-tabs :deep(.el-tabs__item.is-active) {
-  color: var(--brand-primary-strong);
+.contract-surface :deep(.app-filter-bar) {
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, var(--surface-panel), color-mix(in srgb, var(--surface-panel) 92%, var(--surface-panel-muted) 8%));
+}
+
+.contract-surface :deep(.el-table__inner-wrapper::before) {
+  display: none;
+}
+
+.contract-surface :deep(.el-table td.el-table__cell),
+.contract-surface :deep(.el-table th.el-table__cell) {
+  padding-top: 15px;
+  padding-bottom: 15px;
+}
+
+.contract-surface :deep(.el-table__header th.el-table__cell) {
+  background: color-mix(in srgb, var(--surface-panel-muted) 72%, var(--surface-panel) 28%);
+}
+
+.contract-surface :deep(.el-table) {
+  --el-table-border-color: var(--border-subtle);
+  --el-table-header-text-color: var(--text-secondary);
+  --el-table-text-color: var(--text-primary);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--surface-panel-muted) 58%, var(--surface-panel) 42%);
 }
 
 .filter-actions {
@@ -1081,6 +1101,10 @@ onBeforeUnmount(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+.card-list .contract-card {
+  border-radius: 20px;
 }
 
 /* Mobile Card View */
@@ -1173,27 +1197,27 @@ onBeforeUnmount(() => {
 }
 
 .text-gray {
-  color: #c0c4cc;
+  color: var(--text-muted);
 }
 </style>
 
 <style>
-/* Global override for table footer - Bold black text with yellow background */
+/* Global override for table footer */
 .custom-footer-table .el-table__footer-wrapper tbody td,
 .custom-footer-table .el-table__fixed-footer-wrapper tbody td,
 .custom-footer-table .el-table__footer-wrapper tbody tr,
 .custom-footer-table .el-table__fixed-footer-wrapper tbody tr {
-  background-color: #FFFF00 !important; /* Bright Yellow */
-  color: #000000 !important; /* Black */
-  font-weight: bold !important;
-  font-size: 16px !important;
-  --el-table-row-hover-bg-color: #FFFF00 !important;
+  background-color: color-mix(in srgb, var(--surface-panel-muted) 76%, var(--surface-panel) 24%) !important;
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+  font-size: 14px !important;
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--surface-panel-muted) 76%, var(--surface-panel) 24%) !important;
 }
 .custom-footer-table .el-table__footer-wrapper tbody td .cell,
 .custom-footer-table .el-table__fixed-footer-wrapper tbody td .cell {
-  background-color: #FFFF00 !important;
-  color: #000000 !important; /* Black */
-  font-weight: bold !important;
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
   white-space: nowrap !important;
 }
 

@@ -283,13 +283,16 @@ onMounted(() => {
 .sidebar {
   width: 260px;
   min-height: 100vh;
+  height: 100vh;
   background: var(--surface-sidebar);
   border-right: 1px solid var(--border-subtle);
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.18);
   display: flex;
   flex-direction: column;
   position: sticky;
   top: 0;
   z-index: 41;
+  overflow-y: auto;
 }
 
 .sidebar.collapsed {
@@ -297,22 +300,23 @@ onMounted(() => {
 }
 
 .brand {
-  padding: 16px 14px;
-  min-height: 68px;
+  padding: 24px 18px 18px;
+  min-height: 82px;
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
 .brand-logo {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-soft);
 }
 
 .brand-icon {
-  color: var(--text-inverse);
+  color: var(--brand-primary);
   font-size: 22px;
 }
 
@@ -320,29 +324,43 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  color: var(--text-inverse);
+  color: var(--text-primary);
   font-weight: 600;
+}
+
+.brand-text span {
+  font-size: 17px;
+  letter-spacing: -0.02em;
 }
 
 .brand-text small {
   font-size: 11px;
-  color: rgba(248, 250, 252, 0.68);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .sidebar-menu {
   border-right: 0;
   background: transparent;
   flex: 1;
+  padding: 0 10px;
 }
 
 .sidebar-footer {
-  padding: 12px;
+  margin-top: auto;
+  padding: 16px 16px 20px;
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 84%, transparent 16%);
+  position: sticky;
+  bottom: 0;
+  background: color-mix(in srgb, var(--surface-sidebar) 92%, transparent);
+  backdrop-filter: blur(12px);
 }
 
 .system-version {
   display: block;
   margin-top: 8px;
-  color: rgba(248, 250, 252, 0.55);
+  color: var(--text-muted);
   font-size: 11px;
 }
 
@@ -352,13 +370,17 @@ onMounted(() => {
 }
 
 .topbar {
-  height: 64px;
-  padding: 0 18px;
-  border-bottom: 1px solid var(--border-subtle);
-  background: var(--surface-panel);
+  height: 68px;
+  padding: 0 24px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 84%, transparent 16%);
+  background: color-mix(in srgb, var(--surface-panel) 86%, transparent);
+  backdrop-filter: blur(18px);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 30;
 }
 
 .topbar-left {
@@ -369,17 +391,18 @@ onMounted(() => {
 }
 
 .menu-btn {
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  background: var(--surface-panel);
+  width: 40px;
+  height: 40px;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 78%, var(--brand-primary) 22%);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-panel) 92%, var(--brand-primary) 8%);
   color: var(--text-secondary);
   cursor: pointer;
 }
 
 .app-main {
-  min-height: calc(100vh - 64px);
+  min-height: calc(100vh - 68px);
+  padding: 24px;
 }
 
 :deep(.el-menu) {
@@ -387,16 +410,52 @@ onMounted(() => {
 }
 
 :deep(.el-menu-item) {
-  color: rgba(248, 250, 252, 0.78);
+  color: var(--text-secondary);
+  height: 46px;
+  margin: 4px 0;
+  border-radius: 14px;
+  font-weight: 600;
 }
 
 :deep(.el-menu-item:hover) {
-  background: rgba(148, 163, 184, 0.18) !important;
+  background: var(--surface-sidebar-hover) !important;
+  color: var(--text-primary) !important;
 }
 
 :deep(.el-menu-item.is-active) {
+  color: var(--brand-primary-strong) !important;
+  background: var(--surface-sidebar-active) !important;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--brand-primary) 16%, transparent 84%),
+    0 10px 18px rgba(37, 99, 235, 0.08);
+}
+
+:global(:root[data-theme='dark']) .brand-icon {
+  color: var(--text-inverse);
+}
+
+:global(:root[data-theme='dark']) .brand-text {
+  color: var(--text-inverse);
+}
+
+:global(:root[data-theme='dark']) .brand-text small,
+:global(:root[data-theme='dark']) .system-version {
+  color: rgba(248, 250, 252, 0.62);
+}
+
+:global(:root[data-theme='dark']) :deep(.el-menu-item) {
+  color: rgba(248, 250, 252, 0.78);
+}
+
+:global(:root[data-theme='dark']) :deep(.el-menu-item:hover) {
+  background: rgba(148, 163, 184, 0.18) !important;
+  color: var(--text-inverse) !important;
+}
+
+:global(:root[data-theme='dark']) :deep(.el-menu-item.is-active) {
   color: var(--text-inverse) !important;
   background: rgba(148, 163, 184, 0.28) !important;
+  box-shadow: none;
 }
 
 @media (max-width: 767px) {
@@ -418,6 +477,10 @@ onMounted(() => {
 
   .breadcrumb {
     display: none;
+  }
+
+  .app-main {
+    padding: 14px;
   }
 }
 </style>

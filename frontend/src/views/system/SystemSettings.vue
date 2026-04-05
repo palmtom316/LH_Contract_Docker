@@ -1,7 +1,7 @@
 
 <template>
   <div class="app-container">
-    <el-tabs v-model="activeTab" class="demo-tabs">
+    <el-tabs v-model="activeTab" class="demo-tabs app-tabs--line">
       <el-tab-pane label="系统配置" name="config">
         <el-card>
             <template #header>

@@ -1,13 +1,8 @@
 <template>
   <div class="system-management">
-    <AppPageHeader
-      title="系统管理"
-      description="统一管理用户、系统配置与运维操作，关键动作采用一致的卡片、告警与按钮规范。"
-    />
-
     <AppSectionCard>
       <template #header>系统工作台</template>
-      <el-tabs v-model="activeTab" class="app-tabs system-management__tabs">
+      <el-tabs v-model="activeTab" class="app-tabs--line system-management__tabs">
         <el-tab-pane label="用户管理" name="users">
           <UserManagement />
         </el-tab-pane>
@@ -148,7 +143,6 @@
 import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Upload, Download, Coin, CircleCheck, RefreshLeft, Delete } from '@element-plus/icons-vue'
-import AppPageHeader from '@/components/layout/AppPageHeader.vue'
 import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import UserManagement from '@/views/users/UserManagement.vue'
 import SystemSettings from './SystemSettings.vue'
@@ -321,10 +315,6 @@ const handleAuditDelete = async () => {
 .system-management {
   display: grid;
   gap: 20px;
-}
-
-.system-management__tabs :deep(.el-tabs__content) {
-  padding-top: 20px;
 }
 
 .operation-summary {

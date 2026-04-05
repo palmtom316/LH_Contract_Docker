@@ -32,10 +32,17 @@
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
+  border-radius: 18px;
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-panel) 96%, var(--brand-primary) 4%);
 }
 
 .app-data-table__scroll :deep(.el-table) {
   min-width: 100%;
+}
+
+.app-data-table__scroll :deep(.el-table th.el-table__cell) {
+  background: color-mix(in srgb, var(--surface-panel-muted) 72%, var(--surface-panel) 28%);
 }
 
 @media (max-width: 767px) {

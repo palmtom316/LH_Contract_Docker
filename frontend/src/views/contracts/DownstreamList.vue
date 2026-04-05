@@ -1,13 +1,9 @@
 <template>
   <div class="contract-surface">
-    <AppPageHeader
-      title="下游合同"
-      description="统一查看下游合同筛选结果、金额汇总与移动端卡片视图。"
-    />
     <AppSectionCard>
       <template #header>合同筛选</template>
-      <AppFilterBar>
-        <el-input v-model="queryParams.keyword" placeholder="合同序号/编号/名称/乙方" clearable @keyup.enter="handleQuery" />
+      <AppFilterBar inline-actions>
+        <el-input v-model="queryParams.keyword" class="filter-control--search" placeholder="合同序号/编号/名称/乙方" clearable @keyup.enter="handleQuery" />
         <el-select v-model="queryParams.status" placeholder="合同状态" clearable>
           <el-option label="执行中" value="执行中" />
           <el-option label="已完工" value="已完工" />
@@ -16,19 +12,19 @@
           <el-option label="合同终止" value="合同终止" />
           <el-option label="合同中止" value="合同中止" />
         </el-select>
-        <el-date-picker
+        <AppRangeField
           v-model="dateRange"
-          type="daterange"
-          range-separator="至"
+          class="filter-control--time"
           start-placeholder="开始日期"
           end-placeholder="结束日期"
-          value-format="YYYY-MM-DD"
         />
         <DictSelect v-model="queryParams.category" category="downstream_contract_category" placeholder="合同分类" clearable />
+        <template #actions>
         <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
         <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-        <el-button type="primary" plain icon="Download" @click="handleExport">导出 Excel</el-button>
+        <el-button type="primary" plain icon="Download" @click="handleExport">导出</el-button>
         <el-button v-if="userStore.canManageDownstreamContracts" type="primary" icon="Plus" @click="handleAdd">新建合同</el-button>
+        </template>
       </AppFilterBar>
     </AppSectionCard>
 
@@ -398,11 +394,11 @@ import { Document, Refresh, Search, Plus, Download, QuestionFilled, More } from 
 import DictSelect from '@/components/DictSelect.vue'
 import SmartDateInput from '@/components/SmartDateInput.vue'
 import { useUserStore } from '@/stores/user'
-import AppPageHeader from '@/components/layout/AppPageHeader.vue'
 import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import AppFilterBar from '@/components/ui/AppFilterBar.vue'
 import AppDataTable from '@/components/ui/AppDataTable.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
+import AppRangeField from '@/components/ui/AppRangeField.vue'
 
 const SmartAutocomplete = defineAsyncComponent(() => import('@/components/SmartAutocomplete.vue'))
 const FormulaInput = defineAsyncComponent(() => import('@/components/FormulaInput.vue'))
@@ -693,6 +689,26 @@ onBeforeUnmount(() => {
   gap: var(--space-5);
 }
 
+.contract-surface :deep(.app-section-card) {
+  border-radius: 24px;
+}
+
+.contract-surface :deep(.app-filter-bar) {
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, var(--surface-panel), color-mix(in srgb, var(--surface-panel) 92%, var(--surface-panel-muted) 8%));
+}
+
+.contract-surface :deep(.el-table__inner-wrapper::before) {
+  display: none;
+}
+
+.contract-surface :deep(.el-table td.el-table__cell),
+.contract-surface :deep(.el-table th.el-table__cell) {
+  padding-top: 15px;
+  padding-bottom: 15px;
+}
+
 .filter-actions {
   display: flex;
   align-items: center;
@@ -756,7 +772,7 @@ onBeforeUnmount(() => {
   .contract-card {
     margin-bottom: 15px;
     border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
+    border-radius: 20px;
     background: var(--surface-panel);
     box-shadow: var(--shadow-soft);
     
@@ -817,22 +833,22 @@ onBeforeUnmount(() => {
 </style>
 
 <style>
-/* Global override for table footer - Bold black text with yellow background */
+/* Global override for table footer */
 .custom-footer-table .el-table__footer-wrapper tbody td,
 .custom-footer-table .el-table__fixed-footer-wrapper tbody td,
 .custom-footer-table .el-table__footer-wrapper tbody tr,
 .custom-footer-table .el-table__fixed-footer-wrapper tbody tr {
-  background-color: #FFFF00 !important; /* Bright Yellow */
-  color: #000000 !important; /* Black */
-  font-weight: bold !important;
-  font-size: 16px !important;
-  --el-table-row-hover-bg-color: #FFFF00 !important;
+  background-color: color-mix(in srgb, var(--surface-panel-muted) 76%, var(--surface-panel) 24%) !important;
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+  font-size: 14px !important;
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--surface-panel-muted) 76%, var(--surface-panel) 24%) !important;
 }
 .custom-footer-table .el-table__footer-wrapper tbody td .cell,
 .custom-footer-table .el-table__fixed-footer-wrapper tbody td .cell {
-  background-color: #FFFF00 !important;
-  color: #000000 !important; /* Black */
-  font-weight: bold !important;
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
   white-space: nowrap !important;
 }
 </style>

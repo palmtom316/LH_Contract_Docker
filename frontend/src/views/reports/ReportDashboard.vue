@@ -1,25 +1,24 @@
 <template>
   <div class="report-dashboard">
-    <AppPageHeader
-      title="报表统计"
-      description="统一查询成本报表、导出业务报表和查看结果表格，移动端与桌面端采用同一套卡片与按钮规范。"
-    />
-
     <AppSectionCard>
       <template #header>月度 / 季度成本报表</template>
       <AppFilterBar>
-        <el-date-picker
-          v-model="costMonth"
+        <AppRangeField
+          v-model="costMonthRange"
+          class="filter-control--time"
           type="month"
           value-format="YYYY-MM"
-          format="YYYY年MM月"
-          placeholder="选择统计月份"
+          display-format="YYYY年MM月"
+          start-placeholder="开始月份"
+          end-placeholder="结束月份"
         />
+        <template #actions>
         <el-button type="primary" :loading="costLoading" @click="handleQueryCostReport">查询报表</el-button>
-        <el-button type="primary" plain :loading="costExportLoading" @click="handleExportCostReport">导出 Excel</el-button>
+        <el-button type="primary" plain :loading="costExportLoading" @click="handleExportCostReport">导出</el-button>
+        </template>
       </AppFilterBar>
 
-      <el-tabs v-model="costActiveTab" class="cost-tabs">
+      <el-tabs v-model="costActiveTab" class="cost-tabs app-tabs--line">
         <el-tab-pane label="月度成本报表" name="monthly">
           <div class="cost-title">{{ monthlyTitle }}</div>
           <AppDataTable v-if="monthlyRowCount > 0">
@@ -179,25 +178,21 @@
             <p>{{ card.description }}</p>
           </div>
 
-          <AppFilterBar class="report-export-card__filters">
+          <AppFilterBar class="report-export-card__filters" :class="`report-export-card__filters--${card.type}`">
             <template v-if="card.type === 'daterange'">
-              <el-date-picker
+              <AppRangeField
                 v-model="card.model.value"
-                type="daterange"
-                range-separator="至"
+                class="filter-control--wide"
                 start-placeholder="开始日期"
                 end-placeholder="结束日期"
-                value-format="YYYY-MM-DD"
               />
             </template>
             <template v-else-if="card.type === 'daterange-with-status'">
-              <el-date-picker
+              <AppRangeField
                 v-model="exportFilters.dateRange"
-                type="daterange"
-                range-separator="至"
+                class="filter-control--time"
                 start-placeholder="开始日期"
                 end-placeholder="结束日期"
-                value-format="YYYY-MM-DD"
               />
               <el-select v-model="exportFilters.status" placeholder="合同状态">
                 <el-option label="全部" value="全部" />
@@ -216,7 +211,9 @@
                 clearable
               />
             </template>
-            <el-button type="primary" plain :loading="card.loading.value" @click="card.action">导出 Excel</el-button>
+            <template #actions>
+              <el-button type="primary" plain :loading="card.loading.value" @click="card.action">导出</el-button>
+            </template>
           </AppFilterBar>
 
           <p class="report-export-card__footnote">{{ card.footnote }}</p>
@@ -229,11 +226,11 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import AppPageHeader from '@/components/layout/AppPageHeader.vue'
 import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import AppFilterBar from '@/components/ui/AppFilterBar.vue'
 import AppDataTable from '@/components/ui/AppDataTable.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
+import AppRangeField from '@/components/ui/AppRangeField.vue'
 import {
   getCostMonthlyQuarterlyReport,
   downloadCostMonthlyQuarterlyReport,
@@ -266,7 +263,8 @@ const COST_FIELDS = [
 ]
 
 const now = new Date()
-const costMonth = ref(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`)
+const currentMonthValue = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+const costMonthRange = ref([currentMonthValue, currentMonthValue])
 const costLoading = ref(false)
 const costExportLoading = ref(false)
 const costActiveTab = ref('monthly')
@@ -345,8 +343,9 @@ const yearlyTableData = computed(() => {
 const yearlyRowCount = computed(() => costReportData.value.yearly?.rows?.length || 0)
 
 function parseYearMonth() {
-  if (!costMonth.value) return { year: now.getFullYear(), month: now.getMonth() + 1 }
-  const [yearStr, monthStr] = costMonth.value.split('-')
+  const selected = costMonthRange.value?.[0] || currentMonthValue
+  if (!selected) return { year: now.getFullYear(), month: now.getMonth() + 1 }
+  const [yearStr, monthStr] = selected.split('-')
   const year = Number(yearStr)
   const month = Number(monthStr)
   if (!year || !month || month < 1 || month > 12) {
@@ -793,19 +792,6 @@ onMounted(() => {
   color: var(--text-primary);
 }
 
-.cost-tabs :deep(.el-tabs__header) {
-  margin: 0 0 var(--space-4);
-}
-
-.cost-tabs :deep(.el-tabs__item) {
-  height: 38px;
-  color: var(--text-secondary);
-}
-
-.cost-tabs :deep(.el-tabs__item.is-active) {
-  color: var(--brand-primary-strong);
-}
-
 .cost-report-table :deep(th) {
   text-align: center;
   font-weight: 700;
@@ -858,6 +844,34 @@ onMounted(() => {
   border: 0;
   background: transparent;
   box-shadow: none;
+}
+
+.report-export-card__filters :deep(.app-filter-bar__main) {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.report-export-card__filters :deep(.app-filter-bar__actions) {
+  width: 100%;
+  padding-top: 0;
+  margin-left: 0;
+}
+
+.report-export-card__filters :deep(.el-date-editor),
+.report-export-card__filters :deep(.el-input),
+.report-export-card__filters :deep(.el-select) {
+  width: 100%;
+  max-width: 100%;
+}
+
+.report-export-card__filters--daterange-with-status :deep(.app-filter-bar__main) {
+  display: flex;
+  flex-direction: column;
+}
+
+.report-export-card__filters--daterange-with-status :deep(.el-date-editor) {
+  width: 100%;
 }
 
 .report-export-card__footnote {

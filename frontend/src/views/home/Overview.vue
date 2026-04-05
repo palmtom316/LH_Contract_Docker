@@ -1,10 +1,5 @@
 <template>
   <div class="overview-page">
-    <AppPageHeader
-      title="首页概览"
-      description="统一查看经营指标、阶段表现与合同分类，所有图表均按桌面与移动端阅读性重新编排。"
-    />
-
     <section class="dashboard-metric-grid">
       <AppMetricCard
         v-for="item in metricCards"
@@ -18,6 +13,24 @@
           <span class="metric-badge" :class="`metric-badge--${item.tone}`">{{ item.badge }}</span>
         </template>
       </AppMetricCard>
+    </section>
+
+    <section class="overview-summary-grid">
+      <AppSectionCard>
+        <template #header>年度收支趋势</template>
+        <div ref="barChartRef" class="chart-surface chart-surface--annual" />
+      </AppSectionCard>
+
+      <AppSectionCard>
+        <template #header>结构摘要</template>
+        <div class="summary-grid">
+          <article v-for="item in overviewSummaryCards" :key="item.title" class="summary-card">
+            <span class="summary-card__title">{{ item.title }}</span>
+            <strong class="summary-card__value">{{ item.value }}</strong>
+            <span class="summary-card__meta">{{ item.meta }}</span>
+          </article>
+        </div>
+      </AppSectionCard>
     </section>
 
     <section v-if="!isMobile" class="period-grid">
@@ -126,7 +139,7 @@
 
     <AppSectionCard v-else>
       <template #header>阶段经营表现</template>
-      <el-tabs v-model="mobileActiveTab" class="overview-mobile-tabs">
+      <el-tabs v-model="mobileActiveTab" class="overview-mobile-tabs app-tabs--line">
         <el-tab-pane label="近30天" name="monthly">
           <div class="period-panel period-panel--mobile">
             <div class="period-stats-grid period-stats-grid--single">
@@ -214,11 +227,6 @@
 
     <section class="overview-chart-grid">
       <AppSectionCard>
-        <template #header>{{ currentYear }} 年度收支趋势</template>
-        <div ref="barChartRef" class="chart-surface chart-surface--annual" />
-      </AppSectionCard>
-
-      <AppSectionCard>
         <template #header>合同分类</template>
         <div class="pie-grid">
           <div class="pie-panel">
@@ -239,7 +247,6 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import echarts from '@/utils/echarts'
-import AppPageHeader from '@/components/layout/AppPageHeader.vue'
 import AppMetricCard from '@/components/ui/AppMetricCard.vue'
 import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import { useDevice } from '@/composables/useDevice'
@@ -306,6 +313,33 @@ const metricCards = computed(() => cardData.value.map((item) => ({
     ? `${item.count} 单`
     : formatAmount(item.value)
 })))
+
+const overviewSummaryCards = computed(() => [
+  {
+    title: '近30天上游签约',
+    value: `${periodStats.value.monthly.upstream_count} 单`,
+    meta: formatAmount(periodStats.value.monthly.upstream_amount)
+  },
+  {
+    title: '近30天回款',
+    value: formatAmount(periodStats.value.monthly.upstream_receipts),
+    meta: '上游到账金额'
+  },
+  {
+    title: '近90天下游及管理',
+    value: `${periodStats.value.quarterly.downstream_mgmt_count} 单`,
+    meta: formatAmount(periodStats.value.quarterly.downstream_mgmt_amount)
+  },
+  {
+    title: '近90天支出',
+    value: formatAmount(
+      periodStats.value.quarterly.downstream_mgmt_payment +
+      periodStats.value.quarterly.non_contract_expense +
+      periodStats.value.quarterly.zero_hour_labor
+    ),
+    meta: '管理、费用与零星用工'
+  }
+])
 
 watch(mobileActiveTab, (value) => {
   nextTick(() => {
@@ -612,16 +646,24 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-4);
+  align-items: stretch;
+}
+
+.dashboard-metric-grid :deep(.app-metric-card) {
+  min-height: 208px;
+  border-radius: 22px;
 }
 
 .metric-badge {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   min-height: 28px;
   padding: 0 10px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
+  flex-shrink: 0;
 }
 
 .metric-badge--primary {
@@ -645,10 +687,49 @@ onBeforeUnmount(() => {
 }
 
 .period-grid,
+.overview-summary-grid,
 .overview-chart-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
+}
+
+.overview-summary-grid :deep(.app-section-card),
+.period-grid :deep(.app-section-card),
+.overview-chart-grid :deep(.app-section-card) {
+  border-radius: 24px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.summary-card {
+  display: grid;
+  gap: 10px;
+  padding: var(--space-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--surface-panel) 80%, var(--surface-panel-muted) 20%);
+}
+
+.summary-card__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.summary-card__value {
+  font-size: clamp(22px, 3vw, 30px);
+  line-height: 1.08;
+  color: var(--text-primary);
+}
+
+.summary-card__meta {
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .period-panel {
@@ -673,8 +754,8 @@ onBeforeUnmount(() => {
 .period-stat-group {
   padding: var(--space-5);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--surface-panel-muted);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--surface-panel) 78%, var(--surface-panel-muted) 22%);
 }
 
 .period-stat-group__title {
@@ -709,11 +790,11 @@ onBeforeUnmount(() => {
 }
 
 .chart-surface--annual {
-  height: 360px;
+  height: 340px;
 }
 
 .chart-surface--period {
-  height: 320px;
+  height: 300px;
 }
 
 .chart-surface--mobile {
@@ -732,18 +813,15 @@ onBeforeUnmount(() => {
 
 .pie-panel {
   min-width: 0;
+  overflow: hidden;
 }
 
 .pie-panel__title {
   margin-bottom: 10px;
-  text-align: center;
+  text-align: left;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-secondary);
-}
-
-.overview-mobile-tabs :deep(.el-tabs__header) {
-  margin-bottom: var(--space-4);
 }
 
 @media (max-width: 1279px) {
@@ -752,6 +830,7 @@ onBeforeUnmount(() => {
   }
 
   .period-grid,
+  .overview-summary-grid,
   .overview-chart-grid,
   .pie-grid {
     grid-template-columns: 1fr;
@@ -765,6 +844,16 @@ onBeforeUnmount(() => {
 
   .dashboard-metric-grid {
     grid-template-columns: 1fr;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .metric-badge {
+    min-height: 24px;
+    padding-inline: 8px;
+    font-size: 11px;
   }
 
   .period-stat-group {

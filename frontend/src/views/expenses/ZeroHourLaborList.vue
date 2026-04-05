@@ -1,16 +1,12 @@
 <template>
   <div class="zero-hour-page">
     <AppSectionCard>
-      <template #header>筛选与操作</template>
       <AppFilterBar>
-        <el-date-picker
+        <AppRangeField
           v-model="queryParams.dateRange"
-          type="daterange"
-          range-separator="至"
+          class="filter-control--time"
           start-placeholder="开始日期"
           end-placeholder="结束日期"
-          value-format="YYYY-MM-DD"
-          clearable
         />
         <el-select v-model="queryParams.attribution" placeholder="用工归属" clearable>
           <el-option label="公司用工" value="COMPANY" />
@@ -32,11 +28,12 @@
             :value="item.id"
           />
         </el-select>
-        <el-input v-model="queryParams.keyword" placeholder="派工单位 / 材料名称" clearable @keyup.enter="handleQuery" />
+        <el-input v-model="queryParams.keyword" class="filter-control--search" placeholder="派工单位 / 材料名称" clearable @keyup.enter="handleQuery" />
+        <template #actions>
         <el-button type="primary" :icon="Search" @click="handleQuery">搜索</el-button>
         <el-button :icon="Refresh" @click="resetQuery">重置</el-button>
-        <el-button v-if="!isMobile" type="primary" plain :icon="Plus" @click="handleAdd">新增零星用工</el-button>
-        <el-button v-if="!isMobile" :icon="Download" @click="handleExport" :loading="exporting">导出 Excel</el-button>
+        <el-button v-if="!isMobile" type="primary" plain :icon="Plus" @click="handleAdd">新增用工</el-button>
+        <el-button v-if="!isMobile" :icon="Download" @click="handleExport" :loading="exporting">导出</el-button>
         <el-dropdown v-if="isMobile" trigger="click" class="action-item">
           <el-button :icon="More" circle />
           <template #dropdown>
@@ -46,6 +43,7 @@
             </el-dropdown-menu>
           </template>
         </el-dropdown>
+        </template>
       </AppFilterBar>
     </AppSectionCard>
 
@@ -459,6 +457,7 @@ import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import AppFilterBar from '@/components/ui/AppFilterBar.vue'
 import AppDataTable from '@/components/ui/AppDataTable.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
+import AppRangeField from '@/components/ui/AppRangeField.vue'
 
 const { isMobile } = useMobileDetection()
 
@@ -1084,7 +1083,7 @@ onMounted(() => {
 }
 
 .action-item {
-  justify-self: end;
+  display: inline-flex;
 }
 
 .text-gray {

@@ -15,6 +15,14 @@
 </template>
 
 <style scoped lang="scss">
+.app-section-card:deep(.el-card__header) {
+  padding: 22px 24px 0;
+}
+
+.app-section-card:deep(.el-card__body) {
+  padding: 22px 24px 24px;
+}
+
 .app-section-card__header {
   display: flex;
   align-items: flex-start;
@@ -25,6 +33,9 @@
 .app-section-card__title {
   min-width: 0;
   color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .app-section-card__actions {
@@ -38,6 +49,14 @@
 @media (max-width: 768px) {
   .app-section-card__header {
     flex-direction: column;
+  }
+
+  .app-section-card:deep(.el-card__header) {
+    padding: 18px 18px 0;
+  }
+
+  .app-section-card:deep(.el-card__body) {
+    padding: 18px;
   }
 
   .app-section-card__actions {

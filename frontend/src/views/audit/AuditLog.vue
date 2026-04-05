@@ -1,10 +1,5 @@
 <template>
   <div class="audit-log">
-    <AppPageHeader
-      title="审计日志"
-      description="统一查看系统操作轨迹，桌面端以表格检索，移动端以摘要卡片呈现，详情阅读保持一致。"
-    />
-
     <AppSectionCard>
       <template #header>日志筛选</template>
       <AppFilterBar>
@@ -14,17 +9,17 @@
         <el-select v-model="queryParams.resource_type" placeholder="资源类型" clearable>
           <el-option v-for="item in resourceOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
-        <el-date-picker
+        <AppRangeField
           v-model="dateRange"
-          type="daterange"
-          range-separator="至"
+          class="filter-control--time"
           start-placeholder="开始日期"
           end-placeholder="结束日期"
-          value-format="YYYY-MM-DD"
         />
-        <el-input v-model="queryParams.keyword" placeholder="用户名 / 描述 / 资源名称" clearable @keyup.enter="handleQuery" />
+        <el-input v-model="queryParams.keyword" class="filter-control--search" placeholder="用户名 / 描述 / 资源名称" clearable @keyup.enter="handleQuery" />
+        <template #actions>
         <el-button type="primary" @click="handleQuery">查询</el-button>
         <el-button @click="resetQuery">重置</el-button>
+        </template>
       </AppFilterBar>
     </AppSectionCard>
 
@@ -173,11 +168,11 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import AppPageHeader from '@/components/layout/AppPageHeader.vue'
 import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import AppFilterBar from '@/components/ui/AppFilterBar.vue'
 import AppDataTable from '@/components/ui/AppDataTable.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
+import AppRangeField from '@/components/ui/AppRangeField.vue'
 import request from '@/utils/request'
 import { useDevice } from '@/composables/useDevice'
 
