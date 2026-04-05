@@ -1,73 +1,115 @@
 <template>
-  <div class="app-container">
-    <el-card class="filter-container" shadow="never">
-      <el-form :inline="!isMobile" :model="queryParams" class="demo-form-inline" :label-position="isMobile ? 'top' : 'right'">
-        <el-form-item label="用工日期">
-          <el-date-picker
-            v-model="queryParams.dateRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            value-format="YYYY-MM-DD"
-            :style="{ width: isMobile ? '100%' : '240px' }"
-            clearable
+  <div class="zero-hour-page">
+    <AppSectionCard>
+      <template #header>筛选与操作</template>
+      <AppFilterBar>
+        <el-date-picker
+          v-model="queryParams.dateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          value-format="YYYY-MM-DD"
+          clearable
+        />
+        <el-select v-model="queryParams.attribution" placeholder="用工归属" clearable>
+          <el-option label="公司用工" value="COMPANY" />
+          <el-option label="项目用工" value="PROJECT" />
+        </el-select>
+        <el-select
+          v-model="queryParams.upstream_contract_id"
+          placeholder="搜索上游合同"
+          filterable
+          remote
+          clearable
+          :remote-method="searchUpstreamContractsForFilter"
+          :loading="loadingContracts"
+        >
+          <el-option
+            v-for="item in filterUpstreamContracts"
+            :key="item.id"
+            :label="item.contract_name"
+            :value="item.id"
           />
-        </el-form-item>
-        <el-form-item label="用工归属">
-          <el-select v-model="queryParams.attribution" placeholder="全部" clearable :style="{ width: isMobile ? '100%' : '140px' }">
-            <el-option label="公司用工" value="COMPANY" />
-            <el-option label="项目用工" value="PROJECT" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="上游合同">
-          <el-select
-            v-model="queryParams.upstream_contract_id"
-            placeholder="请输入关键词搜索"
-            filterable
-            remote
-            clearable
-            :remote-method="searchUpstreamContractsForFilter"
-            :loading="loadingContracts"
-            :style="{ width: isMobile ? '100%' : '200px' }"
-          >
-            <el-option
-              v-for="item in filterUpstreamContracts"
-              :key="item.id"
-              :label="item.contract_name"
-              :value="item.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="关键词">
-            <el-input v-model="queryParams.keyword" placeholder="派工单位/材料名称" clearable :style="{ width: isMobile ? '100%' : '180px' }" @keyup.enter="handleQuery" />
-        </el-form-item>
-        <el-form-item>
-          <div class="filter-actions" :class="{ 'mobile-actions': isMobile }">
-            <el-button type="primary" :icon="Search" @click="handleQuery">搜索</el-button>
-            <el-button :icon="Refresh" @click="resetQuery">重置</el-button>
-            
-            <template v-if="!isMobile">
-              <el-button type="success" :icon="Plus" @click="handleAdd">新增零星用工</el-button>
-              <el-button type="warning" :icon="Download" @click="handleExport" :loading="exporting">导出Excel</el-button>
-            </template>
-            
-            <!-- Mobile Menu -->
-            <el-dropdown v-if="isMobile" trigger="click" class="action-item">
-              <el-button type="info" :icon="More" circle />
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="handleAdd"><el-icon><Plus /></el-icon> 新增用工</el-dropdown-item>
-                  <el-dropdown-item @click="handleExport"><el-icon><Download /></el-icon> 导出Excel</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-          </div>
-        </el-form-item>
-      </el-form>
-    </el-card>
+        </el-select>
+        <el-input v-model="queryParams.keyword" placeholder="派工单位 / 材料名称" clearable @keyup.enter="handleQuery" />
+        <el-button type="primary" :icon="Search" @click="handleQuery">搜索</el-button>
+        <el-button :icon="Refresh" @click="resetQuery">重置</el-button>
+        <el-button v-if="!isMobile" type="primary" plain :icon="Plus" @click="handleAdd">新增零星用工</el-button>
+        <el-button v-if="!isMobile" :icon="Download" @click="handleExport" :loading="exporting">导出 Excel</el-button>
+        <el-dropdown v-if="isMobile" trigger="click" class="action-item">
+          <el-button :icon="More" circle />
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item @click="handleAdd"><el-icon><Plus /></el-icon> 新增用工</el-dropdown-item>
+              <el-dropdown-item @click="handleExport"><el-icon><Download /></el-icon> 导出 Excel</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </AppFilterBar>
+    </AppSectionCard>
 
-    <el-table 
+    <AppSectionCard v-if="isMobile">
+      <template #header>用工列表</template>
+      <AppEmptyState
+        v-if="!loading && !list.length"
+        title="暂无零星用工记录"
+        description="调整筛选条件后重试，或新建一条用工记录。"
+      />
+      <div v-else class="labor-card-list">
+        <article v-for="row in list" :key="row.id" class="labor-card">
+          <div class="labor-card__header">
+            <div>
+              <div class="labor-card__title">{{ row.dispatch_unit || '未填写派工单位' }}</div>
+              <div class="labor-card__date">{{ row.labor_date || '-' }}</div>
+            </div>
+            <el-tag :type="row.attribution === 'PROJECT' ? 'warning' : 'info'" effect="plain">
+              {{ row.attribution === 'PROJECT' ? '项目用工' : '公司用工' }}
+            </el-tag>
+          </div>
+          <div class="labor-card__body">
+            <div class="labor-field">
+              <span class="labor-field__label">上游合同</span>
+              <span class="labor-field__value">{{ row.upstream_contract ? row.upstream_contract.contract_name : '-' }}</span>
+            </div>
+            <div class="labor-field">
+              <span class="labor-field__label">审批状态</span>
+              <span class="labor-field__value">{{ formatApprovalStatus(row.approval_status) }}</span>
+            </div>
+            <div class="labor-field">
+              <span class="labor-field__label">总金额</span>
+              <span class="labor-field__value labor-field__value--amount">¥ {{ formatMoney(row.total_amount) }}</span>
+            </div>
+          </div>
+          <div class="labor-card__footer">
+            <div class="labor-card__links">
+              <el-button v-if="row.dispatch_file_path" link type="primary" size="small" :icon="Document" @click="viewFile(row.dispatch_file_path)">派工单</el-button>
+              <el-button v-if="row.approval_pdf_path" link type="primary" size="small" :icon="Document" @click="viewFile(row.approval_pdf_path)">审批单</el-button>
+            </div>
+            <div class="labor-card__links">
+              <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
+              <el-button link type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+            </div>
+          </div>
+        </article>
+
+        <div class="pagination-container pagination-container--mobile">
+          <el-pagination
+            v-model:current-page="queryParams.page"
+            v-model:page-size="queryParams.page_size"
+            layout="prev, pager, next"
+            :total="total"
+            small
+            @current-change="getList"
+          />
+        </div>
+      </div>
+    </AppSectionCard>
+
+    <AppSectionCard v-else>
+      <template #header>用工列表</template>
+      <AppDataTable>
+      <el-table 
         v-loading="loading" 
         :data="list" 
         style="width: 100%" 
@@ -140,7 +182,7 @@
         </el-table-column>
         <el-table-column label="总计" width="120" align="right" prop="total_amount">
             <template #default="{ row }">
-                <span style="color: #F56C6C; font-weight: bold;">¥ {{ formatMoney(row.total_amount) }}</span>
+                <span class="table-amount-strong">¥ {{ formatMoney(row.total_amount) }}</span>
             </template>
         </el-table-column>
         
@@ -163,6 +205,8 @@
           @current-change="getList"
         />
     </div>
+      </AppDataTable>
+    </AppSectionCard>
 
     <!-- Dialog -->
     <el-dialog
@@ -190,17 +234,17 @@
             </el-row>
 
             <!-- Approval Status (Read Only) -->
-            <div v-if="form.approval_status && form.approval_status !== 'DRAFT'" style="margin-bottom: 18px; padding: 10px; background-color: #f0f9eb; border-radius: 4px;">
+            <div v-if="form.approval_status && form.approval_status !== 'DRAFT'" class="dialog-banner">
                 <el-row :gutter="20">
                     <el-col :span="12">
-                        <el-form-item label="审批状态" style="margin-bottom: 0;">
+                        <el-form-item label="审批状态" class="dialog-banner__item">
                              <el-tag :type="getApprovalStatusType(form.approval_status)">
                                 {{ formatApprovalStatus(form.approval_status) }}
                             </el-tag>
                         </el-form-item>
                     </el-col>
                     <el-col :span="12">
-                        <el-form-item label="审批单" style="margin-bottom: 0;">
+                        <el-form-item label="审批单" class="dialog-banner__item">
                              <el-button 
                                 v-if="form.approval_pdf_path" 
                                 link 
@@ -218,16 +262,16 @@
             <el-form-item label="飞书审批实例" prop="feishu_instance_code">
                 <el-input v-model="form.feishu_instance_code" placeholder="手动绑定审批实例ID (Instance Code)" clearable>
                      <template #append>
-                        <el-button :icon="item" @click="viewFile(form.approval_pdf_path)" v-if="form.approval_pdf_path" />
+                        <el-button :icon="Document" @click="viewFile(form.approval_pdf_path)" v-if="form.approval_pdf_path" />
                         <span v-else>可选</span>
                     </template>
                 </el-input>
-                <div style="font-size: 12px; color: #909399; line-height: 1.2; margin-top: 4px;">
+                <div class="dialog-helper-text">
                     用于关联飞书审批流程。若为空，则无法通过Webhook自动同步审批状态。
                 </div>
             </el-form-item>
 
-            <div v-if="form.attribution === 'PROJECT'" style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-bottom: 18px;">
+            <div v-if="form.attribution === 'PROJECT'" class="dialog-subsection">
                  <el-row :gutter="20">
                     <el-col :span="12">
                         <el-form-item label="关联上游合同" prop="upstream_contract_id">
@@ -262,45 +306,45 @@
             <el-divider content-position="left">人工费用</el-divider>
             
             <!-- Skilled Labor (Use specific fields for skilled) -->
-            <div style="margin-bottom: 10px; padding: 10px; border: 1px dashed #dcdfe6; border-radius: 4px;">
+            <div class="cost-block">
                 <el-row :gutter="20" align="middle">
                     <el-col :span="4">
-                        <div style="font-weight: bold; text-align: center;">技工</div>
+                        <div class="cost-block__title">技工</div>
                     </el-col>
                      <el-col :span="6">
-                        <el-form-item label="单价" label-width="50px" style="margin-bottom: 0;">
+                        <el-form-item label="单价" label-width="50px" class="cost-block__item">
                             <el-input-number v-model="form.skilled_unit_price" :min="0" :precision="2" :controls="false" style="width: 100%" placeholder="技工单价" />
                         </el-form-item>
                     </el-col>
                     <el-col :span="6">
-                        <el-form-item label="数量" label-width="50px" style="margin-bottom: 0;">
+                        <el-form-item label="数量" label-width="50px" class="cost-block__item">
                             <el-input-number v-model="form.skilled_quantity" :min="0" :precision="2" :controls="false" style="width: 100%" placeholder="技工数量" />
                         </el-form-item>
                     </el-col>
                     <el-col :span="6">
-                        <div style="text-align: right;">合计: ¥ {{ formatMoney(calcSkilledTotal) }}</div>
+                        <div class="cost-block__summary">合计: ¥ {{ formatMoney(calcSkilledTotal) }}</div>
                     </el-col>
                 </el-row>
             </div>
             
              <!-- General Labor (Use specific fields for general) -->
-            <div style="margin-bottom: 10px; padding: 10px; border: 1px dashed #dcdfe6; border-radius: 4px;">
+            <div class="cost-block">
                 <el-row :gutter="20" align="middle">
                     <el-col :span="4">
-                        <div style="font-weight: bold; text-align: center;">普工</div>
+                        <div class="cost-block__title">普工</div>
                     </el-col>
                      <el-col :span="6">
-                        <el-form-item label="单价" label-width="50px" style="margin-bottom: 0;">
+                        <el-form-item label="单价" label-width="50px" class="cost-block__item">
                             <el-input-number v-model="form.general_unit_price" :min="0" :precision="2" :controls="false" style="width: 100%" placeholder="普工单价" />
                         </el-form-item>
                     </el-col>
                     <el-col :span="6">
-                        <el-form-item label="数量" label-width="50px" style="margin-bottom: 0;">
+                        <el-form-item label="数量" label-width="50px" class="cost-block__item">
                             <el-input-number v-model="form.general_quantity" :min="0" :precision="2" :controls="false" style="width: 100%" placeholder="普工数量" />
                         </el-form-item>
                     </el-col>
                     <el-col :span="6">
-                        <div style="text-align: right;">合计: ¥ {{ formatMoney(calcGeneralTotal) }}</div>
+                        <div class="cost-block__summary">合计: ¥ {{ formatMoney(calcGeneralTotal) }}</div>
                     </el-col>
                 </el-row>
             </div>
@@ -320,7 +364,7 @@
                 </el-col>
                 <el-col :span="8">
                      <el-form-item label="合计">
-                        <span style="font-weight: bold;">{{ formatMoney(calcVehicleTotal) }}</span>
+                        <span class="vehicle-total">{{ formatMoney(calcVehicleTotal) }}</span>
                     </el-form-item>
                 </el-col>
             </el-row>
@@ -387,8 +431,8 @@
              </el-row>
 
              <el-divider />
-             <div style="text-align: right; font-size: 18px;">
-                总金额: <span style="color: #F56C6C; font-weight: bold; font-size: 24px;">¥ {{ formatMoney(grandTotal) }}</span>
+             <div class="grand-total">
+                总金额: <span class="grand-total__amount">¥ {{ formatMoney(grandTotal) }}</span>
              </div>
 
         </el-form>
@@ -411,6 +455,10 @@ import { formatMoney, getFileUrl } from '@/utils/common'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Upload, Document, Plus, Delete, Search, Refresh, Download, More } from '@element-plus/icons-vue'
 import { useMobileDetection } from '@/composables/useContractList'
+import AppSectionCard from '@/components/ui/AppSectionCard.vue'
+import AppFilterBar from '@/components/ui/AppFilterBar.vue'
+import AppDataTable from '@/components/ui/AppDataTable.vue'
+import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 
 const { isMobile } = useMobileDetection()
 
@@ -891,64 +939,167 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+.zero-hour-page {
+  display: grid;
+  gap: 20px;
+}
+
 .pagination-container {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
 }
-</style>
 
-<style scoped lang="scss">
-.filter-container {
-  margin-bottom: 20px;
+.pagination-container--mobile {
+  justify-content: center;
 }
 
-.filter-actions {
+.labor-card-list {
+  display: grid;
+  gap: 12px;
+}
+
+.labor-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-soft);
+}
+
+.labor-card__header,
+.labor-card__footer,
+.labor-field {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.labor-card__title {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.labor-card__date {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.labor-card__body {
+  display: grid;
   gap: 10px;
 }
 
-.mobile-actions {
-  justify-content: space-between;
-  width: 100%;
-  margin-top: 10px;
-  
-  .el-button {
-    margin-left: 0 !important;
-  }
-  
-  .action-item {
-    margin-left: 0;
-  }
+.labor-field__label {
+  min-width: 56px;
+  color: var(--text-muted);
 }
 
-.pagination-container {
-  margin-top: 20px;
-  display: flex;
-  justify-content: flex-end;
+.labor-field__value {
+  flex: 1;
+  text-align: right;
+  color: var(--text-secondary);
+  word-break: break-word;
 }
-</style>
 
-<style>
-/* Global override for table footer - Bold black text with yellow background */
-.custom-footer-table .el-table__footer-wrapper tbody td,
-.custom-footer-table .el-table__fixed-footer-wrapper tbody td,
-.custom-footer-table .el-table__footer-wrapper tbody tr,
-.custom-footer-table .el-table__fixed-footer-wrapper tbody tr {
-    background-color: #FFFF00 !important; /* Bright Yellow */
-    color: #000000 !important; /* Black */
-    font-weight: bold !important;
-    font-size: 16px !important;
-    --el-table-row-hover-bg-color: #FFFF00 !important;
+.labor-field__value--amount,
+.table-amount-strong {
+  color: var(--status-danger);
+  font-weight: 700;
 }
-.custom-footer-table .el-table__footer-wrapper tbody td .cell,
-.custom-footer-table .el-table__fixed-footer-wrapper tbody td .cell {
-    background-color: #FFFF00 !important;
-    color: #000000 !important; /* Black */
-    font-weight: bold !important;
-    white-space: nowrap !important;
+
+.labor-card__links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dialog-banner {
+  margin-bottom: 18px;
+  padding: 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-panel) 78%, var(--status-success) 22%);
+}
+
+.dialog-banner__item {
+  margin-bottom: 0;
+}
+
+.dialog-helper-text {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.dialog-subsection {
+  margin-bottom: 18px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--surface-panel-muted);
+}
+
+.cost-block {
+  margin-bottom: 10px;
+  padding: 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface-panel);
+}
+
+.cost-block__title {
+  font-weight: 700;
+  text-align: center;
+  color: var(--text-primary);
+}
+
+.cost-block__item {
+  margin-bottom: 0;
+}
+
+.cost-block__summary,
+.vehicle-total,
+.grand-total {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cost-block__summary {
+  text-align: right;
+}
+
+.grand-total {
+  font-size: 18px;
+  text-align: right;
+}
+
+.grand-total__amount {
+  font-size: 24px;
+  color: var(--status-danger);
+}
+
+.action-item {
+  justify-self: end;
+}
+
+.text-gray {
+  color: var(--text-muted);
+}
+
+@media (max-width: 767px) {
+  .labor-card__header,
+  .labor-card__footer,
+  .labor-field {
+    flex-direction: column;
+  }
+
+  .labor-field__value {
+    text-align: left;
+  }
 }
 </style>

@@ -1,50 +1,83 @@
 <template>
-  <div class="app-container">
-    <!-- Mobile Card View -->
-    <div v-if="isMobile" class="mobile-list">
-      <el-card shadow="never" class="mb-2">
-        <el-form :inline="true" :model="queryParams" class="mobile-filter">
-          <el-input 
-            v-model="queryParams.keyword" 
-            placeholder="搜索..." 
-            clearable 
-            @keyup.enter="handleQuery"
-            style="width: 100%; margin-bottom: 10px;"
-          >
-             <template #append>
-                <el-button @click="handleQuery"><el-icon><Search /></el-icon></el-button>
-             </template>
-          </el-input>
-        </el-form>
-      </el-card>
+  <div class="audit-log">
+    <AppPageHeader
+      title="审计日志"
+      description="统一查看系统操作轨迹，桌面端以表格检索，移动端以摘要卡片呈现，详情阅读保持一致。"
+    />
 
-      <div v-loading="loading">
-        <el-card v-for="log in logList" :key="log.id" class="mobile-card" shadow="sm">
-          <div class="card-header">
-            <span class="timestamp">{{ formatDateTime(log.created_at) }}</span>
-            <el-tag :type="getActionTagType(log.action)" size="small">{{ getActionLabel(log.action) }}</el-tag>
-          </div>
-          <div class="card-body">
-            <div class="row">
-              <span class="label">用户:</span>
-              <span class="value">{{ log.username }}</span>
+    <AppSectionCard>
+      <template #header>日志筛选</template>
+      <AppFilterBar>
+        <el-select v-model="queryParams.action" placeholder="操作类型" clearable>
+          <el-option v-for="item in actionOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+        <el-select v-model="queryParams.resource_type" placeholder="资源类型" clearable>
+          <el-option v-for="item in resourceOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+        <el-date-picker
+          v-model="dateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          value-format="YYYY-MM-DD"
+        />
+        <el-input v-model="queryParams.keyword" placeholder="用户名 / 描述 / 资源名称" clearable @keyup.enter="handleQuery" />
+        <el-button type="primary" @click="handleQuery">查询</el-button>
+        <el-button @click="resetQuery">重置</el-button>
+      </AppFilterBar>
+    </AppSectionCard>
+
+    <AppSectionCard>
+      <template #header>操作记录</template>
+
+      <AppEmptyState
+        v-if="!loading && !logList.length"
+        title="暂无审计日志"
+        description="当前筛选条件下没有可展示的操作记录。"
+      />
+
+      <template v-else-if="isMobile">
+        <div v-loading="loading" class="audit-card-list">
+          <article v-for="log in logList" :key="log.id" class="audit-card">
+            <div class="audit-card__header">
+              <div>
+                <div class="audit-card__time">{{ formatDateTime(log.created_at) }}</div>
+                <div class="audit-card__user">{{ log.username || '-' }}</div>
+              </div>
+              <el-tag :type="getActionTagType(log.action)" effect="plain">{{ getActionLabel(log.action) }}</el-tag>
             </div>
-             <div class="row">
-              <span class="label">资源:</span>
-              <span class="value">{{ log.resource_type }} / {{ log.resource_name || '-' }}</span>
+
+            <div class="audit-card__body">
+              <div class="audit-field">
+                <span class="audit-field__label">资源</span>
+                <span class="audit-field__value">{{ log.resource_type }} / {{ log.resource_name || '-' }}</span>
+              </div>
+              <div class="audit-field">
+                <span class="audit-field__label">描述</span>
+                <span class="audit-field__value">{{ log.description || '-' }}</span>
+              </div>
+              <div class="audit-field">
+                <span class="audit-field__label">IP</span>
+                <span class="audit-field__value">{{ log.ip_address || '-' }}</span>
+              </div>
             </div>
-             <div class="row">
-              <span class="label">描述:</span>
-              <span class="value">{{ log.description || '-' }}</span>
+
+            <div class="audit-card__footer">
+              <el-button
+                v-if="log.old_values || log.new_values"
+                link
+                type="primary"
+                size="small"
+                @click="showDetail(log)"
+              >
+                查看详情
+              </el-button>
+              <span v-else class="audit-card__placeholder">无变更快照</span>
             </div>
-          </div>
-          <div class="card-footer" v-if="log.old_values || log.new_values">
-             <el-button link type="primary" size="small" @click="showDetail(log)">查看详情</el-button>
-          </div>
-        </el-card>
-         <el-empty v-if="!loading && logList.length === 0" description="暂无日志" />
-         
-          <div class="pagination-container">
+          </article>
+
+          <div class="pagination-container pagination-container--mobile">
             <el-pagination
               v-model:current-page="queryParams.page"
               v-model:page-size="queryParams.page_size"
@@ -54,196 +87,97 @@
               @current-change="fetchLogs"
             />
           </div>
-      </div>
-    </div>
+        </div>
+      </template>
 
-    <!-- PC Table View -->
-    <div v-else class="pc-view">
-    <el-card class="filter-container" shadow="never">
-      <el-form :inline="true" :model="queryParams">
-        <el-form-item label="操作类型">
-          <el-select v-model="queryParams.action" placeholder="全部" clearable style="width: 120px">
-            <el-option 
-              v-for="item in actionOptions" 
-              :key="item.value" 
-              :label="item.label" 
-              :value="item.value" 
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="资源类型">
-          <el-select v-model="queryParams.resource_type" placeholder="全部" clearable style="width: 120px">
-            <el-option 
-              v-for="item in resourceOptions" 
-              :key="item.value" 
-              :label="item.label" 
-              :value="item.value" 
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="日期范围">
-          <el-date-picker
-            v-model="dateRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            value-format="YYYY-MM-DD"
-            style="width: 240px"
-          />
-        </el-form-item>
-        <el-form-item label="关键词">
-          <el-input 
-            v-model="queryParams.keyword" 
-            placeholder="用户名/描述" 
-            clearable 
-            style="width: 180px"
-            @keyup.enter="handleQuery"
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">查询</el-button>
-          <el-button @click="resetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+      <template v-else>
+        <AppDataTable>
+          <el-table v-loading="loading" :data="logList" border>
+            <el-table-column prop="id" label="ID" width="80" align="center" />
+            <el-table-column prop="created_at" label="时间" width="190">
+              <template #default="scope">
+                {{ formatDateTime(scope.row.created_at) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="username" label="用户" width="120" />
+            <el-table-column prop="action" label="操作" width="110" align="center">
+              <template #default="scope">
+                <el-tag :type="getActionTagType(scope.row.action)" effect="plain">
+                  {{ getActionLabel(scope.row.action) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="resource_type" label="资源类型" width="120" align="center" />
+            <el-table-column prop="resource_name" label="资源名称" min-width="180" show-overflow-tooltip />
+            <el-table-column prop="description" label="描述" min-width="240" show-overflow-tooltip />
+            <el-table-column prop="ip_address" label="IP地址" width="140" />
+            <el-table-column label="操作" width="100" align="center">
+              <template #default="scope">
+                <el-button
+                  v-if="scope.row.old_values || scope.row.new_values"
+                  link
+                  type="primary"
+                  size="small"
+                  @click="showDetail(scope.row)"
+                >
+                  详情
+                </el-button>
+                <span v-else class="text-gray">-</span>
+              </template>
+            </el-table-column>
+          </el-table>
 
-    <el-card shadow="always">
-      <el-table v-loading="loading" :data="logList" border style="width: 100%">
-        <el-table-column prop="id" label="ID" width="80" align="center" />
-        <el-table-column prop="created_at" label="时间" width="180">
-          <template #default="scope">
-            {{ formatDateTime(scope.row.created_at) }}
+          <template #footer>
+            <div class="pagination-container">
+              <el-pagination
+                v-model:current-page="queryParams.page"
+                v-model:page-size="queryParams.page_size"
+                :page-sizes="[20, 50, 100]"
+                :total="total"
+                layout="total, sizes, prev, pager, next, jumper"
+                @size-change="fetchLogs"
+                @current-change="fetchLogs"
+              />
+            </div>
           </template>
-        </el-table-column>
-        <el-table-column prop="username" label="用户" width="100" />
-        <el-table-column prop="action" label="操作" width="100" align="center">
-          <template #default="scope">
-            <el-tag :type="getActionTagType(scope.row.action)" size="small">
-              {{ getActionLabel(scope.row.action) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="resource_type" label="资源类型" width="120" align="center" />
-        <el-table-column prop="resource_name" label="资源名称" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="ip_address" label="IP地址" width="130" />
-        <el-table-column label="操作" width="80" align="center">
-          <template #default="scope">
-            <el-button 
-              v-if="scope.row.old_values || scope.row.new_values" 
-              link 
-              type="primary" 
-              size="small" 
-              @click="showDetail(scope.row)"
-            >详情</el-button>
-            <span v-else class="text-gray">-</span>
-          </template>
-        </el-table-column>
-      </el-table>
+        </AppDataTable>
+      </template>
+    </AppSectionCard>
 
-      <div class="pagination-container">
-        <el-pagination
-          v-model:current-page="queryParams.page"
-          v-model:page-size="queryParams.page_size"
-          :page-sizes="[20, 50, 100]"
-          :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="fetchLogs"
-          @current-change="fetchLogs"
-        />
-      </div>
-    </el-card>
+    <el-dialog title="操作详情" v-model="detailVisible" :width="isMobile ? '92%' : '720px'">
+      <div class="audit-detail">
+        <el-descriptions :column="1" border>
+          <el-descriptions-item label="操作时间">{{ formatDateTime(currentLog.created_at) }}</el-descriptions-item>
+          <el-descriptions-item label="用户">{{ currentLog.username }}</el-descriptions-item>
+          <el-descriptions-item label="操作类型">{{ getActionLabel(currentLog.action) }}</el-descriptions-item>
+          <el-descriptions-item label="资源类型">{{ currentLog.resource_type }}</el-descriptions-item>
+          <el-descriptions-item label="资源名称">{{ currentLog.resource_name || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="描述">{{ currentLog.description || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="IP地址">{{ currentLog.ip_address || '-' }}</el-descriptions-item>
+        </el-descriptions>
 
-    <!-- Detail Dialog -->
-    <el-dialog title="操作详情" v-model="detailVisible" width="600px">
-      <el-descriptions :column="1" border>
-        <el-descriptions-item label="操作时间">{{ formatDateTime(currentLog.created_at) }}</el-descriptions-item>
-        <el-descriptions-item label="用户">{{ currentLog.username }}</el-descriptions-item>
-        <el-descriptions-item label="操作类型">{{ getActionLabel(currentLog.action) }}</el-descriptions-item>
-        <el-descriptions-item label="资源类型">{{ currentLog.resource_type }}</el-descriptions-item>
-        <el-descriptions-item label="资源名称">{{ currentLog.resource_name || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="描述">{{ currentLog.description || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="IP地址">{{ currentLog.ip_address || '-' }}</el-descriptions-item>
-      </el-descriptions>
-      
-      <div v-if="currentLog.old_values" style="margin-top: 20px">
-        <h4>修改前数据：</h4>
-        <el-input 
-          type="textarea" 
-          :value="formatJson(currentLog.old_values)" 
-          :rows="6" 
-          readonly 
-        />
-      </div>
-      
-      <div v-if="currentLog.new_values" style="margin-top: 20px">
-        <h4>修改后数据：</h4>
-        <el-input 
-          type="textarea" 
-          :value="formatJson(currentLog.new_values)" 
-          :rows="6" 
-          readonly 
-        />
+        <div v-if="currentLog.old_values" class="audit-detail__block">
+          <h4>修改前数据</h4>
+          <el-input type="textarea" :value="formatJson(currentLog.old_values)" :rows="6" readonly />
+        </div>
+
+        <div v-if="currentLog.new_values" class="audit-detail__block">
+          <h4>修改后数据</h4>
+          <el-input type="textarea" :value="formatJson(currentLog.new_values)" :rows="6" readonly />
+        </div>
       </div>
     </el-dialog>
-    </div>
   </div>
 </template>
 
-<style scoped>
-.mobile-list {
-  padding-bottom: 20px;
-}
-.mobile-card {
-  margin-bottom: 10px;
-  border-radius: 8px;
-}
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-  border-bottom: 1px solid #f0f0f0;
-  padding-bottom: 8px;
-}
-.timestamp {
-  font-size: 13px;
-  color: #909399;
-}
-.card-body {
-  font-size: 14px;
-}
-.row {
-  display: flex;
-  margin-bottom: 6px;
-  line-height: 1.4;
-}
-.label {
-  color: #909399;
-  width: 50px;
-  flex-shrink: 0;
-}
-.value {
-  color: #606266;
-  flex: 1;
-  word-break: break-all;
-}
-.card-footer {
-  margin-top: 8px;
-  text-align: right;
-  border-top: 1px solid #f0f0f0;
-  padding-top: 8px;
-}
-.pc-view {
-  /* PC specific styles if any */
-}
-</style>
-
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search } from '@element-plus/icons-vue'
+import AppPageHeader from '@/components/layout/AppPageHeader.vue'
+import AppSectionCard from '@/components/ui/AppSectionCard.vue'
+import AppFilterBar from '@/components/ui/AppFilterBar.vue'
+import AppDataTable from '@/components/ui/AppDataTable.vue'
+import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import request from '@/utils/request'
 import { useDevice } from '@/composables/useDevice'
 
@@ -275,7 +209,7 @@ const actionOptions = [
   { value: 'DELETE', label: '删除' },
   { value: 'EXPORT', label: '导出' },
   { value: 'UPLOAD', label: '上传' },
-  { value: 'DOWNLOAD', label: '下载' },
+  { value: 'DOWNLOAD', label: '下载' }
 ]
 
 const resourceOptions = [
@@ -291,46 +225,46 @@ const resourceOptions = [
   { value: '回款', label: '回款' },
   { value: '结算', label: '结算' },
   { value: '文件', label: '文件' },
-  { value: '系统', label: '系统' },
+  { value: '系统', label: '系统' }
 ]
 
 const actionLabelMap = {
-  'LOGIN': '登录',
-  'LOGOUT': '登出',
-  'CHANGE_PASSWORD': '改密',
-  'CREATE': '新增',
-  'UPDATE': '修改',
-  'DELETE': '删除',
-  'VIEW': '查看',
-  'EXPORT': '导出',
-  'IMPORT': '导入',
-  'UPLOAD': '上传',
-  'DOWNLOAD': '下载',
-  'APPROVE': '审批',
-  'REJECT': '驳回',
+  LOGIN: '登录',
+  LOGOUT: '登出',
+  CHANGE_PASSWORD: '改密',
+  CREATE: '新增',
+  UPDATE: '修改',
+  DELETE: '删除',
+  VIEW: '查看',
+  EXPORT: '导出',
+  IMPORT: '导入',
+  UPLOAD: '上传',
+  DOWNLOAD: '下载',
+  APPROVE: '审批',
+  REJECT: '驳回'
 }
 
-const getActionLabel = (action) => actionLabelMap[action] || action
+const getActionLabel = action => actionLabelMap[action] || action
 
-const getActionTagType = (action) => {
+const getActionTagType = action => {
   const typeMap = {
-    'LOGIN': 'success',
-    'LOGOUT': 'info',
-    'CREATE': 'primary',
-    'UPDATE': 'warning',
-    'DELETE': 'danger',
-    'EXPORT': '',
-    'UPLOAD': '',
+    LOGIN: 'success',
+    LOGOUT: 'info',
+    CREATE: 'primary',
+    UPDATE: 'warning',
+    DELETE: 'danger',
+    EXPORT: '',
+    UPLOAD: ''
   }
   return typeMap[action] || ''
 }
 
-const formatDateTime = (dt) => {
+const formatDateTime = dt => {
   if (!dt) return '-'
   return new Date(dt).toLocaleString('zh-CN')
 }
 
-const formatJson = (jsonStr) => {
+const formatJson = jsonStr => {
   try {
     return JSON.stringify(JSON.parse(jsonStr), null, 2)
   } catch {
@@ -341,7 +275,6 @@ const formatJson = (jsonStr) => {
 const fetchLogs = async () => {
   loading.value = true
   try {
-    // Update date params from range picker
     if (dateRange.value && dateRange.value.length === 2) {
       queryParams.start_date = dateRange.value[0]
       queryParams.end_date = dateRange.value[1]
@@ -351,7 +284,6 @@ const fetchLogs = async () => {
     }
 
     const params = { ...queryParams }
-    // Remove empty params
     Object.keys(params).forEach(key => {
       if (!params[key]) delete params[key]
     })
@@ -384,7 +316,7 @@ const resetQuery = () => {
   fetchLogs()
 }
 
-const showDetail = (row) => {
+const showDetail = row => {
   currentLog.value = row
   detailVisible.value = true
 }
@@ -395,17 +327,104 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.filter-container {
-  margin-bottom: 20px;
+.audit-log {
+  display: grid;
+  gap: 20px;
+}
+
+.audit-card-list {
+  display: grid;
+  gap: 12px;
+}
+
+.audit-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-soft);
+}
+
+.audit-card__header,
+.audit-card__footer,
+.audit-field {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.audit-card__time {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.audit-card__user {
+  margin-top: 4px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.audit-card__body {
+  display: grid;
+  gap: 10px;
+}
+
+.audit-field__label {
+  min-width: 42px;
+  color: var(--text-muted);
+}
+
+.audit-field__value {
+  flex: 1;
+  text-align: right;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+.audit-card__placeholder,
+.text-gray {
+  color: var(--text-muted);
+}
+
+.audit-detail {
+  display: grid;
+  gap: 20px;
+}
+
+.audit-detail__block {
+  display: grid;
+  gap: 10px;
+}
+
+.audit-detail__block h4 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-primary);
 }
 
 .pagination-container {
-  margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+  width: 100%;
 }
 
-.text-gray {
-  color: #999;
+.pagination-container--mobile {
+  justify-content: center;
+  margin-top: 8px;
+}
+
+@media (max-width: 767px) {
+  .audit-card__header,
+  .audit-card__footer,
+  .audit-field {
+    flex-direction: column;
+  }
+
+  .audit-field__value {
+    text-align: left;
+  }
 }
 </style>

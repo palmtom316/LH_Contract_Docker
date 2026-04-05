@@ -1,69 +1,57 @@
 <template>
-  <div class="app-container">
-    <!-- Search Bar -->
-    <el-card class="filter-container" shadow="never">
-      <el-form :inline="!isMobile" :model="queryParams" class="demo-form-inline" :label-position="isMobile ? 'top' : 'right'">
-
-        <el-form-item label="费用归属">
-          <el-select v-model="queryParams.attribution" placeholder="费用归属" clearable :style="{ width: isMobile ? '100%' : '140px' }">
-            <el-option label="公司费用" value="公司费用" />
-            <el-option label="项目费用" value="项目费用" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="日期范围">
-          <el-date-picker
-            v-model="queryParams.dateRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            value-format="YYYY-MM-DD"
-            :style="{ width: isMobile ? '100%' : '240px' }"
-            clearable
-          />
-        </el-form-item>
-        <el-form-item label="上游合同序号">
-          <el-input v-model="queryParams.upstream_contract_id" placeholder="上游合同序号" clearable :style="{ width: isMobile ? '100%' : '120px' }" @keyup.enter="handleQuery" />
-        </el-form-item>
-        <el-form-item label="费用分类">
-          <DictSelect 
-            v-model="queryParams.category" 
-            category="expense_type" 
-            placeholder="费用分类" 
-            clearable 
-            :style="{ width: isMobile ? '100%' : '140px' }" 
-          />
-        </el-form-item>
-        <el-form-item>
-          <div class="filter-actions" :class="{ 'mobile-actions': isMobile }">
-            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-            <template v-if="!isMobile">
-              <el-button type="success" icon="Plus" @click="handleAdd">新增无合同费用</el-button>
-              <el-button type="warning" icon="Download" @click="handleExport">导出Excel</el-button>
-            </template>
-            
-             <!-- Mobile Menu -->
-            <el-dropdown v-if="isMobile" trigger="click" class="action-item">
-              <el-button type="info" icon="More" circle />
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="handleAdd"><el-icon><Plus /></el-icon> 新增费用</el-dropdown-item>
-                  <el-dropdown-item @click="handleExport"><el-icon><Download /></el-icon> 导出Excel</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-          </div>
-        </el-form-item>
-      </el-form>
-    </el-card>
+  <div class="expense-list-page">
+    <AppSectionCard>
+      <template #header>筛选与操作</template>
+      <AppFilterBar>
+        <el-select v-model="queryParams.attribution" placeholder="费用归属" clearable>
+          <el-option label="公司费用" value="公司费用" />
+          <el-option label="项目费用" value="项目费用" />
+        </el-select>
+        <el-date-picker
+          v-model="queryParams.dateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          value-format="YYYY-MM-DD"
+          clearable
+        />
+        <el-input v-model="queryParams.upstream_contract_id" placeholder="上游合同序号" clearable @keyup.enter="handleQuery" />
+        <DictSelect
+          v-model="queryParams.category"
+          category="expense_type"
+          placeholder="费用分类"
+          clearable
+        />
+        <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+        <el-button v-if="!isMobile" type="primary" plain icon="Plus" @click="handleAdd">新增无合同费用</el-button>
+        <el-button v-if="!isMobile" icon="Download" @click="handleExport">导出 Excel</el-button>
+        <el-dropdown v-if="isMobile" trigger="click" class="action-item">
+          <el-button icon="More" circle />
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item @click="handleAdd"><el-icon><Plus /></el-icon> 新增费用</el-dropdown-item>
+              <el-dropdown-item @click="handleExport"><el-icon><Download /></el-icon> 导出 Excel</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </AppFilterBar>
+    </AppSectionCard>
 
     <!-- Table -->
-    <div v-if="isMobile" class="mobile-list-container">
+    <AppSectionCard v-if="isMobile">
+      <template #header>费用列表</template>
+      <AppEmptyState
+        v-if="!loading && !expenseList.length"
+        title="暂无费用记录"
+        description="调整筛选条件后重试，或直接新增记录。"
+      />
+      <div v-else class="mobile-list-container">
       <el-card v-for="item in expenseList" :key="item.id" class="mobile-card" shadow="sm">
         <div class="mobile-card-header">
           <span class="mobile-card-title">{{ item.expense_code }}</span>
-          <el-tag size="small" :type="item.category === '项目费用' ? 'warning' : 'info'">{{ translateCategory(item.category) }}</el-tag>
+          <el-tag size="small" :type="isProjectExpense(item.category) ? 'warning' : 'info'">{{ translateCategory(item.category) }}</el-tag>
         </div>
         <div class="mobile-card-body">
           <div class="mobile-card-row">
@@ -109,9 +97,12 @@
             @current-change="getList"
           />
        </div>
-    </div>
+      </div>
+    </AppSectionCard>
 
-    <el-card v-else class="table-container" shadow="always">
+    <AppSectionCard v-else>
+      <template #header>费用列表</template>
+      <AppDataTable>
       <el-table 
         v-loading="loading" 
         :data="expenseList" 
@@ -121,7 +112,6 @@
         show-summary
         :summary-method="getSummaries"
         class="custom-footer-table"
-        :footer-cell-style="footerCellStyle"
       >
         <el-table-column prop="expense_code" label="编号" width="120" fixed />
         <el-table-column prop="expense_date" label="日期" width="110" sortable />
@@ -213,7 +203,8 @@
           @current-change="getList"
         />
       </div>
-    </el-card>
+      </AppDataTable>
+    </AppSectionCard>
 
     <!-- Dialog -->
     <el-dialog
@@ -288,7 +279,7 @@
                   :value="item.id"
                 >
                   <span>[{{ item.serial_number || '-' }}] {{ item.contract_name }}</span>
-                  <span style="float: right; color: #8492a6; font-size: 12px">{{ item.contract_code }}</span>
+                  <span class="contract-option-code">{{ item.contract_code }}</span>
                 </el-option>
               </el-select>
             </el-form-item>
@@ -365,12 +356,16 @@
 
 <script setup>
 import { defineAsyncComponent, ref, reactive, onMounted, onUnmounted } from 'vue'
-import { getExpenses, createExpense, updateExpense, deleteExpense, approveExpense, exportExpenses } from '@/api/expense'
+import { getExpenses, createExpense, updateExpense, deleteExpense, exportExpenses } from '@/api/expense'
 import { getContracts, getContract } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
 import { getFileUrl, formatMoney } from '@/utils/common'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Download, Document, Edit, Delete, QuestionFilled, More } from '@element-plus/icons-vue'
+import AppSectionCard from '@/components/ui/AppSectionCard.vue'
+import AppFilterBar from '@/components/ui/AppFilterBar.vue'
+import AppDataTable from '@/components/ui/AppDataTable.vue'
+import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 
 const loading = ref(false)
 const total = ref(0)
@@ -499,15 +494,6 @@ const getSummaries = (param) => {
   return sums
 }
 
-const footerCellStyle = () => {
-  return {
-    backgroundColor: '#FFFF00',
-    color: '#000000',
-    fontWeight: 'bold',
-    fontSize: '16px'
-  }
-}
-
 // Form handling
 const handleExport = async () => {
   try {
@@ -611,12 +597,6 @@ const handleDelete = (row) => {
   })
 }
 
-const handleApprove = async (row, approved) => {
-  await approveExpense(row.id, approved)
-  ElMessage.success(approved ? '审核通过' : '已驳回')
-  getList()
-}
-
 const searchUpstreamContracts = async (query) => {
   if (query) {
     loadingContracts.value = true
@@ -683,6 +663,8 @@ const translateCategory = (category) => {
   return map[category] || category || '-'
 }
 
+const isProjectExpense = category => ['PROJECT', '项目费用'].includes(category)
+
 const translateExpenseType = (expenseType) => {
   const map = {
     'MANAGEMENT': '管理费',
@@ -748,110 +730,108 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped>
-.filter-container {
-  margin-bottom: 20px;
+<style scoped lang="scss">
+.expense-list-page {
+  display: grid;
+  gap: 20px;
 }
 
-.filter-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.mobile-actions {
-  justify-content: space-between;
-  width: 100%;
-  margin-top: 10px;
-  
-  .el-button {
-    margin-left: 0 !important;
-  }
-  
-  .action-item {
-    margin-left: 0;
-  }
-}
 .pagination-container {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
 }
 
-/* Mobile List Styles */
 .mobile-list-container {
-  padding-bottom: 20px;
+  display: grid;
+  gap: 12px;
 }
+
 .mobile-card {
-  margin-bottom: 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
+
 .mobile-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
-  border-bottom: 1px solid #f0f2f5;
-  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 10px;
 }
+
 .mobile-card-title {
   font-weight: 600;
   font-size: 15px;
-  color: #303133;
+  color: var(--text-primary);
 }
+
 .mobile-card-body {
   font-size: 14px;
 }
+
 .mobile-card-row {
   display: flex;
   margin-bottom: 8px;
-  line-height: 1.4;
+  gap: 10px;
+  line-height: 1.55;
 }
+
 .mobile-card-row .label {
-  color: #909399;
+  color: var(--text-muted);
   width: 70px;
   flex-shrink: 0;
 }
+
 .mobile-card-row .value {
-  color: #606266;
+  color: var(--text-secondary);
   flex: 1;
   word-break: break-word;
 }
+
 .mobile-card-row .value.amount {
-  color: #F56C6C;
+  color: var(--status-danger);
   font-weight: bold;
 }
+
 .mobile-card-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-top: 12px;
   padding-top: 10px;
-  border-top: 1px solid #f0f2f5;
+  border-top: 1px solid var(--border-subtle);
 }
+
 .description {
   white-space: pre-wrap;
 }
-</style>
 
-<style>
-/* Global override for table footer - Bold black text with yellow background */
-.custom-footer-table .el-table__footer-wrapper tbody td,
-.custom-footer-table .el-table__fixed-footer-wrapper tbody td,
-.custom-footer-table .el-table__footer-wrapper tbody tr,
-.custom-footer-table .el-table__fixed-footer-wrapper tbody tr {
-  background-color: #FFFF00 !important; /* Bright Yellow */
-  color: #000000 !important; /* Black */
-  font-weight: bold !important;
-  font-size: 16px !important;
-  --el-table-row-hover-bg-color: #FFFF00 !important;
+.action-item {
+  justify-self: end;
 }
-.custom-footer-table .el-table__footer-wrapper tbody td .cell,
-.custom-footer-table .el-table__fixed-footer-wrapper tbody td .cell {
-  background-color: #FFFF00 !important;
-  color: #000000 !important; /* Black */
-  font-weight: bold !important;
-  white-space: nowrap !important;
+
+.text-gray {
+  color: var(--text-muted);
+}
+
+.contract-name-cell {
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+.contract-option-code {
+  float: right;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+@media (max-width: 767px) {
+  .mobile-card-header,
+  .mobile-card-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 </style>

@@ -59,7 +59,7 @@ a:focus-visible,
 input:focus-visible,
 .el-button:focus-visible,
 .el-input__wrapper.is-focus {
-    outline: none;
+    outline: 2px solid transparent;
     box-shadow: var(--shadow-focus);
 }
 
@@ -149,6 +149,50 @@ input:focus-visible,
     background: var(--surface-panel-muted);
 }
 
+.app-tabs {
+    --el-tabs-header-height: auto;
+}
+
+.app-tabs .el-tabs__header {
+    margin: 0 0 8px;
+}
+
+.app-tabs .el-tabs__nav-wrap::after {
+    background: var(--border-subtle);
+}
+
+.app-tabs .el-tabs__item {
+    height: auto;
+    padding: 10px 14px;
+    color: var(--text-secondary);
+    border-radius: 12px 12px 0 0;
+    transition: color 160ms ease, background-color 160ms ease;
+}
+
+.app-tabs .el-tabs__item.is-active {
+    color: var(--brand-primary);
+    background: color-mix(in srgb, var(--surface-panel) 82%, var(--brand-primary) 18%);
+}
+
+.custom-footer-table .el-table__footer-wrapper tbody td,
+.custom-footer-table .el-table__fixed-footer-wrapper tbody td,
+.custom-footer-table .el-table__footer-wrapper tbody tr,
+.custom-footer-table .el-table__fixed-footer-wrapper tbody tr {
+    background-color: var(--status-highlight) !important;
+    color: var(--text-primary) !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
+    --el-table-row-hover-bg-color: var(--status-highlight) !important;
+}
+
+.custom-footer-table .el-table__footer-wrapper tbody td .cell,
+.custom-footer-table .el-table__fixed-footer-wrapper tbody td .cell {
+    background-color: var(--status-highlight) !important;
+    color: var(--text-primary) !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+}
+
 // Global utilities can go here
 
 // Global Mobile Overrides
@@ -160,13 +204,4 @@ input:focus-visible,
         max-width: none !important;
     }
 
-    // Adjust padding for app containers
-    .app-container {
-        padding: 10px !important;
-    }
-
-    // Make cards cleaner on mobile
-    .el-card__body {
-        padding: 10px !important;
-    }
 }
