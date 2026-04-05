@@ -66,7 +66,7 @@
 - Create: `frontend/src/test/setup.js`
 - Test: `frontend/src/stores/__tests__/ui.spec.js`
 
-- [ ] **Step 1: Add Vitest and test scripts so UI infrastructure can be developed with TDD**
+- [x] **Step 1: Add Vitest and test scripts so UI infrastructure can be developed with TDD**
 
 ```json
 {
@@ -86,7 +86,7 @@
 }
 ```
 
-- [ ] **Step 2: Write the failing test for theme persistence and toggle behavior**
+- [x] **Step 2: Write the failing test for theme persistence and toggle behavior**
 
 ```js
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -114,14 +114,14 @@ describe('ui store', () => {
 })
 ```
 
-- [ ] **Step 3: Run the test to verify it fails because the store does not exist yet**
+- [x] **Step 3: Run the test to verify it fails because the store does not exist yet**
 
 Run: `cd frontend && npm run test -- src/stores/__tests__/ui.spec.js`
 
 Expected:
 - FAIL with module resolution error for `../ui`
 
-- [ ] **Step 4: Create the UI preference store and theme composable**
+- [x] **Step 4: Create the UI preference store and theme composable**
 
 ```js
 // frontend/src/stores/ui.js
@@ -171,7 +171,7 @@ export function useTheme() {
 }
 ```
 
-- [ ] **Step 5: Wire the UI store into app startup**
+- [x] **Step 5: Wire the UI store into app startup**
 
 ```js
 // frontend/src/main.js
@@ -185,7 +185,7 @@ const uiStore = useUiStore(pinia)
 uiStore.initTheme()
 ```
 
-- [ ] **Step 6: Replace the current token file with semantic light/dark variables**
+- [x] **Step 6: Replace the current token file with semantic light/dark variables**
 
 ```scss
 :root,
@@ -256,7 +256,7 @@ uiStore.initTheme()
 }
 ```
 
-- [ ] **Step 7: Normalize global base styles for both themes**
+- [x] **Step 7: Normalize global base styles for both themes**
 
 ```scss
 html,
@@ -281,21 +281,21 @@ body {
 }
 ```
 
-- [ ] **Step 8: Run the focused test to verify the theme store works**
+- [x] **Step 8: Run the focused test to verify the theme store works**
 
 Run: `cd frontend && npm run test -- src/stores/__tests__/ui.spec.js`
 
 Expected:
 - PASS with 1 passing test
 
-- [ ] **Step 9: Run a production build to catch SCSS or import regressions**
+- [x] **Step 9: Run a production build to catch SCSS or import regressions**
 
 Run: `cd frontend && npm run build`
 
 Expected:
 - `vite build` completes successfully
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add frontend/package.json frontend/src/main.js frontend/src/styles/tokens.scss frontend/src/styles/index.scss frontend/src/stores/ui.js frontend/src/composables/useTheme.js frontend/src/test/setup.js frontend/src/stores/__tests__/ui.spec.js
@@ -312,7 +312,7 @@ git commit -m "feat: add theme preference infrastructure"
 - Create: `frontend/src/views/notifications/NotificationCenter.vue`
 - Test: `frontend/src/utils/__tests__/notificationAdapter.spec.js`
 
-- [ ] **Step 1: Write the failing test for notification aggregation**
+- [x] **Step 1: Write the failing test for notification aggregation**
 
 ```js
 import { describe, expect, it } from 'vitest'
@@ -341,14 +341,14 @@ describe('buildNotifications', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails because the adapter does not exist**
+- [x] **Step 2: Run the test to verify it fails because the adapter does not exist**
 
 Run: `cd frontend && npm run test -- src/utils/__tests__/notificationAdapter.spec.js`
 
 Expected:
 - FAIL with module resolution error for `../notificationAdapter`
 
-- [ ] **Step 3: Create the notification adapter with stable categories**
+- [x] **Step 3: Create the notification adapter with stable categories**
 
 ```js
 // frontend/src/utils/notificationAdapter.js
@@ -379,7 +379,7 @@ export function buildNotifications({ audits = [], reminders = [] }) {
 }
 ```
 
-- [ ] **Step 4: Add a lightweight notifications API facade that reuses existing endpoints**
+- [x] **Step 4: Add a lightweight notifications API facade that reuses existing endpoints**
 
 ```js
 // frontend/src/api/notifications.js
@@ -399,7 +399,7 @@ export async function fetchNotifications() {
 }
 ```
 
-- [ ] **Step 5: Add the dedicated notification route**
+- [x] **Step 5: Add the dedicated notification route**
 
 ```js
 {
@@ -410,7 +410,7 @@ export async function fetchNotifications() {
 }
 ```
 
-- [ ] **Step 6: Create the notification page shell with grouped filters**
+- [x] **Step 6: Create the notification page shell with grouped filters**
 
 ```vue
 <template>
@@ -437,21 +437,21 @@ export async function fetchNotifications() {
 </template>
 ```
 
-- [ ] **Step 7: Run the notification adapter test**
+- [x] **Step 7: Run the notification adapter test**
 
 Run: `cd frontend && npm run test -- src/utils/__tests__/notificationAdapter.spec.js`
 
 Expected:
 - PASS with 1 passing test
 
-- [ ] **Step 8: Run a production build**
+- [x] **Step 8: Run a production build**
 
 Run: `cd frontend && npm run build`
 
 Expected:
 - build succeeds with the new notification route and imports
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add frontend/src/router/index.js frontend/src/api/notifications.js frontend/src/utils/notificationAdapter.js frontend/src/views/notifications/NotificationCenter.vue frontend/src/utils/__tests__/notificationAdapter.spec.js
@@ -469,7 +469,7 @@ git commit -m "feat: add notification center data layer"
 - Create: `frontend/src/components/ui/AppThemeToggle.vue`
 - Test: `frontend/src/stores/__tests__/ui.spec.js`
 
-- [ ] **Step 1: Extend the UI store test to cover notification drawer state**
+- [x] **Step 1: Extend the UI store test to cover notification drawer state**
 
 ```js
 it('tracks notification drawer visibility', () => {
@@ -481,14 +481,14 @@ it('tracks notification drawer visibility', () => {
 })
 ```
 
-- [ ] **Step 2: Run the UI store test to ensure the new assertion fails first**
+- [x] **Step 2: Run the UI store test to ensure the new assertion fails first**
 
 Run: `cd frontend && npm run test -- src/stores/__tests__/ui.spec.js`
 
 Expected:
 - FAIL because the store lacks explicit open/close actions
 
-- [ ] **Step 3: Add explicit UI store actions for shell overlays**
+- [x] **Step 3: Add explicit UI store actions for shell overlays**
 
 ```js
 openNotificationDrawer() {
@@ -499,7 +499,7 @@ closeNotificationDrawer() {
 }
 ```
 
-- [ ] **Step 4: Create the bottom-left sidebar user card component**
+- [x] **Step 4: Create the bottom-left sidebar user card component**
 
 ```vue
 <template>
@@ -525,7 +525,7 @@ closeNotificationDrawer() {
 </template>
 ```
 
-- [ ] **Step 5: Create the top-right notification bell and theme toggle**
+- [x] **Step 5: Create the top-right notification bell and theme toggle**
 
 ```vue
 <template>
@@ -536,7 +536,7 @@ closeNotificationDrawer() {
 </template>
 ```
 
-- [ ] **Step 6: Replace the top-right user block in the desktop shell with the new action cluster**
+- [x] **Step 6: Replace the top-right user block in the desktop shell with the new action cluster**
 
 ```vue
 <!-- frontend/src/views/Layout.vue -->
@@ -553,7 +553,7 @@ closeNotificationDrawer() {
 />
 ```
 
-- [ ] **Step 7: Rebuild the mobile shell so the drawer contains the user card at the bottom and the top bar contains theme + notifications**
+- [x] **Step 7: Rebuild the mobile shell so the drawer contains the user card at the bottom and the top bar contains theme + notifications**
 
 ```vue
 <van-nav-bar fixed placeholder>
@@ -569,7 +569,7 @@ closeNotificationDrawer() {
 </van-nav-bar>
 ```
 
-- [ ] **Step 8: Run the UI store test and the build**
+- [x] **Step 8: Run the UI store test and the build**
 
 Run: `cd frontend && npm run test -- src/stores/__tests__/ui.spec.js && npm run build`
 
@@ -577,7 +577,7 @@ Expected:
 - Tests pass
 - Build succeeds
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add frontend/src/stores/ui.js frontend/src/views/Layout.vue frontend/src/views/mobile/MobileLayout.vue frontend/src/components/layout/AppNotificationBell.vue frontend/src/components/layout/SidebarUserCard.vue frontend/src/components/layout/AppTopbarActions.vue frontend/src/components/ui/AppThemeToggle.vue frontend/src/stores/__tests__/ui.spec.js
@@ -596,7 +596,7 @@ git commit -m "feat: refactor app shell for minimalist saas layout"
 - Modify: `frontend/src/styles/index.scss`
 - Test: `frontend/src/stores/__tests__/ui.spec.js`
 
-- [ ] **Step 1: Add a render-level smoke test for a shared metric card**
+- [x] **Step 1: Add a render-level smoke test for a shared metric card**
 
 ```js
 import { mount } from '@vue/test-utils'
@@ -612,14 +612,14 @@ it('renders metric title and value content', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test and verify it fails because the component does not exist yet**
+- [x] **Step 2: Run the test and verify it fails because the component does not exist yet**
 
 Run: `cd frontend && npm run test -- src/stores/__tests__/ui.spec.js`
 
 Expected:
 - FAIL due to missing `AppMetricCard.vue`
 
-- [ ] **Step 3: Create the shared UI primitive components**
+- [x] **Step 3: Create the shared UI primitive components**
 
 ```vue
 <!-- frontend/src/components/ui/AppSectionCard.vue -->
@@ -651,7 +651,7 @@ Expected:
 </template>
 ```
 
-- [ ] **Step 4: Add global primitive styles that normalize buttons, cards, form controls, and tables**
+- [x] **Step 4: Add global primitive styles that normalize buttons, cards, form controls, and tables**
 
 ```scss
 .el-button {
@@ -683,7 +683,7 @@ Expected:
 }
 ```
 
-- [ ] **Step 5: Run the metric-card test and production build**
+- [x] **Step 5: Run the metric-card test and production build**
 
 Run: `cd frontend && npm run test -- src/stores/__tests__/ui.spec.js && npm run build`
 
@@ -691,7 +691,7 @@ Expected:
 - Tests pass
 - Build succeeds
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/components/ui/AppSectionCard.vue frontend/src/components/ui/AppFilterBar.vue frontend/src/components/ui/AppEmptyState.vue frontend/src/components/ui/AppDataTable.vue frontend/src/components/ui/AppMetricCard.vue frontend/src/components/layout/AppPageHeader.vue frontend/src/styles/index.scss frontend/src/stores/__tests__/ui.spec.js
@@ -706,7 +706,7 @@ git commit -m "feat: add shared saas ui primitives"
 - Create: `frontend/src/utils/chartOptions.js`
 - Test: `frontend/src/utils/__tests__/chartOptions.spec.js`
 
-- [ ] **Step 1: Write a failing test that locks in chart label spacing and legend behavior**
+- [x] **Step 1: Write a failing test that locks in chart label spacing and legend behavior**
 
 ```js
 import { describe, expect, it } from 'vitest'
@@ -726,14 +726,14 @@ describe('createBarChartOption', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails because the option builder does not exist**
+- [x] **Step 2: Run the test to verify it fails because the option builder does not exist**
 
 Run: `cd frontend && npm run test -- src/utils/__tests__/chartOptions.spec.js`
 
 Expected:
 - FAIL with module resolution error for `../chartOptions`
 
-- [ ] **Step 3: Create theme-aware chart token readers**
+- [x] **Step 3: Create theme-aware chart token readers**
 
 ```js
 // frontend/src/utils/chartTheme.js
@@ -754,7 +754,7 @@ export function readChartTheme() {
 }
 ```
 
-- [ ] **Step 4: Create reusable collision-safe chart builders**
+- [x] **Step 4: Create reusable collision-safe chart builders**
 
 ```js
 // frontend/src/utils/chartOptions.js
@@ -799,7 +799,7 @@ export function createBarChartOption({ categories, series }) {
 }
 ```
 
-- [ ] **Step 5: Export the helper functions from the shared chart utility layer**
+- [x] **Step 5: Export the helper functions from the shared chart utility layer**
 
 ```js
 // frontend/src/utils/echarts.js
@@ -807,7 +807,7 @@ export { createBarChartOption } from './chartOptions'
 export { readChartTheme } from './chartTheme'
 ```
 
-- [ ] **Step 6: Run the chart option test and build**
+- [x] **Step 6: Run the chart option test and build**
 
 Run: `cd frontend && npm run test -- src/utils/__tests__/chartOptions.spec.js && npm run build`
 
@@ -815,7 +815,7 @@ Expected:
 - Tests pass
 - Build succeeds
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add frontend/src/utils/echarts.js frontend/src/utils/chartTheme.js frontend/src/utils/chartOptions.js frontend/src/utils/__tests__/chartOptions.spec.js
@@ -833,7 +833,7 @@ git commit -m "feat: centralize chart theme and spacing helpers"
 - Reuse: `frontend/src/utils/chartOptions.js`
 - Test: `frontend/src/utils/__tests__/chartOptions.spec.js`
 
-- [ ] **Step 1: Add a regression test for pie-chart label configuration**
+- [x] **Step 1: Add a regression test for pie-chart label configuration**
 
 ```js
 import { createPieChartOption } from '../chartOptions'
@@ -849,14 +849,14 @@ it('moves pie labels outside the plot area', () => {
 })
 ```
 
-- [ ] **Step 2: Run the chart test to verify the pie helper fails first**
+- [x] **Step 2: Run the chart test to verify the pie helper fails first**
 
 Run: `cd frontend && npm run test -- src/utils/__tests__/chartOptions.spec.js`
 
 Expected:
 - FAIL because `createPieChartOption` is not implemented
 
-- [ ] **Step 3: Extend chart options with a pie builder**
+- [x] **Step 3: Extend chart options with a pie builder**
 
 ```js
 export function createPieChartOption({ title, data }) {
@@ -889,7 +889,7 @@ export function createPieChartOption({ title, data }) {
 }
 ```
 
-- [ ] **Step 4: Replace the current dashboard metric cards with `AppMetricCard` and page framing primitives**
+- [x] **Step 4: Replace the current dashboard metric cards with `AppMetricCard` and page framing primitives**
 
 ```vue
 <app-page-header
@@ -909,7 +909,7 @@ export function createPieChartOption({ title, data }) {
 </section>
 ```
 
-- [ ] **Step 5: Replace inline chart option objects with shared builders and eliminate hard-coded colors**
+- [x] **Step 5: Replace inline chart option objects with shared builders and eliminate hard-coded colors**
 
 ```js
 import { createBarChartOption, createPieChartOption } from '@/utils/chartOptions'
@@ -927,7 +927,7 @@ pieCategoryChart.setOption(createPieChartOption({
 }))
 ```
 
-- [ ] **Step 6: Collapse the mobile dashboard into stacked cards and tab-safe charts using the new spacing system**
+- [x] **Step 6: Collapse the mobile dashboard into stacked cards and tab-safe charts using the new spacing system**
 
 ```scss
 .dashboard-metric-grid {
@@ -943,7 +943,7 @@ pieCategoryChart.setOption(createPieChartOption({
 }
 ```
 
-- [ ] **Step 7: Run the chart tests and build**
+- [x] **Step 7: Run the chart tests and build**
 
 Run: `cd frontend && npm run test -- src/utils/__tests__/chartOptions.spec.js && npm run build`
 
@@ -951,7 +951,7 @@ Expected:
 - Tests pass
 - Build succeeds
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add frontend/src/views/home/Overview.vue frontend/src/views/Dashboard.vue frontend/src/utils/chartOptions.js frontend/src/utils/__tests__/chartOptions.spec.js
@@ -970,7 +970,7 @@ git commit -m "feat: redesign dashboard with shared charts"
 - Reuse: `frontend/src/styles/index.scss`
 - Test: `frontend/src/utils/__tests__/chartOptions.spec.js`
 
-- [ ] **Step 1: Write a small render test for the report page header and filter arrangement**
+- [x] **Step 1: Write a small render test for the report page header and filter arrangement**
 
 ```js
 import { mount } from '@vue/test-utils'
@@ -986,14 +986,14 @@ it('renders page title and description', () => {
 })
 ```
 
-- [ ] **Step 2: Run the UI test to ensure the contract from Task 4 still passes before refactoring**
+- [x] **Step 2: Run the UI test to ensure the contract from Task 4 still passes before refactoring**
 
 Run: `cd frontend && npm run test -- src/stores/__tests__/ui.spec.js`
 
 Expected:
 - PASS, creating a safe baseline before the report refactor
 
-- [ ] **Step 3: Replace the ad-hoc page header and export blocks with shared cards and filter bars**
+- [x] **Step 3: Replace the ad-hoc page header and export blocks with shared cards and filter bars**
 
 ```vue
 <app-page-header
@@ -1011,7 +1011,7 @@ Expected:
 </app-section-card>
 ```
 
-- [ ] **Step 4: Convert the report export grid to responsive cards with uniform action buttons**
+- [x] **Step 4: Convert the report export grid to responsive cards with uniform action buttons**
 
 ```scss
 .report-export-grid {
@@ -1033,7 +1033,7 @@ Expected:
 }
 ```
 
-- [ ] **Step 5: Normalize the main report tables to the shared table wrapper and mobile-friendly scroll behavior**
+- [x] **Step 5: Normalize the main report tables to the shared table wrapper and mobile-friendly scroll behavior**
 
 ```vue
 <app-data-table>
@@ -1047,14 +1047,14 @@ Expected:
 </app-data-table>
 ```
 
-- [ ] **Step 6: Run build verification**
+- [x] **Step 6: Run build verification**
 
 Run: `cd frontend && npm run build`
 
 Expected:
 - Build succeeds with the refactored report view
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add frontend/src/views/reports/ReportDashboard.vue frontend/src/styles/index.scss
@@ -1074,7 +1074,7 @@ git commit -m "feat: redesign reports workspace"
 - Reuse: `frontend/src/styles/index.scss`
 - Test: `frontend/src/stores/__tests__/ui.spec.js`
 
-- [ ] **Step 1: Add a contract-list smoke test for empty-state rendering**
+- [x] **Step 1: Add a contract-list smoke test for empty-state rendering**
 
 ```js
 import { mount } from '@vue/test-utils'
@@ -1090,14 +1090,14 @@ it('renders reusable empty-state copy', () => {
 })
 ```
 
-- [ ] **Step 2: Run the smoke test to verify the shared UI primitives still behave correctly**
+- [x] **Step 2: Run the smoke test to verify the shared UI primitives still behave correctly**
 
 Run: `cd frontend && npm run test -- src/stores/__tests__/ui.spec.js`
 
 Expected:
 - PASS before modifying large list pages
 
-- [ ] **Step 3: Replace the current filter cards with `AppFilterBar` and unify action ordering**
+- [x] **Step 3: Replace the current filter cards with `AppFilterBar` and unify action ordering**
 
 ```vue
 <app-section-card>
@@ -1112,7 +1112,7 @@ Expected:
 </app-section-card>
 ```
 
-- [ ] **Step 4: Normalize desktop tables and mobile cards to one visual language**
+- [x] **Step 4: Normalize desktop tables and mobile cards to one visual language**
 
 ```scss
 .contract-mobile-card {
@@ -1129,7 +1129,7 @@ Expected:
 }
 ```
 
-- [ ] **Step 5: Apply the same structural pattern to upstream, downstream, and management list pages**
+- [x] **Step 5: Apply the same structural pattern to upstream, downstream, and management list pages**
 
 ```vue
 <app-data-table>
@@ -1139,14 +1139,14 @@ Expected:
 </app-data-table>
 ```
 
-- [ ] **Step 6: Run build verification**
+- [x] **Step 6: Run build verification**
 
 Run: `cd frontend && npm run build`
 
 Expected:
 - Build succeeds for all contract list routes
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add frontend/src/views/contracts/UpstreamList.vue frontend/src/views/contracts/DownstreamList.vue frontend/src/views/contracts/ManagementList.vue frontend/src/styles/index.scss
@@ -1164,7 +1164,7 @@ git commit -m "feat: redesign contract list surfaces"
 - Modify: `frontend/src/views/expenses/OrdinaryExpenseList.vue`
 - Modify: `frontend/src/views/expenses/ZeroHourLaborList.vue`
 
-- [ ] **Step 1: Sweep secondary modules for token adoption and hard-coded color removal**
+- [x] **Step 1: Sweep secondary modules for token adoption and hard-coded color removal**
 
 ```scss
 .text-gray {
@@ -1178,7 +1178,7 @@ git commit -m "feat: redesign contract list surfaces"
 }
 ```
 
-- [ ] **Step 2: Replace the most visible remaining hard-coded button and card styles in audit, expense, and system pages**
+- [x] **Step 2: Replace the most visible remaining hard-coded button and card styles in audit, expense, and system pages**
 
 ```vue
 <app-page-header
@@ -1187,7 +1187,7 @@ git commit -m "feat: redesign contract list surfaces"
 />
 ```
 
-- [ ] **Step 3: Run the full frontend verification suite**
+- [x] **Step 3: Run the full frontend verification suite**
 
 Run:
 - `cd frontend && npm run test`
@@ -1197,7 +1197,7 @@ Expected:
 - All Vitest suites pass
 - Production build succeeds
 
-- [ ] **Step 4: Run manual verification in the browser**
+- [x] **Step 4: Run manual verification in the browser**
 
 Checklist:
 - Desktop `/` shows bottom-left sidebar user card and top-right notification center
@@ -1206,7 +1206,7 @@ Checklist:
 - Mobile width `390x844` shows drawer-bottom user card, top-right notifications, stacked dashboard cards, readable charts, and no text overlap
 - Theme toggle persists between reloads and correctly recolors charts and page chrome
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/styles/index.scss frontend/src/styles/tokens.scss frontend/src/views/system/SystemManagement.vue frontend/src/views/audit/AuditLog.vue frontend/src/views/expenses/ExpenseList.vue frontend/src/views/expenses/OrdinaryExpenseList.vue frontend/src/views/expenses/ZeroHourLaborList.vue
@@ -1239,4 +1239,3 @@ No spec requirements are currently uncovered.
 - Theme state uses `useUiStore` consistently.
 - Notification aggregation centers on `buildNotifications`.
 - Chart helpers use `createBarChartOption` and `createPieChartOption` consistently across tasks.
-
