@@ -3,20 +3,14 @@
     <div v-if="$slots.toolbar" class="app-data-table__toolbar">
       <slot name="toolbar" />
     </div>
-    <el-table v-bind="$attrs" class="app-data-table__table">
+    <div class="app-data-table__scroll">
       <slot />
-    </el-table>
+    </div>
     <div v-if="$slots.footer" class="app-data-table__footer">
       <slot name="footer" />
     </div>
   </div>
 </template>
-
-<script setup>
-defineOptions({
-  inheritAttrs: false
-})
-</script>
 
 <style scoped lang="scss">
 .app-data-table {
@@ -33,7 +27,20 @@ defineOptions({
   flex-wrap: wrap;
 }
 
-.app-data-table__table {
+.app-data-table__scroll {
   width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-data-table__scroll :deep(.el-table) {
+  min-width: 100%;
+}
+
+@media (max-width: 767px) {
+  .app-data-table__scroll :deep(.el-table) {
+    min-width: 920px;
+  }
 }
 </style>

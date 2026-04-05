@@ -1,497 +1,239 @@
 <template>
-  <div class="app-container">
-    <el-card shadow="hover" class="cost-report-card">
-      <template #header>
-        <div class="header-content">
-          <span class="title">月度/季度成本报表</span>
-          <span class="subtitle">统计口径：按业务日期（签约/付款/结算等）</span>
-        </div>
-      </template>
+  <div class="report-dashboard">
+    <AppPageHeader
+      title="报表统计"
+      description="统一查询成本报表、导出业务报表和查看结果表格，移动端与桌面端采用同一套卡片与按钮规范。"
+    />
 
-      <div class="filter-container cost-filter-container">
-        <span class="filter-label">统计月份:</span>
+    <AppSectionCard>
+      <template #header>月度 / 季度成本报表</template>
+      <AppFilterBar>
         <el-date-picker
           v-model="costMonth"
           type="month"
           value-format="YYYY-MM"
           format="YYYY年MM月"
-          placeholder="选择月份"
-          class="filter-item short"
+          placeholder="选择统计月份"
         />
-        <el-button type="primary" :loading="costLoading" @click="handleQueryCostReport">
-          <el-icon class="el-icon--right"><Download /></el-icon> 查询报表
-        </el-button>
-        <el-button type="success" :loading="costExportLoading" @click="handleExportCostReport">
-          <el-icon class="el-icon--right"><Download /></el-icon> 导出 Excel
-        </el-button>
-      </div>
+        <el-button type="primary" :loading="costLoading" @click="handleQueryCostReport">查询报表</el-button>
+        <el-button type="primary" plain :loading="costExportLoading" @click="handleExportCostReport">导出 Excel</el-button>
+      </AppFilterBar>
 
       <el-tabs v-model="costActiveTab" class="cost-tabs">
         <el-tab-pane label="月度成本报表" name="monthly">
           <div class="cost-title">{{ monthlyTitle }}</div>
-          <el-table
-            :data="monthlyTableData"
-            border
-            v-loading="costLoading"
-            :row-class-name="costRowClassName"
-            :cell-style="costCellStyle"
-            class="cost-report-table"
-          >
-            <el-table-column prop="company_category" label="公司合同分类" fixed min-width="140" />
-            <el-table-column label="上游合同">
-              <el-table-column prop="upstream_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
-              <el-table-column prop="upstream_receivable" label="应收款" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="upstream_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="upstream_receipt" label="收款" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="upstream_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
-            </el-table-column>
-            <el-table-column label="下游及管理合同">
-              <el-table-column prop="down_mgmt_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
-              <el-table-column prop="down_mgmt_payable" label="应付款" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="down_mgmt_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="down_mgmt_payment" label="付款" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="down_mgmt_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
-            </el-table-column>
-            <el-table-column prop="zero_hour_labor" label="零星用工" min-width="120" :formatter="amountFormatter" />
-            <el-table-column prop="non_contract_expense" label="无合同费用" min-width="120" :formatter="amountFormatter" />
-          </el-table>
+          <AppDataTable v-if="monthlyRowCount > 0">
+            <el-table
+              :data="monthlyTableData"
+              border
+              v-loading="costLoading"
+              :row-class-name="costRowClassName"
+              :cell-style="costCellStyle"
+              class="cost-report-table"
+            >
+              <el-table-column prop="company_category" label="公司合同分类" fixed min-width="140" />
+              <el-table-column label="上游合同">
+                <el-table-column prop="upstream_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
+                <el-table-column prop="upstream_receivable" label="应收款" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="upstream_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="upstream_receipt" label="收款" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="upstream_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
+              </el-table-column>
+              <el-table-column label="下游及管理合同">
+                <el-table-column prop="down_mgmt_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
+                <el-table-column prop="down_mgmt_payable" label="应付款" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="down_mgmt_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="down_mgmt_payment" label="付款" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="down_mgmt_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
+              </el-table-column>
+              <el-table-column prop="zero_hour_labor" label="零星用工" min-width="120" :formatter="amountFormatter" />
+              <el-table-column prop="non_contract_expense" label="无合同费用" min-width="120" :formatter="amountFormatter" />
+            </el-table>
+          </AppDataTable>
+          <AppEmptyState
+            v-else-if="!costLoading"
+            title="暂无月度成本数据"
+            description="调整统计月份后重试，或先执行“查询报表”。"
+          />
         </el-tab-pane>
 
         <el-tab-pane label="季度成本报表" name="quarterly">
           <div class="cost-title">{{ quarterlyTitle }}</div>
-          <el-table
-            :data="quarterlyTableData"
-            border
-            v-loading="costLoading"
-            :row-class-name="costRowClassName"
-            :cell-style="costCellStyle"
-            class="cost-report-table"
-          >
-            <el-table-column prop="company_category" label="公司合同分类" fixed min-width="140" />
-            <el-table-column label="上游合同">
-              <el-table-column prop="upstream_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
-              <el-table-column prop="upstream_receivable" label="应收款" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="upstream_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="upstream_receipt" label="收款" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="upstream_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
-            </el-table-column>
-            <el-table-column label="下游及管理合同">
-              <el-table-column prop="down_mgmt_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
-              <el-table-column prop="down_mgmt_payable" label="应付款" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="down_mgmt_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="down_mgmt_payment" label="付款" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="down_mgmt_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
-            </el-table-column>
-            <el-table-column prop="zero_hour_labor" label="零星用工" min-width="120" :formatter="amountFormatter" />
-            <el-table-column prop="non_contract_expense" label="无合同费用" min-width="120" :formatter="amountFormatter" />
-          </el-table>
+          <AppDataTable v-if="quarterlyRowCount > 0">
+            <el-table
+              :data="quarterlyTableData"
+              border
+              v-loading="costLoading"
+              :row-class-name="costRowClassName"
+              :cell-style="costCellStyle"
+              class="cost-report-table"
+            >
+              <el-table-column prop="company_category" label="公司合同分类" fixed min-width="140" />
+              <el-table-column label="上游合同">
+                <el-table-column prop="upstream_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
+                <el-table-column prop="upstream_receivable" label="应收款" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="upstream_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="upstream_receipt" label="收款" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="upstream_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
+              </el-table-column>
+              <el-table-column label="下游及管理合同">
+                <el-table-column prop="down_mgmt_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
+                <el-table-column prop="down_mgmt_payable" label="应付款" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="down_mgmt_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="down_mgmt_payment" label="付款" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="down_mgmt_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
+              </el-table-column>
+              <el-table-column prop="zero_hour_labor" label="零星用工" min-width="120" :formatter="amountFormatter" />
+              <el-table-column prop="non_contract_expense" label="无合同费用" min-width="120" :formatter="amountFormatter" />
+            </el-table>
+          </AppDataTable>
+          <AppEmptyState
+            v-else-if="!costLoading"
+            title="暂无季度成本数据"
+            description="切换统计月份后重新查询。"
+          />
         </el-tab-pane>
 
         <el-tab-pane label="半年度成本报表" name="half_yearly">
           <div class="cost-title">{{ halfYearlyTitle }}</div>
-          <el-table
-            :data="halfYearlyTableData"
-            border
-            v-loading="costLoading"
-            :row-class-name="costRowClassName"
-            :cell-style="costCellStyle"
-            class="cost-report-table"
-          >
-            <el-table-column prop="company_category" label="公司合同分类" fixed min-width="140" />
-            <el-table-column label="上游合同">
-              <el-table-column prop="upstream_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
-              <el-table-column prop="upstream_receivable" label="应收款" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="upstream_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="upstream_receipt" label="收款" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="upstream_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
-            </el-table-column>
-            <el-table-column label="下游及管理合同">
-              <el-table-column prop="down_mgmt_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
-              <el-table-column prop="down_mgmt_payable" label="应付款" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="down_mgmt_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="down_mgmt_payment" label="付款" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="down_mgmt_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
-            </el-table-column>
-            <el-table-column prop="zero_hour_labor" label="零星用工" min-width="120" :formatter="amountFormatter" />
-            <el-table-column prop="non_contract_expense" label="无合同费用" min-width="120" :formatter="amountFormatter" />
-          </el-table>
+          <AppDataTable v-if="halfYearlyRowCount > 0">
+            <el-table
+              :data="halfYearlyTableData"
+              border
+              v-loading="costLoading"
+              :row-class-name="costRowClassName"
+              :cell-style="costCellStyle"
+              class="cost-report-table"
+            >
+              <el-table-column prop="company_category" label="公司合同分类" fixed min-width="140" />
+              <el-table-column label="上游合同">
+                <el-table-column prop="upstream_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
+                <el-table-column prop="upstream_receivable" label="应收款" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="upstream_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="upstream_receipt" label="收款" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="upstream_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
+              </el-table-column>
+              <el-table-column label="下游及管理合同">
+                <el-table-column prop="down_mgmt_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
+                <el-table-column prop="down_mgmt_payable" label="应付款" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="down_mgmt_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="down_mgmt_payment" label="付款" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="down_mgmt_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
+              </el-table-column>
+              <el-table-column prop="zero_hour_labor" label="零星用工" min-width="120" :formatter="amountFormatter" />
+              <el-table-column prop="non_contract_expense" label="无合同费用" min-width="120" :formatter="amountFormatter" />
+            </el-table>
+          </AppDataTable>
+          <AppEmptyState
+            v-else-if="!costLoading"
+            title="暂无半年度成本数据"
+            description="请重新选择月份后查询。"
+          />
         </el-tab-pane>
 
         <el-tab-pane label="年度成本报表" name="yearly">
           <div class="cost-title">{{ yearlyTitle }}</div>
-          <el-table
-            :data="yearlyTableData"
-            border
-            v-loading="costLoading"
-            :row-class-name="costRowClassName"
-            :cell-style="costCellStyle"
-            class="cost-report-table"
-          >
-            <el-table-column prop="company_category" label="公司合同分类" fixed min-width="140" />
-            <el-table-column label="上游合同">
-              <el-table-column prop="upstream_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
-              <el-table-column prop="upstream_receivable" label="应收款" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="upstream_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="upstream_receipt" label="收款" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="upstream_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
-            </el-table-column>
-            <el-table-column label="下游及管理合同">
-              <el-table-column prop="down_mgmt_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
-              <el-table-column prop="down_mgmt_payable" label="应付款" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="down_mgmt_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="down_mgmt_payment" label="付款" min-width="110" :formatter="amountFormatter" />
-              <el-table-column prop="down_mgmt_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
-            </el-table-column>
-            <el-table-column prop="zero_hour_labor" label="零星用工" min-width="120" :formatter="amountFormatter" />
-            <el-table-column prop="non_contract_expense" label="无合同费用" min-width="120" :formatter="amountFormatter" />
-          </el-table>
+          <AppDataTable v-if="yearlyRowCount > 0">
+            <el-table
+              :data="yearlyTableData"
+              border
+              v-loading="costLoading"
+              :row-class-name="costRowClassName"
+              :cell-style="costCellStyle"
+              class="cost-report-table"
+            >
+              <el-table-column prop="company_category" label="公司合同分类" fixed min-width="140" />
+              <el-table-column label="上游合同">
+                <el-table-column prop="upstream_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
+                <el-table-column prop="upstream_receivable" label="应收款" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="upstream_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="upstream_receipt" label="收款" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="upstream_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
+              </el-table-column>
+              <el-table-column label="下游及管理合同">
+                <el-table-column prop="down_mgmt_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
+                <el-table-column prop="down_mgmt_payable" label="应付款" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="down_mgmt_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="down_mgmt_payment" label="付款" min-width="110" :formatter="amountFormatter" />
+                <el-table-column prop="down_mgmt_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
+              </el-table-column>
+              <el-table-column prop="zero_hour_labor" label="零星用工" min-width="120" :formatter="amountFormatter" />
+              <el-table-column prop="non_contract_expense" label="无合同费用" min-width="120" :formatter="amountFormatter" />
+            </el-table>
+          </AppDataTable>
+          <AppEmptyState
+            v-else-if="!costLoading"
+            title="暂无年度成本数据"
+            description="请重新选择月份后查询。"
+          />
         </el-tab-pane>
       </el-tabs>
-    </el-card>
+    </AppSectionCard>
 
-    <el-card shadow="hover" class="page-header">
-       <template #header>
-         <div class="header-content">
-           <span class="title">数据查询与导出</span>
-           <span class="subtitle">请选择相应报表进行导出</span>
-         </div>
-       </template>
-       
-       <el-row :gutter="20">
-      <el-col :xs="24" :md="6" style="margin-bottom: 20px;">
-        <!-- Comprehensive Report Export Section -->
-        <el-card shadow="hover" class="chart-card" style="margin-top: 0; min-height: 100%;">
-      <template #header>
-        <div class="card-header">
-          <span>上游合同综合报表导出</span>
-        </div>
-      </template>
-      <div class="filter-container">
-        <span class="filter-label">签约时间范围:</span>
-        <el-date-picker
-          v-model="exportFilters.dateRange"
-          type="daterange"
-          range-separator="至"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          value-format="YYYY-MM-DD"
-          class="filter-item"
-        />
-        
-        <span class="filter-label">合同状态:</span>
-        <el-select v-model="exportFilters.status" class="filter-item short">
-          <el-option label="全部" value="全部" />
-          <el-option label="执行中" value="执行中" />
-          <el-option label="已完工" value="已完工" />
-          <el-option label="已结算" value="已结算" />
-          <el-option label="质保期到期" value="质保期到期" />
-          <el-option label="合同终止" value="合同终止" />
-          <el-option label="合同中止" value="合同中止" />
-        </el-select>
-        
-        <el-button type="primary" :loading="exportLoading" @click="handleExport">
-          <el-icon class="el-icon--right"><Download /></el-icon> 导出 Excel
-        </el-button>
+    <AppSectionCard>
+      <template #header>数据查询与导出</template>
+      <div class="report-export-grid">
+        <article v-for="card in exportCards" :key="card.title" class="report-export-card">
+          <div class="report-export-card__header">
+            <h3>{{ card.title }}</h3>
+            <p>{{ card.description }}</p>
+          </div>
+
+          <AppFilterBar class="report-export-card__filters">
+            <template v-if="card.type === 'daterange'">
+              <el-date-picker
+                v-model="card.model.value"
+                type="daterange"
+                range-separator="至"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                value-format="YYYY-MM-DD"
+              />
+            </template>
+            <template v-else-if="card.type === 'daterange-with-status'">
+              <el-date-picker
+                v-model="exportFilters.dateRange"
+                type="daterange"
+                range-separator="至"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                value-format="YYYY-MM-DD"
+              />
+              <el-select v-model="exportFilters.status" placeholder="合同状态">
+                <el-option label="全部" value="全部" />
+                <el-option label="执行中" value="执行中" />
+                <el-option label="已完工" value="已完工" />
+                <el-option label="已结算" value="已结算" />
+                <el-option label="质保期到期" value="质保期到期" />
+                <el-option label="合同终止" value="合同终止" />
+                <el-option label="合同中止" value="合同中止" />
+              </el-select>
+            </template>
+            <template v-else>
+              <el-input
+                v-model="card.model.value"
+                placeholder="请输入合同序号/编号/名称"
+                clearable
+              />
+            </template>
+            <el-button type="primary" plain :loading="card.loading.value" @click="card.action">导出 Excel</el-button>
+          </AppFilterBar>
+
+          <p class="report-export-card__footnote">{{ card.footnote }}</p>
+        </article>
       </div>
-      <div style="font-size: 12px; color: #909399; margin-top: 10px;">
-        * 导出内容包含：上游合同基础信息、财务累计数据（应收/挂账/已收）、以及关联的下游、管理、无合同费用统计。
-      </div>
-    </el-card>
-      </el-col>
-
-      <!-- Upstream-Downstream Association Report Export -->
-      <el-col :xs="24" :md="6" style="margin-bottom: 20px;">
-        <el-card shadow="hover" class="chart-card" style="margin-top: 0; min-height: 100%;">
-          <template #header>
-            <div class="card-header">
-              <span>上下游合同关联报表导出</span>
-            </div>
-          </template>
-          <div class="filter-container">
-            <span class="filter-label">合同查询:</span>
-            <el-input
-              v-model="assocQuery"
-              placeholder="请输入合同序号/编号/名称"
-              clearable
-              class="filter-item"
-            />
-            <el-button type="primary" :loading="assocLoading" @click="handleExportAssociation">
-              <el-icon class="el-icon--right"><Download /></el-icon> 导出 Excel
-            </el-button>
-          </div>
-          <div style="font-size: 12px; color: #909399; margin-top: 10px;">
-            * 导出内容包含：上游合同及其关联的下游/管理合同、无合同费用的详细关联数据。
-          </div>
-        </el-card>
-      </el-col>
-
-      <!-- Upstream Receivable Export -->
-      <el-col :xs="24" :md="6" style="margin-bottom: 20px;">
-        <el-card shadow="hover" class="chart-card" style="margin-top: 0; min-height: 100%;">
-          <template #header>
-            <div class="card-header">
-              <span>上游合同应收款报表导出</span>
-            </div>
-          </template>
-          <div class="filter-container">
-            <span class="filter-label">应收时间范围:</span>
-            <el-date-picker
-              v-model="recDateRange"
-              type="daterange"
-              range-separator="至"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              value-format="YYYY-MM-DD"
-              style="margin-right: 20px; width: 240px;"
-            />
-            <el-button type="primary" :loading="recLoading" @click="handleExportRec">
-              <el-icon class="el-icon--right"><Download /></el-icon> 导出 Excel
-            </el-button>
-          </div>
-          <div style="font-size: 12px; color: #909399; margin-top: 10px;">
-            * 导出内容包含：上游合同的所有应收款记录（含金额、日期、备注）。
-          </div>
-        </el-card>
-      </el-col>
-      
-      <!-- Downstream/Management Payable Export -->
-      <el-col :xs="24" :md="6" style="margin-bottom: 20px;">
-        <el-card shadow="hover" class="chart-card" style="margin-top: 0; min-height: 100%;">
-          <template #header>
-            <div class="card-header">
-              <span>下游及管理合同应付款报表导出</span>
-            </div>
-          </template>
-          <div class="filter-container">
-            <span class="filter-label">应付时间范围:</span>
-            <el-date-picker
-              v-model="payDateRange"
-              type="daterange"
-              range-separator="至"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              value-format="YYYY-MM-DD"
-              style="margin-right: 20px; width: 240px;"
-            />
-            <el-button type="primary" :loading="payLoading" @click="handleExportPay">
-              <el-icon class="el-icon--right"><Download /></el-icon> 导出 Excel
-            </el-button>
-          </div>
-          <div style="font-size: 12px; color: #909399; margin-top: 10px;">
-            * 导出内容包含：下游及管理合同的所有应付款记录（含金额、日期、备注）。
-          </div>
-        </el-card>
-      </el-col>
-
-      <!-- Upstream Invoice Export -->
-      <el-col :xs="24" :md="6" style="margin-bottom: 20px;">
-        <el-card shadow="hover" class="chart-card" style="margin-top: 0; min-height: 100%;">
-          <template #header>
-            <div class="card-header">
-              <span>上游合同挂账报表导出</span>
-            </div>
-          </template>
-          <div class="filter-container">
-            <span class="filter-label">挂账时间范围:</span>
-            <el-date-picker
-              v-model="upInvDateRange"
-              type="daterange"
-              range-separator="至"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              value-format="YYYY-MM-DD"
-              style="margin-right: 20px; width: 240px;"
-            />
-            <el-button type="primary" :loading="upInvLoading" @click="handleExportUpInv">
-              <el-icon class="el-icon--right"><Download /></el-icon> 导出 Excel
-            </el-button>
-          </div>
-          <div style="font-size: 12px; color: #909399; margin-top: 10px;">
-            * 导出内容包含：上游合同的所有挂账/开票记录（含金额、日期、发票号、备注）。
-          </div>
-        </el-card>
-      </el-col>
-      
-      <!-- Downstream/Management Invoice Export -->
-      <el-col :xs="24" :md="6" style="margin-bottom: 20px;">
-        <el-card shadow="hover" class="chart-card" style="margin-top: 0; min-height: 100%;">
-          <template #header>
-            <div class="card-header">
-              <span>下游及管理合同挂账报表导出</span>
-            </div>
-          </template>
-          <div class="filter-container">
-            <span class="filter-label">挂账时间范围:</span>
-            <el-date-picker
-              v-model="downInvDateRange"
-              type="daterange"
-              range-separator="至"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              value-format="YYYY-MM-DD"
-              style="margin-right: 20px; width: 240px;"
-            />
-            <el-button type="primary" :loading="downInvLoading" @click="handleExportDownInv">
-              <el-icon class="el-icon--right"><Download /></el-icon> 导出 Excel
-            </el-button>
-          </div>
-          <div style="font-size: 12px; color: #909399; margin-top: 10px;">
-            * 导出内容包含：下游及管理合同的所有挂账/收票记录（含金额、日期、发票号、备注）。
-          </div>
-        </el-card>
-      </el-col>
-
-      <!-- Upstream Receipt Export -->
-      <el-col :xs="24" :md="6" style="margin-bottom: 20px;">
-        <el-card shadow="hover" class="chart-card" style="margin-top: 0; min-height: 100%;">
-          <template #header>
-            <div class="card-header">
-              <span>上游合同收款报表导出</span>
-            </div>
-          </template>
-          <div class="filter-container">
-            <span class="filter-label">收款时间范围:</span>
-            <el-date-picker
-              v-model="upReceiptDateRange"
-              type="daterange"
-              range-separator="至"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              value-format="YYYY-MM-DD"
-              style="margin-right: 20px; width: 240px;"
-            />
-            <el-button type="primary" :loading="upReceiptLoading" @click="handleExportUpReceipt">
-              <el-icon class="el-icon--right"><Download /></el-icon> 导出 Excel
-            </el-button>
-          </div>
-          <div style="font-size: 12px; color: #909399; margin-top: 10px;">
-            * 导出内容包含：上游合同的所有实际收款记录（含金额、日期、方式、备注）。
-          </div>
-        </el-card>
-      </el-col>
-
-      <!-- Downstream/Management Payment Export -->
-      <el-col :xs="24" :md="6" style="margin-bottom: 20px;">
-        <el-card shadow="hover" class="chart-card" style="margin-top: 0; min-height: 100%;">
-          <template #header>
-            <div class="card-header">
-              <span>下游及管理合同付款报表导出</span>
-            </div>
-          </template>
-          <div class="filter-container">
-            <span class="filter-label">付款时间范围:</span>
-            <el-date-picker
-              v-model="downPayDateRange"
-              type="daterange"
-              range-separator="至"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              value-format="YYYY-MM-DD"
-              style="margin-right: 20px; width: 240px;"
-            />
-            <el-button type="primary" :loading="downPayLoading" @click="handleExportDownPay">
-              <el-icon class="el-icon--right"><Download /></el-icon> 导出 Excel
-            </el-button>
-          </div>
-          <div style="font-size: 12px; color: #909399; margin-top: 10px;">
-            * 导出内容包含：下游及管理合同的所有实际付款记录（含金额、日期、方式、备注）。
-          </div>
-        </el-card>
-      </el-col>
-
-      <!-- Non-Contract Expense Payment Export -->
-      <el-col :xs="24" :md="6" style="margin-bottom: 20px;">
-        <el-card shadow="hover" class="chart-card" style="margin-top: 0; min-height: 100%;">
-          <template #header>
-            <div class="card-header">
-              <span>无合同费用付款报表导出</span>
-            </div>
-          </template>
-          <div class="filter-container">
-            <span class="filter-label">费用时间范围:</span>
-            <el-date-picker
-              v-model="expPayDateRange"
-              type="daterange"
-              range-separator="至"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              value-format="YYYY-MM-DD"
-              style="margin-right: 20px; width: 240px;"
-            />
-            <el-button type="primary" :loading="expPayLoading" @click="handleExportExpPay">
-              <el-icon class="el-icon--right"><Download /></el-icon> 导出 Excel
-            </el-button>
-          </div>
-          <div style="font-size: 12px; color: #909399; margin-top: 10px;">
-            * 导出内容包含：所有无合同费用报销记录（含金额、日期、类别、经办人、备注）。
-          </div>
-        </el-card>
-      </el-col>
-
-      <!-- Upstream Settlement Export -->
-      <el-col :xs="24" :md="6" style="margin-bottom: 20px;">
-        <el-card shadow="hover" class="chart-card" style="margin-top: 0; min-height: 100%;">
-          <template #header>
-            <div class="card-header">
-              <span>上游合同结算报表导出</span>
-            </div>
-          </template>
-          <div class="filter-container">
-            <span class="filter-label">结算时间范围:</span>
-            <el-date-picker
-              v-model="upSettlementDateRange"
-              type="daterange"
-              range-separator="至"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              value-format="YYYY-MM-DD"
-              style="margin-right: 20px; width: 240px;"
-            />
-            <el-button type="primary" :loading="upSettlementLoading" @click="handleExportUpSettlement">
-              <el-icon class="el-icon--right"><Download /></el-icon> 导出 Excel
-            </el-button>
-          </div>
-          <div style="font-size: 12px; color: #909399; margin-top: 10px;">
-            * 导出内容包含：上游合同的所有结算/完工记录（含结算金额、完工日期、备注）。
-          </div>
-        </el-card>
-      </el-col>
-
-      <!-- Downstream/Management Settlement Export -->
-      <el-col :xs="24" :md="6" style="margin-bottom: 20px;">
-        <el-card shadow="hover" class="chart-card" style="margin-top: 0; min-height: 100%;">
-          <template #header>
-            <div class="card-header">
-              <span>下游及管理合同结算报表导出</span>
-            </div>
-          </template>
-          <div class="filter-container">
-            <span class="filter-label">结算时间范围:</span>
-            <el-date-picker
-              v-model="downSettlementDateRange"
-              type="daterange"
-              range-separator="至"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              value-format="YYYY-MM-DD"
-              style="margin-right: 20px; width: 240px;"
-            />
-            <el-button type="primary" :loading="downSettlementLoading" @click="handleExportDownSettlement">
-              <el-icon class="el-icon--right"><Download /></el-icon> 导出 Excel
-            </el-button>
-          </div>
-          <div style="font-size: 12px; color: #909399; margin-top: 10px;">
-            * 导出内容包含：下游及管理合同的所有结算记录（含结算金额、备注）。
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-    </el-card>
+    </AppSectionCard>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { ElMessage } from 'element-plus'
+import AppPageHeader from '@/components/layout/AppPageHeader.vue'
+import AppSectionCard from '@/components/ui/AppSectionCard.vue'
+import AppFilterBar from '@/components/ui/AppFilterBar.vue'
+import AppDataTable from '@/components/ui/AppDataTable.vue'
+import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import {
   getCostMonthlyQuarterlyReport,
   downloadCostMonthlyQuarterlyReport,
@@ -507,8 +249,6 @@ import {
   downloadDownstreamSettlementsReport,
   downloadAssociationReport
 } from '@/api/reports'
-import { ElMessage } from 'element-plus'
-import { Download } from '@element-plus/icons-vue'
 
 const COST_FIELDS = [
   'upstream_contract_amount',
@@ -531,7 +271,7 @@ const costLoading = ref(false)
 const costExportLoading = ref(false)
 const costActiveTab = ref('monthly')
 
-const buildEmptyCostRecord = (companyCategory = '合计') => {
+function buildEmptyCostRecord(companyCategory = '合计') {
   const record = { company_category: companyCategory }
   COST_FIELDS.forEach((key) => {
     record[key] = 0
@@ -577,30 +317,34 @@ const yearlyTitle = computed(() => {
 })
 
 const monthlyTableData = computed(() => {
-  const rows = (costReportData.value.monthly?.rows || []).map(row => ({ ...buildEmptyCostRecord(row.company_category), ...row, is_total: false }))
+  const rows = (costReportData.value.monthly?.rows || []).map((row) => ({ ...buildEmptyCostRecord(row.company_category), ...row, is_total: false }))
   const total = { ...buildEmptyCostRecord('合计'), ...(costReportData.value.monthly?.total || {}), company_category: '合计', is_total: true }
   return [...rows, total]
 })
+const monthlyRowCount = computed(() => costReportData.value.monthly?.rows?.length || 0)
 
 const quarterlyTableData = computed(() => {
-  const rows = (costReportData.value.quarterly?.rows || []).map(row => ({ ...buildEmptyCostRecord(row.company_category), ...row, is_total: false }))
+  const rows = (costReportData.value.quarterly?.rows || []).map((row) => ({ ...buildEmptyCostRecord(row.company_category), ...row, is_total: false }))
   const total = { ...buildEmptyCostRecord('合计'), ...(costReportData.value.quarterly?.total || {}), company_category: '合计', is_total: true }
   return [...rows, total]
 })
+const quarterlyRowCount = computed(() => costReportData.value.quarterly?.rows?.length || 0)
 
 const halfYearlyTableData = computed(() => {
-  const rows = (costReportData.value.half_yearly?.rows || []).map(row => ({ ...buildEmptyCostRecord(row.company_category), ...row, is_total: false }))
+  const rows = (costReportData.value.half_yearly?.rows || []).map((row) => ({ ...buildEmptyCostRecord(row.company_category), ...row, is_total: false }))
   const total = { ...buildEmptyCostRecord('合计'), ...(costReportData.value.half_yearly?.total || {}), company_category: '合计', is_total: true }
   return [...rows, total]
 })
+const halfYearlyRowCount = computed(() => costReportData.value.half_yearly?.rows?.length || 0)
 
 const yearlyTableData = computed(() => {
-  const rows = (costReportData.value.yearly?.rows || []).map(row => ({ ...buildEmptyCostRecord(row.company_category), ...row, is_total: false }))
+  const rows = (costReportData.value.yearly?.rows || []).map((row) => ({ ...buildEmptyCostRecord(row.company_category), ...row, is_total: false }))
   const total = { ...buildEmptyCostRecord('合计'), ...(costReportData.value.yearly?.total || {}), company_category: '合计', is_total: true }
   return [...rows, total]
 })
+const yearlyRowCount = computed(() => costReportData.value.yearly?.rows?.length || 0)
 
-const parseYearMonth = () => {
+function parseYearMonth() {
   if (!costMonth.value) return { year: now.getFullYear(), month: now.getMonth() + 1 }
   const [yearStr, monthStr] = costMonth.value.split('-')
   const year = Number(yearStr)
@@ -611,7 +355,7 @@ const parseYearMonth = () => {
   return { year, month }
 }
 
-const handleQueryCostReport = async () => {
+async function handleQueryCostReport() {
   costLoading.value = true
   try {
     const { year, month } = parseYearMonth()
@@ -640,30 +384,30 @@ const handleQueryCostReport = async () => {
         total: { ...buildEmptyCostRecord('合计'), ...(res.yearly?.total || {}) }
       }
     }
-  } catch (e) {
-    console.error(e)
+  } catch (error) {
+    console.error(error)
     ElMessage.error('成本报表查询失败')
   } finally {
     costLoading.value = false
   }
 }
 
-const handleExportCostReport = async () => {
+async function handleExportCostReport() {
   costExportLoading.value = true
   try {
     const { year, month } = parseYearMonth()
     const res = await downloadCostMonthlyQuarterlyReport({ year, month })
     downloadFile(res, `月度季度成本报表_${year}年${String(month).padStart(2, '0')}月.xlsx`)
     ElMessage.success('导出成功')
-  } catch (e) {
-    console.error(e)
+  } catch (error) {
+    console.error(error)
     ElMessage.error('导出失败')
   } finally {
     costExportLoading.value = false
   }
 }
 
-const amountFormatter = (_row, _column, value) => {
+function amountFormatter(_row, _column, value) {
   const amount = Number(value)
   if (!Number.isFinite(amount)) {
     return '0.00'
@@ -673,19 +417,16 @@ const amountFormatter = (_row, _column, value) => {
     maximumFractionDigits: 2
   })
 }
+
 const costRowClassName = ({ row }) => (row.is_total ? 'cost-total-row' : '')
-const costCellStyle = ({ column }) => {
+
+function costCellStyle({ column }) {
   if (COST_FIELDS.includes(column.property)) {
     return { textAlign: 'right' }
   }
   return {}
 }
 
-onMounted(() => {
-  handleQueryCostReport()
-})
-
-// Export State
 const exportFilters = ref({
   dateRange: [],
   status: '全部'
@@ -713,395 +454,436 @@ const upSettlementLoading = ref(false)
 const downSettlementLoading = ref(false)
 const assocLoading = ref(false)
 
-const handleExport = async () => {
-    exportLoading.value = true
-    try {
-        const params = {
-            status: exportFilters.value.status
-        }
-        if (exportFilters.value.dateRange && exportFilters.value.dateRange.length === 2) {
-            params.start_date = exportFilters.value.dateRange[0]
-            params.end_date = exportFilters.value.dateRange[1]
-        }
-        const res = await downloadComprehensiveReport(params)
-        downloadFile(res, `上游合同综合报表_${new Date().toISOString().slice(0,10)}.xlsx`)
-        ElMessage.success('导出成功')
-    } catch (e) {
-        console.error(e)
-        ElMessage.error('导出失败')
-    } finally {
-        exportLoading.value = false
+async function handleExport() {
+  exportLoading.value = true
+  try {
+    const params = {
+      status: exportFilters.value.status
     }
+    if (exportFilters.value.dateRange && exportFilters.value.dateRange.length === 2) {
+      params.start_date = exportFilters.value.dateRange[0]
+      params.end_date = exportFilters.value.dateRange[1]
+    }
+    const res = await downloadComprehensiveReport(params)
+    downloadFile(res, `上游合同综合报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('导出失败')
+  } finally {
+    exportLoading.value = false
+  }
 }
 
-const handleExportRec = async () => {
-    recLoading.value = true
-    try {
-        const params = {}
-        if (recDateRange.value && recDateRange.value.length === 2) {
-            params.start_date = recDateRange.value[0]
-            params.end_date = recDateRange.value[1]
-        }
-        const res = await downloadReceivablesReport(params)
-        downloadFile(res, `上游合同应收款明细_${new Date().toISOString().slice(0,10)}.xlsx`)
-        ElMessage.success('导出成功')
-    } catch (e) {
-        console.error(e)
-        ElMessage.error('导出失败')
-    } finally {
-        recLoading.value = false
+async function handleExportRec() {
+  recLoading.value = true
+  try {
+    const params = {}
+    if (recDateRange.value && recDateRange.value.length === 2) {
+      params.start_date = recDateRange.value[0]
+      params.end_date = recDateRange.value[1]
     }
+    const res = await downloadReceivablesReport(params)
+    downloadFile(res, `上游合同应收款明细_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('导出失败')
+  } finally {
+    recLoading.value = false
+  }
 }
 
-const handleExportPay = async () => {
-    payLoading.value = true
-    try {
-        const params = {}
-        if (payDateRange.value && payDateRange.value.length === 2) {
-            params.start_date = payDateRange.value[0]
-            params.end_date = payDateRange.value[1]
-        }
-        const res = await downloadPayablesReport(params)
-        downloadFile(res, `下游及管理合同应付款明细_${new Date().toISOString().slice(0,10)}.xlsx`)
-        ElMessage.success('导出成功')
-    } catch (e) {
-        console.error(e)
-        ElMessage.error('导出失败')
-    } finally {
-        payLoading.value = false
+async function handleExportPay() {
+  payLoading.value = true
+  try {
+    const params = {}
+    if (payDateRange.value && payDateRange.value.length === 2) {
+      params.start_date = payDateRange.value[0]
+      params.end_date = payDateRange.value[1]
     }
+    const res = await downloadPayablesReport(params)
+    downloadFile(res, `下游及管理合同应付款明细_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('导出失败')
+  } finally {
+    payLoading.value = false
+  }
 }
 
-const handleExportUpInv = async () => {
-    upInvLoading.value = true
-    try {
-        const params = {}
-        if (upInvDateRange.value && upInvDateRange.value.length === 2) {
-            params.start_date = upInvDateRange.value[0]
-            params.end_date = upInvDateRange.value[1]
-        }
-        const res = await downloadUpstreamInvoicesReport(params)
-        downloadFile(res, `上游合同挂账报表_${new Date().toISOString().slice(0,10)}.xlsx`)
-        ElMessage.success('导出成功')
-    } catch (e) {
-        console.error(e)
-        ElMessage.error('导出失败')
-    } finally {
-        upInvLoading.value = false
+async function handleExportUpInv() {
+  upInvLoading.value = true
+  try {
+    const params = {}
+    if (upInvDateRange.value && upInvDateRange.value.length === 2) {
+      params.start_date = upInvDateRange.value[0]
+      params.end_date = upInvDateRange.value[1]
     }
+    const res = await downloadUpstreamInvoicesReport(params)
+    downloadFile(res, `上游合同挂账报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('导出失败')
+  } finally {
+    upInvLoading.value = false
+  }
 }
 
-const handleExportDownInv = async () => {
-    downInvLoading.value = true
-    try {
-        const params = {}
-        if (downInvDateRange.value && downInvDateRange.value.length === 2) {
-            params.start_date = downInvDateRange.value[0]
-            params.end_date = downInvDateRange.value[1]
-        }
-        const res = await downloadDownstreamInvoicesReport(params)
-        downloadFile(res, `下游及管理合同挂账报表_${new Date().toISOString().slice(0,10)}.xlsx`)
-        ElMessage.success('导出成功')
-    } catch (e) {
-        console.error(e)
-        ElMessage.error('导出失败')
-    } finally {
-        downInvLoading.value = false
+async function handleExportDownInv() {
+  downInvLoading.value = true
+  try {
+    const params = {}
+    if (downInvDateRange.value && downInvDateRange.value.length === 2) {
+      params.start_date = downInvDateRange.value[0]
+      params.end_date = downInvDateRange.value[1]
     }
+    const res = await downloadDownstreamInvoicesReport(params)
+    downloadFile(res, `下游及管理合同挂账报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('导出失败')
+  } finally {
+    downInvLoading.value = false
+  }
 }
 
-const handleExportUpReceipt = async () => {
-    upReceiptLoading.value = true
-    try {
-        const params = {}
-        if (upReceiptDateRange.value && upReceiptDateRange.value.length === 2) {
-            params.start_date = upReceiptDateRange.value[0]
-            params.end_date = upReceiptDateRange.value[1]
-        }
-        const res = await downloadUpstreamReceiptsReport(params)
-        downloadFile(res, `上游合同收款报表_${new Date().toISOString().slice(0,10)}.xlsx`)
-        ElMessage.success('导出成功')
-    } catch (e) {
-        console.error(e)
-        ElMessage.error('导出失败')
-    } finally {
-        upReceiptLoading.value = false
+async function handleExportUpReceipt() {
+  upReceiptLoading.value = true
+  try {
+    const params = {}
+    if (upReceiptDateRange.value && upReceiptDateRange.value.length === 2) {
+      params.start_date = upReceiptDateRange.value[0]
+      params.end_date = upReceiptDateRange.value[1]
     }
+    const res = await downloadUpstreamReceiptsReport(params)
+    downloadFile(res, `上游合同收款报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('导出失败')
+  } finally {
+    upReceiptLoading.value = false
+  }
 }
 
-const handleExportDownPay = async () => {
-    downPayLoading.value = true
-    try {
-        const params = {}
-        if (downPayDateRange.value && downPayDateRange.value.length === 2) {
-            params.start_date = downPayDateRange.value[0]
-            params.end_date = downPayDateRange.value[1]
-        }
-        const res = await downloadDownstreamPaymentsReport(params)
-        downloadFile(res, `下游及管理合同付款报表_${new Date().toISOString().slice(0,10)}.xlsx`)
-        ElMessage.success('导出成功')
-    } catch (e) {
-        console.error(e)
-        ElMessage.error('导出失败')
-    } finally {
-        downPayLoading.value = false
+async function handleExportDownPay() {
+  downPayLoading.value = true
+  try {
+    const params = {}
+    if (downPayDateRange.value && downPayDateRange.value.length === 2) {
+      params.start_date = downPayDateRange.value[0]
+      params.end_date = downPayDateRange.value[1]
     }
+    const res = await downloadDownstreamPaymentsReport(params)
+    downloadFile(res, `下游及管理合同付款报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('导出失败')
+  } finally {
+    downPayLoading.value = false
+  }
 }
 
-const handleExportExpPay = async () => {
-    expPayLoading.value = true
-    try {
-        const params = {}
-        if (expPayDateRange.value && expPayDateRange.value.length === 2) {
-            params.start_date = expPayDateRange.value[0]
-            params.end_date = expPayDateRange.value[1]
-        }
-        const res = await downloadExpensePaymentsReport(params)
-        downloadFile(res, `无合同费用付款报表_${new Date().toISOString().slice(0,10)}.xlsx`)
-        ElMessage.success('导出成功')
-    } catch (e) {
-        console.error(e)
-        ElMessage.error('导出失败')
-    } finally {
-        expPayLoading.value = false
+async function handleExportExpPay() {
+  expPayLoading.value = true
+  try {
+    const params = {}
+    if (expPayDateRange.value && expPayDateRange.value.length === 2) {
+      params.start_date = expPayDateRange.value[0]
+      params.end_date = expPayDateRange.value[1]
     }
+    const res = await downloadExpensePaymentsReport(params)
+    downloadFile(res, `无合同费用付款报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('导出失败')
+  } finally {
+    expPayLoading.value = false
+  }
 }
 
-const handleExportUpSettlement = async () => {
-    upSettlementLoading.value = true
-    try {
-        const params = {}
-        if (upSettlementDateRange.value && upSettlementDateRange.value.length === 2) {
-            params.start_date = upSettlementDateRange.value[0]
-            params.end_date = upSettlementDateRange.value[1]
-        }
-        const res = await downloadUpstreamSettlementsReport(params)
-        downloadFile(res, `上游合同结算报表_${new Date().toISOString().slice(0,10)}.xlsx`)
-        ElMessage.success('导出成功')
-    } catch (e) {
-        console.error(e)
-        ElMessage.error('导出失败')
-    } finally {
-        upSettlementLoading.value = false
+async function handleExportUpSettlement() {
+  upSettlementLoading.value = true
+  try {
+    const params = {}
+    if (upSettlementDateRange.value && upSettlementDateRange.value.length === 2) {
+      params.start_date = upSettlementDateRange.value[0]
+      params.end_date = upSettlementDateRange.value[1]
     }
+    const res = await downloadUpstreamSettlementsReport(params)
+    downloadFile(res, `上游合同结算报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('导出失败')
+  } finally {
+    upSettlementLoading.value = false
+  }
 }
 
-const handleExportDownSettlement = async () => {
-    downSettlementLoading.value = true
-    try {
-        const params = {}
-        if (downSettlementDateRange.value && downSettlementDateRange.value.length === 2) {
-            params.start_date = downSettlementDateRange.value[0]
-            params.end_date = downSettlementDateRange.value[1]
-        }
-        const res = await downloadDownstreamSettlementsReport(params)
-        downloadFile(res, `下游及管理合同结算报表_${new Date().toISOString().slice(0,10)}.xlsx`)
-        ElMessage.success('导出成功')
-    } catch (e) {
-        console.error(e)
-        ElMessage.error('导出失败')
-    } finally {
-        downSettlementLoading.value = false
+async function handleExportDownSettlement() {
+  downSettlementLoading.value = true
+  try {
+    const params = {}
+    if (downSettlementDateRange.value && downSettlementDateRange.value.length === 2) {
+      params.start_date = downSettlementDateRange.value[0]
+      params.end_date = downSettlementDateRange.value[1]
     }
+    const res = await downloadDownstreamSettlementsReport(params)
+    downloadFile(res, `下游及管理合同结算报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('导出失败')
+  } finally {
+    downSettlementLoading.value = false
+  }
 }
 
-const handleExportAssociation = async () => {
-    assocLoading.value = true
-    try {
-        const params = {
-            query: assocQuery.value
-        }
-        const res = await downloadAssociationReport(params)
-        downloadFile(res, `上下游合同关联报表_${new Date().toISOString().slice(0,10)}.xlsx`)
-        ElMessage.success('导出成功')
-    } catch (e) {
-        console.error(e)
-        ElMessage.error('导出失败')
-    } finally {
-        assocLoading.value = false
+async function handleExportAssociation() {
+  assocLoading.value = true
+  try {
+    const params = {
+      query: assocQuery.value
     }
+    const res = await downloadAssociationReport(params)
+    downloadFile(res, `上下游合同关联报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('导出失败')
+  } finally {
+    assocLoading.value = false
+  }
 }
 
-const downloadFile = (res, filename) => {
-    const url = window.URL.createObjectURL(new Blob([res]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', filename)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+const exportCards = computed(() => [
+  {
+    title: '上游合同综合报表导出',
+    description: '按时间范围与合同状态导出综合统计结果。',
+    footnote: '导出内容包含：上游合同基础信息、财务累计数据，以及关联的下游、管理、无合同费用统计。',
+    type: 'daterange-with-status',
+    loading: exportLoading,
+    action: handleExport
+  },
+  {
+    title: '上下游合同关联报表导出',
+    description: '通过合同编号、名称或序号快速定位关联关系。',
+    footnote: '导出内容包含：上游合同及其关联的下游、管理合同与无合同费用明细。',
+    type: 'query',
+    model: assocQuery,
+    loading: assocLoading,
+    action: handleExportAssociation
+  },
+  {
+    title: '上游合同应收款报表导出',
+    description: '筛选应收时间范围，导出应收款记录。',
+    footnote: '导出内容包含：金额、日期、备注等应收款明细。',
+    type: 'daterange',
+    model: recDateRange,
+    loading: recLoading,
+    action: handleExportRec
+  },
+  {
+    title: '下游及管理合同应付款报表导出',
+    description: '按应付时间导出付款记录。',
+    footnote: '导出内容包含：金额、日期、备注等应付款明细。',
+    type: 'daterange',
+    model: payDateRange,
+    loading: payLoading,
+    action: handleExportPay
+  },
+  {
+    title: '上游合同挂账报表导出',
+    description: '导出上游挂账与开票记录。',
+    footnote: '导出内容包含：金额、日期、发票号、备注等字段。',
+    type: 'daterange',
+    model: upInvDateRange,
+    loading: upInvLoading,
+    action: handleExportUpInv
+  },
+  {
+    title: '下游及管理合同挂账报表导出',
+    description: '导出下游及管理合同挂账与收票记录。',
+    footnote: '导出内容包含：金额、日期、发票号、备注等字段。',
+    type: 'daterange',
+    model: downInvDateRange,
+    loading: downInvLoading,
+    action: handleExportDownInv
+  },
+  {
+    title: '上游合同收款报表导出',
+    description: '按收款时间范围导出到账记录。',
+    footnote: '导出内容包含：金额、日期、方式、备注等收款明细。',
+    type: 'daterange',
+    model: upReceiptDateRange,
+    loading: upReceiptLoading,
+    action: handleExportUpReceipt
+  },
+  {
+    title: '下游及管理合同付款报表导出',
+    description: '按付款时间范围导出实际付款记录。',
+    footnote: '导出内容包含：金额、日期、方式、备注等付款明细。',
+    type: 'daterange',
+    model: downPayDateRange,
+    loading: downPayLoading,
+    action: handleExportDownPay
+  },
+  {
+    title: '无合同费用付款报表导出',
+    description: '导出无合同费用支出记录。',
+    footnote: '导出内容包含：金额、日期、类别、经办人、备注等字段。',
+    type: 'daterange',
+    model: expPayDateRange,
+    loading: expPayLoading,
+    action: handleExportExpPay
+  },
+  {
+    title: '上游合同结算报表导出',
+    description: '导出上游合同结算与完工记录。',
+    footnote: '导出内容包含：结算金额、完工日期、备注等字段。',
+    type: 'daterange',
+    model: upSettlementDateRange,
+    loading: upSettlementLoading,
+    action: handleExportUpSettlement
+  },
+  {
+    title: '下游及管理合同结算报表导出',
+    description: '导出下游及管理合同结算记录。',
+    footnote: '导出内容包含：结算金额、备注等字段。',
+    type: 'daterange',
+    model: downSettlementDateRange,
+    loading: downSettlementLoading,
+    action: handleExportDownSettlement
+  }
+])
+
+function downloadFile(response, filename) {
+  const url = window.URL.createObjectURL(new Blob([response]))
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(url)
 }
+
+onMounted(() => {
+  handleQueryCostReport()
+})
 </script>
 
 <style scoped lang="scss">
-.app-container {
-  padding: 20px;
-  background-color: var(--surface-page);
-  min-height: calc(100vh - 84px);
-}
-
-.page-header {
-  margin-bottom: 20px;
-  border: 1px solid var(--border-subtle);
-  
-  .header-content {
-      display: flex;
-      flex-direction: column;
-      
-      .title {
-        font-size: 18px;
-        font-weight: bold;
-        color: var(--text-primary);
-        margin-bottom: 5px;
-      }
-      
-      .subtitle {
-        font-size: 13px;
-        color: var(--text-secondary);
-      }
-  }
-}
-
-.cost-report-card {
-  margin-bottom: 20px;
-  border: 1px solid var(--border-subtle);
-}
-
-.cost-filter-container {
-  margin-bottom: 12px;
+.report-dashboard {
+  display: grid;
+  gap: var(--space-6);
 }
 
 .cost-title {
-  margin: 8px 0 10px;
-  font-size: 16px;
-  font-weight: 600;
+  margin: 0 0 var(--space-4);
+  font-size: 15px;
+  font-weight: 700;
   color: var(--text-primary);
 }
 
-.cost-tabs {
-  :deep(.el-tabs__nav-wrap) {
-    margin-bottom: 6px;
-  }
+.cost-tabs :deep(.el-tabs__header) {
+  margin: 0 0 var(--space-4);
 }
 
-.cost-report-table {
-  :deep(th) {
-    text-align: center;
-    font-weight: 700;
-  }
+.cost-tabs :deep(.el-tabs__item) {
+  height: 38px;
+  color: var(--text-secondary);
+}
 
-  :deep(.el-table__cell) {
-    padding: 8px 0;
-  }
+.cost-tabs :deep(.el-tabs__item.is-active) {
+  color: var(--brand-primary-strong);
+}
+
+.cost-report-table :deep(th) {
+  text-align: center;
+  font-weight: 700;
+}
+
+.cost-report-table :deep(.el-table__cell) {
+  padding: 10px 0;
 }
 
 :deep(.cost-total-row td.el-table__cell) {
-  background-color: #f6f1d9 !important;
+  background: color-mix(in srgb, var(--status-warning) 12%, var(--surface-panel));
   font-weight: 700;
 }
 
-.filter-container {
-  background-color: var(--surface-panel);
-  padding: 15px;
-  margin-bottom: 20px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px 0;
-  
-  .filter-label {
-    font-weight: bold;
-    color: var(--text-secondary);
-    margin-right: 10px;
-    font-size: 14px;
-    white-space: nowrap;
-  }
-
-  .filter-item {
-    margin-right: 20px; 
-    width: 240px;
-    
-    &.short {
-        width: 150px;
-    }
-  }
+.report-export-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
 }
 
-/* Chart Cards (Generic for Export Box) */
-.chart-card {
+.report-export-card {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
   border: 1px solid var(--border-subtle);
-  border-radius: 14px;
-  margin-bottom: 20px;
-  background: var(--surface-panel);
-  transition: transform 0.2s, box-shadow 0.2s;
-  
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-soft);
-  }
-  
-  :deep(.el-card__header) {
-    padding: 15px 20px;
-    border-bottom: 1px solid var(--border-subtle);
-    background: var(--surface-panel);
-  }
-
-  :deep(.el-card__body) {
-    background: var(--surface-panel);
-  }
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, var(--surface-panel), var(--surface-panel-muted));
+  box-shadow: var(--shadow-soft);
 }
 
-.card-header {
+.report-export-card__header h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
   color: var(--text-primary);
-  font-weight: 700;
 }
 
-.cost-report-table {
-  :deep(.el-table__header th) {
-    background: #f4f7f9;
-    color: var(--text-primary);
-  }
+.report-export-card__header p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
 
-  :deep(.el-table__row td) {
-    color: var(--text-secondary);
+.report-export-card__filters {
+  margin: 0;
+}
+
+.report-export-card__filters :deep(.app-filter-bar) {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.report-export-card__footnote {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+@media (max-width: 1279px) {
+  .report-export-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media only screen and (max-width: 768px) {
-  .page-header :deep(.el-card__header) {
-    display: block; // Show header on mobile but maybe simplified
-    padding: 10px;
-  }
-  
-  .app-container {
-    padding: 10px;
+@media (max-width: 767px) {
+  .report-dashboard {
+    gap: var(--space-4);
   }
 
-  .filter-container {
-      flex-direction: column;
-      align-items: stretch; // Full width items
-      
-      .filter-label {
-          margin-bottom: 5px;
-          margin-right: 0;
-      }
-      
-      .filter-item {
-          width: 100% !important; // Force full width
-          margin-right: 0;
-          margin-bottom: 10px;
-          
-          &.short {
-              width: 100% !important;
-          }
-      }
-      
-      .el-button {
-          width: 100%;
-          margin-left: 0 !important;
-      }
+  .report-export-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .report-export-card {
+    padding: var(--space-4);
   }
 
   .cost-title {
