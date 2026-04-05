@@ -1,22 +1,51 @@
 import request from '@/utils/request'
 import { buildNotifications } from '@/utils/notificationAdapter'
 
-function isAdminUser() {
+function getPersistedAuthContext() {
     try {
-        let raw = '{}'
+        let userRaw = '{}'
+        let permissionsRaw = '[]'
         if (typeof localStorage !== 'undefined') {
-            raw = localStorage.getItem('user_info') || '{}'
+            userRaw = localStorage.getItem('user_info') || '{}'
+            permissionsRaw = localStorage.getItem('user_permissions') || '[]'
         } else if (globalThis.window?.localStorage) {
-            raw = globalThis.window.localStorage.getItem('user_info') || '{}'
+            userRaw = globalThis.window.localStorage.getItem('user_info') || '{}'
+            permissionsRaw = globalThis.window.localStorage.getItem('user_permissions') || '[]'
         } else if (globalThis.localStorage) {
-            raw = globalThis.localStorage.getItem('user_info') || '{}'
+            userRaw = globalThis.localStorage.getItem('user_info') || '{}'
+            permissionsRaw = globalThis.localStorage.getItem('user_permissions') || '[]'
         }
-        const user = JSON.parse(raw)
-        const role = String(user.role || '').toUpperCase()
-        return role === 'ADMIN' || user.is_superuser === true
+        return {
+            user: JSON.parse(userRaw),
+            permissions: JSON.parse(permissionsRaw)
+        }
     } catch {
-        return false
+        return { user: {}, permissions: [] }
     }
+}
+
+function isAdminUser() {
+    const { user } = getPersistedAuthContext()
+    const role = String(user.role || '').toUpperCase()
+    return role === 'ADMIN' || user.is_superuser === true
+}
+
+function canViewUpstreamContracts() {
+    const { user, permissions } = getPersistedAuthContext()
+    if (user.is_superuser === true) return true
+    return permissions.includes('view_upstream_contracts') || permissions.includes('view_upstream_basic_info')
+}
+
+function canViewDownstreamContracts() {
+    const { user, permissions } = getPersistedAuthContext()
+    if (user.is_superuser === true) return true
+    return permissions.includes('view_downstream_contracts') || permissions.includes('view_downstream_basic_info')
+}
+
+function canViewManagementContracts() {
+    const { user, permissions } = getPersistedAuthContext()
+    if (user.is_superuser === true) return true
+    return permissions.includes('view_management_contracts') || permissions.includes('view_management_basic_info')
 }
 
 function mapContractReminders(items = [], source = 'contract') {
@@ -31,11 +60,20 @@ function mapContractReminders(items = [], source = 'contract') {
 
 export async function fetchNotifications() {
     const includeAudit = isAdminUser()
-    const requests = [
-        request.get('/contracts/upstream/', { params: { page: 1, page_size: 10, status: '质保到期' } }),
-        request.get('/contracts/downstream/', { params: { page: 1, page_size: 10, status: '质保到期' } }),
-        request.get('/contracts/management/', { params: { page: 1, page_size: 10, status: '质保到期' } })
-    ]
+    const includeUpstream = canViewUpstreamContracts()
+    const includeDownstream = canViewDownstreamContracts()
+    const includeManagement = canViewManagementContracts()
+    const requests = []
+
+    if (includeUpstream) {
+        requests.push(request.get('/contracts/upstream/', { params: { page: 1, page_size: 10, status: '质保到期' } }))
+    }
+    if (includeDownstream) {
+        requests.push(request.get('/contracts/downstream/', { params: { page: 1, page_size: 10, status: '质保到期' } }))
+    }
+    if (includeManagement) {
+        requests.push(request.get('/contracts/management/', { params: { page: 1, page_size: 10, status: '质保到期' } }))
+    }
 
     if (includeAudit) {
         requests.unshift(
@@ -44,6 +82,10 @@ export async function fetchNotifications() {
                 suppressGlobalErrorMessage: true
             })
         )
+    }
+
+    if (requests.length === 0) {
+        return buildNotifications({ audits: [], reminders: [] })
     }
 
     const results = await Promise.allSettled(requests)
@@ -56,12 +98,13 @@ export async function fetchNotifications() {
     const upstreamResult = includeAudit ? results[1] : results[0]
     const downstreamResult = includeAudit ? results[2] : results[1]
     const managementResult = includeAudit ? results[3] : results[2]
+    const fallbackResult = { status: 'rejected' }
 
     const audits = auditResult?.status === 'fulfilled' ? (auditResult.value.items || auditResult.value.results || []) : []
     const reminders = [
-        ...(upstreamResult.status === 'fulfilled' ? mapContractReminders(upstreamResult.value.items || upstreamResult.value.results || [], 'upstream') : []),
-        ...(downstreamResult.status === 'fulfilled' ? mapContractReminders(downstreamResult.value.items || downstreamResult.value.results || [], 'downstream') : []),
-        ...(managementResult.status === 'fulfilled' ? mapContractReminders(managementResult.value.items || managementResult.value.results || [], 'management') : [])
+        ...((upstreamResult || fallbackResult).status === 'fulfilled' ? mapContractReminders(upstreamResult.value.items || upstreamResult.value.results || [], 'upstream') : []),
+        ...((downstreamResult || fallbackResult).status === 'fulfilled' ? mapContractReminders(downstreamResult.value.items || downstreamResult.value.results || [], 'downstream') : []),
+        ...((managementResult || fallbackResult).status === 'fulfilled' ? mapContractReminders(managementResult.value.items || managementResult.value.results || [], 'management') : [])
     ]
 
     return buildNotifications({

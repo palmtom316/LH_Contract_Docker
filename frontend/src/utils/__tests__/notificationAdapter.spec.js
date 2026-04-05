@@ -36,6 +36,11 @@ describe('fetchNotifications API facade', () => {
     vi.restoreAllMocks()
     vi.clearAllMocks()
     localStorage.clear()
+    localStorage.setItem('user_permissions', JSON.stringify([
+      'view_upstream_basic_info',
+      'view_downstream_basic_info',
+      'view_management_basic_info'
+    ]))
   })
 
   it('uses contract reminder endpoints', async () => {
@@ -77,6 +82,19 @@ describe('fetchNotifications API facade', () => {
       params: { page: 1, page_size: 10, status: '质保到期' }
     })
     expect(request.get).toHaveBeenNthCalledWith(3, '/contracts/management/', {
+      params: { page: 1, page_size: 10, status: '质保到期' }
+    })
+  })
+
+  it('only fetches reminder sources the role can view', async () => {
+    localStorage.setItem('user_info', JSON.stringify({ role: 'BIDDING' }))
+    localStorage.setItem('user_permissions', JSON.stringify(['view_upstream_basic_info']))
+    request.get.mockResolvedValueOnce({ items: [] })
+
+    await fetchNotifications()
+
+    expect(request.get).toHaveBeenCalledTimes(1)
+    expect(request.get).toHaveBeenCalledWith('/contracts/upstream/', {
       params: { page: 1, page_size: 10, status: '质保到期' }
     })
   })
