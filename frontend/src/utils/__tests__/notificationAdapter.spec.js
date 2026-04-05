@@ -33,14 +33,13 @@ describe('buildNotifications', () => {
 
 describe('fetchNotifications API facade', () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
     vi.clearAllMocks()
+    localStorage.clear()
   })
 
-  it('uses real audit and contract endpoints', async () => {
+  it('uses contract reminder endpoints', async () => {
     request.get
-      .mockResolvedValueOnce({
-        items: [{ id: 10, description: '系统登录', created_at: '2026-04-05T08:00:00Z' }]
-      })
       .mockResolvedValueOnce({
         items: [{ id: 22, contract_name: 'A合同', status: '质保到期', updated_at: '2026-04-06T08:00:00Z' }]
       })
@@ -49,17 +48,35 @@ describe('fetchNotifications API facade', () => {
 
     await fetchNotifications()
 
-    expect(request.get).toHaveBeenNthCalledWith(1, '/audit/', {
-      params: { page: 1, page_size: 10 },
-      suppressGlobalErrorMessage: true
-    })
-    expect(request.get).toHaveBeenNthCalledWith(2, '/contracts/upstream/', {
+    expect(request.get).toHaveBeenNthCalledWith(1, '/contracts/upstream/', {
       params: { page: 1, page_size: 10, status: '质保到期' }
     })
-    expect(request.get).toHaveBeenNthCalledWith(3, '/contracts/downstream/', {
+    expect(request.get).toHaveBeenNthCalledWith(2, '/contracts/downstream/', {
       params: { page: 1, page_size: 10, status: '质保到期' }
     })
-    expect(request.get).toHaveBeenNthCalledWith(4, '/contracts/management/', {
+    expect(request.get).toHaveBeenNthCalledWith(3, '/contracts/management/', {
+      params: { page: 1, page_size: 10, status: '质保到期' }
+    })
+  })
+
+  it('skips audit endpoint for non-admin users', async () => {
+    localStorage.setItem('user_info', JSON.stringify({ role: 'BIDDING' }))
+
+    request.get
+      .mockResolvedValueOnce({ items: [] })
+      .mockResolvedValueOnce({ items: [] })
+      .mockResolvedValueOnce({ items: [] })
+
+    await fetchNotifications()
+
+    expect(request.get).toHaveBeenCalledTimes(3)
+    expect(request.get).toHaveBeenNthCalledWith(1, '/contracts/upstream/', {
+      params: { page: 1, page_size: 10, status: '质保到期' }
+    })
+    expect(request.get).toHaveBeenNthCalledWith(2, '/contracts/downstream/', {
+      params: { page: 1, page_size: 10, status: '质保到期' }
+    })
+    expect(request.get).toHaveBeenNthCalledWith(3, '/contracts/management/', {
       params: { page: 1, page_size: 10, status: '质保到期' }
     })
   })
@@ -70,9 +87,8 @@ describe('fetchNotifications API facade', () => {
     await expect(fetchNotifications()).rejects.toThrow('Failed to load notifications')
   })
 
-  it('maps contract reminder timestamp from warranty_date', async () => {
+  it('maps contract reminder timestamp from updated_at fallback', async () => {
     request.get
-      .mockResolvedValueOnce({ items: [] })
       .mockResolvedValueOnce({
         items: [
           {
@@ -98,7 +114,6 @@ describe('fetchNotifications API facade', () => {
 
   it('scopes reminder ids by source and falls back timestamp from created_at then end_date', async () => {
     request.get
-      .mockResolvedValueOnce({ items: [] })
       .mockResolvedValueOnce({
         items: [{ id: 1, contract_name: '上游合同', status: '质保到期', created_at: '2026-04-02T08:00:00Z' }]
       })
