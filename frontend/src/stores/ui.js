@@ -56,6 +56,18 @@ export const useUiStore = defineStore('ui', {
     },
     toggleTheme() {
       this.setTheme(this.theme === 'light' ? 'dark' : 'light')
+    },
+    setNotificationDrawerOpen(open) {
+      this.notificationDrawerOpen = Boolean(open)
+    },
+    openNotificationDrawer() {
+      this.setNotificationDrawerOpen(true)
+    },
+    closeNotificationDrawer() {
+      this.setNotificationDrawerOpen(false)
+    },
+    toggleNotificationDrawer() {
+      this.setNotificationDrawerOpen(!this.notificationDrawerOpen)
     }
   }
 })

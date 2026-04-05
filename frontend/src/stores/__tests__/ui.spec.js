@@ -59,6 +59,24 @@ describe('ui store', () => {
     expect(store.theme).toBe('dark')
   })
 
+  it('manages notification drawer open state through dedicated actions', () => {
+    const store = useUiStore()
+
+    expect(store.notificationDrawerOpen).toBe(false)
+
+    store.openNotificationDrawer()
+    expect(store.notificationDrawerOpen).toBe(true)
+
+    store.closeNotificationDrawer()
+    expect(store.notificationDrawerOpen).toBe(false)
+
+    store.toggleNotificationDrawer()
+    expect(store.notificationDrawerOpen).toBe(true)
+
+    store.setNotificationDrawerOpen(false)
+    expect(store.notificationDrawerOpen).toBe(false)
+  })
+
   it('keeps legacy color token aliases mapped to semantic tokens', () => {
     const tokens = readFileSync(tokensPath, 'utf8')
 
