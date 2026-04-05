@@ -1,7 +1,8 @@
 
 import { defineStore } from 'pinia'
 import request from '@/utils/request'
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
+import { fetchNotifications as fetchNotificationsApi } from '@/api/notifications'
 
 export const useSystemStore = defineStore('system', () => {
     // State
@@ -11,6 +12,7 @@ export const useSystemStore = defineStore('system', () => {
     })
 
     const dictionaries = ref({}) // key: category, value: Array of options
+    const notifications = ref([])
 
     // Actions
     async function fetchConfig() {
@@ -86,14 +88,21 @@ export const useSystemStore = defineStore('system', () => {
         return dictionaries.value[category] || []
     }
 
+    async function fetchNotifications() {
+        notifications.value = await fetchNotificationsApi()
+        return notifications.value
+    }
+
     return {
         config,
         dictionaries,
+        notifications,
         fetchConfig,
         updateConfig,
         fetchOptions,
         fetchAllOptions,
         getOptions,
+        fetchNotifications,
         addOption,
         updateOption,
         deleteOption

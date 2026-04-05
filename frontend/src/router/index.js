@@ -81,6 +81,12 @@ const routes = [
                 meta: { title: '报表统计', icon: 'DataAnalysis' }
             },
             {
+                path: 'notifications',
+                name: 'NotificationCenter',
+                component: () => import('@/views/notifications/NotificationCenter.vue'),
+                meta: { title: '系统通知' }
+            },
+            {
                 path: 'system',
                 name: 'SystemManagement',
                 component: () => import('@/views/system/SystemManagement.vue'),
@@ -192,4 +198,3 @@ router.beforeEach((to, from, next) => {
 })
 
 export default router
-
