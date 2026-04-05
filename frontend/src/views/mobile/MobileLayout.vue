@@ -16,7 +16,7 @@
       <van-tabbar-item to="/m/contracts" icon="orders-o">合同</van-tabbar-item>
       <van-tabbar-item to="/m/expenses" icon="gold-coin-o">费用</van-tabbar-item>
       <van-tabbar-item to="/m/reports" icon="chart-trending-o">报表</van-tabbar-item>
-      <van-tabbar-item to="/m/profile" icon="user-o">我的</van-tabbar-item>
+      <van-tabbar-item v-if="userStore.canManageUsers" to="/m/profile" icon="user-o">我的</van-tabbar-item>
     </van-tabbar>
 
     <van-popup v-model:show="drawerOpen" position="left" class="menu-drawer" :style="{ width: '84%', height: '100%' }">
@@ -99,8 +99,7 @@ const pwdForm = reactive({
 const pageTitle = computed(() => route.meta.title || '蓝海合同')
 const unreadCount = computed(() => {
   const items = systemStore.notifications || []
-  const unread = items.filter(item => item.read === false).length
-  return unread > 0 ? unread : items.length
+  return items.filter(item => item.unread !== false).length
 })
 const menuItems = computed(() => {
   const items = []
@@ -172,10 +171,12 @@ async function handleChangePassword() {
 
 function confirmLogout() {
   drawerOpen.value = false
-  ElMessageBox.confirm('确定要退出登录吗?', '提示', { type: 'warning' }).then(async () => {
-    await userStore.logout()
-    router.push('/login')
-  })
+  ElMessageBox.confirm('确定要退出登录吗?', '提示', { type: 'warning' })
+    .then(async () => {
+      await userStore.logout()
+      router.push('/login')
+    })
+    .catch(() => {})
 }
 
 </script>

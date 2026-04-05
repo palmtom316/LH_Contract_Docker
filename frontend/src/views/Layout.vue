@@ -162,8 +162,7 @@ const pwdForm = reactive({
 
 const unreadCount = computed(() => {
   const items = systemStore.notifications || []
-  const unread = items.filter(item => item.read === false).length
-  return unread > 0 ? unread : items.length
+  return items.filter(item => item.unread !== false).length
 })
 const activeMenu = computed(() => route.path)
 const displayLogo = computed(() => {
@@ -252,10 +251,12 @@ async function handleChangePassword() {
 }
 
 function confirmLogout() {
-  ElMessageBox.confirm('确定要退出登录吗?', '提示', { type: 'warning' }).then(async () => {
-    await userStore.logout()
-    router.push('/login')
-  })
+  ElMessageBox.confirm('确定要退出登录吗?', '提示', { type: 'warning' })
+    .then(async () => {
+      await userStore.logout()
+      router.push('/login')
+    })
+    .catch(() => {})
 }
 
 onMounted(() => {
