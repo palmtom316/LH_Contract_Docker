@@ -9,15 +9,20 @@
       <el-button icon="Download" type="primary" link @click="download">下载</el-button>
     </div>
     
-    <div class="pdf-content" :style="{ transform: `scale(${scale})`, transformOrigin: 'top center' }">
-      <vue-pdf-embed :source="source" />
+    <div class="pdf-content">
+      <div class="pdf-frame-wrapper" :style="{ transform: `scale(${scale})`, transformOrigin: 'top center' }">
+        <iframe
+          :src="source"
+          class="pdf-frame"
+          title="PDF 预览"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import VuePdfEmbed from 'vue-pdf-embed'
 
 const props = defineProps({
   source: {
@@ -63,6 +68,23 @@ const download = () => {
     justify-content: center;
     transition: transform 0.2s;
     padding-bottom: 50px;
+  }
+
+  .pdf-frame-wrapper {
+    width: 100%;
+    min-height: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 0 12px 24px;
+    box-sizing: border-box;
+  }
+
+  .pdf-frame {
+    width: min(100%, 960px);
+    min-height: 75vh;
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    background: #fff;
   }
 }
 </style>

@@ -364,7 +364,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { defineAsyncComponent, ref, reactive, onMounted, onUnmounted } from 'vue'
 import { getExpenses, createExpense, updateExpense, deleteExpense, approveExpense, exportExpenses } from '@/api/expense'
 import { getContracts, getContract } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
@@ -425,10 +425,10 @@ const rules = {
   expense_date: [{ required: true, message: '请选择日期', trigger: 'change' }]
 }
 
-import FormulaInput from '@/components/FormulaInput.vue'
 import SmartDateInput from '@/components/SmartDateInput.vue'
 import DictSelect from '@/components/DictSelect.vue'
 
+const FormulaInput = defineAsyncComponent(() => import('@/components/FormulaInput.vue'))
 
 const getList = async () => {
   loading.value = true

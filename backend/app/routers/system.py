@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
 from app.database import get_db
 from app.models.system import SysDictionary, SystemConfig
+from app.services.dictionary_usage_service import DictionaryUsageService
 
 router = APIRouter()
 
@@ -316,6 +317,7 @@ class OptionUpdate(BaseModel):
     value: Optional[str] = None
     sort_order: Optional[int] = None
     is_active: Optional[bool] = None
+    replacement_value: Optional[str] = None
 
 @router.get("/options")
 async def get_all_options(
@@ -375,9 +377,12 @@ async def update_option(
     obj = res.scalar_one_or_none()
     if not obj:
         raise ResourceNotFoundError(resource_type="字典选项", resource_id=id)
-        
+    usage_service = DictionaryUsageService(db)
+
     if option.label is not None: obj.label = option.label
-    if option.value is not None: obj.value = option.value
+    if option.value is not None:
+        await usage_service.ensure_value_change_is_safe(obj, option.value)
+        obj.value = option.value
     if option.sort_order is not None: obj.sort_order = option.sort_order
     if option.is_active is not None: obj.is_active = option.is_active
     
@@ -388,21 +393,21 @@ async def update_option(
 @router.delete("/options/{id}")
 async def delete_option(
     id: int,
+    replacement_value: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Delete (Hard delete) an option"""
+    """Delete an option, falling back to disable when historical data references it."""
     if not current_user.is_superuser:
         raise PermissionDeniedError(detail="需要超级管理员权限")
-        
+
     res = await db.execute(select(SysDictionary).where(SysDictionary.id == id))
     obj = res.scalar_one_or_none()
     if not obj:
         raise ResourceNotFoundError(resource_type="字典选项", resource_id=id)
-        
-    await db.delete(obj)
-    await db.commit()
-    return {"message": "Option deleted"}
+
+    usage_service = DictionaryUsageService(db)
+    return await usage_service.disable_or_delete(obj, replacement_value=replacement_value)
 
 
 @router.get("/options/export")

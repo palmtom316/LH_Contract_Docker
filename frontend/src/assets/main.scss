@@ -1,22 +1,10 @@
-/* Global CSS Variables based on Design System */
-:root {
-  --color-primary: #1890FF;
-  --color-success: #52C41A;
-  --color-warning: #FAAD14;
-  --color-danger: #FF4D4F;
-  --color-bg: #F0F2F5;
-  --color-text-main: #303133;
-  --color-text-regular: #606266;
-  --color-text-secondary: #909399;
-  --sidebar-width: 220px;
-  --header-height: 60px;
-}
+@use '../styles/tokens.scss';
 
 body {
   margin: 0;
-  background-color: var(--color-bg);
-  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
-  color: var(--color-text-main);
+  background-color: var(--surface-page);
+  font-family: var(--font-family-base);
+  color: var(--text-primary);
 }
 
 /* Scrollbar styling */
@@ -26,14 +14,14 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: #edf1f4;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: #b3bec8;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: #95a3b1;
 }

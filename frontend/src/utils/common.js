@@ -32,15 +32,7 @@ export const getFileUrl = (path) => {
     const cleanKey = path.startsWith('/') ? path.substring(1) : path
 
     // Construct API URL: http://host:8000/api/v1/common/files/contracts/...
-    const url = `${apiUrl}/common/files/${cleanKey}`
-
-    // Append token for authentication if available
-    const token = localStorage.getItem('token')
-    if (token) {
-        return `${url}?token=${token}`
-    }
-
-    return url
+    return `${apiUrl}/common/files/${cleanKey}`
 }
 
 /**

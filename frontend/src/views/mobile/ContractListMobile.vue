@@ -8,7 +8,15 @@
         </van-dropdown-menu>
       </template>
       <template #right>
-        <van-icon name="plus" size="18" @click="showActionSheet = true" v-if="canCreate" />
+        <button
+          v-if="canCreate"
+          type="button"
+          class="create-button"
+          aria-label="新建合同"
+          @click="showActionSheet = true"
+        >
+          <van-icon name="plus" size="18" />
+        </button>
       </template>
     </van-nav-bar>
 
@@ -302,19 +310,20 @@ onMounted(() => {
 <style scoped>
 .mobile-contract-list {
   min-height: 100vh;
-  background-color: #f7f8fa;
+  background-color: var(--surface-page);
   padding-bottom: env(safe-area-inset-bottom);
 }
 
 .contract-card {
   margin: 12px;
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
+  box-shadow: var(--shadow-soft);
 }
 
 .contract-parties {
   font-size: 13px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .party-row {
@@ -323,13 +332,13 @@ onMounted(() => {
 }
 
 .party-row .label {
-  color: #999;
+  color: var(--text-muted);
   margin-right: 4px;
   flex-shrink: 0;
 }
 
 .party-row .value {
-  color: #333;
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -342,17 +351,30 @@ onMounted(() => {
 .contract-amount .amount {
   font-size: 16px;
   font-weight: 600;
-  color: #1890ff;
+  color: var(--brand-primary);
 }
 
 .contract-amount .date {
   font-size: 12px;
-  color: #999;
+  color: var(--text-muted);
   margin-top: 2px;
 }
 
 .status-tag {
   margin-left: 8px;
+}
+
+.create-button {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-panel);
+  color: var(--brand-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
 
 /* Customize Dropdown Menu to blend with NavBar */
@@ -364,7 +386,20 @@ onMounted(() => {
 :deep(.van-dropdown-menu__title) {
     font-weight: 600;
     font-size: 16px;
-    color: #323233;
+    color: var(--text-primary);
+}
+
+:deep(.van-search) {
+    background: transparent;
+}
+
+:deep(.van-search__content) {
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    background: var(--surface-panel);
+}
+
+:deep(.van-tabs__line) {
+    background: var(--brand-primary);
 }
 </style>
-

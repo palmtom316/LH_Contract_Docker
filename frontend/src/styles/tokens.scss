@@ -1,0 +1,46 @@
+:root {
+  --font-family-base: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+
+  --brand-primary: #1f5f8b;
+  --brand-primary-strong: #16496a;
+  --brand-primary-soft: #eaf1f6;
+  --brand-accent: #2f7d73;
+
+  --status-success: #2f6f4f;
+  --status-warning: #8b6a24;
+  --status-danger: #a44b3f;
+  --status-info: #5f6f82;
+
+  --surface-page: #f3f5f7;
+  --surface-panel: #ffffff;
+  --surface-panel-muted: #f8fafb;
+  --surface-sidebar: #163047;
+  --surface-sidebar-hover: #21445f;
+  --surface-sidebar-active: #244e72;
+  --surface-overlay: rgba(16, 24, 40, 0.36);
+
+  --border-subtle: #d6dde4;
+  --border-strong: #b7c3cf;
+
+  --text-primary: #1f2933;
+  --text-secondary: #52606d;
+  --text-muted: #7b8794;
+  --text-inverse: #f8fafc;
+
+  --shadow-card: 0 10px 28px rgba(15, 23, 42, 0.08);
+  --shadow-soft: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --shadow-focus: 0 0 0 3px rgba(31, 95, 139, 0.18);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+
+  --sidebar-width: 220px;
+  --header-height: 60px;
+}

@@ -3,7 +3,7 @@ Authentication Service - Password hashing and JWT handling
 Enhanced with security improvements
 """
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Tuple
 import re
 # from passlib.context import CryptContext
 import bcrypt
@@ -108,6 +108,15 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 
+def build_access_token_payload(user: User) -> dict:
+    """Build the canonical JWT payload for a user."""
+    return {
+        "sub": str(user.id),
+        "username": user.username,
+        "role": user.role.value,
+    }
+
+
 def create_refresh_token_sync(data: dict, jti: str, expires_delta: Optional[timedelta] = None) -> str:
     """Create JWT refresh token with JTI for tracking (sync version for token generation only)"""
     to_encode = data.copy()
@@ -153,6 +162,15 @@ async def create_refresh_token_with_db(
     
     logger.info(f"[AUTH] Created refresh token with JTI {jti[:8]}... for user {user_id}")
     return token
+
+
+async def issue_token_pair(user: User, db: AsyncSession) -> Tuple[str, str]:
+    """Issue an access/refresh token pair for a user."""
+    token_data = build_access_token_payload(user)
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data=token_data, expires_delta=access_token_expires)
+    refresh_token = await create_refresh_token_with_db(data=token_data, db=db)
+    return access_token, refresh_token
 
 
 async def verify_refresh_token_with_db(token: str, db: AsyncSession) -> Optional[dict]:

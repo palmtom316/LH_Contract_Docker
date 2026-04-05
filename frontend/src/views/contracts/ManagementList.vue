@@ -379,7 +379,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { defineAsyncComponent, ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getContracts, createContract, updateContract, deleteContract, exportContracts } from '@/api/contractManagement'
 import { getContracts as getUpstreamContracts, getContractSummary } from '@/api/contractUpstream'
@@ -389,11 +389,12 @@ import { useContractList, useTableSummary, useMobileDetection } from '@/composab
 import { downloadExcel, generateFilename } from '@/utils/download'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Download, Document, Connection, More } from '@element-plus/icons-vue'
-import SmartAutocomplete from '@/components/SmartAutocomplete.vue'
-import FormulaInput from '@/components/FormulaInput.vue'
 import SmartDateInput from '@/components/SmartDateInput.vue'
 import DictSelect from '@/components/DictSelect.vue'
 import { useUserStore } from '@/stores/user'
+
+const SmartAutocomplete = defineAsyncComponent(() => import('@/components/SmartAutocomplete.vue'))
+const FormulaInput = defineAsyncComponent(() => import('@/components/FormulaInput.vue'))
 
 const userStore = useUserStore()
 const router = useRouter()

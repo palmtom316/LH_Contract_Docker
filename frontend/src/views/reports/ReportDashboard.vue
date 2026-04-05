@@ -936,12 +936,13 @@ const downloadFile = (res, filename) => {
 <style scoped lang="scss">
 .app-container {
   padding: 20px;
-  background-color: #f5f7fa;
+  background-color: var(--surface-page);
   min-height: calc(100vh - 84px);
 }
 
 .page-header {
   margin-bottom: 20px;
+  border: 1px solid var(--border-subtle);
   
   .header-content {
       display: flex;
@@ -950,20 +951,20 @@ const downloadFile = (res, filename) => {
       .title {
         font-size: 18px;
         font-weight: bold;
-        color: #303133;
+        color: var(--text-primary);
         margin-bottom: 5px;
       }
       
       .subtitle {
         font-size: 13px;
-        color: #909399;
+        color: var(--text-secondary);
       }
   }
 }
 
 .cost-report-card {
   margin-bottom: 20px;
-  border: 1px solid #e4e7ed;
+  border: 1px solid var(--border-subtle);
 }
 
 .cost-filter-container {
@@ -974,7 +975,7 @@ const downloadFile = (res, filename) => {
   margin: 8px 0 10px;
   font-size: 16px;
   font-weight: 600;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .cost-tabs {
@@ -995,28 +996,29 @@ const downloadFile = (res, filename) => {
 }
 
 :deep(.cost-total-row td.el-table__cell) {
-  background-color: #fff8c4 !important;
+  background-color: #f6f1d9 !important;
   font-weight: 700;
 }
 
 .filter-container {
-  background-color: #fff;
+  background-color: var(--surface-panel);
   padding: 15px;
   margin-bottom: 20px;
-  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+  gap: 10px 0;
   
   .filter-label {
     font-weight: bold;
-    color: #606266;
+    color: var(--text-secondary);
     margin-right: 10px;
     font-size: 14px;
-    white-space: nowrap; // Prevent label breaking
+    white-space: nowrap;
   }
 
-  // Common styles for inputs in filters
   .filter-item {
     margin-right: 20px; 
     width: 240px;
@@ -1029,20 +1031,41 @@ const downloadFile = (res, filename) => {
 
 /* Chart Cards (Generic for Export Box) */
 .chart-card {
-  border: none;
-  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
   margin-bottom: 20px;
-  border: 1px solid #e4e7ed;
-  transition: all 0.3s;
+  background: var(--surface-panel);
+  transition: transform 0.2s, box-shadow 0.2s;
   
   &:hover {
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-soft);
   }
   
   :deep(.el-card__header) {
     padding: 15px 20px;
-    border-bottom: 1px solid #f0f2f5;
-    background: #fff;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--surface-panel);
+  }
+
+  :deep(.el-card__body) {
+    background: var(--surface-panel);
+  }
+}
+
+.card-header {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.cost-report-table {
+  :deep(.el-table__header th) {
+    background: #f4f7f9;
+    color: var(--text-primary);
+  }
+
+  :deep(.el-table__row td) {
+    color: var(--text-secondary);
   }
 }
 

@@ -12,9 +12,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import Overview from './home/Overview.vue'
-import Business from './home/Business.vue'
+import { defineAsyncComponent, ref } from 'vue'
+
+const Overview = defineAsyncComponent(() => import('./home/Overview.vue'))
+const Business = defineAsyncComponent(() => import('./home/Business.vue'))
 
 const activeTab = ref('overview')
 </script>

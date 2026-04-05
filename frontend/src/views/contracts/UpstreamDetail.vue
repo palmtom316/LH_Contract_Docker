@@ -459,12 +459,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onBeforeUnmount, computed, watch } from 'vue'
+import { defineAsyncComponent, ref, reactive, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import DictSelect from '@/components/DictSelect.vue'
-import FormulaInput from '@/components/FormulaInput.vue'
 import SmartDateInput from '@/components/SmartDateInput.vue'
 import { useRoute, useRouter } from 'vue-router'
-import StatCard from '@/components/StatCard.vue'
 import { Document, ArrowLeft, Wallet, Money, Tickets, CircleCheck } from '@element-plus/icons-vue'
 import { 
   getContract, 
@@ -477,6 +475,9 @@ import { uploadFile } from '@/api/common'
 import { getFileUrl, formatMoney, getStatusType } from '@/utils/common'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
+
+const FormulaInput = defineAsyncComponent(() => import('@/components/FormulaInput.vue'))
+const StatCard = defineAsyncComponent(() => import('@/components/StatCard.vue'))
 
 const userStore = useUserStore()
 

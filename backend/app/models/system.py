@@ -7,6 +7,7 @@ class SysDictionary(Base):
     System Data Dictionary for dynamic dropdown options.
     """
     __tablename__ = "sys_dictionaries"
+    PROTECTED_CATEGORIES = {"expense_type", "payment_category", "contract_category", "project_category"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     category = Column(String(100), nullable=False, index=True) # e.g., 'contract_category', 'pricing_mode'
@@ -18,6 +19,10 @@ class SysDictionary(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    @property
+    def is_protected_category(self) -> bool:
+        return self.category in self.PROTECTED_CATEGORIES
 
 class SystemConfig(Base):
     """

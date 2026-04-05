@@ -51,19 +51,13 @@ const showNavBar = computed(() => {
 
 // Show Back button everywhere (User requirement)
 const showBack = computed(() => {
-  return true;
+  const rootTabs = ['/m/contracts', '/m/expenses', '/m/reports', '/m/profile'];
+  return !rootTabs.includes(route.path.replace(/\/$/, ''));
 });
 
 const onClickLeft = () => {
   if (showBack.value) {
-    // Check if we are on the "Home" page
-    if (route.path.replace(/\/$/, '') === '/m/contracts') {
-       // User functionality: "Return to where I came from" (e.g. Login or PC view)
-       router.back();
-    } else {
-       // On other tabs, go to Home "Contracts"
-       router.push('/m/contracts');
-    }
+    router.back();
   }
 };
 </script>
@@ -71,7 +65,7 @@ const onClickLeft = () => {
 <style scoped>
 .mobile-layout {
   min-height: 100vh;
-  background-color: #f7f8fa;
+  background-color: var(--surface-page);
   display: flex;
   flex-direction: column;
 }
@@ -84,10 +78,27 @@ const onClickLeft = () => {
 
 .mobile-tabbar {
   z-index: 1000;
-  box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+  box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
 }
 
 :deep(.van-nav-bar__content) {
-  background-color: #fff;
+  background-color: rgba(255, 255, 255, 0.98);
+}
+
+:deep(.van-nav-bar) {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+:deep(.van-nav-bar__title) {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+:deep(.van-tabbar) {
+  border-top: 1px solid var(--border-subtle);
+}
+
+:deep(.van-tabbar-item--active) {
+  color: var(--brand-primary);
 }
 </style>

@@ -13,21 +13,28 @@ import zhCN from 'vant/lib/locale/lang/zh-CN'
 
 import App from './App.vue'
 import router from './router'
+import { useUserStore } from '@/stores/user'
+import { syncAccessTokenCookie } from '@/utils/authSession'
 import './assets/main.scss'
 
 // Configure Vant Chinese locale
 Locale.use('zh-CN', zhCN)
 
 const app = createApp(App)
+const pinia = createPinia()
 
 // Register Element Plus icons
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
     app.component(key, component)
 }
 
-app.use(createPinia())
+app.use(pinia)
 app.use(router)
 app.use(ElementPlus, { locale: zhCn })
+
+// Rehydrate the file-access cookie from the persisted session on first load.
+syncAccessTokenCookie(localStorage.getItem('token') || '')
+useUserStore(pinia)
 
 // Global error handler for uncaught exceptions
 app.config.errorHandler = (err, vm, info) => {

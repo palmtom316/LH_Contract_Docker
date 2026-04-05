@@ -323,7 +323,7 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
-import * as echarts from 'echarts'
+import echarts from '@/utils/echarts'
 import { getStats, getPeriodStats, getPeriodTrend } from '@/api/dashboard'
 import { getFinanceTrend } from '@/api/reports'
 import { ElMessage } from 'element-plus'

@@ -7,6 +7,34 @@ export default defineConfig({
     plugins: [
         vue(),
     ],
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks(id) {
+                    if (!id.includes('node_modules')) return undefined
+
+                    if (id.includes('echarts')) {
+                        return 'charts-vendor'
+                    }
+                    if (id.includes('element-plus') || id.includes('@element-plus')) {
+                        if (id.includes('@element-plus/icons-vue')) return 'element-icons-vendor'
+                        if (id.includes('/table') || id.includes('/pagination') || id.includes('/tabs') || id.includes('/card')) {
+                            return 'element-data-vendor'
+                        }
+                        if (id.includes('/form') || id.includes('/input') || id.includes('/select') || id.includes('/date-picker') || id.includes('/dialog') || id.includes('/upload')) {
+                            return 'element-form-vendor'
+                        }
+                        return 'element-core-vendor'
+                    }
+                    if (id.includes('vant')) return 'mobile-vendor'
+                    if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router')) return 'framework-vendor'
+                    if (id.includes('axios') || id.includes('dayjs') || id.includes('file-saver')) return 'utils-vendor'
+
+                    return 'vendor'
+                }
+            }
+        }
+    },
     resolve: {
         alias: {
             '@': fileURLToPath(new URL('./src', import.meta.url))

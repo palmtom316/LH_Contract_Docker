@@ -2,6 +2,12 @@
 
 ## 检查日期: 2025-12-18
 
+## 当前推荐
+
+- 当前版本升级请优先执行 [docs/release/deployment-checklist-hardening.md](/Users/palmtom/Projects/LH_Contract_Docker/docs/release/deployment-checklist-hardening.md)。
+- 对于已经承载大量历史合同、历史费用、历史附件和既有数据字典值的生产环境，必须按“先备份、后端兼容、增量迁移、前端发布、冒烟验证、观察回滚门槛”的顺序执行。
+- 本文档保留基础部署排查信息；涉及 `expense_type` / 费用类别、历史附件、升级回滚门槛的要求，以 hardening 清单为准。
+
 ---
 
 ## 1. Alembic 数据库迁移检查
@@ -297,6 +303,7 @@ volumes:
 - [ ] **构建前端生产版本** (`npm run build`)
 - [ ] **配置 Nginx** 反向代理和 SSL 证书
 - [ ] **测试健康检查端点** (`/health`, `/health/detailed`)
+- [ ] **执行 hardening 升级清单**（历史文件 / 历史记录 / 数据字典兼容）
 
 ### 🟡 **中优先级（建议完成）**
 
@@ -347,6 +354,36 @@ volumes:
 
 ## 11. 建议的部署流程
 
+> 对于当前 hardening 升级，请用以下顺序替代旧的“一次性初始化”思路，避免破坏已运行半年的生产数据。
+
+### v1.6 Hardening 推荐流程
+```bash
+# 1. 备份与升级前护栏
+./scripts/backup.sh
+python3 scripts/verify_migration.py --safety-only
+
+# 2. 部署后端兼容改动
+docker-compose -f docker-compose.production.yml --env-file .env.production up -d backend
+
+# 3. 执行只增量迁移 / 验证
+python3 scripts/verify_migration.py --safety-only
+
+# 4. 构建并部署前端
+npm --prefix frontend install
+npm --prefix frontend run build
+docker-compose -f docker-compose.production.yml --env-file .env.production up -d frontend nginx
+
+# 5. 冒烟检查
+curl -fsS http://localhost/health
+curl -fsS http://localhost/api/v1/system/options?category=expense_type
+```
+
+### hardening 升级禁止事项
+- 不要执行覆盖式数据库初始化。
+- 不要重建 `users`、合同、费用、审计等生产表。
+- 不要批量重写历史文件路径。
+- 不要硬删除已被引用的 `sys_dictionaries` 值，特别是 `expense_type`。
+
 ### 步骤 1：准备环境
 ```bash
 # 1. 克隆代码到生产服务器
@@ -384,11 +421,8 @@ docker-compose -f docker-compose.prod.yml --env-file .env.production up -d
 
 ### 步骤 5：初始化数据库
 ```bash
-# 等待数据库健康检查通过
-docker-compose -f docker-compose.prod.yml exec backend python -c "from app.database import init_db; import asyncio; asyncio.run(init_db())"
-
-# 创建初始管理员用户
-docker-compose -f docker-compose.prod.yml exec backend python -c "from app.init_data import init_data; import asyncio; asyncio.run(init_data())"
+# 仅适用于全新环境，不适用于已有生产数据的升级
+# 已运行中的生产环境不要再执行覆盖式初始化
 ```
 
 ### 步骤 6：验证部署

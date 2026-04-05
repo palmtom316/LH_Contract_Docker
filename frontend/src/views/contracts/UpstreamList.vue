@@ -577,7 +577,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { defineAsyncComponent, ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getContracts, createContract, updateContract, deleteContract, exportContracts, downloadImportTemplate, importContracts, getNextSerialNumber } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
@@ -586,12 +586,13 @@ import { downloadExcel } from '@/utils/download'
 import { useContractList, useTableSummary, useMobileDetection } from '@/composables/useContractList'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown, QuestionFilled, Download, More, Search, Refresh, Upload, Plus } from '@element-plus/icons-vue'
-import SmartAutocomplete from '@/components/SmartAutocomplete.vue'
-import PdfViewer from '@/components/PdfViewer.vue'
 import DictSelect from '@/components/DictSelect.vue'
 import SmartDateInput from '@/components/SmartDateInput.vue'
-import FormulaInput from '@/components/FormulaInput.vue'
 import { useUserStore } from '@/stores/user'
+
+const SmartAutocomplete = defineAsyncComponent(() => import('@/components/SmartAutocomplete.vue'))
+const PdfViewer = defineAsyncComponent(() => import('@/components/PdfViewer.vue'))
+const FormulaInput = defineAsyncComponent(() => import('@/components/FormulaInput.vue'))
 
 const userStore = useUserStore()
 const route = useRoute()

@@ -417,13 +417,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
+import { defineAsyncComponent, ref, reactive, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 import DictSelect from '@/components/DictSelect.vue'
-import FormulaInput from '@/components/FormulaInput.vue'
 import SmartDateInput from '@/components/SmartDateInput.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Document, ArrowLeft, Money, Wallet, Tickets, CircleCheck } from '@element-plus/icons-vue'
-import StatCard from '@/components/StatCard.vue'
 import { 
   getContract, 
   getPayables, createPayable, updatePayable, deletePayable,
@@ -435,6 +433,9 @@ import { uploadFile } from '@/api/common'
 import { getFileUrl, formatMoney, getStatusType } from '@/utils/common'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
+
+const FormulaInput = defineAsyncComponent(() => import('@/components/FormulaInput.vue'))
+const StatCard = defineAsyncComponent(() => import('@/components/StatCard.vue'))
 
 const userStore = useUserStore()
 const route = useRoute()
@@ -898,4 +899,3 @@ onBeforeUnmount(() => {
   margin-bottom: 15px;
 }
 </style>
-

@@ -33,7 +33,7 @@ FROM nginx:alpine AS production
 
 # Labels
 LABEL maintainer="LH Contract Management System"
-LABEL version="1.3.0"
+LABEL version="1.6"
 LABEL description="Frontend production image"
 
 # Remove default nginx config

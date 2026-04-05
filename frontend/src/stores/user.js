@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { login, getInfo, logout, refreshToken as refreshTokenApi } from '@/api/auth'
+import { persistSession, syncAccessTokenCookie, clearSessionStorage } from '@/utils/authSession'
 
 export const useUserStore = defineStore('user', {
     state: () => ({
@@ -113,6 +114,10 @@ export const useUserStore = defineStore('user', {
     },
 
     actions: {
+        syncAccessTokenCookie(token) {
+            syncAccessTokenCookie(token)
+        },
+
         async login(userInfo) {
             try {
                 const res = await login(userInfo)
@@ -123,19 +128,17 @@ export const useUserStore = defineStore('user', {
                 this.user = user
                 this.permissions = user.permissions || []
 
-                // Calculate token expiration time
                 if (expires_in) {
                     const expiresAt = Date.now() + (expires_in * 1000)
                     this.tokenExpiresAt = expiresAt
-                    localStorage.setItem('token_expires_at', expiresAt.toString())
                 }
 
-                localStorage.setItem('token', access_token)
-                if (refresh_token) {
-                    localStorage.setItem('refresh_token', refresh_token)
-                }
-                localStorage.setItem('user_info', JSON.stringify(user))
-                localStorage.setItem('user_permissions', JSON.stringify(user.permissions || []))
+                persistSession({
+                    accessToken: access_token,
+                    refreshToken: refresh_token,
+                    expiresIn: expires_in,
+                    user
+                })
 
                 return res
             } catch (error) {
@@ -161,18 +164,15 @@ export const useUserStore = defineStore('user', {
         async logout() {
             try {
                 await logout()
+            } catch (error) {
+                throw error
+            } finally {
                 this.token = ''
                 this.refreshToken = ''
                 this.tokenExpiresAt = null
                 this.user = {}
                 this.permissions = []
-                localStorage.removeItem('token')
-                localStorage.removeItem('refresh_token')
-                localStorage.removeItem('token_expires_at')
-                localStorage.removeItem('user_info')
-                localStorage.removeItem('user_permissions')
-            } catch (error) {
-                throw error
+                clearSessionStorage()
             }
         },
 
@@ -183,25 +183,27 @@ export const useUserStore = defineStore('user', {
 
             try {
                 const res = await refreshTokenApi(this.refreshToken)
-                const { access_token, expires_in, user } = res
+                const { access_token, refresh_token, expires_in, user } = res
 
                 this.token = access_token
+                this.refreshToken = refresh_token || this.refreshToken
                 this.user = user
                 this.permissions = user.permissions || []
 
                 if (expires_in) {
                     const expiresAt = Date.now() + (expires_in * 1000)
                     this.tokenExpiresAt = expiresAt
-                    localStorage.setItem('token_expires_at', expiresAt.toString())
                 }
 
-                localStorage.setItem('token', access_token)
-                localStorage.setItem('user_info', JSON.stringify(user))
-                localStorage.setItem('user_permissions', JSON.stringify(user.permissions || []))
+                persistSession({
+                    accessToken: access_token,
+                    refreshToken: refresh_token || this.refreshToken,
+                    expiresIn: expires_in,
+                    user
+                })
 
                 return res
             } catch (error) {
-                // If refresh fails, logout the user
                 await this.logout()
                 throw error
             }

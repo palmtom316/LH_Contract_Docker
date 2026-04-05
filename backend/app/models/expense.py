@@ -14,14 +14,16 @@ class ExpenseNonContract(Base):
     Req 3.4: 特有子表-无合同费用报销
     """
     __tablename__ = "expenses_non_contract"
+    CATEGORY_FIELD = "category"
+    EXPENSE_TYPE_FIELD = "expense_type"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     expense_code = Column(String(50), unique=True, nullable=False, index=True)  # 序号/编号
     
     # Classification
     attribution = Column(String(50), nullable=True)  # 费用归属 (Company/Project)
-    category = Column(String(50), nullable=False)  # 费用类别 (Company/Project)
-    expense_type = Column(String(50), nullable=True)  # 费用分类 (Management, Training, etc.)
+    category = Column(String(50), nullable=False)  # 费用类别（公司费用/项目费用）
+    expense_type = Column(String(50), nullable=True)  # 费用分类/费用类别字典值（如管理费、培训费）
     
     # Details
     amount = Column(Numeric(15, 2), nullable=False, default=0)       # 金额 (Implied essential field)

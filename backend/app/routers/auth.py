@@ -4,7 +4,7 @@ Enhanced with rate limiting for security
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, timedelta
@@ -14,21 +14,19 @@ from app.database import get_db
 from app.models.user import User, UserRole, ROLE_DISPLAY_NAMES
 from app.schemas.user import UserCreate, UserResponse, UserLogin, Token, RoleOption, RoleListResponse, RefreshTokenRequest
 from app.services.auth import (
-    verify_password, 
-    get_password_hash, 
-    create_access_token,
-    create_refresh_token_with_db,
+    verify_password,
+    get_password_hash,
+    issue_token_pair,
     verify_refresh_token_with_db,
     revoke_refresh_token,
     revoke_all_user_tokens,
-    get_current_user,
-    get_current_active_user
+    get_current_active_user,
 )
 from app.core.permissions import get_user_permissions
 from app.services.audit_service import create_audit_log, AuditAction, ResourceType, get_client_ip, get_user_agent
 from app.config import settings
 from app.core.rate_limit import limiter, RATE_LIMITS
-from app.core.errors import AuthenticationError, PermissionDeniedError, DuplicateRecordError, ValidationError, ResourceNotFoundError, ErrorCode
+from app.core.errors import AuthenticationError, PermissionDeniedError, ValidationError, ResourceNotFoundError
 
 router = APIRouter()
 
@@ -38,46 +36,11 @@ async def register(
     user_data: UserCreate,
     db: AsyncSession = Depends(get_db)
 ):
-    """Register a new user"""
-    # ... existing register logic ...
-    # Check if username exists
-    result = await db.execute(select(User).where(User.username == user_data.username))
-    if result.scalar_one_or_none():
-        raise DuplicateRecordError(
-            resource_type="用户",
-            field_name="username",
-            field_value=user_data.username
-        )
-    
-    # Check if email exists
-    result = await db.execute(select(User).where(User.email == user_data.email))
-    if result.scalar_one_or_none():
-        raise DuplicateRecordError(
-            resource_type="用户",
-            field_name="email",
-            field_value=user_data.email
-        )
-    
-    # Create new user
-    hashed_password = get_password_hash(user_data.password)
-    new_user = User(
-        username=user_data.username,
-        email=user_data.email,
-        hashed_password=hashed_password,
-        full_name=user_data.full_name,
-        role=user_data.role
+    """Public registration is disabled; users must be created by an admin."""
+    raise PermissionDeniedError(
+        message="公开注册已关闭",
+        detail="请联系系统管理员创建账号"
     )
-    
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
-    
-    # Audit log for registration (usually implicit system action or self-registration)
-    # If this is admin registering users, we might want current_user dependency. 
-    # But for public registration, we leave user=new_user or None.
-    # Assuming public registration for now or handle in separate admin user create.
-    
-    return new_user
 
 
 @router.post("/login", response_model=Token)
@@ -122,10 +85,7 @@ async def login(
     )
     
     # Create access token and refresh token
-    token_data = {"sub": str(user.id), "username": user.username, "role": user.role.value}
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(data=token_data, expires_delta=access_token_expires)
-    refresh_token = await create_refresh_token_with_db(data=token_data, db=db)
+    access_token, refresh_token = await issue_token_pair(user, db)
     
     return Token(
         access_token=access_token,
@@ -177,10 +137,7 @@ async def login_json(
     )
     
     # Create access token and refresh token
-    token_data = {"sub": str(user.id), "username": user.username, "role": user.role.value}
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(data=token_data, expires_delta=access_token_expires)
-    refresh_token = await create_refresh_token_with_db(data=token_data, db=db)
+    access_token, refresh_token = await issue_token_pair(user, db)
     
     return Token(
         access_token=access_token,
@@ -204,6 +161,13 @@ async def get_current_user_info(
 class ChangePasswordRequest(BaseModel):
     old_password: str = Field(..., min_length=1)
     new_password: str = Field(..., min_length=8, max_length=100)
+
+
+class InitAdminRequest(BaseModel):
+    username: str = Field(default="admin", min_length=3, max_length=50)
+    password: str = Field(..., min_length=8, max_length=72)
+    email: EmailStr = "admin@lanhai.com"
+    full_name: str = Field(default="系统管理员", min_length=2, max_length=100)
 
 
 @router.post("/change-password")
@@ -239,8 +203,12 @@ async def change_password(
 
 
 @router.post("/init-admin")
-async def init_admin(request: Request, db: AsyncSession = Depends(get_db)):
-    """Initialize admin user (only works if no users exist)"""
+async def init_admin(
+    request: Request,
+    payload: InitAdminRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """Initialize the first admin user during an explicit bootstrap window."""
     # Protect init in production: require token unless DEBUG
     if not settings.DEBUG:
         if not settings.INIT_ADMIN_TOKEN:
@@ -265,10 +233,10 @@ async def init_admin(request: Request, db: AsyncSession = Depends(get_db)):
     
     # Create admin user
     admin_user = User(
-        username="admin",
-        email="admin@lanhai.com",
-        hashed_password=get_password_hash("admin123"),
-        full_name="系统管理员",
+        username=payload.username,
+        email=payload.email,
+        hashed_password=get_password_hash(payload.password),
+        full_name=payload.full_name,
         role=UserRole.ADMIN,
         is_superuser=True,
         is_active=True
@@ -280,9 +248,8 @@ async def init_admin(request: Request, db: AsyncSession = Depends(get_db)):
     
     return {
         "message": "管理员账户创建成功",
-        "username": "admin",
-        "default_password": "admin123",
-        "note": "请立即修改默认密码"
+        "username": admin_user.username,
+        "note": "请妥善保管初始化凭据"
     }
 
 
@@ -351,10 +318,7 @@ async def refresh_access_token(
         await revoke_refresh_token(old_jti, db)
     
     # Create new access token and rotated refresh token
-    token_data = {"sub": str(user.id), "username": user.username, "role": user.role.value}
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(data=token_data, expires_delta=access_token_expires)
-    new_refresh_token = await create_refresh_token_with_db(data=token_data, db=db)
+    access_token, new_refresh_token = await issue_token_pair(user, db)
     
     return Token(
         access_token=access_token,

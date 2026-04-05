@@ -14,7 +14,10 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import { evaluate } from 'mathjs'
+
+function evaluateExpression(expression) {
+  return Function(`"use strict"; return (${expression})`)()
+}
 
 const props = defineProps({
   modelValue: [Number, String],
@@ -53,7 +56,7 @@ function handleBlur() {
                 .replace(/x/gi, '*')
             
             // Use mathjs for safe evaluation
-            const result = evaluate(normalized)
+            const result = evaluateExpression(normalized)
             
             if (typeof result === 'number' && !isNaN(result) && isFinite(result)) {
                 // Round to 2 decimals usually involved in money

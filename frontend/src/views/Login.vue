@@ -2,8 +2,9 @@
   <div class="login-container">
     <div class="login-box">
       <div class="login-header">
-        <h3 class="title">蓝海合同管理系统</h3>
-        <p>Lanhai Contract Management System</p>
+        <p class="eyebrow">财务与合同业务工作台</p>
+        <h1 class="title">蓝海合同管理系统</h1>
+        <p class="subtitle">稳定、安全、适合日常高频录入与审核</p>
       </div>
       
       <el-form 
@@ -11,18 +12,20 @@
         :model="loginForm"
         :rules="loginRules"
         class="login-form"
+        label-position="top"
         @keyup.enter="handleLogin"
       >
-        <el-form-item prop="username">
+        <el-form-item label="用户名" prop="username">
           <el-input 
             v-model="loginForm.username" 
             placeholder="用户名" 
             prefix-icon="User"
             size="large"
+            autocomplete="username"
           />
         </el-form-item>
         
-        <el-form-item prop="password">
+        <el-form-item label="密码" prop="password">
           <el-input 
             v-model="loginForm.password" 
             type="password" 
@@ -30,6 +33,7 @@
             prefix-icon="Lock"
             show-password
             size="large"
+            autocomplete="current-password"
           />
         </el-form-item>
         
@@ -44,13 +48,6 @@
             登 录
           </el-button>
         </el-form-item>
-        
-        <div class="login-footer">
-          <!-- Temporary helper for demo -->
-          <el-button link type="info" @click="handleInitAdmin" size="small">
-            初始化管理员
-          </el-button>
-        </div>
       </el-form>
     </div>
   </div>
@@ -61,7 +58,6 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
-import { initAdmin } from '@/api/auth'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -97,17 +93,6 @@ const handleLogin = async () => {
     }
   })
 }
-
-const handleInitAdmin = async () => {
-  try {
-    const res = await initAdmin()
-    ElMessage.success(res.message)
-    loginForm.username = res.username
-    loginForm.password = res.default_password
-  } catch (error) {
-    // Error handled in interceptor
-  }
-}
 </script>
 
 <style scoped lang="scss">
@@ -116,54 +101,85 @@ const handleInitAdmin = async () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-image: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  padding: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(31, 95, 139, 0.14), transparent 34%),
+    linear-gradient(180deg, #eef3f7 0%, #f6f8fa 100%);
   
   .login-box {
     width: 100%;
-    max-width: 420px;
-    padding: 40px;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 12px;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    max-width: 440px;
+    padding: 36px 32px 28px;
+    background: rgba(255, 255, 255, 0.97);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
     
     .login-header {
-      text-align: center;
-      margin-bottom: 30px;
+      margin-bottom: 28px;
       
-      h1 {
-        font-size: 24px;
-        color: #16213e;
-        margin-bottom: 5px;
+      .eyebrow {
+        margin: 0 0 10px;
+        color: var(--brand-primary);
+        font-size: 13px;
         font-weight: 600;
+        letter-spacing: 0.08em;
+      }
+
+      .title {
+        font-size: 28px;
+        line-height: 1.2;
+        color: var(--text-primary);
+        margin: 0 0 8px;
+        font-weight: 700;
       }
       
-      p {
-        font-size: 12px;
-        color: #666;
-        text-transform: uppercase;
-        letter-spacing: 1px;
+      .subtitle {
+        margin: 0;
+        font-size: 14px;
+        color: var(--text-secondary);
       }
     }
     
     .login-form {
+      :deep(.el-form-item__label) {
+        color: var(--text-secondary);
+        font-weight: 600;
+      }
+
+      :deep(.el-input__wrapper) {
+        min-height: 46px;
+        border-radius: 10px;
+        box-shadow: 0 0 0 1px var(--border-subtle) inset;
+      }
+
+      :deep(.el-input__wrapper.is-focus) {
+        box-shadow: 0 0 0 1px var(--brand-primary) inset, var(--shadow-focus);
+      }
+
       .login-button {
         width: 100%;
-        background-color: #0f3460;
-        border-color: #0f3460;
+        min-height: 46px;
+        background-color: var(--brand-primary);
+        border-color: var(--brand-primary);
         font-weight: 600;
-        letter-spacing: 2px;
+        letter-spacing: 0.16em;
         
         &:hover {
-          background-color: #e94560;
-          border-color: #e94560;
+          background-color: var(--brand-primary-strong);
+          border-color: var(--brand-primary-strong);
         }
       }
     }
-    
-    .login-footer {
-      display: flex;
-      justify-content: center;
-      margin-top: 10px;
+  }
+
+  @media (max-width: 768px) {
+    .login-box {
+      padding: 28px 20px 22px;
+    }
+
+    .login-header .title {
+      font-size: 24px;
     }
   }
 }

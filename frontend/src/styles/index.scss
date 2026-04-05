@@ -1,15 +1,44 @@
-@import './variables.scss';
+@use './tokens.scss';
+@use './variables.scss' as *;
 
 // Global Styles
+
+html {
+    background-color: var(--surface-page);
+}
 
 body {
     margin: 0;
     padding: 0;
     -moz-osx-font-smoothing: grayscale;
     -webkit-font-smoothing: antialiased;
-    font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
-    background-color: $bg-color;
-    color: $text-main;
+    font-family: var(--font-family-base);
+    background-color: var(--surface-page);
+    color: var(--text-primary);
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+.el-button:focus-visible,
+.el-input__wrapper.is-focus {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+}
+
+#app {
+    min-height: 100vh;
+}
+
+.app-container {
+    color: var(--text-primary);
 }
 
 // Global utilities can go here

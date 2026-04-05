@@ -1,7 +1,13 @@
 <template>
   <div class="app-wrapper" :class="{ mobile: isMobile, openSidebar: !isCollapse }">
     <!-- Mobile Overlay -->
-    <div v-if="isMobile && !isCollapse" class="drawer-bg" @click="closeSidebar" />
+    <button
+      v-if="isMobile && !isCollapse"
+      type="button"
+      class="drawer-bg"
+      aria-label="关闭侧边栏"
+      @click="closeSidebar"
+    />
 
     <!-- Sidebar -->
     <div class="sidebar-container" :class="{ 'collapsed': isCollapse }">
@@ -89,10 +95,12 @@
         <div class="left-panel">
           <!-- Mobile Back Button -->
           <!-- Hamburger (Visible on all devices) -->
-          <el-icon class="hamburger" @click="toggleSidebar">
-            <Fold v-if="!isCollapse" />
-            <Expand v-else />
-          </el-icon>
+          <button type="button" class="hamburger" aria-label="切换侧边栏" @click="toggleSidebar">
+            <el-icon>
+              <Fold v-if="!isCollapse" />
+              <Expand v-else />
+            </el-icon>
+          </button>
 
           <el-breadcrumb separator="/" class="breadcrumb hidden-xs-only">
             <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
@@ -102,12 +110,12 @@
         
         <div class="right-panel">
           <el-dropdown trigger="click" @command="handleCommand">
-            <div class="avatar-wrapper">
-              <el-avatar size="small" :icon="'UserFilled'" :style="{ backgroundColor: variables.primary }" />
+            <button type="button" class="avatar-wrapper" aria-label="打开用户菜单">
+              <el-avatar size="small" :icon="UserFilled" :style="{ backgroundColor: variables.primary }" />
               <span class="user-name">{{ userStore.user.full_name || userStore.user.username }}</span>
-              <el-tag size="small" type="info" style="margin-left: 8px;">{{ userStore.roleDisplay }}</el-tag>
+              <el-tag size="small" effect="plain" class="role-tag">{{ userStore.roleDisplay }}</el-tag>
               <el-icon><CaretBottom /></el-icon>
-            </div>
+            </button>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="changePassword">修改密码</el-dropdown-item>
@@ -169,7 +177,7 @@ import logoNew from '@/assets/logo_new.png'
 import ContractQueryBot from '@/components/ContractQueryBot.vue'
 import { useDevice } from '@/composables/useDevice'
 import pkg from '../../package.json'
-import { Fold, Expand, Monitor, HomeFilled, Document, DocumentCopy, FolderChecked, Money, DataAnalysis, Setting, UserFilled, CaretBottom, ArrowLeft } from '@element-plus/icons-vue'
+import { Fold, Expand, Monitor, HomeFilled, Document, DocumentCopy, FolderChecked, Money, DataAnalysis, Setting, UserFilled, CaretBottom } from '@element-plus/icons-vue'
 
 const systemVersion = ref(`Version ${pkg.version}`)
 
@@ -197,10 +205,10 @@ const displayName = computed(() => systemStore.config.system_name || '蓝海合�
 const displayNameLine2 = computed(() => systemStore.config.system_name_line_2 || '')
 
 const variables = {
-  menuBg: '#001529',
-  menuText: 'rgba(255, 255, 255, 0.65)',
-  menuActiveText: '#1890FF',
-  primary: '#1890FF'
+  menuBg: 'var(--surface-sidebar)',
+  menuText: 'rgba(248, 250, 252, 0.76)',
+  menuActiveText: 'var(--text-inverse)',
+  primary: 'var(--brand-primary)'
 }
 
 const activeMenu = computed(() => route.path)
@@ -228,8 +236,8 @@ const handleCommand = (command) => {
   if (command === 'logout') {
     ElMessageBox.confirm('确定要退出登录吗?', '提示', {
       type: 'warning'
-    }).then(() => {
-      userStore.logout()
+    }).then(async () => {
+      await userStore.logout()
       router.push('/login')
     })
   } else if (command === 'changePassword') {
@@ -326,7 +334,7 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100vh;
   position: relative;
-  background-color: #f0f2f5;
+  background-color: var(--surface-page);
   
   &.mobile.openSidebar {
     position: fixed;
@@ -335,28 +343,30 @@ onBeforeUnmount(() => {
 }
 
 .drawer-bg {
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(4px);
+  background: var(--surface-overlay);
+  backdrop-filter: blur(2px);
   width: 100%;
   top: 0;
   height: 100%;
   position: absolute;
   z-index: 999;
   transition: all 0.3s;
+  border: 0;
+  padding: 0;
 }
 
 /* Sidebar Modernization */
 .sidebar-container {
   width: var(--sidebar-width);
   height: 100%;
-  background: linear-gradient(180deg, #001529 0%, #00284d 100%);
+  background: var(--surface-sidebar);
   transition: width 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   z-index: 1001;
   overflow: hidden;
-  box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
+  box-shadow: 4px 0 18px rgba(15, 23, 42, 0.08);
   
   &.collapsed {
     width: 64px;
@@ -371,10 +381,10 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--text-inverse);
     font-weight: bold;
     font-size: 16px;
-    background: rgba(255, 255, 255, 0.05); /* Glass effect */
+    background: rgba(255, 255, 255, 0.04);
     white-space: nowrap;
     overflow: hidden;
     padding: 0 10px;
@@ -390,7 +400,7 @@ onBeforeUnmount(() => {
     .logo-icon {
       font-size: 24px;
       margin-right: 12px;
-      color: #409EFF; /* Accent color */
+      color: #8bc0df;
     }
 
     .logo-text-container {
@@ -408,9 +418,9 @@ onBeforeUnmount(() => {
       .logo-text-sub {
         font-size: 12px;
         font-weight: normal;
-        opacity: 0.6;
+        opacity: 0.72;
         margin-top: 2px;
-        font-family: 'Helvetica Neue', Arial, sans-serif;
+        font-family: var(--font-family-base);
       }
     }
   }
@@ -421,11 +431,11 @@ onBeforeUnmount(() => {
     
     :deep(.el-menu-item) {
        &:hover {
-         background-color: rgba(255, 255, 255, 0.05) !important;
+         background-color: var(--surface-sidebar-hover) !important;
        }
        &.is-active {
-         background: linear-gradient(90deg, #1890FF 0%, rgba(24, 144, 255, 0.1) 100%) !important;
-         border-right: 3px solid #1890FF;
+         background: var(--surface-sidebar-active) !important;
+         border-right: 3px solid #8bc0df;
        }
     }
   }
@@ -435,7 +445,7 @@ onBeforeUnmount(() => {
     display: flex;
     justify-content: center;
     align-items: center;
-    color: rgba(255, 255, 255, 0.3);
+    color: rgba(248, 250, 252, 0.45);
     font-size: 10px;
     background: transparent;
     letter-spacing: 1px;
@@ -451,13 +461,13 @@ onBeforeUnmount(() => {
   min-width: 0;
   transition: margin-left 0.3s;
   position: relative;
-  background-color: #f5f7fa;
+    background-color: var(--surface-page);
   
   .navbar {
     height: var(--header-height);
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(10px);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.05);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -467,24 +477,28 @@ onBeforeUnmount(() => {
     z-index: 1000;
     transition: all 0.3s;
     
-    &:hover {
-        background: #fff;
-        box-shadow: 0 4px 25px rgba(0, 0, 0, 0.05);
-    }
-    
     .left-panel {
       display: flex;
       align-items: center;
       
       .hamburger {
-        font-size: 22px;
-        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
         margin-right: 20px;
-        color: #606266;
-        transition: color 0.3s;
+        color: var(--text-secondary);
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: color 0.2s, background-color 0.2s, border-color 0.2s;
         
         &:hover {
-          color: #409EFF;
+          color: var(--brand-primary);
+          background-color: var(--brand-primary-soft);
+          border-color: var(--border-subtle);
         }
       }
 
@@ -519,19 +533,29 @@ onBeforeUnmount(() => {
         display: flex;
         align-items: center;
         cursor: pointer;
-        padding: 5px 10px;
+        padding: 6px 10px;
         border-radius: 20px;
-        transition: background-color 0.3s;
+        transition: background-color 0.2s, border-color 0.2s;
+        border: 1px solid transparent;
+        background: transparent;
         
         &:hover {
-            background-color: #f5f7fa;
+            background-color: var(--surface-panel-muted);
+            border-color: var(--border-subtle);
         }
         
         .user-name {
           margin: 0 8px;
           font-size: 14px;
-          color: #303133;
+          color: var(--text-primary);
           font-weight: 500;
+        }
+
+        .role-tag {
+          margin-left: 8px;
+          border-color: var(--border-subtle);
+          color: var(--text-secondary);
+          background: var(--surface-panel);
         }
       }
     }
@@ -542,8 +566,6 @@ onBeforeUnmount(() => {
     padding: 20px;
     overflow-y: auto;
     background-color: transparent;
-    /* Optional: Add a subtle texture or gradient to the main user area if desired, 
-       but typically 'clean' means solid color */
   }
 }
 

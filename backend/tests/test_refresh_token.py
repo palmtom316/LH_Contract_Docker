@@ -3,17 +3,19 @@ Refresh Token Tests
 Tests for the new refresh token mechanism
 """
 import pytest
-from datetime import datetime, timedelta
+from datetime import timedelta
 from httpx import AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.services.auth import (
     create_access_token,
-    create_refresh_token,
+    create_refresh_token_sync,
     verify_refresh_token
 )
 
 
-@pytest.mark.asyncio
 class TestRefreshTokenCreation:
     """Test refresh token creation"""
     
@@ -24,7 +26,7 @@ class TestRefreshTokenCreation:
             "username": "testuser",
             "role": "VIEWER"
         }
-        token = create_refresh_token(data=token_data)
+        token, _ = create_refresh_token_sync(data=token_data, jti="test-jti-1")
         
         assert token is not None
         assert isinstance(token, str)
@@ -33,7 +35,7 @@ class TestRefreshTokenCreation:
     def test_refresh_token_has_type(self):
         """Test that refresh token has type 'refresh'"""
         token_data = {"sub": "1", "username": "testuser"}
-        token = create_refresh_token(data=token_data)
+        token, _ = create_refresh_token_sync(data=token_data, jti="test-jti-2")
         
         # Verify the token
         payload = verify_refresh_token(token)
@@ -51,7 +53,6 @@ class TestRefreshTokenCreation:
         assert payload is None  # Should fail because type is 'access'
 
 
-@pytest.mark.asyncio
 class TestRefreshTokenVerification:
     """Test refresh token verification"""
     
@@ -62,7 +63,7 @@ class TestRefreshTokenVerification:
             "username": "testuser",
             "role": "VIEWER"
         }
-        token = create_refresh_token(data=token_data)
+        token, _ = create_refresh_token_sync(data=token_data, jti="test-jti-3")
         
         payload = verify_refresh_token(token)
         
@@ -81,8 +82,9 @@ class TestRefreshTokenVerification:
         """Test verifying an expired refresh token"""
         token_data = {"sub": "1", "username": "testuser"}
         # Create token with negative expiration (already expired)
-        token = create_refresh_token(
+        token, _ = create_refresh_token_sync(
             data=token_data,
+            jti="test-jti-4",
             expires_delta=timedelta(seconds=-1)
         )
         
@@ -124,13 +126,15 @@ class TestRefreshTokenEndpoint:
         refresh_data = refresh_response.json()
         
         assert "access_token" in refresh_data
+        assert "refresh_token" in refresh_data
         assert refresh_data["token_type"] == "bearer"
         assert refresh_data["user"]["username"] == "testuser"
         
         # The new access token should be different (has new expiration)
         # Note: Due to timing, they might be the same, so we just check it exists
         assert refresh_data["access_token"] is not None
-    
+        assert refresh_data["refresh_token"] != refresh_token
+
     async def test_refresh_token_invalid(self, client: AsyncClient):
         """Test refresh with invalid token"""
         response = await client.post(
@@ -161,3 +165,31 @@ class TestRefreshTokenEndpoint:
         
         # expires_in should be in seconds (2 hours = 7200 seconds)
         assert data["expires_in"] == 7200  # 2 hours * 60 minutes * 60 seconds
+
+    async def test_refresh_token_rotation_revokes_old_token_record(
+        self,
+        client: AsyncClient,
+        test_db: AsyncSession,
+        test_user: User
+    ):
+        login_response = await client.post(
+            "/api/v1/auth/login/json",
+            json={"username": "testuser", "password": "testpass123"}
+        )
+        assert login_response.status_code == 200
+        refresh_token = login_response.json()["refresh_token"]
+
+        refresh_response = await client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": refresh_token}
+        )
+        assert refresh_response.status_code == 200
+
+        token_rows = (
+            await test_db.execute(
+                select(RefreshToken).where(RefreshToken.user_id == test_user.id).order_by(RefreshToken.id)
+            )
+        ).scalars().all()
+        assert len(token_rows) == 2
+        assert token_rows[0].revoked is True
+        assert token_rows[1].revoked is False

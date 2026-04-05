@@ -374,7 +374,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { defineAsyncComponent, ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getContracts, createContract, updateContract, deleteContract, exportContracts } from '@/api/contractDownstream'
 import { getContracts as getUpstreamContracts, getContractSummary } from '@/api/contractUpstream'
@@ -389,11 +389,12 @@ const openPdfInNewTab = (path) => {
 }
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Document, Refresh, Search, Plus, Download, QuestionFilled, More } from '@element-plus/icons-vue'
-import SmartAutocomplete from '@/components/SmartAutocomplete.vue'
 import DictSelect from '@/components/DictSelect.vue'
 import SmartDateInput from '@/components/SmartDateInput.vue'
-import FormulaInput from '@/components/FormulaInput.vue'
 import { useUserStore } from '@/stores/user'
+
+const SmartAutocomplete = defineAsyncComponent(() => import('@/components/SmartAutocomplete.vue'))
+const FormulaInput = defineAsyncComponent(() => import('@/components/FormulaInput.vue'))
 
 const userStore = useUserStore()
 const router = useRouter()

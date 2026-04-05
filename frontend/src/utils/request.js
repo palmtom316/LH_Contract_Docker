@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
-
+import { clearSessionStorage, refreshSessionWithStoredToken } from '@/utils/authSession'
 
 // Create Axios instance
 const service = axios.create({
@@ -71,28 +71,19 @@ service.interceptors.response.use(
                         if (refreshToken && !response.config._retry) {
                             response.config._retry = true
                             try {
-                                // Import dynamically to avoid circular dependency
-                                const { useUserStore } = await import('@/stores/user')
-                                const userStore = useUserStore()
-                                await userStore.refreshAccessToken()
+                                await refreshSessionWithStoredToken()
 
                                 // Retry the original request with new token
                                 response.config.headers['Authorization'] = `Bearer ${localStorage.getItem('token')}`
                                 return service(response.config)
                             } catch (refreshError) {
                                 // Refresh failed, redirect to login
-                                localStorage.removeItem('token')
-                                localStorage.removeItem('refresh_token')
-                                localStorage.removeItem('user_info')
-                                localStorage.removeItem('user_permissions')
+                                clearSessionStorage()
                                 router.push('/login')
                                 ElMessage.error('登录已过期，请重新登录')
                             }
                         } else {
-                            localStorage.removeItem('token')
-                            localStorage.removeItem('refresh_token')
-                            localStorage.removeItem('user_info')
-                            localStorage.removeItem('user_permissions')
+                            clearSessionStorage()
                             router.push('/login')
                             ElMessage.error('登录已过期，请重新登录')
                         }

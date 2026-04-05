@@ -32,7 +32,10 @@ export function initAdmin() {
 }
 
 export function logout() {
-    return Promise.resolve()
+    return request({
+        url: '/auth/logout',
+        method: 'post'
+    })
 }
 
 export function refreshToken(refreshToken) {

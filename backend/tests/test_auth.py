@@ -93,7 +93,7 @@ class TestPasswordValidation:
                 "email": "new@example.com",
                 "password": "short",  # Too short
                 "full_name": "New User",
-                "role": "viewer"
+                "role": "BIDDING"
             }
         )
         
@@ -109,15 +109,15 @@ class TestPasswordValidation:
                 "email": "new@example.com",
                 "password": "onlyletters",  # No numbers
                 "full_name": "New User",
-                "role": "viewer"
+                "role": "BIDDING"
             }
         )
-        
-        # Should be rejected (no numbers)
-        assert response.status_code in [400, 422]
+
+        assert response.status_code == 403
+        assert response.json()["message"] == "公开注册已关闭"
     
     async def test_valid_password(self, client: AsyncClient):
-        """Test registration with valid password"""
+        """Public registration should be closed even with a valid password"""
         response = await client.post(
             "/api/v1/auth/register",
             json={
@@ -125,13 +125,12 @@ class TestPasswordValidation:
                 "email": "new@example.com",
                 "password": "ValidPass123",  # Valid
                 "full_name": "New User",
-                "role": "viewer"
+                "role": "BIDDING"
             }
         )
-        
-        # Should succeed
-        assert response.status_code == 201
-        assert response.json()["username"] == "newuser"
+
+        assert response.status_code == 403
+        assert response.json()["message"] == "公开注册已关闭"
 
 
 @pytest.mark.asyncio

@@ -23,6 +23,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init:/docker-entrypoint-initdb.d:ro
+      - backup_data:/backups
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}" ]
       interval: 10s
@@ -86,6 +87,7 @@ services:
       - uploads_data:/app/uploads
       - logs_data:/app/logs
       - archives_data:/app/archives
+      - backup_data:/backups
     depends_on:
       db:
         condition: service_healthy
@@ -167,4 +169,6 @@ volumes:
   logs_data:
     driver: local
   archives_data:
+    driver: local
+  backup_data:
     driver: local

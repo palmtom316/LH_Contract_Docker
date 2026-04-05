@@ -2,15 +2,21 @@
   <!-- Floating Robot Button -->
   <div class="query-bot-container">
     <el-tooltip content="合同查询助手" placement="left">
-      <div class="bot-button" @click="openDialog" :class="{ 'pulse': showPulse }">
+      <button
+        type="button"
+        class="bot-button"
+        :class="{ 'pulse': showPulse }"
+        aria-label="打开合同查询助手"
+        @click="openDialog"
+      >
         <el-icon :size="28"><Search /></el-icon>
-      </div>
+      </button>
     </el-tooltip>
 
     <!-- Query Dialog -->
     <el-dialog
       v-model="dialogVisible"
-      title="🤖 合同查询助手"
+      title="合同查询助手"
       :width="dialogWidth"
       :close-on-click-modal="false"
       class="bot-dialog"
@@ -80,7 +86,7 @@
       <div class="tip-section" v-if="!results.length && !loading && !hasSearched">
         <el-alert type="info" :closable="false">
           <template #title>
-            <span class="tip-title">💡 使用提示</span>
+            <span class="tip-title">使用提示</span>
           </template>
           <p>您可以输入以下内容进行搜索：</p>
           <ul>
@@ -530,34 +536,36 @@ const sumExpenses = (expenses) => {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #1890FF 0%, #36CFC9 100%);
-  color: #fff;
+  background: var(--brand-primary);
+  color: var(--text-inverse);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(24, 144, 255, 0.4);
-  transition: all 0.3s ease;
+  box-shadow: 0 8px 20px rgba(22, 73, 106, 0.24);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.3);
 
   &:hover {
-    transform: scale(1.1);
-    box-shadow: 0 6px 24px rgba(54, 207, 201, 0.5);
+    transform: translateY(-1px);
+    background: var(--brand-primary-strong);
+    box-shadow: 0 10px 24px rgba(22, 73, 106, 0.28);
   }
 
   &.pulse {
-    animation: pulse 2s infinite;
+    animation: pulse 2.4s infinite;
   }
 }
 
 @keyframes pulse {
   0% {
-    box-shadow: 0 4px 16px rgba(24, 144, 255, 0.4);
+    box-shadow: 0 8px 20px rgba(22, 73, 106, 0.22);
   }
   50% {
-    box-shadow: 0 4px 24px rgba(54, 207, 201, 0.8);
+    box-shadow: 0 8px 28px rgba(22, 73, 106, 0.34);
   }
   100% {
-    box-shadow: 0 4px 16px rgba(24, 144, 255, 0.4);
+    box-shadow: 0 8px 20px rgba(22, 73, 106, 0.22);
   }
 }
 
@@ -663,7 +671,7 @@ const sumExpenses = (expenses) => {
 
   .contract-serial {
     font-weight: 600;
-    color: #1890ff;
+    color: var(--brand-primary);
     min-width: 40px;
   }
 
@@ -679,15 +687,16 @@ const sumExpenses = (expenses) => {
   .section {
     margin-bottom: 20px;
     padding: 12px;
-    background: #fafafa;
-    border-radius: 8px;
+    background: var(--surface-panel-muted);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
 
     &.upstream-section {
-      background: linear-gradient(135deg, #e6f7ff, #f0f5ff);
+      background: #f2f6f9;
     }
 
     &.empty {
-      background: #fff;
+      background: var(--surface-panel);
     }
   }
 
@@ -696,10 +705,10 @@ const sumExpenses = (expenses) => {
     align-items: center;
     gap: 8px;
     font-weight: 500;
-    color: #262626;
+    color: var(--text-primary);
     margin-bottom: 12px;
     padding-bottom: 8px;
-    border-bottom: 1px solid #e8e8e8;
+    border-bottom: 1px solid var(--border-subtle);
   }
 }
 
@@ -710,45 +719,45 @@ const sumExpenses = (expenses) => {
   margin-top: 12px;
 
   .finance-card {
-    padding: 16px 12px; /* Increased padding */
-    border-radius: 8px; /* Softer radius */
+    padding: 16px 12px;
+    border-radius: 10px;
     text-align: center;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Improved shadow */
-    transition: transform 0.2s;
+    border: 1px solid var(--border-subtle);
+    box-shadow: none;
+    transition: transform 0.2s, border-color 0.2s;
 
     &:hover {
       transform: translateY(-2px);
+      border-color: var(--border-strong);
     }
 
     .label {
       display: block;
       font-size: 13px;
-      color: rgba(255, 255, 255, 0.9); /* White text */
+      color: var(--text-secondary);
       margin-bottom: 8px;
     }
 
     .value {
       font-size: 18px;
       font-weight: bold;
-      color: #fff; /* White text */
-      text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      color: var(--text-primary);
     }
     
-    /* Card Variants */
     &.blue-card {
-      background: linear-gradient(135deg, #2db7f5 0%, #4096ff 100%);
+      background: #edf4f8;
     }
     
     &.orange-card {
-      background: linear-gradient(135deg, #faad14 0%, #ffc53d 100%);
+      background: #faf3e2;
     }
 
     &.purple-card {
-      background: linear-gradient(135deg, #722ed1 0%, #9254de 100%);
+      background: #f1eef7;
     }
     
     &.green-card {
-      background: linear-gradient(135deg, #52c41a 0%, #95de64 100%);
+      background: #edf5f0;
     }
   }
 }
@@ -774,7 +783,7 @@ const sumExpenses = (expenses) => {
     color: #595959;
 
     strong {
-      color: #1890ff;
+      color: var(--brand-primary);
       margin-left: 4px;
     }
   }
@@ -849,7 +858,7 @@ const sumExpenses = (expenses) => {
       display: block;
       margin-top: 4px;
       font-weight: 600;
-      color: #1890ff;
+      color: var(--brand-primary);
     }
   }
 }
@@ -867,7 +876,7 @@ const sumExpenses = (expenses) => {
     padding: 10px 12px;
     background: #fff;
     border-radius: 6px;
-    border-left: 3px solid #1890ff;
+    border-left: 3px solid var(--brand-primary);
 
     .category {
       color: #595959;
@@ -876,7 +885,7 @@ const sumExpenses = (expenses) => {
 
     .amount {
       font-weight: 600;
-      color: #fa541c;
+      color: var(--brand-accent);
     }
   }
 }
@@ -889,7 +898,7 @@ const sumExpenses = (expenses) => {
   font-size: 14px;
 
   strong {
-    color: #fa541c;
+    color: var(--brand-accent);
     font-size: 16px;
     margin-left: 8px;
   }
@@ -950,21 +959,21 @@ const sumExpenses = (expenses) => {
 /* Global styles for Dialog (append-to-body) */
 .bot-dialog {
   .el-dialog__header {
-    background: linear-gradient(135deg, #1890FF 0%, #36CFC9 100%);
-    color: #fff;
+    background: var(--brand-primary);
+    color: var(--text-inverse);
     padding: 16px 20px;
     margin: 0;
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
 
     .el-dialog__title {
-      color: #fff;
+      color: var(--text-inverse);
       font-size: 18px;
-      font-weight: 500;
+      font-weight: 600;
     }
 
     .el-dialog__close {
-      color: #fff;
+      color: var(--text-inverse);
       &:hover {
         color: rgba(255,255,255,0.8);
       }

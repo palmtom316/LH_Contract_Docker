@@ -16,11 +16,20 @@ from app.config import settings
 from app.database import init_db, close_db, get_db
 from app.init_data import init_data
 import app.models  # ensure all models are registered with SQLAlchemy metadata
-from app.core.errors import AppException
-from app.core.exceptions import (
-    global_exception_handler, 
-    sqlalchemy_exception_handler
-)
+from app.core.errors import AppException, ErrorCode
+from app.core.exceptions import sqlalchemy_exception_handler
+
+async def internal_server_error_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled application error", exc_info=exc)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error_code": ErrorCode.INTERNAL_SERVER_ERROR.value,
+            "message": "服务器内部错误",
+            "detail": "请稍后重试或联系管理员",
+        },
+    )
+
 
 # Setup basic logging
 logging.basicConfig(level=logging.INFO)
@@ -69,7 +78,7 @@ app = FastAPI(
 )
 
 # Exception Handlers
-app.add_exception_handler(Exception, global_exception_handler)
+app.add_exception_handler(Exception, internal_server_error_handler)
 app.add_exception_handler(SQLAlchemyError, sqlalchemy_exception_handler)
 
 # CORS
