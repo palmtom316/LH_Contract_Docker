@@ -13,6 +13,7 @@ export const useSystemStore = defineStore('system', () => {
 
     const dictionaries = ref({}) // key: category, value: Array of options
     const notifications = ref([])
+    const notificationsError = ref('')
 
     // Actions
     async function fetchConfig() {
@@ -89,14 +90,22 @@ export const useSystemStore = defineStore('system', () => {
     }
 
     async function fetchNotifications() {
-        notifications.value = await fetchNotificationsApi()
-        return notifications.value
+        notificationsError.value = ''
+        try {
+            notifications.value = await fetchNotificationsApi()
+            return notifications.value
+        } catch (error) {
+            notifications.value = []
+            notificationsError.value = error?.message || '通知加载失败'
+            throw error
+        }
     }
 
     return {
         config,
         dictionaries,
         notifications,
+        notificationsError,
         fetchConfig,
         updateConfig,
         fetchOptions,

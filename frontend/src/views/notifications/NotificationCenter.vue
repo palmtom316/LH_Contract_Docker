@@ -12,6 +12,12 @@
       </template>
 
       <el-skeleton v-if="loading" :rows="4" animated />
+      <el-empty
+        v-else-if="loadError"
+        description="通知加载失败，请稍后重试。"
+      >
+        <el-button type="primary" @click="loadNotifications">重试</el-button>
+      </el-empty>
       <div v-else-if="filteredNotifications.length" class="notification-list">
         <article v-for="item in filteredNotifications" :key="item.id" class="notification-item">
           <div class="notification-item__title">{{ item.title }}</div>
@@ -44,19 +50,26 @@ const filteredNotifications = computed(() => {
   if (activeFilter.value === 'all') return items
   return items.filter(item => item.type === activeFilter.value)
 })
+const loadError = computed(() => systemStore.notificationsError)
 
 function formatTime(value) {
   if (!value) return '时间未知'
   return dayjs(value).format('YYYY-MM-DD HH:mm')
 }
 
-onMounted(async () => {
+async function loadNotifications() {
   loading.value = true
   try {
     await systemStore.fetchNotifications()
+  } catch (error) {
+    // store keeps error state for UI rendering
   } finally {
     loading.value = false
   }
+}
+
+onMounted(async () => {
+  await loadNotifications()
 })
 </script>
 
