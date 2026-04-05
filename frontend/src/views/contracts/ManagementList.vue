@@ -1,63 +1,41 @@
 <template>
-  <div class="app-container">
-    <!-- Search Bar -->
-    <el-card class="filter-container" shadow="never">
-      <el-form :inline="!isMobile" :model="queryParams" class="demo-form-inline" :label-position="isMobile ? 'top' : 'right'">
-        <el-form-item label="关键词">
-          <el-input v-model="queryParams.keyword" placeholder="合同序号/编号/名称/乙方" clearable @keyup.enter="handleQuery" :style="{ width: isMobile ? '100%' : '200px' }" />
-        </el-form-item>
-
-        <el-form-item label="状态">
-          <el-select v-model="queryParams.status" placeholder="合同状态" clearable :style="{ width: isMobile ? '100%' : '120px' }">
-            <el-option label="执行中" value="执行中" />
-            <el-option label="已完工" value="已完工" />
-            <el-option label="已结算" value="已结算" />
-            <el-option label="质保到期" value="质保到期" />
-            <el-option label="合同终止" value="合同终止" />
-            <el-option label="合同中止" value="合同中止" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="签订日期">
-          <el-date-picker
-            v-model="dateRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            value-format="YYYY-MM-DD"
-            :style="{ width: isMobile ? '100%' : '240px' }"
-          />
-        </el-form-item>
-        <el-form-item label="分类">
-          <DictSelect v-model="queryParams.category" category="management_contract_category" placeholder="合同分类" clearable :style="{ width: isMobile ? '100%' : '150px' }" />
-        </el-form-item>
-        <el-form-item>
-          <div class="filter-actions" :class="{ 'mobile-actions': isMobile }">
-            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-            
-            <template v-if="!isMobile">
-              <el-button v-if="userStore.canManageManagementContracts" type="success" icon="Plus" @click="handleAdd">新建合同</el-button>
-              <el-button type="warning" icon="Download" @click="handleExport">导出Excel</el-button>
-            </template>
-            
-             <!-- Mobile Menu -->
-            <el-dropdown v-if="isMobile" trigger="click" class="action-item">
-              <el-button type="info" icon="More" circle />
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item v-if="userStore.canManageManagementContracts" @click="handleAdd"><el-icon><Plus /></el-icon> 新建合同</el-dropdown-item>
-                  <el-dropdown-item @click="handleExport"><el-icon><Download /></el-icon> 导出Excel</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-          </div>
-        </el-form-item>
-      </el-form>
-    </el-card>
+  <div class="contract-surface">
+    <AppPageHeader
+      title="管理合同"
+      description="统一查看管理合同筛选结果、金额汇总与移动端卡片视图。"
+    />
+    <AppSectionCard>
+      <template #header>合同筛选</template>
+      <AppFilterBar>
+        <el-input v-model="queryParams.keyword" placeholder="合同序号/编号/名称/乙方" clearable @keyup.enter="handleQuery" />
+        <el-select v-model="queryParams.status" placeholder="合同状态" clearable>
+          <el-option label="执行中" value="执行中" />
+          <el-option label="已完工" value="已完工" />
+          <el-option label="已结算" value="已结算" />
+          <el-option label="质保到期" value="质保到期" />
+          <el-option label="合同终止" value="合同终止" />
+          <el-option label="合同中止" value="合同中止" />
+        </el-select>
+        <el-date-picker
+          v-model="dateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          value-format="YYYY-MM-DD"
+        />
+        <DictSelect v-model="queryParams.category" category="management_contract_category" placeholder="合同分类" clearable />
+        <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+        <el-button type="primary" plain icon="Download" @click="handleExport">导出 Excel</el-button>
+        <el-button v-if="userStore.canManageManagementContracts" type="primary" icon="Plus" @click="handleAdd">新建合同</el-button>
+      </AppFilterBar>
+    </AppSectionCard>
 
     <!-- Table View (PC) -->
-    <el-card v-if="!isMobile" class="table-container" shadow="always">
+    <AppSectionCard v-if="!isMobile">
+      <template #header>合同列表</template>
+      <AppDataTable>
       <el-table 
         v-loading="loading" 
         :data="contractList" 
@@ -152,10 +130,18 @@
           @current-change="getList"
         />
       </div>
-    </el-card>
+      </AppDataTable>
+    </AppSectionCard>
 
     <!-- Card View (Mobile) -->
-    <div v-else class="card-list">
+    <AppSectionCard v-else>
+      <template #header>合同列表</template>
+      <AppEmptyState
+        v-if="!loading && !contractList.length"
+        title="暂无管理合同"
+        description="调整筛选条件后重试。"
+      />
+      <div v-else class="card-list">
       <el-card v-for="item in contractList" :key="item.id" class="contract-card" shadow="hover">
         <div class="card-header">
           <div class="title">{{ item.contract_name }}</div>
@@ -176,12 +162,32 @@
           </div>
         </div>
         <div class="card-footer">
+          <el-button
+            v-if="item.contract_file_path"
+            size="small"
+            @click="openPdfInNewTab(item.contract_file_path)"
+          >
+            文件
+          </el-button>
           <el-button v-if="userStore.canManageManagementContracts" size="small" type="primary" @click="handleEdit(item)">编辑</el-button>
           <el-button size="small" @click="handleDetail(item)">详情</el-button>
           <el-button v-if="userStore.canManageManagementContracts" size="small" type="danger" @click="handleDelete(item)">删除</el-button>
         </div>
       </el-card>
-    </div>
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="queryParams.page"
+          v-model:page-size="queryParams.page_size"
+          :page-sizes="[10, 20, 50]"
+          layout="total, prev, pager, next"
+          :total="total"
+          small
+          @size-change="getList"
+          @current-change="getList"
+        />
+      </div>
+      </div>
+    </AppSectionCard>
 
     <!-- Dialog -->
     <el-dialog
@@ -392,6 +398,11 @@ import { Plus, Search, Refresh, Download, Document, Connection, More } from '@el
 import SmartDateInput from '@/components/SmartDateInput.vue'
 import DictSelect from '@/components/DictSelect.vue'
 import { useUserStore } from '@/stores/user'
+import AppPageHeader from '@/components/layout/AppPageHeader.vue'
+import AppSectionCard from '@/components/ui/AppSectionCard.vue'
+import AppFilterBar from '@/components/ui/AppFilterBar.vue'
+import AppDataTable from '@/components/ui/AppDataTable.vue'
+import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 
 const SmartAutocomplete = defineAsyncComponent(() => import('@/components/SmartAutocomplete.vue'))
 const FormulaInput = defineAsyncComponent(() => import('@/components/FormulaInput.vue'))
@@ -673,9 +684,9 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
-
-.filter-container {
-  margin-bottom: 20px;
+.contract-surface {
+  display: grid;
+  gap: var(--space-5);
 }
 
 .filter-actions {
@@ -740,6 +751,10 @@ onBeforeUnmount(() => {
 .card-list {
   .contract-card {
     margin-bottom: 15px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--surface-panel);
+    box-shadow: var(--shadow-soft);
     
     .card-header {
       display: flex;
@@ -747,12 +762,12 @@ onBeforeUnmount(() => {
       align-items: center;
       margin-bottom: 12px;
       padding-bottom: 12px;
-      border-bottom: 1px solid #f0f0f0;
+      border-bottom: 1px solid var(--border-subtle);
       
       .title {
         font-weight: bold;
         font-size: 15px;
-        color: var(--color-text-main);
+        color: var(--text-primary);
         flex: 1;
         margin-right: 10px;
       }
@@ -766,18 +781,18 @@ onBeforeUnmount(() => {
         font-size: 14px;
         
         .label {
-          color: var(--color-text-secondary);
+          color: var(--text-secondary);
           min-width: 80px;
         }
         
         .value {
-          color: var(--color-text-main);
+          color: var(--text-primary);
           font-weight: 500;
           text-align: right;
           flex: 1;
           
           &.amount {
-            color: var(--color-primary);
+            color: var(--brand-primary-strong);
             font-weight: bold;
           }
         }
@@ -787,10 +802,11 @@ onBeforeUnmount(() => {
     .card-footer {
       margin-top: 12px;
       padding-top: 12px;
-      border-top: 1px solid #f0f0f0;
+      border-top: 1px solid var(--border-subtle);
       display: flex;
       justify-content: flex-end;
       gap: 8px;
+      flex-wrap: wrap;
     }
   }
 }

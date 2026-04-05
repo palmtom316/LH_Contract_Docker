@@ -1,83 +1,57 @@
 <template>
-  <div class="app-container">
-    <el-tabs v-model="activeTab" @tab-change="handleTabChange">
+  <div class="contract-surface">
+    <AppPageHeader
+      title="上游合同"
+      description="统一查看上游合同管理、基础信息列表与移动端卡片视图。"
+    />
+    <el-tabs v-model="activeTab" class="contract-tabs" @tab-change="handleTabChange">
       <!-- Tab 1: Contract Management -->
       <el-tab-pane label="合同管理" name="management">
         <!-- Search Bar -->
-        <el-card class="filter-container" shadow="never">
-          <el-form :inline="!isMobile" :model="queryParams" class="demo-form-inline" :label-position="isMobile ? 'top' : 'right'">
-            <el-form-item label="关键词">
-              <el-input v-model="queryParams.keyword" placeholder="合同序号/编号/名称/甲方" clearable @keyup.enter="handleQuery" :style="{ width: isMobile ? '100%' : '200px' }" />
-            </el-form-item>
-            <el-form-item label="状态">
-              <el-select v-model="queryParams.status" placeholder="合同状态" clearable :style="{ width: isMobile ? '100%' : '120px' }">
-                <el-option label="执行中" value="执行中" />
-                <el-option label="已完工" value="已完工" />
-                <el-option label="已结算" value="已结算" />
-                <el-option label="质保到期" value="质保到期" />
-                <el-option label="合同终止" value="合同终止" />
-                <el-option label="合同中止" value="合同中止" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="公司合同分类" v-if="!isMobile">
-              <DictSelect v-model="queryParams.company_category" category="project_category" placeholder="请选择" clearable :style="{ width: '140px' }" />
-            </el-form-item>
-            <el-form-item label="合同类别" v-if="!isMobile">
-              <DictSelect v-model="queryParams.category" category="contract_category" placeholder="请选择" clearable :style="{ width: '140px' }" />
-            </el-form-item>
-            <el-form-item label="管理模式" v-if="!isMobile">
-              <DictSelect v-model="queryParams.management_mode" category="management_mode" placeholder="请选择" clearable :style="{ width: '140px' }" />
-            </el-form-item>
-            <el-form-item label="签约月份" v-if="!isMobile">
-              <el-date-picker
-                v-model="monthRange"
-                type="monthrange"
-                range-separator="至"
-                start-placeholder="开始月份"
-                end-placeholder="结束月份"
-                value-format="YYYY-MM"
-                unlink-panels
-                :style="{ width: '240px' }"
-              />
-            </el-form-item>
-            <el-form-item>
-              <div class="filter-actions" :class="{ 'mobile-actions': isMobile }">
-                <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-                <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-                <el-button type="warning" icon="Download" @click="handleExport" v-if="!isMobile">导出Excel</el-button>
-                
-                <el-dropdown @command="handleImportCommand" class="action-item" v-if="userStore.canManageUpstreamContracts && !isMobile">
-                  <el-button type="info" icon="Upload">
-                    导入Excel<el-icon class="el-icon--right"><arrow-down /></el-icon>
-                  </el-button>
-                  <template #dropdown>
-                    <el-dropdown-menu>
-                      <el-dropdown-item command="template">下载导入模板</el-dropdown-item>
-                      <el-dropdown-item command="import">选择Excel文件导入</el-dropdown-item>
-                    </el-dropdown-menu>
-                  </template>
-                </el-dropdown>
-                
-                <el-button v-if="userStore.canManageUpstreamContracts" type="success" icon="Plus" @click="handleAdd" class="action-item">新建合同</el-button>
-                
-                <!-- Mobile Only Extra Actions Dropdown -->
-                <el-dropdown v-if="isMobile" trigger="click" class="action-item">
-                  <el-button type="info" icon="More" circle />
-                  <template #dropdown>
-                    <el-dropdown-menu>
-                      <el-dropdown-item @click="handleExport"><el-icon><Download /></el-icon> 导出Excel</el-dropdown-item>
-                      <el-dropdown-item v-if="userStore.canManageUpstreamContracts" @click="handleImportCommand('template')">下载模板</el-dropdown-item>
-                      <el-dropdown-item v-if="userStore.canManageUpstreamContracts" @click="handleImportCommand('import')">导入Excel</el-dropdown-item>
-                    </el-dropdown-menu>
-                  </template>
-                </el-dropdown>
-              </div>
-            </el-form-item>
-          </el-form>
-        </el-card>
+        <AppSectionCard>
+          <template #header>合同筛选</template>
+          <AppFilterBar>
+            <el-input v-model="queryParams.keyword" placeholder="合同序号/编号/名称/甲方" clearable @keyup.enter="handleQuery" />
+            <el-select v-model="queryParams.status" placeholder="合同状态" clearable>
+              <el-option label="执行中" value="执行中" />
+              <el-option label="已完工" value="已完工" />
+              <el-option label="已结算" value="已结算" />
+              <el-option label="质保到期" value="质保到期" />
+              <el-option label="合同终止" value="合同终止" />
+              <el-option label="合同中止" value="合同中止" />
+            </el-select>
+            <DictSelect v-model="queryParams.company_category" category="project_category" placeholder="公司合同分类" clearable />
+            <DictSelect v-model="queryParams.category" category="contract_category" placeholder="合同类别" clearable />
+            <DictSelect v-model="queryParams.management_mode" category="management_mode" placeholder="管理模式" clearable />
+            <el-date-picker
+              v-model="monthRange"
+              type="monthrange"
+              range-separator="至"
+              start-placeholder="开始月份"
+              end-placeholder="结束月份"
+              value-format="YYYY-MM"
+              unlink-panels
+            />
+            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+            <el-button type="primary" plain icon="Download" @click="handleExport">导出 Excel</el-button>
+            <el-dropdown @command="handleImportCommand" v-if="userStore.canManageUpstreamContracts">
+              <el-button icon="Upload">导入 Excel<el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="template">下载导入模板</el-dropdown-item>
+                  <el-dropdown-item command="import">选择 Excel 文件导入</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+            <el-button v-if="userStore.canManageUpstreamContracts" type="primary" icon="Plus" @click="handleAdd">新建合同</el-button>
+          </AppFilterBar>
+        </AppSectionCard>
 
         <!-- Table View (PC) -->
-        <el-card v-if="!isMobile" class="table-container" shadow="always">
+        <AppSectionCard v-if="!isMobile">
+          <template #header>合同列表</template>
+          <AppDataTable>
           <el-table 
             v-loading="loading" 
             :data="contractList" 
@@ -176,10 +150,18 @@
               @current-change="getList"
             />
           </div>
-        </el-card>
+          </AppDataTable>
+        </AppSectionCard>
 
         <!-- Card View (Mobile) -->
-        <div v-else class="card-list">
+        <AppSectionCard v-else>
+          <template #header>合同列表</template>
+          <AppEmptyState
+            v-if="!loading && !contractList.length"
+            title="暂无上游合同"
+            description="调整筛选条件后重试。"
+          />
+          <div v-else class="card-list">
           <el-card v-for="item in contractList" :key="item.id" class="contract-card" shadow="hover">
             <div class="card-header">
               <div class="title">{{ item.contract_name }}</div>
@@ -231,38 +213,34 @@
               @current-change="getList"
             />
           </div>
-        </div>
+          </div>
+        </AppSectionCard>
       </el-tab-pane>
 
       <!-- Tab 2: Basic Information List -->
       <el-tab-pane label="上游合同基本信息" name="basic_info">
-        <!-- Search Bar -->
-        <el-card class="filter-container" shadow="never">
-          <el-form :inline="true" :model="queryParams" class="demo-form-inline">
-            <el-form-item label="关键词">
-              <el-input v-model="queryParams.keyword" placeholder="合同序号/编号/名称/甲方" clearable @keyup.enter="handleQuery" />
-            </el-form-item>
-            <el-form-item label="签约日期">
-              <el-date-picker
-                v-model="dateRange"
-                type="daterange"
-                range-separator="至"
-                start-placeholder="开始日期"
-                end-placeholder="结束日期"
-                value-format="YYYY-MM-DD"
-                unlink-panels
-                @change="handleQuery"
-              />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-              <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-            </el-form-item>
-          </el-form>
-        </el-card>
+        <AppSectionCard>
+          <template #header>基础信息筛选</template>
+          <AppFilterBar>
+            <el-input v-model="queryParams.keyword" placeholder="合同序号/编号/名称/甲方" clearable @keyup.enter="handleQuery" />
+            <el-date-picker
+              v-model="dateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              value-format="YYYY-MM-DD"
+              unlink-panels
+              @change="handleQuery"
+            />
+            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+          </AppFilterBar>
+        </AppSectionCard>
 
-        <!-- Table View -->
-        <el-card class="table-container" shadow="always">
+        <AppSectionCard v-if="!isMobile">
+          <template #header>基础信息列表</template>
+          <AppDataTable>
           <el-table 
             v-loading="loading" 
             :data="contractList" 
@@ -339,7 +317,64 @@
               @current-change="getList"
             />
           </div>
-        </el-card>
+          </AppDataTable>
+        </AppSectionCard>
+        <AppSectionCard v-else>
+          <template #header>基础信息列表</template>
+          <AppEmptyState
+            v-if="!loading && !contractList.length"
+            title="暂无基础信息"
+            description="调整筛选条件后重试。"
+          />
+          <div v-else class="card-list">
+            <el-card v-for="item in contractList" :key="`basic-${item.id}`" class="contract-card" shadow="hover">
+              <div class="card-header">
+                <div class="title">{{ item.contract_name }}</div>
+                <el-tag :type="getStatusType(item.status)" size="small">{{ item.status }}</el-tag>
+              </div>
+              <div class="card-body">
+                <div class="info-row">
+                  <span class="label">合同编号:</span>
+                  <span class="value">{{ item.contract_code }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">甲方:</span>
+                  <span class="value">{{ item.party_a_name }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">签约金额:</span>
+                  <span class="value amount">¥ {{ formatMoney(item.contract_amount) }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">签约时间:</span>
+                  <span class="value">{{ item.sign_date }}</span>
+                </div>
+              </div>
+              <div class="card-footer">
+                <el-button
+                  v-if="item.contract_file_path"
+                  size="small"
+                  @click="openPdfInNewTab(item.contract_file_path)"
+                >
+                  文件
+                </el-button>
+                <el-button size="small" @click="handleDetail(item)">详情</el-button>
+              </div>
+            </el-card>
+            <div class="pagination-container">
+              <el-pagination
+                v-model:current-page="queryParams.page"
+                v-model:page-size="queryParams.page_size"
+                :page-sizes="[10, 20, 50]"
+                layout="total, prev, pager, next"
+                :total="total"
+                small
+                @size-change="getList"
+                @current-change="getList"
+              />
+            </div>
+          </div>
+        </AppSectionCard>
       </el-tab-pane>
     </el-tabs>
 
@@ -589,6 +624,11 @@ import { ArrowDown, QuestionFilled, Download, More, Search, Refresh, Upload, Plu
 import DictSelect from '@/components/DictSelect.vue'
 import SmartDateInput from '@/components/SmartDateInput.vue'
 import { useUserStore } from '@/stores/user'
+import AppPageHeader from '@/components/layout/AppPageHeader.vue'
+import AppSectionCard from '@/components/ui/AppSectionCard.vue'
+import AppFilterBar from '@/components/ui/AppFilterBar.vue'
+import AppDataTable from '@/components/ui/AppDataTable.vue'
+import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 
 const SmartAutocomplete = defineAsyncComponent(() => import('@/components/SmartAutocomplete.vue'))
 const PdfViewer = defineAsyncComponent(() => import('@/components/PdfViewer.vue'))
@@ -998,8 +1038,22 @@ onBeforeUnmount(() => {
 
 <style scoped lang="scss">
 
-.filter-container {
-  margin-bottom: 20px;
+.contract-surface {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.contract-tabs :deep(.el-tabs__header) {
+  margin: 0 0 var(--space-4);
+}
+
+.contract-tabs :deep(.el-tabs__item) {
+  height: 40px;
+  color: var(--text-secondary);
+}
+
+.contract-tabs :deep(.el-tabs__item.is-active) {
+  color: var(--brand-primary-strong);
 }
 
 .filter-actions {
@@ -1033,6 +1087,10 @@ onBeforeUnmount(() => {
 .card-list {
   .contract-card {
     margin-bottom: 15px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--surface-panel);
+    box-shadow: var(--shadow-soft);
     
     .card-header {
       display: flex;
@@ -1040,12 +1098,12 @@ onBeforeUnmount(() => {
       align-items: center;
       margin-bottom: 12px;
       padding-bottom: 12px;
-      border-bottom: 1px solid #f0f0f0;
+      border-bottom: 1px solid var(--border-subtle);
       
       .title {
         font-weight: bold;
         font-size: 15px;
-        color: var(--color-text-main);
+        color: var(--text-primary);
         flex: 1;
         margin-right: 10px;
       }
@@ -1059,18 +1117,18 @@ onBeforeUnmount(() => {
         font-size: 14px;
         
         .label {
-          color: var(--color-text-secondary);
+          color: var(--text-secondary);
           min-width: 80px;
         }
         
         .value {
-          color: var(--color-text-main);
+          color: var(--text-primary);
           font-weight: 500;
           text-align: right;
           flex: 1;
           
           &.amount {
-            color: var(--color-primary);
+            color: var(--brand-primary-strong);
             font-weight: bold;
           }
         }
@@ -1080,10 +1138,11 @@ onBeforeUnmount(() => {
     .card-footer {
       margin-top: 12px;
       padding-top: 12px;
-      border-top: 1px solid #f0f0f0;
+      border-top: 1px solid var(--border-subtle);
       display: flex;
       justify-content: flex-end;
       gap: 8px;
+      flex-wrap: wrap;
     }
   }
 }
