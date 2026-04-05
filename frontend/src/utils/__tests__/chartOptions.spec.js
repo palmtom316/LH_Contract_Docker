@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { createBarChartOption } from '../chartOptions'
+import { createBarChartOption, createPieChartOption } from '../chartOptions'
+import { readChartTheme } from '../chartTheme'
 
 describe('createBarChartOption', () => {
   beforeEach(() => {
@@ -23,5 +24,56 @@ describe('createBarChartOption', () => {
     expect(option.grid.containLabel).toBe(true)
     expect(option.legend.bottom).toBe(0)
     expect(option.xAxis.axisLabel.hideOverlap).toBe(true)
+    expect(option.aria.enabled).toBe(true)
+  })
+
+  it('guards against null categories and series input', () => {
+    const option = createBarChartOption({
+      categories: null,
+      series: null
+    })
+
+    expect(option.xAxis.data).toEqual([])
+    expect(option.series).toEqual([])
+  })
+})
+
+describe('createPieChartOption', () => {
+  it('moves pie labels outside the plot area', () => {
+    const option = createPieChartOption({
+      title: '合同分类',
+      data: [{ name: '工程', value: 30 }]
+    })
+
+    expect(option.series[0].label.position).toBe('outside')
+    expect(option.series[0].avoidLabelOverlap).toBe(true)
+    expect(option.aria.enabled).toBe(true)
+  })
+
+  it('guards against null pie data input', () => {
+    const option = createPieChartOption({
+      title: '合同分类',
+      data: null
+    })
+
+    expect(option.series[0].data).toEqual([])
+  })
+})
+
+describe('readChartTheme', () => {
+  it('falls back to default tokens when browser globals are unavailable', () => {
+    const originalDocument = globalThis.document
+    const originalGetComputedStyle = globalThis.getComputedStyle
+
+    Reflect.deleteProperty(globalThis, 'document')
+    Reflect.deleteProperty(globalThis, 'getComputedStyle')
+
+    const theme = readChartTheme()
+
+    globalThis.document = originalDocument
+    globalThis.getComputedStyle = originalGetComputedStyle
+
+    expect(theme.text).toBe('#475569')
+    expect(theme.textStrong).toBe('#0f172a')
   })
 })

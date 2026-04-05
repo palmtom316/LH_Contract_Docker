@@ -1,6 +1,7 @@
 import * as echarts from 'echarts/core'
 import { BarChart, LineChart, PieChart } from 'echarts/charts'
 import {
+    AriaComponent,
     GridComponent,
     LegendComponent,
     TitleComponent,
@@ -12,6 +13,7 @@ echarts.use([
     BarChart,
     LineChart,
     PieChart,
+    AriaComponent,
     GridComponent,
     LegendComponent,
     TitleComponent,
@@ -19,7 +21,7 @@ echarts.use([
     CanvasRenderer
 ])
 
-export { createBarChartOption } from './chartOptions'
+export { createBarChartOption, createPieChartOption } from './chartOptions'
 export { readChartTheme } from './chartTheme'
 
 export default echarts
