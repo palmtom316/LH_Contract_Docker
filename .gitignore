@@ -97,6 +97,7 @@ redis_data/
 *.bak
 *.swp
 .tmp/
+.worktrees/
 
 # OS
 Thumbs.db
