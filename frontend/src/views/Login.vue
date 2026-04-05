@@ -103,14 +103,14 @@ const handleLogin = async () => {
   align-items: center;
   padding: 24px;
   background:
-    radial-gradient(circle at top left, rgba(31, 95, 139, 0.14), transparent 34%),
-    linear-gradient(180deg, #eef3f7 0%, #f6f8fa 100%);
+    radial-gradient(circle at top left, var(--brand-primary-soft), transparent 34%),
+    linear-gradient(180deg, var(--surface-panel-muted) 0%, var(--surface-page) 100%);
   
   .login-box {
     width: 100%;
     max-width: 440px;
     padding: 36px 32px 28px;
-    background: rgba(255, 255, 255, 0.97);
+    background: var(--surface-panel);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card);

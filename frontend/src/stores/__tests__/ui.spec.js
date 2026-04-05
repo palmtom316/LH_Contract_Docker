@@ -7,6 +7,8 @@ import { useUiStore } from '../ui'
 
 const testDir = dirname(fileURLToPath(import.meta.url))
 const tokensPath = resolve(testDir, '../../styles/tokens.scss')
+const stylesPath = resolve(testDir, '../../styles/index.scss')
+const loginViewPath = resolve(testDir, '../../views/Login.vue')
 
 describe('ui store', () => {
   beforeEach(() => {
@@ -63,5 +65,19 @@ describe('ui store', () => {
     expect(tokens).toContain('--color-primary: var(--brand-primary);')
     expect(tokens).toContain('--color-text-main: var(--text-primary);')
     expect(tokens).toContain('--color-text-secondary: var(--text-secondary);')
+  })
+
+  it('keeps element-plus bridge and login theme surfaces tokenized', () => {
+    const styles = readFileSync(stylesPath, 'utf8')
+    const loginView = readFileSync(loginViewPath, 'utf8')
+
+    expect(styles).toContain('--el-color-primary: var(--brand-primary);')
+    expect(styles).toContain('--el-bg-color: var(--surface-panel);')
+    expect(styles).toContain('--el-text-color-primary: var(--text-primary);')
+    expect(styles).toContain('--el-border-color: var(--border-subtle);')
+
+    expect(loginView).toContain('var(--surface-page)')
+    expect(loginView).toContain('var(--surface-panel)')
+    expect(loginView).toContain('var(--surface-panel-muted)')
   })
 })
