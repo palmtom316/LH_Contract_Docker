@@ -19,6 +19,6 @@ describe('AppPageHeader', () => {
     expect(wrapper.find('.app-page-header__eyebrow').text()).toBe('Contracts')
     expect(wrapper.find('.app-page-header__title').text()).toBe('Upstream Contracts')
     expect(wrapper.find('.app-page-header__description').text()).toBe('Manage upstream contract records.')
-    expect(wrapper.find('.app-page-header__actions').exists()).toBe(true)
+    expect(wrapper.find('.app-page-header__actions').text()).toContain('New Contract')
   })
 })
