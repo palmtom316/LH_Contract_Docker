@@ -20,7 +20,7 @@ const ElInputStub = {
 }
 
 const ElDatePickerStub = {
-  props: ['modelValue', 'placeholder'],
+  props: ['modelValue', 'placeholder', 'valueFormat', 'format'],
   emits: ['update:modelValue'],
   template: `
     <input
@@ -101,12 +101,17 @@ describe('AppRangeField', () => {
   it('supports month-mode pickers with the existing API', async () => {
     const wrapper = mountRange({ modelValue: [], type: 'month' })
     const inputs = wrapper.findAll('[data-test="month-picker"]')
+    const pickers = wrapper.findAllComponents(ElDatePickerStub)
 
     await inputs[0].setValue('2026-03')
     const firstUpdate = wrapper.emitted('update:modelValue').at(-1)?.[0] || []
     await wrapper.setProps({ modelValue: firstUpdate })
     await inputs[1].setValue('2026-04')
 
+    pickers.forEach((picker) => {
+      expect(picker.props('valueFormat')).toBe('YYYY-MM')
+      expect(picker.props('format')).toBe('YYYY-MM')
+    })
     expect(wrapper.emitted('update:modelValue').at(-1)).toEqual([['2026-03', '2026-04']])
   })
 })

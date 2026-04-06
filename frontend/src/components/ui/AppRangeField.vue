@@ -63,7 +63,7 @@ const props = defineProps({
   },
   valueFormat: {
     type: String,
-    default: 'YYYY-MM-DD'
+    default: ''
   },
   displayFormat: {
     type: String,
