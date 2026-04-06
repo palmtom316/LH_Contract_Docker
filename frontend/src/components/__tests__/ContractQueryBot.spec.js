@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { ElMessage, ElAlert } from 'element-plus'
 import ContractQueryBot from '@/components/ContractQueryBot.vue'
 import { searchContracts } from '@/api/contractSearch'
@@ -30,6 +30,12 @@ const ElTooltipStub = {
     </div>
   `
 }
+const AppRangeFieldStub = {
+  name: 'AppRangeField',
+  emits: ['update:modelValue'],
+  template: '<div />'
+}
+
 const commonStubs = {
   'el-dialog': ElDialogStub,
   'el-tooltip': ElTooltipStub,
@@ -46,7 +52,7 @@ const commonStubs = {
   'el-descriptions-item': true,
   'el-table': true,
   'el-table-column': true,
-  AppRangeField: true,
+  AppRangeField: AppRangeFieldStub,
   DictSelect: true
 }
 const createWrapper = () =>
@@ -58,6 +64,10 @@ const createWrapper = () =>
   })
 
 describe('ContractQueryBot', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('renders text date range inputs instead of a date picker', async () => {
     const wrapper = createWrapper()
 
@@ -73,13 +83,14 @@ describe('ContractQueryBot', () => {
     await wrapper.find('.bot-button').trigger('click')
 
     const warningSpy = vi.spyOn(ElMessage, 'warning')
-    const rangeRef = wrapper.vm.$.setupState.signDateRange
-    rangeRef.value = ['', '']
+    const rangeField = wrapper.findComponent({ name: 'AppRangeField' })
+    await rangeField.vm.$emit('update:modelValue', ['', ''])
+    await wrapper.vm.$nextTick()
 
     await wrapper.find('.search-btn').trigger('click')
 
     expect(warningSpy).toHaveBeenCalledWith('请至少输入一个搜索条件')
-    expect(rangeRef.value).toEqual(['', ''])
+    expect(wrapper.vm.signDateRange).toEqual(['', ''])
     expect(searchContracts).not.toHaveBeenCalled()
 
     const tipSection = wrapper.find('.tip-section')
@@ -88,5 +99,26 @@ describe('ContractQueryBot', () => {
     expect(tipText).toContain('26.4.6')
 
     warningSpy.mockRestore()
+  })
+
+  it('sends the committed range through to searchContracts', async () => {
+    const wrapper = createWrapper()
+
+    await wrapper.find('.bot-button').trigger('click')
+
+    const rangeField = wrapper.findComponent({ name: 'AppRangeField' })
+    await rangeField.vm.$emit('update:modelValue', ['2026-04-01', '2026-04-06'])
+    await wrapper.vm.$nextTick()
+
+    await wrapper.find('.search-btn').trigger('click')
+
+    expect(searchContracts).toHaveBeenCalledWith({
+      query: '',
+      companyCategory: '',
+      partyAName: '',
+      partyBName: '',
+      signDateStart: '2026-04-01',
+      signDateEnd: '2026-04-06'
+    })
   })
 })
