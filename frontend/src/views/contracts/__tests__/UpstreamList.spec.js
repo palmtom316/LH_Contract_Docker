@@ -276,6 +276,7 @@ describe('upstream workspace shell structure', () => {
 
     expect(wrapper.find('.upstream-page-shell').exists()).toBe(true)
     expect(wrapper.find('.app-page-header').exists()).toBe(true)
+    expect(wrapper.findAll('.app-workspace-panel').length).toBeGreaterThan(0)
   })
 
 })

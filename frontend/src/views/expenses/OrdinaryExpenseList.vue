@@ -1,6 +1,7 @@
 <template>
   <div class="expense-list-page">
-    <AppSectionCard>
+    <AppWorkspacePanel panel-class="expense-list-panel expense-list-panel--filters">
+      <AppSectionCard class="expense-list-card">
       <AppFilterBar inline-actions>
         <el-select v-model="queryParams.attribution" placeholder="费用归属" clearable>
           <el-option label="公司费用" value="公司费用" />
@@ -57,10 +58,12 @@
         </el-dropdown>
         </template>
       </AppFilterBar>
-    </AppSectionCard>
+      </AppSectionCard>
+    </AppWorkspacePanel>
 
     <!-- Table -->
-    <AppSectionCard v-if="isMobile">
+    <AppWorkspacePanel panel-class="expense-list-panel expense-list-panel--results">
+      <AppSectionCard v-if="isMobile" class="expense-list-card">
       <template #header>费用列表</template>
       <AppEmptyState
         v-if="!loading && !expenseList.length"
@@ -118,9 +121,9 @@
           />
        </div>
       </div>
-    </AppSectionCard>
+      </AppSectionCard>
 
-    <AppSectionCard v-else>
+      <AppSectionCard v-else class="expense-list-card">
       <template #header>费用列表</template>
       <AppDataTable>
       <el-table 
@@ -224,7 +227,8 @@
         />
       </div>
       </AppDataTable>
-    </AppSectionCard>
+      </AppSectionCard>
+    </AppWorkspacePanel>
 
     <!-- Dialog -->
     <el-dialog
@@ -387,6 +391,7 @@ import AppFilterBar from '@/components/ui/AppFilterBar.vue'
 import AppDataTable from '@/components/ui/AppDataTable.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import AppRangeField from '@/components/ui/AppRangeField.vue'
+import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 
 const loading = ref(false)
 const total = ref(0)
@@ -779,22 +784,52 @@ onUnmounted(() => {
 <style scoped lang="scss">
 .expense-list-page {
   display: grid;
-  gap: 20px;
+  gap: var(--workspace-shell-gap);
+}
+
+.expense-list-panel {
+  gap: 0;
+}
+
+.expense-list-panel :deep(.app-section-card) {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.expense-list-panel :deep(.el-card__header) {
+  padding: 0 0 16px;
+}
+
+.expense-list-panel :deep(.el-card__body) {
+  padding: 0;
+}
+
+.expense-list-panel :deep(.app-filter-bar) {
+  border-radius: 16px;
+}
+
+.expense-list-panel :deep(.el-table td.el-table__cell),
+.expense-list-panel :deep(.el-table th.el-table__cell) {
+  padding-top: 14px;
+  padding-bottom: 14px;
 }
 
 .pagination-container {
-  margin-top: 20px;
+  margin-top: 18px;
   display: flex;
   justify-content: flex-end;
 }
 
 .mobile-list-container {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .mobile-card {
-  border-radius: var(--radius-md);
+  border-radius: 18px;
+  box-shadow: none;
 }
 
 .mobile-card-header {

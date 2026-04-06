@@ -1,6 +1,7 @@
 <template>
   <div class="zero-hour-page">
-    <AppSectionCard>
+    <AppWorkspacePanel panel-class="zero-hour-panel zero-hour-panel--filters">
+      <AppSectionCard class="zero-hour-card-shell">
       <AppFilterBar inline-actions>
         <AppRangeField
           v-model="dateRange"
@@ -52,9 +53,11 @@
         </el-dropdown>
         </template>
       </AppFilterBar>
-    </AppSectionCard>
+      </AppSectionCard>
+    </AppWorkspacePanel>
 
-    <AppSectionCard v-if="isMobile">
+    <AppWorkspacePanel panel-class="zero-hour-panel zero-hour-panel--results">
+      <AppSectionCard v-if="isMobile" class="zero-hour-card-shell">
       <template #header>用工列表</template>
       <AppEmptyState
         v-if="!loading && !list.length"
@@ -109,9 +112,9 @@
           />
         </div>
       </div>
-    </AppSectionCard>
+      </AppSectionCard>
 
-    <AppSectionCard v-else>
+      <AppSectionCard v-else class="zero-hour-card-shell">
       <template #header>用工列表</template>
       <AppDataTable>
       <el-table 
@@ -211,7 +214,8 @@
         />
     </div>
       </AppDataTable>
-    </AppSectionCard>
+      </AppSectionCard>
+    </AppWorkspacePanel>
 
     <!-- Dialog -->
     <el-dialog
@@ -465,6 +469,7 @@ import AppFilterBar from '@/components/ui/AppFilterBar.vue'
 import AppDataTable from '@/components/ui/AppDataTable.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import AppRangeField from '@/components/ui/AppRangeField.vue'
+import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 
 const { isMobile } = useMobileDetection()
 
@@ -958,11 +963,40 @@ onMounted(() => {
 <style scoped lang="scss">
 .zero-hour-page {
   display: grid;
-  gap: 20px;
+  gap: var(--workspace-shell-gap);
+}
+
+.zero-hour-panel {
+  gap: 0;
+}
+
+.zero-hour-panel :deep(.app-section-card) {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.zero-hour-panel :deep(.el-card__header) {
+  padding: 0 0 16px;
+}
+
+.zero-hour-panel :deep(.el-card__body) {
+  padding: 0;
+}
+
+.zero-hour-panel :deep(.app-filter-bar) {
+  border-radius: 16px;
+}
+
+.zero-hour-panel :deep(.el-table td.el-table__cell),
+.zero-hour-panel :deep(.el-table th.el-table__cell) {
+  padding-top: 14px;
+  padding-bottom: 14px;
 }
 
 .pagination-container {
-  margin-top: 20px;
+  margin-top: 18px;
   display: flex;
   justify-content: flex-end;
 }
@@ -973,7 +1007,7 @@ onMounted(() => {
 
 .labor-card-list {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .labor-card {
@@ -981,9 +1015,9 @@ onMounted(() => {
   gap: 14px;
   padding: 18px;
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border-radius: 18px;
   background: var(--surface-panel);
-  box-shadow: var(--shadow-soft);
+  box-shadow: none;
 }
 
 .labor-card__header,

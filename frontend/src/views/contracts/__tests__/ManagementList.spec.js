@@ -201,6 +201,14 @@ describe('ManagementList date range query', () => {
     })
   })
 
+  it('renders the shared workspace shell for the management list page', () => {
+    const wrapper = mountPage()
+
+    expect(wrapper.find('.app-page-header').exists()).toBe(true)
+    expect(wrapper.text()).toContain('管理合同')
+    expect(wrapper.findAll('.app-workspace-panel')).toHaveLength(2)
+  })
+
   it('applies both range sides when provided', async () => {
     const wrapper = mountPage()
     await wrapper.find('[data-testid="range-full"]').trigger('click')

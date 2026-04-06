@@ -1,6 +1,14 @@
 <template>
-  <div class="contract-surface">
-    <AppSectionCard>
+  <div class="contract-page-shell">
+    <AppPageHeader
+      class="contract-page-header"
+      eyebrow="Contracts"
+      title="管理合同"
+      description="浏览、筛选、导出和维护管理合同数据。"
+    />
+
+    <AppWorkspacePanel panel-class="contract-page-panel contract-page-panel--filters">
+      <AppSectionCard class="contract-page-card">
       <template #header>合同筛选</template>
       <AppFilterBar inline-actions>
         <el-input v-model="queryParams.keyword" class="filter-control--search" placeholder="合同序号/编号/名称/乙方" clearable @keyup.enter="handleQuery" />
@@ -49,10 +57,12 @@
         <el-button v-if="userStore.canManageManagementContracts" type="primary" icon="Plus" @click="handleAdd">新建合同</el-button>
         </template>
       </AppFilterBar>
-    </AppSectionCard>
+      </AppSectionCard>
+    </AppWorkspacePanel>
 
     <!-- Table View (PC) -->
-    <AppSectionCard v-if="!isMobile">
+    <AppWorkspacePanel panel-class="contract-page-panel contract-page-panel--list">
+      <AppSectionCard v-if="!isMobile" class="contract-page-card">
       <template #header>合同列表</template>
       <AppDataTable>
       <el-table 
@@ -150,10 +160,10 @@
         />
       </div>
       </AppDataTable>
-    </AppSectionCard>
+      </AppSectionCard>
 
-    <!-- Card View (Mobile) -->
-    <AppSectionCard v-else>
+      <!-- Card View (Mobile) -->
+      <AppSectionCard v-else class="contract-page-card">
       <template #header>合同列表</template>
       <AppEmptyState
         v-if="!loading && !contractList.length"
@@ -206,7 +216,8 @@
         />
       </div>
       </div>
-    </AppSectionCard>
+      </AppSectionCard>
+    </AppWorkspacePanel>
 
     <!-- Dialog -->
     <el-dialog
@@ -423,7 +434,9 @@ import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import AppFilterBar from '@/components/ui/AppFilterBar.vue'
 import AppDataTable from '@/components/ui/AppDataTable.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
+import AppPageHeader from '@/components/ui/AppPageHeader.vue'
 import AppRangeField from '@/components/ui/AppRangeField.vue'
+import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 
 const SmartAutocomplete = defineAsyncComponent(() => import('@/components/SmartAutocomplete.vue'))
 const FormulaInput = defineAsyncComponent(() => import('@/components/FormulaInput.vue'))
@@ -745,29 +758,42 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
-.contract-surface {
+.contract-page-shell {
   display: grid;
-  gap: var(--space-5);
+  gap: var(--workspace-shell-gap);
 }
 
-.contract-surface :deep(.app-section-card) {
-  border-radius: 24px;
+.contract-page-panel {
+  gap: 0;
 }
 
-.contract-surface :deep(.app-filter-bar) {
-  border-radius: 20px;
-  background:
-    linear-gradient(180deg, var(--surface-panel), color-mix(in srgb, var(--surface-panel) 92%, var(--surface-panel-muted) 8%));
+.contract-page-panel :deep(.app-section-card) {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
 }
 
-.contract-surface :deep(.el-table__inner-wrapper::before) {
+.contract-page-panel :deep(.el-card__header) {
+  padding: 0 0 16px;
+}
+
+.contract-page-panel :deep(.el-card__body) {
+  padding: 0;
+}
+
+.contract-page-panel :deep(.app-filter-bar) {
+  border-radius: 16px;
+}
+
+.contract-page-panel :deep(.el-table__inner-wrapper::before) {
   display: none;
 }
 
-.contract-surface :deep(.el-table td.el-table__cell),
-.contract-surface :deep(.el-table th.el-table__cell) {
-  padding-top: 15px;
-  padding-bottom: 15px;
+.contract-page-panel :deep(.el-table td.el-table__cell),
+.contract-page-panel :deep(.el-table th.el-table__cell) {
+  padding-top: 14px;
+  padding-bottom: 14px;
 }
 
 .filter-actions {
@@ -792,7 +818,7 @@ onBeforeUnmount(() => {
 }
 
 .pagination-container {
-  margin-top: 20px;
+  margin-top: 18px;
   display: flex;
   justify-content: flex-end;
 }
@@ -830,12 +856,14 @@ onBeforeUnmount(() => {
 
 /* Mobile Card View */
 .card-list {
+  display: grid;
+  gap: 14px;
+
   .contract-card {
-    margin-bottom: 15px;
     border: 1px solid var(--border-subtle);
-    border-radius: 20px;
+    border-radius: 18px;
     background: var(--surface-panel);
-    box-shadow: var(--shadow-soft);
+    box-shadow: none;
     
     .card-header {
       display: flex;

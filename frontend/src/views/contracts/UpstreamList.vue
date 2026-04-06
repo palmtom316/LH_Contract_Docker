@@ -1,14 +1,13 @@
 <template>
   <div class="upstream-page-shell">
-    <header class="upstream-page-header">
-      <div>
-        <p class="upstream-page-header__eyebrow">Contracts</p>
-        <h1 class="upstream-page-header__title">上游合同</h1>
-        <p class="upstream-page-header__description">浏览、筛选、导出和维护上游合同数据。</p>
-      </div>
-    </header>
+    <AppPageHeader
+      class="upstream-page-header"
+      eyebrow="Contracts"
+      title="上游合同"
+      description="浏览、筛选、导出和维护上游合同数据。"
+    />
 
-    <section class="upstream-page-tabs">
+    <AppWorkspacePanel panel-class="upstream-page-tabs">
       <div class="contract-surface">
         <el-tabs v-model="activeTab" class="contract-tabs contract-tabs--dashboard app-tabs--line" @tab-change="handleTabChange">
       <!-- Tab 1: Contract Management -->
@@ -383,7 +382,7 @@
       </el-tab-pane>
         </el-tabs>
       </div>
-    </section>
+    </AppWorkspacePanel>
 
     <!-- Edit/Create Dialog -->
     <el-dialog
@@ -635,7 +634,9 @@ import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import AppFilterBar from '@/components/ui/AppFilterBar.vue'
 import AppDataTable from '@/components/ui/AppDataTable.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
+import AppPageHeader from '@/components/ui/AppPageHeader.vue'
 import AppRangeField from '@/components/ui/AppRangeField.vue'
+import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 
 const SmartAutocomplete = defineAsyncComponent(() => import('@/components/SmartAutocomplete.vue'))
 const PdfViewer = defineAsyncComponent(() => import('@/components/PdfViewer.vue'))
@@ -1059,48 +1060,31 @@ onBeforeUnmount(() => {
 
 .upstream-page-shell {
   display: grid;
-  gap: 18px;
-}
-
-.upstream-page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 4px 2px 0;
-}
-
-.upstream-page-header__eyebrow {
-  margin: 0 0 6px;
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
-.upstream-page-header__title {
-  margin: 0;
-  color: var(--text-primary);
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-}
-
-.upstream-page-header__description {
-  margin: 8px 0 0;
-  color: var(--text-secondary);
-  font-size: 14px;
-  line-height: 1.6;
+  gap: var(--workspace-shell-gap);
 }
 
 .upstream-page-tabs {
-  display: grid;
-  gap: var(--space-5);
+  padding-top: 20px;
 }
 
 .contract-surface {
   display: grid;
   gap: var(--space-5);
+}
+
+.upstream-page-tabs :deep(.app-section-card) {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.upstream-page-tabs :deep(.el-card__header) {
+  padding: 0 0 16px;
+}
+
+.upstream-page-tabs :deep(.el-card__body) {
+  padding: 0;
 }
 
 .contract-tabs :deep(.el-tabs__header) {
@@ -1111,7 +1095,7 @@ onBeforeUnmount(() => {
   padding: 4px;
   border: 1px solid var(--border-subtle);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--workspace-panel-muted);
 }
 
 .contract-tabs--dashboard :deep(.el-tabs__nav) {
@@ -1136,12 +1120,7 @@ onBeforeUnmount(() => {
 }
 
 .contract-surface :deep(.app-section-card) {
-  border-radius: 20px;
-}
-
-.contract-surface :deep(.app-filter-bar) {
-  border-radius: 16px;
-  background: #fff;
+  border-radius: 0;
 }
 
 .contract-surface :deep(.el-table__inner-wrapper::before) {
@@ -1150,8 +1129,8 @@ onBeforeUnmount(() => {
 
 .contract-surface :deep(.el-table td.el-table__cell),
 .contract-surface :deep(.el-table th.el-table__cell) {
-  padding-top: 15px;
-  padding-bottom: 15px;
+  padding-top: 14px;
+  padding-bottom: 14px;
 }
 
 .contract-surface :deep(.el-table__header th.el-table__cell) {
@@ -1200,7 +1179,7 @@ onBeforeUnmount(() => {
 }
 
 .pagination-container {
-  margin-top: 16px;
+  margin-top: 18px;
   display: flex;
   justify-content: flex-end;
 }
@@ -1211,8 +1190,10 @@ onBeforeUnmount(() => {
 
 /* Mobile Card View */
 .card-list {
+  display: grid;
+  gap: 14px;
+
   .contract-card {
-    margin-bottom: 15px;
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
     background: var(--surface-panel);

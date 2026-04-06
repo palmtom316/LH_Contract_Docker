@@ -129,6 +129,13 @@ describe('OrdinaryExpenseList upstream filter', () => {
     })
   })
 
+  it('renders the shared expense workspace panels around filters and results', () => {
+    const wrapper = mountPage()
+
+    expect(wrapper.findAll('.app-workspace-panel')).toHaveLength(2)
+    expect(wrapper.text()).toContain('费用列表')
+  })
+
   it('uses remote upstream search in the filter bar', async () => {
     const wrapper = mountPage()
     const selects = wrapper.findAllComponents(ElSelectStub)
