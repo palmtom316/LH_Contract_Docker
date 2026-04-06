@@ -271,13 +271,8 @@ const fetchLogs = async () => {
   loading.value = true
   try {
     const [startDate, endDate] = dateRange.value || []
-    if (startDate && endDate) {
-      queryParams.start_date = startDate
-      queryParams.end_date = endDate
-    } else {
-      queryParams.start_date = ''
-      queryParams.end_date = ''
-    }
+    queryParams.start_date = startDate || ''
+    queryParams.end_date = endDate || ''
 
     const params = { ...queryParams }
     Object.keys(params).forEach(key => {

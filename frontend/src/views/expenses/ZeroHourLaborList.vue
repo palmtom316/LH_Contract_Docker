@@ -602,10 +602,8 @@ const getList = async () => {
             upstream_contract_id: queryParams.upstream_contract_id || undefined
         }
         const [startDate, endDate] = dateRange.value || []
-        if (startDate && endDate) {
-            params.start_date = startDate
-            params.end_date = endDate
-        }
+        if (startDate) params.start_date = startDate
+        if (endDate) params.end_date = endDate
         const res = await getZeroHourLaborList(params)
         list.value = res.items
         total.value = res.total
@@ -658,10 +656,8 @@ const handleExport = async () => {
             upstream_contract_id: queryParams.upstream_contract_id || undefined
         }
         const [startDate, endDate] = dateRange.value || []
-        if (startDate && endDate) {
-            params.start_date = startDate
-            params.end_date = endDate
-        }
+        if (startDate) params.start_date = startDate
+        if (endDate) params.end_date = endDate
         
         const blob = await exportZeroHourLabor(params)
         
