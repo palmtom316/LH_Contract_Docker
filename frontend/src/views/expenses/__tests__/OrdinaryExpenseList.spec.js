@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { defineComponent } from 'vue'
+import ExpenseList from '@/views/expenses/ExpenseList.vue'
 import OrdinaryExpenseList from '@/views/expenses/OrdinaryExpenseList.vue'
 
 const apiMocks = vi.hoisted(() => ({
@@ -73,6 +74,17 @@ const ElButtonStub = defineComponent({
   template: '<button type="button" @click="$emit(\'click\')"><slot /></button>'
 })
 
+const ElTabsStub = defineComponent({
+  props: ['modelValue'],
+  emits: ['update:modelValue'],
+  template: '<div class="el-tabs-stub"><slot /></div>'
+})
+
+const ElTabPaneStub = defineComponent({
+  props: ['label', 'name'],
+  template: '<div class="el-tab-pane-stub" :data-label="label" :data-name="name"><slot /></div>'
+})
+
 const mountPage = () =>
   mount(OrdinaryExpenseList, {
     global: {
@@ -109,6 +121,32 @@ const mountPage = () =>
       }
     }
   })
+
+const mountExpensePage = () =>
+  mount(ExpenseList, {
+    global: {
+      stubs: {
+        OrdinaryExpenseList: { template: '<div class="ordinary-expense-list-stub">ordinary</div>' },
+        ZeroHourLaborList: { template: '<div class="zero-hour-labor-list-stub">labor</div>' },
+        ElTabs: ElTabsStub,
+        ElTabPane: ElTabPaneStub
+      }
+    }
+  })
+
+describe('ExpenseList workspace shell', () => {
+  it('renders the expense page shell, header, and tab panel with page-specific naming', () => {
+    const wrapper = mountExpensePage()
+
+    expect(wrapper.find('.expense-page-shell').exists()).toBe(true)
+    expect(wrapper.find('.expense-page-header').exists()).toBe(true)
+    expect(wrapper.find('.expense-page-panel').exists()).toBe(true)
+    expect(wrapper.find('.expense-overview').exists()).toBe(false)
+    expect(wrapper.find('.expense-page-tabs').exists()).toBe(true)
+    expect(wrapper.find('.el-tab-pane-stub[data-name="valuable"]').exists()).toBe(true)
+    expect(wrapper.find('.el-tab-pane-stub[data-name="zeroHourLabor"]').exists()).toBe(true)
+  })
+})
 
 describe('OrdinaryExpenseList upstream filter', () => {
   beforeEach(() => {

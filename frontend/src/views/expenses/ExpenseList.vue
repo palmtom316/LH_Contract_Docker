@@ -1,14 +1,14 @@
 <template>
-  <div class="expense-overview">
+  <div class="expense-page-shell">
     <AppPageHeader
-      class="expense-overview__header"
+      class="expense-page-header"
       eyebrow="Expenses"
       title="费用管理"
       description="查看普通费用报销与零星用工记录，保留原有筛选、导出和维护能力。"
     />
 
-    <AppWorkspacePanel panel-class="expense-overview__workspace">
-      <el-tabs v-model="activeTab" class="app-tabs--line expense-overview__tabs">
+    <AppWorkspacePanel panel-class="expense-page-panel">
+      <el-tabs v-model="activeTab" class="app-tabs--line expense-page-tabs">
         <el-tab-pane label="普通费用报销" name="valuable">
           <OrdinaryExpenseList />
         </el-tab-pane>
@@ -31,35 +31,35 @@ const activeTab = ref('valuable')
 </script>
 
 <style scoped lang="scss">
-.expense-overview {
+.expense-page-shell {
   display: grid;
   gap: var(--workspace-shell-gap);
 }
 
-.expense-overview__workspace {
+.expense-page-panel {
   padding-top: 20px;
 }
 
-.expense-overview__tabs :deep(.el-tabs__header) {
+.expense-page-tabs :deep(.el-tabs__header) {
   margin-bottom: 20px;
 }
 
-.expense-overview__tabs :deep(.el-tabs__nav-wrap) {
+.expense-page-tabs :deep(.el-tabs__nav-wrap) {
   padding: 4px;
   border: 1px solid var(--border-subtle);
   border-radius: 14px;
   background: var(--workspace-panel-muted);
 }
 
-.expense-overview__tabs :deep(.el-tab-pane) {
+.expense-page-tabs :deep(.el-tab-pane) {
   min-width: 0;
 }
 
-.expense-overview__tabs :deep(.el-tabs__active-bar) {
+.expense-page-tabs :deep(.el-tabs__active-bar) {
   display: none;
 }
 
-.expense-overview__tabs :deep(.el-tabs__item) {
+.expense-page-tabs :deep(.el-tabs__item) {
   height: 40px;
   padding: 0 16px;
   border-radius: 10px;
@@ -67,7 +67,7 @@ const activeTab = ref('valuable')
   font-weight: 600;
 }
 
-.expense-overview__tabs :deep(.el-tabs__item.is-active) {
+.expense-page-tabs :deep(.el-tabs__item.is-active) {
   color: var(--text-primary);
   background: var(--surface-panel);
 }
