@@ -418,7 +418,7 @@ const {
   handleQuery: baseHandleQuery,
   resetQuery: baseResetQuery,
   handleDelete,
-  handleExport,
+  handleExport: baseHandleExport,
   formatMoney,
   getStatusType
 } = useContractList({
@@ -435,6 +435,13 @@ const handleQuery = () => {
   queryParams.start_date = startDate || undefined
   queryParams.end_date = endDate || undefined
   getList()
+}
+
+const handleExport = async () => {
+  const [startDate, endDate] = dateRange.value || []
+  queryParams.start_date = startDate || undefined
+  queryParams.end_date = endDate || undefined
+  await baseHandleExport()
 }
 
 const resetQuery = () => {

@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { reactive, ref } from 'vue'
+import { defineComponent, reactive, ref } from 'vue'
 import ManagementList from '@/views/contracts/ManagementList.vue'
 
 const { getListMock, queryParamsState } = vi.hoisted(() => ({
@@ -96,6 +96,17 @@ vi.mock('@/utils/request', () => ({
   default: vi.fn()
 }))
 
+const RangeFieldStub = defineComponent({
+  emits: ['update:modelValue'],
+  template: `
+    <div>
+      <button data-testid="range-full" @click="$emit('update:modelValue', ['2026-04-01', '2026-04-06'])"></button>
+      <button data-testid="range-start" @click="$emit('update:modelValue', ['2026-04-01', ''])"></button>
+      <button data-testid="range-end" @click="$emit('update:modelValue', ['', '2026-04-06'])"></button>
+    </div>
+  `
+})
+
 const mountPage = () =>
   mount(ManagementList, {
     global: {
@@ -104,7 +115,7 @@ const mountPage = () =>
         AppFilterBar: { template: '<div><slot /><slot name="actions" /></div>' },
         AppDataTable: { template: '<div><slot /><slot name="footer" /></div>' },
         AppEmptyState: true,
-        AppRangeField: true,
+        AppRangeField: RangeFieldStub,
         DictSelect: true,
         SmartDateInput: true,
         ElInput: true,
@@ -144,7 +155,7 @@ describe('ManagementList date range query', () => {
 
   it('applies both range sides when provided', async () => {
     const wrapper = mountPage()
-    wrapper.vm.dateRange = ['2026-04-01', '2026-04-06']
+    await wrapper.find('[data-testid="range-full"]').trigger('click')
 
     await wrapper.vm.handleQuery()
 
@@ -155,14 +166,14 @@ describe('ManagementList date range query', () => {
 
   it('supports partial range values', async () => {
     const wrapper = mountPage()
-    wrapper.vm.dateRange = ['2026-04-01', '']
+    await wrapper.find('[data-testid="range-start"]').trigger('click')
 
     await wrapper.vm.handleQuery()
 
     expect(wrapper.vm.queryParams.start_date).toBe('2026-04-01')
     expect(wrapper.vm.queryParams.end_date).toBeUndefined()
 
-    wrapper.vm.dateRange = ['', '2026-04-06']
+    await wrapper.find('[data-testid="range-end"]').trigger('click')
     await wrapper.vm.handleQuery()
 
     expect(wrapper.vm.queryParams.start_date).toBeUndefined()

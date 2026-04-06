@@ -650,7 +650,7 @@ const {
   handleQuery: baseHandleQuery,
   resetQuery: baseResetQuery,
   handleDelete,
-  handleExport,
+  handleExport: baseHandleExport,
   formatMoney,
   getStatusType
 } = useContractList({
@@ -739,8 +739,7 @@ const handleResize = () => {
   checkIsMobile()
 }
 
-const getList = () => {
-  // Sync date range for basic_info tab
+const syncRangesForQuery = () => {
   const [startDate, endDate] = dateRange.value || []
   if (activeTab.value === 'basic_info') {
     queryParams.start_date = startDate || undefined
@@ -749,7 +748,7 @@ const getList = () => {
     queryParams.start_date = undefined
     queryParams.end_date = undefined
   }
-  // Sync month range for management tab
+
   const [startMonth, endMonth] = monthRange.value || []
   if (activeTab.value === 'management') {
     queryParams.start_month = startMonth || undefined
@@ -758,7 +757,16 @@ const getList = () => {
     queryParams.start_month = undefined
     queryParams.end_month = undefined
   }
+}
+
+const getList = () => {
+  syncRangesForQuery()
   fetchList()
+}
+
+const handleExport = async () => {
+  syncRangesForQuery()
+  await baseHandleExport()
 }
 
 const handleTabChange = () => {
