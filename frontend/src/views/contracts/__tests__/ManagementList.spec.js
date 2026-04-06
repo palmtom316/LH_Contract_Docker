@@ -179,10 +179,12 @@ const mountPage = () =>
 describe('ManagementList date range query', () => {
   beforeEach(() => {
     queryParamsState.value.page = 1
+    queryParamsState.value.page_size = 10
     queryParamsState.value.keyword = ''
     queryParamsState.value.status = ''
     queryParamsState.value.start_date = undefined
     queryParamsState.value.end_date = undefined
+    queryParamsState.value.category = undefined
     queryParamsState.value.upstream_contract_id = undefined
     getListMock.mockClear()
     getUpstreamContractsMock.mockReset()
@@ -232,6 +234,8 @@ describe('ManagementList date range query', () => {
     const filterSelect = selects.find((node) => node.props('placeholder')?.includes('上游合同'))
 
     expect(filterSelect).toBeTruthy()
+    expect(filterSelect.props('placeholder')).toContain('上游合同')
+    expect(typeof filterSelect.props('remoteMethod')).toBe('function')
 
     await filterSelect.props('remoteMethod')('甲方单位')
 

@@ -98,6 +98,27 @@ const RangeFieldStub = defineComponent({
   `
 })
 
+const ElButtonStub = defineComponent({
+  props: ['type', 'icon'],
+  emits: ['click'],
+  template: `
+    <button
+      type="button"
+      :data-type="type"
+      :data-icon="icon"
+      v-bind="$attrs"
+      @click="$emit('click', $event)"
+    >
+      <slot />
+    </button>
+  `
+})
+
+const ElTabPaneStub = defineComponent({
+  props: ['label', 'name'],
+  template: '<div class="el-tab-pane-stub" :data-label="label" :data-name="name"><span class="tab-label">{{ label }}</span><slot /></div>'
+})
+
 const mountPage = () =>
   mount(UpstreamList, {
     global: {
@@ -112,7 +133,7 @@ const mountPage = () =>
         ElInput: true,
         ElSelect: true,
         ElOption: true,
-        ElButton: true,
+        ElButton: ElButtonStub,
         ElTable: true,
         ElTableColumn: true,
         ElPagination: true,
@@ -131,7 +152,7 @@ const mountPage = () =>
         ElTooltip: true,
         ElIcon: true,
         ElTabs: { template: '<div><slot /></div>' },
-        ElTabPane: { template: '<div><slot /></div>' },
+        ElTabPane: ElTabPaneStub,
         ElResult: true,
         ElDivider: true
       }
@@ -141,6 +162,12 @@ const mountPage = () =>
 describe('UpstreamList filters', () => {
   beforeEach(() => {
     queryParamsState.value.page = 1
+    queryParamsState.value.page_size = 10
+    queryParamsState.value.keyword = ''
+    queryParamsState.value.status = ''
+    queryParamsState.value.company_category = ''
+    queryParamsState.value.category = ''
+    queryParamsState.value.management_mode = ''
     queryParamsState.value.start_date = undefined
     queryParamsState.value.end_date = undefined
     queryParamsState.value.start_month = undefined
@@ -169,5 +196,26 @@ describe('UpstreamList filters', () => {
     expect(wrapper.vm.queryParams.start_month).toBeUndefined()
     expect(wrapper.vm.queryParams.end_month).toBeUndefined()
     expect(getListMock).toHaveBeenCalled()
+  })
+
+  it('renders the management and basic info tabs', () => {
+    const wrapper = mountPage()
+    const paneLabels = wrapper.findAll('.el-tab-pane-stub').map((pane) => pane.attributes('data-label'))
+
+    expect(wrapper.text()).toContain('合同管理')
+    expect(wrapper.text()).toContain('上游合同基本信息')
+    expect(paneLabels).toEqual(expect.arrayContaining(['合同管理', '上游合同基本信息']))
+  })
+
+  it('shows the management filter action buttons', () => {
+    const wrapper = mountPage()
+    const managementPane = wrapper.get('.el-tab-pane-stub[data-name="management"]')
+    const searchButton = managementPane.get('[data-icon="Search"]')
+    const resetButton = managementPane.get('[data-icon="Refresh"]')
+
+    expect(wrapper.text()).toContain('搜索')
+    expect(wrapper.text()).toContain('重置')
+    expect(searchButton.text()).toBe('搜索')
+    expect(resetButton.text()).toBe('重置')
   })
 })

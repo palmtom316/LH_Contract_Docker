@@ -135,6 +135,8 @@ describe('OrdinaryExpenseList upstream filter', () => {
     const filterSelect = selects.find((node) => node.props('placeholder')?.includes('上游合同'))
 
     expect(filterSelect).toBeTruthy()
+    expect(filterSelect.props('placeholder')).toContain('上游合同')
+    expect(typeof filterSelect.props('remoteMethod')).toBe('function')
 
     await filterSelect.props('remoteMethod')('甲方单位')
 
