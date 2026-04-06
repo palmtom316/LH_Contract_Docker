@@ -275,7 +275,7 @@ describe('upstream workspace shell structure', () => {
     const wrapper = mountPage()
 
     expect(wrapper.find('.upstream-page-shell').exists()).toBe(true)
-    expect(wrapper.find('.upstream-page-shell__body').exists()).toBe(true)
+    expect(wrapper.find('.shared-header').exists()).toBe(true)
   })
 
 })
