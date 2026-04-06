@@ -100,6 +100,13 @@ const rangeError = ref('')
 const lastEmitted = ref([props.modelValue?.[0] || '', props.modelValue?.[1] || ''])
 const startResetKey = ref(0)
 const endResetKey = ref(0)
+const lastEmitWasInvalid = ref(false)
+const lastEmitWasRangeError = ref(false)
+
+function normalizeArray(value) {
+  if (!Array.isArray(value)) return []
+  return [value?.[0] || '', value?.[1] || '']
+}
 
 watch(
   () => props.modelValue,
@@ -107,10 +114,18 @@ watch(
     const nextStart = value?.[0] || ''
     const nextEnd = value?.[1] || ''
     const [lastStart, lastEnd] = lastEmitted.value
+    const nextPair = normalizeArray(value)
+    const isSelfEcho =
+      Array.isArray(value) &&
+      value.length >= 2 &&
+      nextPair[0] === lastStart &&
+      nextPair[1] === lastEnd &&
+      (lastEmitWasInvalid.value || lastEmitWasRangeError.value)
     const isExternalReset =
-      !value ||
-      value.length === 0 ||
-      (!nextStart && !nextEnd && (lastStart || lastEnd || startValue.value || endValue.value))
+      !isSelfEcho &&
+      (!value ||
+        value.length === 0 ||
+        (!nextStart && !nextEnd && (lastStart || lastEnd || startValue.value || endValue.value)))
     const echoedStart = nextStart === '' && lastStart === ''
     const echoedEnd = nextEnd === '' && lastEnd === ''
 
@@ -124,7 +139,11 @@ watch(
     if (isExternalReset || (!echoedStart && !echoedEnd)) {
       startValid.value = true
       endValid.value = true
-      rangeError.value = ''
+      if (isExternalReset) {
+        rangeError.value = ''
+        lastEmitWasInvalid.value = false
+        lastEmitWasRangeError.value = false
+      }
       if (isExternalReset) {
         startResetKey.value += 1
         endResetKey.value += 1
@@ -164,6 +183,8 @@ function emitRange() {
   if (!startValid.value || !endValid.value) {
     rangeError.value = ''
     lastEmitted.value = [startValid.value ? startValue.value : '', endValid.value ? endValue.value : '']
+    lastEmitWasInvalid.value = true
+    lastEmitWasRangeError.value = false
     emit('update:modelValue', lastEmitted.value)
     return
   }
@@ -171,12 +192,16 @@ function emitRange() {
   if (startValue.value && endValue.value && startValue.value > endValue.value) {
     rangeError.value = '开始日期不能晚于结束日期'
     lastEmitted.value = ['', '']
+    lastEmitWasInvalid.value = false
+    lastEmitWasRangeError.value = true
     emit('update:modelValue', lastEmitted.value)
     return
   }
 
   rangeError.value = ''
   lastEmitted.value = [startValue.value || '', endValue.value || '']
+  lastEmitWasInvalid.value = false
+  lastEmitWasRangeError.value = false
   emit('update:modelValue', lastEmitted.value)
 }
 

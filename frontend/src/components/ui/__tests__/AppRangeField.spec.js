@@ -116,6 +116,38 @@ describe('AppRangeField', () => {
     expect(wrapper.text()).not.toContain('日期格式无法识别')
   })
 
+  it('keeps invalid raw text when parent echoes the emitted invalid range', async () => {
+    const wrapper = mountRange({ modelValue: [] })
+    const inputs = wrapper.findAll('input')
+
+    await inputs[0].setValue('2026/2/31')
+    await inputs[0].trigger('blur')
+
+    const echoValue = wrapper.emitted('update:modelValue').at(-1)?.[0] || []
+    await wrapper.setProps({ modelValue: echoValue })
+    await wrapper.vm.$nextTick()
+
+    const echoedInputs = wrapper.findAll('input')
+    expect(echoedInputs[0].element.value).toBe('2026/2/31')
+    expect(wrapper.text()).toContain('日期格式无法识别')
+  })
+
+  it('keeps range-order error when parent echoes the blocked range', async () => {
+    const wrapper = mountRange({ modelValue: [] })
+    const inputs = wrapper.findAll('input')
+
+    await inputs[0].setValue('2026/04/08')
+    await inputs[0].trigger('blur')
+    await inputs[1].setValue('2026/04/06')
+    await inputs[1].trigger('blur')
+
+    const echoValue = wrapper.emitted('update:modelValue').at(-1)?.[0] || []
+    await wrapper.setProps({ modelValue: echoValue })
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.text()).toContain('开始日期不能晚于结束日期')
+  })
+
   it('supports month-mode pickers with the existing API', async () => {
     const wrapper = mountRange({ modelValue: [], type: 'month' })
     const inputs = wrapper.findAll('[data-test="month-picker"]')
