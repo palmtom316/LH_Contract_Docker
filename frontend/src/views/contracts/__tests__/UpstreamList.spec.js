@@ -199,7 +199,13 @@ const layoutElementStubs = {
 const mountPage = () =>
   mount(UpstreamList, {
     global: {
-      stubs: layoutElementStubs
+      stubs: layoutElementStubs,
+      directives: {
+        loading: {
+          mounted: () => {},
+          updated: () => {}
+        }
+      }
     }
   })
 
@@ -268,8 +274,8 @@ describe('upstream workspace shell structure', () => {
   it('uses upstream-specific workspace wrappers for the full app redesign', () => {
     const wrapper = mountPage()
 
-    expect(wrapper.find('.upstream-workspace-shell').exists()).toBe(true)
-    expect(wrapper.find('.upstream-workspace-shell__body').exists()).toBe(true)
+    expect(wrapper.find('.upstream-page-shell').exists()).toBe(true)
+    expect(wrapper.find('.upstream-page-shell__body').exists()).toBe(true)
   })
 
 })

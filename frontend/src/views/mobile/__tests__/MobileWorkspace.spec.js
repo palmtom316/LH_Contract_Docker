@@ -69,6 +69,6 @@ describe('Mobile workspace shell', () => {
     const wrapper = mountPage()
 
     expect(wrapper.find('.mobile-shell').exists()).toBe(true)
-    expect(wrapper.find('.mobile-shell__content').exists()).toBe(true)
+    expect(wrapper.find('.mobile-shell__frame').exists()).toBe(true)
   })
 })

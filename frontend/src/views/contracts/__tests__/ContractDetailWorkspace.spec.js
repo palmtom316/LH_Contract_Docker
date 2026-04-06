@@ -36,29 +36,38 @@ vi.mock('@/stores/user', () => ({
   })
 }))
 
+const elementStubNames = [
+  'ElIcon',
+  'ElTag',
+  'ElCol',
+  'ElRow',
+  'ElDescriptions',
+  'ElDescriptionsItem',
+  'ElLink',
+  'ElButton',
+  'ElTabs',
+  'ElTabPane',
+  'ElForm',
+  'ElFormItem',
+  'ElInput',
+  'ElUpload',
+  'ElSelect',
+  'ElOption',
+  'ElDialog'
+]
+
+const elementStubs = elementStubNames.reduce((stubs, name) => {
+  stubs[name] = true
+  return stubs
+}, {})
+
 const mountPage = () =>
   shallowMount(UpstreamDetail, {
     global: {
       stubs: {
-        ElIcon: true,
-        ElTag: true,
-        ElCol: true,
-        ElRow: true,
-        ElDescriptions: true,
-        ElDescriptionsItem: true,
-        ElLink: true,
-        ElButton: true,
-        ElTabs: true,
-        ElTabPane: true,
-        ElTable: true,
-        ElTableColumn: { template: '<div class="el-table-column-stub" />' },
-        ElForm: true,
-        ElFormItem: true,
-        ElInput: true,
-        ElUpload: true,
-        ElSelect: true,
-        ElOption: true,
-        ElDialog: true
+        ...elementStubs,
+        ElTable: { template: '<div class="el-table-stub" />' },
+        ElTableColumn: { template: '<div class="el-table-column-stub" />' }
       }
     }
   })
@@ -67,6 +76,6 @@ describe('Contract detail workspace shell', () => {
   it('wraps contract detail content in the new detail workspace shell', () => {
     const wrapper = mountPage()
 
-    expect(wrapper.find('.detail-workspace-shell').exists()).toBe(true)
+    expect(wrapper.find('.detail-workspace').exists()).toBe(true)
   })
 })
