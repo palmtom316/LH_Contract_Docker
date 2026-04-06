@@ -150,7 +150,6 @@ defineProps({
 
   .app-filter-bar__main :deep(.filter-control--range-wide) {
     grid-column: span 4;
-    grid-row: 2;
   }
 }
 

@@ -122,6 +122,7 @@ describe('AppFilterBar', () => {
     expect(searchRule['grid-column']).toBe('span 3')
     expect(timeRule['grid-column']).toBe('span 3')
     expect(rangeRule['grid-column']).toBe('span 4')
+    expect(rangeRule['grid-row']).toBeUndefined()
     expect(actionsRule['grid-column']).toBe('span 3')
     expect(actionsRule['grid-row']).toBeUndefined()
   })
