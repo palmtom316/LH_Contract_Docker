@@ -205,17 +205,39 @@ function emitRange() {
   emit('update:modelValue', lastEmitted.value)
 }
 
+function emitPickerRange(start, end) {
+  if (start && end && start > end) {
+    rangeError.value = '开始日期不能晚于结束日期'
+    lastEmitted.value = ['', '']
+    lastEmitWasInvalid.value = false
+    lastEmitWasRangeError.value = true
+    emit('update:modelValue', lastEmitted.value)
+    return
+  }
+
+  rangeError.value = ''
+  lastEmitWasInvalid.value = false
+  lastEmitWasRangeError.value = false
+  const payload = normalizePickerRange(start, end)
+  lastEmitted.value = payload
+  emit('update:modelValue', payload)
+}
+
 const startPickerValue = computed({
   get: () => normalizePickerValue(props.modelValue?.[0]),
   set: (value) => {
-    emit('update:modelValue', normalizePickerRange(value, props.modelValue?.[1] || ''))
+    const normalizedStart = normalizePickerValue(value)
+    const normalizedEnd = lastEmitted.value?.[1] || normalizePickerValue(props.modelValue?.[1])
+    emitPickerRange(normalizedStart, normalizedEnd)
   }
 })
 
 const endPickerValue = computed({
   get: () => normalizePickerValue(props.modelValue?.[1]),
   set: (value) => {
-    emit('update:modelValue', normalizePickerRange(props.modelValue?.[0] || '', value))
+    const normalizedStart = lastEmitted.value?.[0] || normalizePickerValue(props.modelValue?.[0])
+    const normalizedEnd = normalizePickerValue(value)
+    emitPickerRange(normalizedStart, normalizedEnd)
   }
 })
 

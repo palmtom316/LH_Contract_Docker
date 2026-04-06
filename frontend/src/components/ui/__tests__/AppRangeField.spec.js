@@ -164,4 +164,18 @@ describe('AppRangeField', () => {
     })
     expect(wrapper.emitted('update:modelValue').at(-1)).toEqual([['2026-03', '2026-04']])
   })
+
+  it('blocks and surfaces month-mode ranges when the start is after the end', async () => {
+    const wrapper = mountRange({ modelValue: [], type: 'month' })
+    const inputs = wrapper.findAll('[data-test="month-picker"]')
+
+    await inputs[0].setValue('2026-05')
+    const firstUpdate = wrapper.emitted('update:modelValue').at(-1)?.[0] || []
+    await wrapper.setProps({ modelValue: firstUpdate })
+
+    await inputs[1].setValue('2026-04')
+
+    expect(wrapper.text()).toContain('开始日期不能晚于结束日期')
+    expect(wrapper.emitted('update:modelValue').at(-1)).toEqual([['', '']])
+  })
 })
