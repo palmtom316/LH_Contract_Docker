@@ -35,11 +35,8 @@
             <AppRangeField
               v-model="monthRange"
               class="filter-control--time"
-              type="month"
-              value-format="YYYY-MM"
-              display-format="YYYY年MM月"
-              start-placeholder="开始月份"
-              end-placeholder="结束月份"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
             />
             <template #actions>
             <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -749,10 +746,12 @@ const syncRangesForQuery = () => {
     queryParams.end_date = undefined
   }
 
-  const [startMonth, endMonth] = monthRange.value || []
+  const [managementStartDate, managementEndDate] = monthRange.value || []
   if (activeTab.value === 'management') {
-    queryParams.start_month = startMonth || undefined
-    queryParams.end_month = endMonth || undefined
+    queryParams.start_date = managementStartDate || undefined
+    queryParams.end_date = managementEndDate || undefined
+    queryParams.start_month = undefined
+    queryParams.end_month = undefined
   } else {
     queryParams.start_month = undefined
     queryParams.end_month = undefined

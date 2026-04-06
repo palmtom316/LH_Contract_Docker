@@ -149,7 +149,6 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
                 ContractUpstream.party_b_name.ilike(f"%{keyword}%")
             ]
             if keyword.isdigit():
-                conditions.append(ContractUpstream.id == int(keyword))
                 conditions.append(ContractUpstream.serial_number == int(keyword))
             
             query = query.where(or_(*conditions))
@@ -278,7 +277,6 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
                 ContractUpstream.party_b_name.ilike(f"%{keyword}%")
             ]
             if keyword.isdigit():
-                conditions.append(ContractUpstream.id == int(keyword))
                 conditions.append(ContractUpstream.serial_number == int(keyword))
             query = query.where(or_(*conditions))
         
@@ -539,4 +537,3 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
             await self._invalidate_dashboard_cache()
             
         return {"success": success_count, "errors": errors}
-

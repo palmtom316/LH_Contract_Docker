@@ -81,7 +81,8 @@ class ContractManagementService(BaseContractService[ContractManagement]):
         status: Optional[str] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
-        category: Optional[str] = None
+        category: Optional[str] = None,
+        upstream_contract_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """List contracts with filtering and pagination (Optimized)"""
         
@@ -149,6 +150,9 @@ class ContractManagementService(BaseContractService[ContractManagement]):
         if category:
             query = query.where(ContractManagement.category == category)
 
+        if upstream_contract_id:
+            query = query.where(ContractManagement.upstream_contract_id == upstream_contract_id)
+
         # Count total
         count_query = select(func.count()).select_from(query.subquery())
         total = (await self.db.execute(count_query)).scalar_one()
@@ -176,7 +180,8 @@ class ContractManagementService(BaseContractService[ContractManagement]):
         status: Optional[str] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
-        category: Optional[str] = None
+        category: Optional[str] = None,
+        upstream_contract_id: Optional[int] = None
     ) -> List[ContractManagement]:
         """List all contracts for export (no pagination) - Optimized"""
         
@@ -242,6 +247,9 @@ class ContractManagementService(BaseContractService[ContractManagement]):
 
         if category:
             query = query.where(ContractManagement.category == category)
+
+        if upstream_contract_id:
+            query = query.where(ContractManagement.upstream_contract_id == upstream_contract_id)
 
         query = query.order_by(desc(ContractManagement.created_at))
         result = await self.db.execute(query)

@@ -3,9 +3,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { defineComponent, reactive, ref } from 'vue'
 import ManagementList from '@/views/contracts/ManagementList.vue'
 
-const { getListMock, queryParamsState } = vi.hoisted(() => ({
+const { getListMock, queryParamsState, getUpstreamContractsMock } = vi.hoisted(() => ({
   getListMock: vi.fn(),
-  queryParamsState: { value: null }
+  queryParamsState: { value: null },
+  getUpstreamContractsMock: vi.fn()
 }))
 
 vi.mock('@/composables/useContractList', () => {
@@ -17,7 +18,8 @@ vi.mock('@/composables/useContractList', () => {
       status: '',
       start_date: undefined,
       end_date: undefined,
-      category: undefined
+      category: undefined,
+      upstream_contract_id: undefined
     })
   }
   return {
@@ -74,7 +76,7 @@ vi.mock('@/api/contractManagement', () => ({
 }))
 
 vi.mock('@/api/contractUpstream', () => ({
-  getContracts: vi.fn(),
+  getContracts: getUpstreamContractsMock,
   getContractSummary: vi.fn()
 }))
 
@@ -107,6 +109,37 @@ const RangeFieldStub = defineComponent({
   `
 })
 
+const ElDialogStub = defineComponent({
+  props: ['modelValue'],
+  template: '<div v-if="modelValue"><slot /></div>'
+})
+
+const ElSelectStub = defineComponent({
+  props: ['modelValue', 'placeholder', 'remote', 'remoteMethod'],
+  emits: ['update:modelValue', 'change'],
+  template: `
+    <div class="el-select-stub" :data-placeholder="placeholder">
+      <button
+        v-if="remote && remoteMethod"
+        class="remote-search"
+        type="button"
+        @click="remoteMethod('甲方单位')"
+      >
+        搜索
+      </button>
+      <button
+        v-if="remote"
+        class="remote-select"
+        type="button"
+        @click="$emit('update:modelValue', 7); $emit('change', 7)"
+      >
+        选择
+      </button>
+      <slot />
+    </div>
+  `
+})
+
 const mountPage = () =>
   mount(ManagementList, {
     global: {
@@ -119,13 +152,13 @@ const mountPage = () =>
         DictSelect: true,
         SmartDateInput: true,
         ElInput: true,
-        ElSelect: true,
+        ElSelect: ElSelectStub,
         ElOption: true,
         ElButton: true,
         ElTable: true,
         ElTableColumn: true,
         ElPagination: true,
-        ElDialog: true,
+        ElDialog: ElDialogStub,
         ElForm: true,
         ElFormItem: true,
         ElInputNumber: true,
@@ -150,7 +183,20 @@ describe('ManagementList date range query', () => {
     queryParamsState.value.status = ''
     queryParamsState.value.start_date = undefined
     queryParamsState.value.end_date = undefined
+    queryParamsState.value.upstream_contract_id = undefined
     getListMock.mockClear()
+    getUpstreamContractsMock.mockReset()
+    getUpstreamContractsMock.mockResolvedValue({
+      items: [
+        {
+          id: 7,
+          serial_number: 12,
+          contract_code: 'UP-007',
+          contract_name: '上游合同七',
+          party_a_name: '甲方单位七'
+        }
+      ]
+    })
   })
 
   it('applies both range sides when provided', async () => {
@@ -178,5 +224,27 @@ describe('ManagementList date range query', () => {
 
     expect(wrapper.vm.queryParams.start_date).toBeUndefined()
     expect(wrapper.vm.queryParams.end_date).toBe('2026-04-06')
+  })
+
+  it('supports remote upstream search in the filter bar', async () => {
+    const wrapper = mountPage()
+    const selects = wrapper.findAllComponents(ElSelectStub)
+    const filterSelect = selects.find((node) => node.props('placeholder')?.includes('上游合同'))
+
+    expect(filterSelect).toBeTruthy()
+
+    await filterSelect.props('remoteMethod')('甲方单位')
+
+    expect(getUpstreamContractsMock).toHaveBeenCalledWith({
+      keyword: '甲方单位',
+      page_size: 100
+    })
+
+    filterSelect.vm.$emit('update:modelValue', 7)
+    filterSelect.vm.$emit('change', 7)
+    await wrapper.vm.handleQuery()
+
+    expect(wrapper.vm.queryParams.upstream_contract_id).toBe(7)
+    expect(getListMock).toHaveBeenCalled()
   })
 })

@@ -4,6 +4,29 @@
       <template #header>合同筛选</template>
       <AppFilterBar inline-actions>
         <el-input v-model="queryParams.keyword" class="filter-control--search" placeholder="合同序号/编号/名称/乙方" clearable @keyup.enter="handleQuery" />
+        <el-select
+          v-model="queryParams.upstream_contract_id"
+          class="filter-control--wide"
+          placeholder="上游合同(序号/编号/名称/甲方)"
+          filterable
+          remote
+          reserve-keyword
+          clearable
+          :remote-method="searchUpstreamFilter"
+          :loading="upstreamFilterLoading"
+        >
+          <el-option
+            v-for="item in upstreamFilterOptions"
+            :key="item.id"
+            :label="buildUpstreamOptionLabel(item)"
+            :value="item.id"
+          >
+            <div style="display: flex; flex-direction: column; gap: 2px; line-height: 1.4;">
+              <span>{{ buildUpstreamOptionLabel(item) }}</span>
+              <span style="font-size: 12px; color: #8492a6;">{{ buildUpstreamOptionMeta(item) }}</span>
+            </div>
+          </el-option>
+        </el-select>
         <AppRangeField
           v-model="dateRange"
           class="filter-control--time"
@@ -241,11 +264,13 @@
             <el-option
               v-for="item in upstreamOptions"
               :key="item.id"
-              :label="'[' + (item.serial_number || '-') + '] ' + item.contract_name"
+              :label="buildUpstreamOptionLabel(item)"
               :value="item.id"
             >
-              <span>[{{ item.serial_number || '-' }}] {{ item.contract_name }}</span>
-              <span style="float: right; color: #8492a6; font-size: 12px">{{ item.contract_code }}</span>
+              <div style="display: flex; flex-direction: column; gap: 2px; line-height: 1.4;">
+                <span>{{ buildUpstreamOptionLabel(item) }}</span>
+                <span style="font-size: 12px; color: #8492a6;">{{ buildUpstreamOptionMeta(item) }}</span>
+              </div>
             </el-option>
           </el-select>
         </el-form-item>
@@ -427,6 +452,7 @@ const {
 })
 
 const dateRange = ref([])
+queryParams.upstream_contract_id = queryParams.upstream_contract_id || undefined
 
 const handleQuery = () => {
   queryParams.page = 1
@@ -448,6 +474,8 @@ const resetQuery = () => {
   queryParams.start_date = undefined
   queryParams.end_date = undefined
   queryParams.category = undefined
+  queryParams.upstream_contract_id = undefined
+  upstreamFilterOptions.value = []
   baseResetQuery()
 }
 
@@ -464,6 +492,20 @@ const originalId = ref(null)
 const upstreamLoading = ref(false)
 const upstreamOptions = ref([])
 const upstreamSummary = ref(null)
+const upstreamFilterLoading = ref(false)
+const upstreamFilterOptions = ref([])
+
+const buildUpstreamOptionLabel = (item) => {
+  const serialNumber = item?.serial_number ?? '-'
+  const contractName = item?.contract_name || '未命名合同'
+  return `[${serialNumber}] ${contractName}`
+}
+
+const buildUpstreamOptionMeta = (item) => {
+  const contractCode = item?.contract_code || '未填写编号'
+  const partyAName = item?.party_a_name || '未填写甲方'
+  return `${contractCode} · ${partyAName}`
+}
 
 const dialog = reactive({
   title: '',
@@ -531,6 +573,22 @@ const searchUpstream = async (query) => {
     upstreamLoading.value = false
   } else {
     upstreamOptions.value = []
+  }
+}
+
+const searchUpstreamFilter = async (query) => {
+  if (!query) {
+    upstreamFilterOptions.value = []
+    return
+  }
+  upstreamFilterLoading.value = true
+  try {
+    const res = await getUpstreamContracts({ keyword: query, page_size: 100 })
+    upstreamFilterOptions.value = res.items || []
+  } catch (e) {
+    console.error(e)
+  } finally {
+    upstreamFilterLoading.value = false
   }
 }
 
@@ -653,7 +711,8 @@ const handleDetail = (row) => {
     query: {
       page: queryParams.page,
       keyword: queryParams.keyword || undefined,
-      status: queryParams.status || undefined
+      status: queryParams.status || undefined,
+      upstream_contract_id: queryParams.upstream_contract_id || undefined
     }
   })
 }
@@ -668,6 +727,9 @@ onMounted(() => {
   }
   if (route.query.status) {
     queryParams.status = route.query.status
+  }
+  if (route.query.upstream_contract_id) {
+    queryParams.upstream_contract_id = parseInt(route.query.upstream_contract_id, 10)
   }
   
   checkIsMobile()

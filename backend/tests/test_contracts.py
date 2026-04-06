@@ -9,35 +9,42 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.models.contract_upstream import ContractUpstream, FinanceUpstreamReceivable
+from app.models.contract_management import ContractManagement
+from app.models.contract_downstream import ContractDownstream
 from app.models.user import User, UserRole
 from app.services.contract_upstream_service import ContractUpstreamService
+from app.services.contract_management_service import ContractManagementService
+from app.services.contract_downstream_service import ContractDownstreamService
 
 
 @pytest.fixture
-async def contract_service(test_db: AsyncSession):
+def contract_service(test_db: AsyncSession):
     """Create contract service instance"""
     return ContractUpstreamService(test_db)
 
 
 @pytest.fixture
-async def sample_contract(test_db: AsyncSession, test_user: User) -> ContractUpstream:
+def sample_contract(event_loop, test_db: AsyncSession, test_user: User) -> ContractUpstream:
     """Create a sample upstream contract for testing"""
-    contract = ContractUpstream(
-        serial_number=1,
-        contract_code="TEST-001",
-        contract_name="Test Contract",
-        party_a_name="Party A Company",
-        party_b_name="Party B Company",
-        category="工程类",
-        contract_amount=Decimal("100000.00"),
-        sign_date=date(2024, 1, 15),
-        status="执行中",
-        created_by=test_user.id
-    )
-    test_db.add(contract)
-    await test_db.commit()
-    await test_db.refresh(contract)
-    return contract
+    async def _create():
+        contract = ContractUpstream(
+            serial_number=1,
+            contract_code="TEST-001",
+            contract_name="Test Contract",
+            party_a_name="Party A Company",
+            party_b_name="Party B Company",
+            category="工程类",
+            contract_amount=Decimal("100000.00"),
+            sign_date=date(2024, 1, 15),
+            status="执行中",
+            created_by=test_user.id
+        )
+        test_db.add(contract)
+        await test_db.commit()
+        await test_db.refresh(contract)
+        return contract
+
+    return event_loop.run_until_complete(_create())
 
 
 @pytest.mark.asyncio
@@ -110,6 +117,180 @@ class TestContractUpstreamService:
         # May be 0 if no completed contracts
         assert isinstance(result["total"], int)
 
+    async def test_list_contracts_keyword_uses_business_serial_not_system_id(
+        self,
+        test_db: AsyncSession,
+        test_user: User
+    ):
+        """Numeric keyword should match user-entered serial_number, not DB id."""
+        contract = ContractUpstream(
+            serial_number=88,
+            contract_code="ALPHA-CODE",
+            contract_name="Alpha Contract",
+            party_a_name="Alpha Party A",
+            party_b_name="Alpha Party B",
+            category="工程类",
+            contract_amount=Decimal("1000.00"),
+            sign_date=date(2024, 1, 1),
+            status="执行中",
+            created_by=test_user.id
+        )
+        test_db.add(contract)
+        await test_db.commit()
+        await test_db.refresh(contract)
+
+        service = ContractUpstreamService(test_db)
+
+        result_by_id = await service.list_contracts(keyword=str(contract.id))
+        assert result_by_id["total"] == 0
+
+        result_by_serial = await service.list_contracts(keyword=str(contract.serial_number))
+        assert result_by_serial["total"] == 1
+        assert result_by_serial["items"][0].id == contract.id
+
+
+@pytest.mark.asyncio
+class TestRelatedContractFilters:
+    """Test upstream-contract filtering for related list pages."""
+
+    async def test_management_contracts_can_filter_by_upstream_contract(
+        self,
+        test_db: AsyncSession,
+        test_user: User
+    ):
+        upstream_a = ContractUpstream(
+            serial_number=1001,
+            contract_code="UP-A",
+            contract_name="上游A",
+            party_a_name="甲方A",
+            party_b_name="乙方A",
+            category="工程类",
+            contract_amount=Decimal("1000.00"),
+            sign_date=date(2024, 1, 1),
+            status="执行中",
+            created_by=test_user.id
+        )
+        upstream_b = ContractUpstream(
+            serial_number=1002,
+            contract_code="UP-B",
+            contract_name="上游B",
+            party_a_name="甲方B",
+            party_b_name="乙方B",
+            category="工程类",
+            contract_amount=Decimal("2000.00"),
+            sign_date=date(2024, 1, 2),
+            status="执行中",
+            created_by=test_user.id
+        )
+        test_db.add_all([upstream_a, upstream_b])
+        await test_db.commit()
+        await test_db.refresh(upstream_a)
+        await test_db.refresh(upstream_b)
+
+        management_a = ContractManagement(
+            serial_number=2001,
+            contract_code="MG-A",
+            contract_name="管理合同A",
+            party_a_name="蓝海",
+            party_b_name="供应商A",
+            upstream_contract_id=upstream_a.id,
+            category="管理费",
+            contract_amount=Decimal("300.00"),
+            sign_date=date(2024, 2, 1),
+            status="执行中",
+            created_by=test_user.id
+        )
+        management_b = ContractManagement(
+            serial_number=2002,
+            contract_code="MG-B",
+            contract_name="管理合同B",
+            party_a_name="蓝海",
+            party_b_name="供应商B",
+            upstream_contract_id=upstream_b.id,
+            category="管理费",
+            contract_amount=Decimal("500.00"),
+            sign_date=date(2024, 2, 2),
+            status="执行中",
+            created_by=test_user.id
+        )
+        test_db.add_all([management_a, management_b])
+        await test_db.commit()
+
+        service = ContractManagementService(test_db)
+        result = await service.list_contracts(upstream_contract_id=upstream_a.id)
+
+        assert result["total"] == 1
+        assert [item.contract_code for item in result["items"]] == ["MG-A"]
+
+    async def test_downstream_contracts_can_filter_by_upstream_contract(
+        self,
+        test_db: AsyncSession,
+        test_user: User
+    ):
+        upstream_a = ContractUpstream(
+            serial_number=1101,
+            contract_code="DOWN-UP-A",
+            contract_name="下游上游A",
+            party_a_name="甲方A",
+            party_b_name="乙方A",
+            category="工程类",
+            contract_amount=Decimal("1000.00"),
+            sign_date=date(2024, 3, 1),
+            status="执行中",
+            created_by=test_user.id
+        )
+        upstream_b = ContractUpstream(
+            serial_number=1102,
+            contract_code="DOWN-UP-B",
+            contract_name="下游上游B",
+            party_a_name="甲方B",
+            party_b_name="乙方B",
+            category="工程类",
+            contract_amount=Decimal("2000.00"),
+            sign_date=date(2024, 3, 2),
+            status="执行中",
+            created_by=test_user.id
+        )
+        test_db.add_all([upstream_a, upstream_b])
+        await test_db.commit()
+        await test_db.refresh(upstream_a)
+        await test_db.refresh(upstream_b)
+
+        downstream_a = ContractDownstream(
+            serial_number=2101,
+            contract_code="DS-A",
+            contract_name="下游合同A",
+            party_a_name="蓝海",
+            party_b_name="乙方A",
+            upstream_contract_id=upstream_a.id,
+            category="材料采购",
+            contract_amount=Decimal("300.00"),
+            sign_date=date(2024, 4, 1),
+            status="执行中",
+            created_by=test_user.id
+        )
+        downstream_b = ContractDownstream(
+            serial_number=2102,
+            contract_code="DS-B",
+            contract_name="下游合同B",
+            party_a_name="蓝海",
+            party_b_name="乙方B",
+            upstream_contract_id=upstream_b.id,
+            category="材料采购",
+            contract_amount=Decimal("500.00"),
+            sign_date=date(2024, 4, 2),
+            status="执行中",
+            created_by=test_user.id
+        )
+        test_db.add_all([downstream_a, downstream_b])
+        await test_db.commit()
+
+        service = ContractDownstreamService(test_db)
+        result = await service.list_contracts(upstream_contract_id=upstream_a.id)
+
+        assert result["total"] == 1
+        assert [item.contract_code for item in result["items"]] == ["DS-A"]
+
 
 @pytest.mark.asyncio
 class TestContractFinancialRecords:
@@ -136,10 +317,9 @@ class TestContractFinancialRecords:
         )
         test_db.add_all([rec1, rec2])
         await test_db.commit()
-        
-        # Refresh contract to get updated relationships
-        await test_db.refresh(sample_contract)
-        
+
+        await test_db.refresh(sample_contract, attribute_names=["receivables"])
+
         # Check total receivable
         assert sample_contract.total_receivable == Decimal("50000.00")
     
@@ -149,8 +329,8 @@ class TestContractFinancialRecords:
         sample_contract: ContractUpstream
     ):
         """Test contract with no receivable records"""
-        await test_db.refresh(sample_contract)
-        
+        await test_db.refresh(sample_contract, attribute_names=["receivables"])
+
         assert sample_contract.total_receivable == 0
 
 

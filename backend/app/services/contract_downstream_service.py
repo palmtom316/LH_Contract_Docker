@@ -81,7 +81,8 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
         status: Optional[str] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
-        category: Optional[str] = None
+        category: Optional[str] = None,
+        upstream_contract_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """List contracts with filtering and pagination (Optimized)"""
         
@@ -154,6 +155,9 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
         if category:
             query = query.where(ContractDownstream.category == category)
 
+        if upstream_contract_id:
+            query = query.where(ContractDownstream.upstream_contract_id == upstream_contract_id)
+
         # Count total
         count_query = select(func.count()).select_from(query.subquery())
         total = (await self.db.execute(count_query)).scalar_one()
@@ -181,7 +185,8 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
         status: Optional[str] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
-        category: Optional[str] = None
+        category: Optional[str] = None,
+        upstream_contract_id: Optional[int] = None
     ) -> List[ContractDownstream]:
         """List all contracts for export (no pagination) - Optimized"""
         
@@ -247,6 +252,9 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
 
         if category:
             query = query.where(ContractDownstream.category == category)
+
+        if upstream_contract_id:
+            query = query.where(ContractDownstream.upstream_contract_id == upstream_contract_id)
 
         query = query.order_by(desc(ContractDownstream.created_at))
         result = await self.db.execute(query)

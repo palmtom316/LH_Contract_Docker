@@ -89,7 +89,7 @@ defineProps({
 }
 
 .app-filter-bar__main :deep(.app-range-field) {
-  min-height: 44px;
+  min-height: 42px;
 }
 
 .app-filter-bar__main :deep(.filter-control--search) {

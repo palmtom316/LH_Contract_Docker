@@ -14,9 +14,11 @@
         </el-select>
         <el-select
           v-model="queryParams.upstream_contract_id"
-          placeholder="搜索上游合同"
+          class="filter-control--wide"
+          placeholder="上游合同(序号/编号/名称/甲方)"
           filterable
           remote
+          reserve-keyword
           clearable
           :remote-method="searchUpstreamContractsForFilter"
           :loading="loadingContracts"
@@ -24,9 +26,14 @@
           <el-option
             v-for="item in filterUpstreamContracts"
             :key="item.id"
-            :label="item.contract_name"
+            :label="buildUpstreamOptionLabel(item)"
             :value="item.id"
-          />
+          >
+            <div style="display: flex; flex-direction: column; gap: 2px; line-height: 1.4;">
+              <span>{{ buildUpstreamOptionLabel(item) }}</span>
+              <span style="font-size: 12px; color: #8492a6;">{{ buildUpstreamOptionMeta(item) }}</span>
+            </div>
+          </el-option>
         </el-select>
         <el-input v-model="queryParams.keyword" class="filter-control--search" placeholder="派工单位 / 材料名称" clearable @keyup.enter="handleQuery" />
         <template #actions>
@@ -473,6 +480,18 @@ const dateRange = ref([])
 
 // Material Options - In real app fetch from DB, for now hardcoded commonly used ones or empty to start
 const materialOptions = ref(['水泥', '沙子', '红砖', '铁丝', '钉子'])
+
+const buildUpstreamOptionLabel = (item) => {
+    const serialNumber = item?.serial_number ?? '-'
+    const contractName = item?.contract_name || '未命名合同'
+    return `[${serialNumber}] ${contractName}`
+}
+
+const buildUpstreamOptionMeta = (item) => {
+    const contractCode = item?.contract_code || '未填写编号'
+    const partyAName = item?.party_a_name || '未填写甲方'
+    return `${contractCode} · ${partyAName}`
+}
 
 const queryParams = reactive({
     page: 1,

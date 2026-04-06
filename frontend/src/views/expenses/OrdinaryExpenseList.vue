@@ -12,7 +12,29 @@
           start-placeholder="开始日期"
           end-placeholder="结束日期"
         />
-        <el-input v-model="queryParams.upstream_contract_id" class="filter-control--search" placeholder="上游合同序号" clearable @keyup.enter="handleQuery" />
+        <el-select
+          v-model="queryParams.upstream_contract_id"
+          class="filter-control--wide"
+          placeholder="上游合同(序号/编号/名称/甲方)"
+          filterable
+          remote
+          reserve-keyword
+          clearable
+          :remote-method="searchUpstreamContractsForFilter"
+          :loading="loadingContracts"
+        >
+          <el-option
+            v-for="item in filterUpstreamContracts"
+            :key="item.id"
+            :label="buildUpstreamOptionLabel(item)"
+            :value="item.id"
+          >
+            <div style="display: flex; flex-direction: column; gap: 2px; line-height: 1.4;">
+              <span>{{ buildUpstreamOptionLabel(item) }}</span>
+              <span class="contract-option-code">{{ buildUpstreamOptionMeta(item) }}</span>
+            </div>
+          </el-option>
+        </el-select>
         <DictSelect
           v-model="queryParams.category"
           category="expense_type"
@@ -371,6 +393,7 @@ const total = ref(0)
 const expenseList = ref([])
 const fileList = ref([])
 const upstreamContracts = ref([])
+const filterUpstreamContracts = ref([])
 const loadingContracts = ref(false)
 const isMobile = ref(false)
 const dateRange = ref([])
@@ -385,7 +408,7 @@ const queryParams = reactive({
 
   attribution: '',
   category: '',
-  upstream_contract_id: ''
+  upstream_contract_id: null
 })
 
 const dialog = reactive({
@@ -423,6 +446,18 @@ import DictSelect from '@/components/DictSelect.vue'
 
 const FormulaInput = defineAsyncComponent(() => import('@/components/FormulaInput.vue'))
 
+const buildUpstreamOptionLabel = (item) => {
+  const serialNumber = item?.serial_number ?? '-'
+  const contractName = item?.contract_name || '未命名合同'
+  return `[${serialNumber}] ${contractName}`
+}
+
+const buildUpstreamOptionMeta = (item) => {
+  const contractCode = item?.contract_code || '未填写编号'
+  const partyAName = item?.party_a_name || '未填写甲方'
+  return `${contractCode} · ${partyAName}`
+}
+
 const getList = async () => {
   loading.value = true
   try {
@@ -455,7 +490,8 @@ const resetQuery = () => {
   queryParams.attribution = ''
   queryParams.category = ''
   dateRange.value = []
-  queryParams.upstream_contract_id = ''
+  queryParams.upstream_contract_id = null
+  filterUpstreamContracts.value = []
   handleQuery()
 }
 
@@ -604,6 +640,20 @@ const searchUpstreamContracts = async (query) => {
     }
   } else {
     upstreamContracts.value = []
+  }
+}
+
+const searchUpstreamContractsForFilter = async (query) => {
+  if (!query) {
+    filterUpstreamContracts.value = []
+    return
+  }
+  loadingContracts.value = true
+  try {
+    const res = await getContracts({ keyword: query, page: 1, page_size: 20 })
+    filterUpstreamContracts.value = res.items || []
+  } finally {
+    loadingContracts.value = false
   }
 }
 

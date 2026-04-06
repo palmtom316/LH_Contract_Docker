@@ -264,16 +264,19 @@ function normalizePickerRange(start, end) {
 .app-range-field {
   display: grid;
   grid-template-columns: 20px minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
+  align-items: stretch;
   gap: 6px;
   width: 100%;
   min-width: 0;
+  height: 42px;
   min-height: 42px;
-  padding: 3px 8px;
+  box-sizing: border-box;
+  padding: 0 8px;
   border-radius: 12px;
   background: color-mix(in srgb, var(--surface-panel) 96%, var(--surface-panel-muted) 4%);
   border: 1px solid color-mix(in srgb, var(--border-subtle) 82%, var(--brand-primary) 18%);
   container-type: inline-size;
+  overflow: hidden;
 }
 
 .app-range-field__icon {
@@ -297,16 +300,31 @@ function normalizePickerRange(start, end) {
   width: 100%;
   min-width: 0;
   position: relative;
+  height: 100%;
 }
 
 .app-range-field :deep(.smart-date-input) {
+  display: flex;
+  align-items: center;
   width: 100%;
+  height: 100%;
   min-width: 0;
   max-width: 100%;
 }
 
+.app-range-field :deep(.el-input) {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+}
+
 .app-range-field :deep(.el-input__wrapper) {
-  min-height: 34px;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  min-height: 100%;
   padding-inline: 2px;
   border-radius: 8px;
   box-shadow: none;

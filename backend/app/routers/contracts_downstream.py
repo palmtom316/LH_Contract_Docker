@@ -44,12 +44,20 @@ async def export_contracts(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     category: Optional[str] = None,
+    upstream_contract_id: Optional[int] = None,
     current_user: User = Depends(require_permission(Permission.VIEW_DOWNSTREAM_BASIC_INFO)),
     service: ContractDownstreamService = Depends(get_contract_service)
 ):
     """Export downstream contracts to Excel"""
     try:
-        contracts = await service.list_all_contracts(keyword, status, start_date, end_date, category)
+        contracts = await service.list_all_contracts(
+            keyword,
+            status,
+            start_date,
+            end_date,
+            category,
+            upstream_contract_id
+        )
         
         # Create Excel in memory using openpyxl directly (Memory Optimized)
         wb = Workbook(write_only=True)
@@ -117,11 +125,21 @@ async def list_contracts(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     category: Optional[str] = None,
+    upstream_contract_id: Optional[int] = None,
     current_user: User = Depends(require_permission(Permission.VIEW_DOWNSTREAM_BASIC_INFO)),
     service: ContractDownstreamService = Depends(get_contract_service)
 ):
     """List downstream contracts with pagination and filtering"""
-    return await service.list_contracts(page, page_size, keyword, status, start_date, end_date, category)
+    return await service.list_contracts(
+        page,
+        page_size,
+        keyword,
+        status,
+        start_date,
+        end_date,
+        category,
+        upstream_contract_id
+    )
 
 
 @router.post("/", response_model=ContractDownstreamResponse, status_code=status.HTTP_201_CREATED)
