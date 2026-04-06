@@ -9,6 +9,10 @@ const appFilterBarSource = readFileSync(
   path.resolve(process.cwd(), 'src/components/ui/AppFilterBar.vue'),
   'utf-8'
 )
+const appDataTableSource = readFileSync(
+  path.resolve(process.cwd(), 'src/components/ui/AppDataTable.vue'),
+  'utf-8'
+)
 
 const styleMatch = appFilterBarSource.match(/<style\b[^>]*lang="scss"[^>]*>([\s\S]*?)<\/style>/)
 if (!styleMatch) {
@@ -145,5 +149,16 @@ describe('AppFilterBar', () => {
     expect(shellRule['border-radius']).toBe('16px')
     expect(shellRule['box-shadow']).toBe('none')
     expect(mainGrid.gap).toBe('10px')
+  })
+
+  it('uses theme-aware surface tokens instead of hardcoded light colors in shared chrome', () => {
+    expect(appFilterBarSource).toContain('background: var(--workspace-control-background);')
+    expect(appFilterBarSource).not.toContain('background: #fff;')
+    expect(appDataTableSource).toContain('--el-table-header-bg-color: var(--workspace-table-header-background);')
+    expect(appDataTableSource).toContain(
+      '--el-table-row-hover-bg-color: color-mix(in srgb, var(--brand-primary-soft) 28%, var(--workspace-control-background) 72%);'
+    )
+    expect(appDataTableSource).not.toContain('#f8fafc')
+    expect(appDataTableSource).not.toContain('#ffffff')
   })
 })

@@ -34,6 +34,9 @@
   --workspace-copy-width: 72ch;
   --control-height-md: 40px;
   --panel-padding: 24px;
+  --panel-padding-md: 20px;
+  --panel-padding-sm: 18px;
+  --panel-radius-md: 20px;
   --workspace-shell-gap: 18px;
   --workspace-panel-padding: var(--panel-padding);
   --workspace-panel-radius: 24px;
@@ -43,8 +46,10 @@
   --workspace-grid-gap: 10px;
   --workspace-panel-background: rgba(255, 255, 255, 0.88);
   --workspace-panel-muted: #ffffff;
+  --workspace-control-background: var(--surface-panel);
   --workspace-panel-border: var(--border-subtle);
   --workspace-panel-shadow: var(--shadow-soft);
+  --workspace-table-header-background: var(--surface-panel-muted);
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
@@ -90,4 +95,5 @@
   --panel-padding: 24px;
   --workspace-panel-background: rgba(11, 15, 28, 0.88);
   --workspace-panel-muted: rgba(16, 23, 42, 0.92);
+  --workspace-control-background: rgba(11, 15, 28, 0.96);
 }

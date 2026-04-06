@@ -42,12 +42,12 @@
   min-width: 100%;
   --el-table-border-color: var(--workspace-panel-border);
   --el-table-border: 1px solid var(--workspace-panel-border);
-  --el-table-header-bg-color: #f8fafc;
-  --el-table-row-hover-bg-color: color-mix(in srgb, var(--brand-primary-soft) 28%, #ffffff 72%);
+  --el-table-header-bg-color: var(--workspace-table-header-background);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--brand-primary-soft) 28%, var(--workspace-control-background) 72%);
 }
 
 .app-data-table__scroll :deep(.el-table th.el-table__cell) {
-  background: #f8fafc;
+  background: var(--workspace-table-header-background);
   color: var(--text-muted);
   font-weight: 600;
 }

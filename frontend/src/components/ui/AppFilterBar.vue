@@ -77,14 +77,14 @@ defineProps({
   min-height: var(--workspace-control-height);
   border-radius: var(--workspace-control-radius);
   box-shadow: 0 0 0 1px var(--workspace-panel-border) inset;
-  background: var(--workspace-panel-muted);
+  background: var(--workspace-control-background);
 }
 
 .app-filter-bar__main :deep(.el-input__wrapper.is-focus),
 .app-filter-bar__main :deep(.el-select__wrapper.is-focused),
 .app-filter-bar__main :deep(.app-range-field:focus-within) {
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--brand-primary) 32%, var(--border-subtle) 68%) inset,
+    0 0 0 1px color-mix(in srgb, var(--brand-primary) 32%, var(--workspace-panel-border) 68%) inset,
     var(--shadow-focus);
 }
 
@@ -112,8 +112,8 @@ defineProps({
 
 .app-filter-bar__main :deep(.filter-control--search .el-input__wrapper),
 .app-filter-bar__main :deep(.filter-control--search.el-input__wrapper) {
-  background: #fff;
-  box-shadow: 0 0 0 1px var(--border-subtle) inset;
+  background: var(--workspace-control-background);
+  box-shadow: 0 0 0 1px var(--workspace-panel-border) inset;
 }
 
 .app-filter-bar__main :deep(.filter-control--search .el-input__inner) {
@@ -145,7 +145,7 @@ defineProps({
   padding-inline: 14px;
   border-radius: var(--workspace-control-radius);
   border-color: var(--workspace-panel-border);
-  background: var(--workspace-panel-muted);
+  background: var(--workspace-control-background);
   color: var(--text-secondary);
   box-shadow: none;
   white-space: nowrap;

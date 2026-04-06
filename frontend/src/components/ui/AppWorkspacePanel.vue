@@ -26,14 +26,14 @@ defineProps({
 
 @media (max-width: 768px) {
   .app-workspace-panel {
-    padding: 20px;
+    padding: var(--panel-padding-md);
   }
 }
 
 @media (max-width: 640px) {
   .app-workspace-panel {
-    padding: 18px;
-    border-radius: 20px;
+    padding: var(--panel-padding-sm);
+    border-radius: var(--panel-radius-md);
   }
 }
 </style>

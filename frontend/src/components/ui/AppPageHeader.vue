@@ -41,7 +41,7 @@ defineProps({
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
-  padding: var(--workspace-panel-padding);
+  padding: var(--panel-padding);
   border: 1px solid var(--workspace-panel-border);
   border-radius: var(--workspace-panel-radius);
   background: var(--workspace-panel-background);
@@ -110,7 +110,7 @@ defineProps({
 
 @media (max-width: 768px) {
   .app-page-header {
-    padding: 20px;
+    padding: var(--panel-padding-md);
     flex-direction: column;
   }
 
@@ -128,8 +128,8 @@ defineProps({
 
 @media (max-width: 640px) {
   .app-page-header {
-    padding: 18px;
-    border-radius: 20px;
+    padding: var(--panel-padding-sm);
+    border-radius: var(--panel-radius-md);
   }
 
   .app-page-header__title {
