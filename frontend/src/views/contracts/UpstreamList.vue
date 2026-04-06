@@ -1072,21 +1072,6 @@ onBeforeUnmount(() => {
   gap: var(--space-5);
 }
 
-.upstream-page-tabs :deep(.app-section-card) {
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  border-radius: 0;
-}
-
-.upstream-page-tabs :deep(.el-card__header) {
-  padding: 0 0 16px;
-}
-
-.upstream-page-tabs :deep(.el-card__body) {
-  padding: 0;
-}
-
 .contract-tabs :deep(.el-tabs__header) {
   margin-bottom: 18px;
 }
@@ -1146,7 +1131,20 @@ onBeforeUnmount(() => {
 
 .upstream-filter-section,
 .upstream-table-section {
+  border: 0;
   background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.upstream-filter-section :deep(.el-card__header),
+.upstream-table-section :deep(.el-card__header) {
+  padding: 0 0 16px;
+}
+
+.upstream-filter-section :deep(.el-card__body),
+.upstream-table-section :deep(.el-card__body) {
+  padding: 0;
 }
 
 .upstream-filter-section :deep(.el-card__body) {

@@ -129,10 +129,13 @@ describe('OrdinaryExpenseList upstream filter', () => {
     })
   })
 
-  it('renders the shared expense workspace panels around filters and results', () => {
+  it('renders ordinary expense page-specific workspace panels', () => {
     const wrapper = mountPage()
 
-    expect(wrapper.findAll('.app-workspace-panel')).toHaveLength(2)
+    expect(wrapper.find('.expense-list-page').exists()).toBe(true)
+    expect(wrapper.findAll('.expense-list-panel')).toHaveLength(2)
+    expect(wrapper.find('.expense-list-panel--filters').exists()).toBe(true)
+    expect(wrapper.find('.expense-list-panel--results').exists()).toBe(true)
     expect(wrapper.text()).toContain('费用列表')
   })
 

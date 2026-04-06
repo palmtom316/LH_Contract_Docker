@@ -970,23 +970,19 @@ onMounted(() => {
   gap: 0;
 }
 
-.zero-hour-panel :deep(.app-section-card) {
+.zero-hour-card-shell {
   border: 0;
   background: transparent;
   box-shadow: none;
   border-radius: 0;
 }
 
-.zero-hour-panel :deep(.el-card__header) {
+.zero-hour-card-shell :deep(.el-card__header) {
   padding: 0 0 16px;
 }
 
-.zero-hour-panel :deep(.el-card__body) {
+.zero-hour-card-shell :deep(.el-card__body) {
   padding: 0;
-}
-
-.zero-hour-panel :deep(.app-filter-bar) {
-  border-radius: 16px;
 }
 
 .zero-hour-panel :deep(.el-table td.el-table__cell),

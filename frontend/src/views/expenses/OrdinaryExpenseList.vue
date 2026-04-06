@@ -791,23 +791,19 @@ onUnmounted(() => {
   gap: 0;
 }
 
-.expense-list-panel :deep(.app-section-card) {
+.expense-list-card {
   border: 0;
   background: transparent;
   box-shadow: none;
   border-radius: 0;
 }
 
-.expense-list-panel :deep(.el-card__header) {
+.expense-list-card :deep(.el-card__header) {
   padding: 0 0 16px;
 }
 
-.expense-list-panel :deep(.el-card__body) {
+.expense-list-card :deep(.el-card__body) {
   padding: 0;
-}
-
-.expense-list-panel :deep(.app-filter-bar) {
-  border-radius: 16px;
 }
 
 .expense-list-panel :deep(.el-table td.el-table__cell),

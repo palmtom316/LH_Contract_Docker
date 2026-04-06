@@ -1,14 +1,14 @@
 <template>
-  <div class="contract-page-shell">
+  <div class="management-page-shell">
     <AppPageHeader
-      class="contract-page-header"
+      class="management-page-header"
       eyebrow="Contracts"
       title="管理合同"
       description="浏览、筛选、导出和维护管理合同数据。"
     />
 
-    <AppWorkspacePanel panel-class="contract-page-panel contract-page-panel--filters">
-      <AppSectionCard class="contract-page-card">
+    <AppWorkspacePanel panel-class="management-page-panel management-page-panel--filters">
+      <AppSectionCard class="management-page-card">
       <template #header>合同筛选</template>
       <AppFilterBar inline-actions>
         <el-input v-model="queryParams.keyword" class="filter-control--search" placeholder="合同序号/编号/名称/乙方" clearable @keyup.enter="handleQuery" />
@@ -61,8 +61,8 @@
     </AppWorkspacePanel>
 
     <!-- Table View (PC) -->
-    <AppWorkspacePanel panel-class="contract-page-panel contract-page-panel--list">
-      <AppSectionCard v-if="!isMobile" class="contract-page-card">
+    <AppWorkspacePanel panel-class="management-page-panel management-page-panel--list">
+      <AppSectionCard v-if="!isMobile" class="management-page-card">
       <template #header>合同列表</template>
       <AppDataTable>
       <el-table 
@@ -163,7 +163,7 @@
       </AppSectionCard>
 
       <!-- Card View (Mobile) -->
-      <AppSectionCard v-else class="contract-page-card">
+      <AppSectionCard v-else class="management-page-card">
       <template #header>合同列表</template>
       <AppEmptyState
         v-if="!loading && !contractList.length"
@@ -758,40 +758,36 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
-.contract-page-shell {
+.management-page-shell {
   display: grid;
   gap: var(--workspace-shell-gap);
 }
 
-.contract-page-panel {
+.management-page-panel {
   gap: 0;
 }
 
-.contract-page-panel :deep(.app-section-card) {
+.management-page-card {
   border: 0;
   background: transparent;
   box-shadow: none;
   border-radius: 0;
 }
 
-.contract-page-panel :deep(.el-card__header) {
+.management-page-card :deep(.el-card__header) {
   padding: 0 0 16px;
 }
 
-.contract-page-panel :deep(.el-card__body) {
+.management-page-card :deep(.el-card__body) {
   padding: 0;
 }
 
-.contract-page-panel :deep(.app-filter-bar) {
-  border-radius: 16px;
-}
-
-.contract-page-panel :deep(.el-table__inner-wrapper::before) {
+.management-page-panel :deep(.el-table__inner-wrapper::before) {
   display: none;
 }
 
-.contract-page-panel :deep(.el-table td.el-table__cell),
-.contract-page-panel :deep(.el-table th.el-table__cell) {
+.management-page-panel :deep(.el-table td.el-table__cell),
+.management-page-panel :deep(.el-table th.el-table__cell) {
   padding-top: 14px;
   padding-bottom: 14px;
 }

@@ -201,12 +201,16 @@ describe('ManagementList date range query', () => {
     })
   })
 
-  it('renders the shared workspace shell for the management list page', () => {
+  it('renders management-specific workspace shell wrappers', () => {
     const wrapper = mountPage()
 
-    expect(wrapper.find('.app-page-header').exists()).toBe(true)
+    expect(wrapper.find('.management-page-shell').exists()).toBe(true)
+    expect(wrapper.find('.management-page-header').exists()).toBe(true)
+    expect(wrapper.find('.contract-page-shell').exists()).toBe(false)
     expect(wrapper.text()).toContain('管理合同')
-    expect(wrapper.findAll('.app-workspace-panel')).toHaveLength(2)
+    expect(wrapper.findAll('.management-page-panel')).toHaveLength(2)
+    expect(wrapper.find('.management-page-panel--filters').exists()).toBe(true)
+    expect(wrapper.find('.management-page-panel--list').exists()).toBe(true)
   })
 
   it('applies both range sides when provided', async () => {
