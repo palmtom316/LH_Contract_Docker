@@ -79,4 +79,18 @@ describe('SmartDateInput', () => {
     expect(wrapper.find('input').element.value).toBe('2026/04/10')
     expect(wrapper.text()).not.toContain('日期格式无法识别')
   })
+
+  it('emits a single null update when clear is followed by blur', async () => {
+    const wrapper = mountInput({ modelValue: '2026-04-06' })
+    await wrapper.find('[data-test="clear"]').trigger('click')
+    await wrapper.find('input').trigger('blur')
+
+    const updates = wrapper.emitted('update:modelValue') || []
+    const nullUpdates = updates.filter(([value]) => value === null)
+    expect(nullUpdates).toHaveLength(1)
+
+    const validity = wrapper.emitted('validity-change') || []
+    const nullValidity = validity.filter(([payload]) => payload?.value === null)
+    expect(nullValidity).toHaveLength(1)
+  })
 })

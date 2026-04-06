@@ -37,6 +37,7 @@ const emit = defineEmits(['update:modelValue', 'validity-change'])
 
 const displayValue = ref(formatDateInputDisplay(props.modelValue))
 const errorMessage = ref('')
+const clearedViaAction = ref(false)
 
 watch(
   () => props.modelValue,
@@ -49,6 +50,10 @@ watch(
 const hasError = computed(() => Boolean(errorMessage.value))
 
 function commitInput() {
+  if (clearedViaAction.value) {
+    clearedViaAction.value = false
+    return
+  }
   const raw = displayValue.value?.trim() ?? ''
 
   if (!raw) {
@@ -72,6 +77,7 @@ function commitInput() {
 }
 
 function handleClear() {
+  clearedViaAction.value = true
   displayValue.value = ''
   errorMessage.value = ''
   emit('update:modelValue', null)
