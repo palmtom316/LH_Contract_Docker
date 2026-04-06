@@ -79,9 +79,17 @@ defineProps({
 }
 
 .app-filter-bar__main :deep(.filter-control--time) {
-  grid-column: 1 / -1;
-  width: min(360px, 100%);
-  justify-self: start;
+  grid-column: span 4;
+  width: 100%;
+  justify-self: stretch;
+}
+
+.app-filter-bar__main :deep(.filter-control--range-wide) {
+  grid-column: span 5;
+}
+
+.app-filter-bar__main :deep(.app-range-field) {
+  min-height: 44px;
 }
 
 .app-filter-bar__main :deep(.filter-control--search) {
@@ -138,6 +146,11 @@ defineProps({
   }
 
   .app-filter-bar__main :deep(.filter-control--wide) {
+    grid-column: 1 / -1;
+  }
+
+  .app-filter-bar__main :deep(.filter-control--time),
+  .app-filter-bar__main :deep(.filter-control--range-wide) {
     grid-column: 1 / -1;
   }
 
