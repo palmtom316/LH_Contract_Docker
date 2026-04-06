@@ -111,5 +111,7 @@ describe('Contract detail workspace shell', () => {
     const wrapper = mountPage()
 
     expect(wrapper.find('.detail-workspace').exists()).toBe(true)
+    expect(wrapper.find('.detail-workspace__hero').exists()).toBe(true)
+    expect(wrapper.find('.detail-workspace__sections').exists()).toBe(true)
   })
 })

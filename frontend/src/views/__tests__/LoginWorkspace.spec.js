@@ -29,9 +29,10 @@ const mountPage = () =>
   })
 
 describe('Login workspace shell', () => {
-  it('wraps login in the shared login shell', () => {
+  it('wraps login in the shared login shell panels', () => {
     const wrapper = mountPage()
 
     expect(wrapper.find('.login-shell').exists()).toBe(true)
+    expect(wrapper.find('.login-shell__panel').exists()).toBe(true)
   })
 })

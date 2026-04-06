@@ -1,7 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { defineComponent, reactive, ref } from 'vue'
-import Layout from '@/views/Layout.vue'
 import UpstreamList from '@/views/contracts/UpstreamList.vue'
 
 const { getListMock, queryParamsState } = vi.hoisted(() => ({
@@ -204,30 +203,6 @@ const mountPage = () =>
     }
   })
 
-const mountLayoutShell = () =>
-  mount(Layout, {
-    global: {
-      stubs: {
-        RouterView: { template: '<main />' },
-        ContractQueryBot: true,
-        AppTopbarActions: true,
-        SidebarUserCard: true,
-        NotificationCenter: true,
-        ElMenu: true,
-        ElMenuItem: true,
-        ElDrawer: true,
-        ElDialog: true,
-        ElForm: true,
-        ElFormItem: true,
-        ElInput: true,
-        ElButton: true,
-        ElIcon: true,
-        ElBreadcrumb: true,
-        ElBreadcrumbItem: true
-      }
-    }
-  })
-
 describe('UpstreamList filters', () => {
   beforeEach(() => {
     queryParamsState.value.page = 1
@@ -290,32 +265,12 @@ describe('UpstreamList filters', () => {
 })
 
 describe('dashboard shell structure', () => {
-  it('renders upstream content inside dashboard page wrappers', () => {
+  it('uses the shared workspace shell wrappers for the full app redesign', () => {
     const wrapper = mountPage()
 
-    expect(wrapper.find('.upstream-page-shell').exists()).toBe(true)
-    expect(wrapper.find('.upstream-page-header').exists()).toBe(true)
-    expect(wrapper.find('.upstream-page-tabs').exists()).toBe(true)
+    expect(wrapper.find('.workspace-shell').exists()).toBe(true)
+    expect(wrapper.find('.workspace-shell__header').exists()).toBe(true)
+    expect(wrapper.find('.workspace-shell__body').exists()).toBe(true)
   })
 
-  it('uses the shared page header wrapper inside the upstream shell', () => {
-    const wrapper = mountPage()
-
-    expect(wrapper.find('.upstream-page-shell').exists()).toBe(true)
-    expect(wrapper.find('.app-page-header').exists()).toBe(true)
-  })
-
-  it('groups filter and table regions into dashboard sections', () => {
-    const wrapper = mountPage()
-
-    expect(wrapper.find('.upstream-filter-section').exists()).toBe(true)
-    expect(wrapper.find('.upstream-table-section').exists()).toBe(true)
-  })
-
-  it('renders the layout topbar copy and framed workspace canvas', () => {
-    const wrapper = mountLayoutShell()
-
-    expect(wrapper.find('.topbar-copy').exists()).toBe(true)
-    expect(wrapper.find('.app-main__frame').exists()).toBe(true)
-  })
 })
