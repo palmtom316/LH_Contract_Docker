@@ -182,7 +182,7 @@
             <template v-if="card.type === 'daterange'">
               <AppRangeField
                 v-model="card.model.value"
-                class="filter-control--wide"
+                class="filter-control--range-wide"
                 start-placeholder="开始日期"
                 end-placeholder="结束日期"
               />
@@ -190,7 +190,7 @@
             <template v-else-if="card.type === 'daterange-with-status'">
               <AppRangeField
                 v-model="exportFilters.dateRange"
-                class="filter-control--time"
+                class="filter-control--range-wide"
                 start-placeholder="开始日期"
                 end-placeholder="结束日期"
               />
@@ -231,6 +231,7 @@ import AppFilterBar from '@/components/ui/AppFilterBar.vue'
 import AppDataTable from '@/components/ui/AppDataTable.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import AppRangeField from '@/components/ui/AppRangeField.vue'
+import { buildExportParams } from '@/views/reports/reportDashboard.helpers'
 import {
   getCostMonthlyQuarterlyReport,
   downloadCostMonthlyQuarterlyReport,
@@ -456,13 +457,10 @@ const assocLoading = ref(false)
 async function handleExport() {
   exportLoading.value = true
   try {
-    const params = {
+    const params = buildExportParams({
+      dateRange: exportFilters.value.dateRange,
       status: exportFilters.value.status
-    }
-    if (exportFilters.value.dateRange && exportFilters.value.dateRange.length === 2) {
-      params.start_date = exportFilters.value.dateRange[0]
-      params.end_date = exportFilters.value.dateRange[1]
-    }
+    })
     const res = await downloadComprehensiveReport(params)
     downloadFile(res, `上游合同综合报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
     ElMessage.success('导出成功')
@@ -477,11 +475,7 @@ async function handleExport() {
 async function handleExportRec() {
   recLoading.value = true
   try {
-    const params = {}
-    if (recDateRange.value && recDateRange.value.length === 2) {
-      params.start_date = recDateRange.value[0]
-      params.end_date = recDateRange.value[1]
-    }
+    const params = buildExportParams({ dateRange: recDateRange.value })
     const res = await downloadReceivablesReport(params)
     downloadFile(res, `上游合同应收款明细_${new Date().toISOString().slice(0, 10)}.xlsx`)
     ElMessage.success('导出成功')
@@ -496,11 +490,7 @@ async function handleExportRec() {
 async function handleExportPay() {
   payLoading.value = true
   try {
-    const params = {}
-    if (payDateRange.value && payDateRange.value.length === 2) {
-      params.start_date = payDateRange.value[0]
-      params.end_date = payDateRange.value[1]
-    }
+    const params = buildExportParams({ dateRange: payDateRange.value })
     const res = await downloadPayablesReport(params)
     downloadFile(res, `下游及管理合同应付款明细_${new Date().toISOString().slice(0, 10)}.xlsx`)
     ElMessage.success('导出成功')
@@ -515,11 +505,7 @@ async function handleExportPay() {
 async function handleExportUpInv() {
   upInvLoading.value = true
   try {
-    const params = {}
-    if (upInvDateRange.value && upInvDateRange.value.length === 2) {
-      params.start_date = upInvDateRange.value[0]
-      params.end_date = upInvDateRange.value[1]
-    }
+    const params = buildExportParams({ dateRange: upInvDateRange.value })
     const res = await downloadUpstreamInvoicesReport(params)
     downloadFile(res, `上游合同挂账报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
     ElMessage.success('导出成功')
@@ -534,11 +520,7 @@ async function handleExportUpInv() {
 async function handleExportDownInv() {
   downInvLoading.value = true
   try {
-    const params = {}
-    if (downInvDateRange.value && downInvDateRange.value.length === 2) {
-      params.start_date = downInvDateRange.value[0]
-      params.end_date = downInvDateRange.value[1]
-    }
+    const params = buildExportParams({ dateRange: downInvDateRange.value })
     const res = await downloadDownstreamInvoicesReport(params)
     downloadFile(res, `下游及管理合同挂账报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
     ElMessage.success('导出成功')
@@ -553,11 +535,7 @@ async function handleExportDownInv() {
 async function handleExportUpReceipt() {
   upReceiptLoading.value = true
   try {
-    const params = {}
-    if (upReceiptDateRange.value && upReceiptDateRange.value.length === 2) {
-      params.start_date = upReceiptDateRange.value[0]
-      params.end_date = upReceiptDateRange.value[1]
-    }
+    const params = buildExportParams({ dateRange: upReceiptDateRange.value })
     const res = await downloadUpstreamReceiptsReport(params)
     downloadFile(res, `上游合同收款报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
     ElMessage.success('导出成功')
@@ -572,11 +550,7 @@ async function handleExportUpReceipt() {
 async function handleExportDownPay() {
   downPayLoading.value = true
   try {
-    const params = {}
-    if (downPayDateRange.value && downPayDateRange.value.length === 2) {
-      params.start_date = downPayDateRange.value[0]
-      params.end_date = downPayDateRange.value[1]
-    }
+    const params = buildExportParams({ dateRange: downPayDateRange.value })
     const res = await downloadDownstreamPaymentsReport(params)
     downloadFile(res, `下游及管理合同付款报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
     ElMessage.success('导出成功')
@@ -591,11 +565,7 @@ async function handleExportDownPay() {
 async function handleExportExpPay() {
   expPayLoading.value = true
   try {
-    const params = {}
-    if (expPayDateRange.value && expPayDateRange.value.length === 2) {
-      params.start_date = expPayDateRange.value[0]
-      params.end_date = expPayDateRange.value[1]
-    }
+    const params = buildExportParams({ dateRange: expPayDateRange.value })
     const res = await downloadExpensePaymentsReport(params)
     downloadFile(res, `无合同费用付款报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
     ElMessage.success('导出成功')
@@ -610,11 +580,7 @@ async function handleExportExpPay() {
 async function handleExportUpSettlement() {
   upSettlementLoading.value = true
   try {
-    const params = {}
-    if (upSettlementDateRange.value && upSettlementDateRange.value.length === 2) {
-      params.start_date = upSettlementDateRange.value[0]
-      params.end_date = upSettlementDateRange.value[1]
-    }
+    const params = buildExportParams({ dateRange: upSettlementDateRange.value })
     const res = await downloadUpstreamSettlementsReport(params)
     downloadFile(res, `上游合同结算报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
     ElMessage.success('导出成功')
@@ -629,11 +595,7 @@ async function handleExportUpSettlement() {
 async function handleExportDownSettlement() {
   downSettlementLoading.value = true
   try {
-    const params = {}
-    if (downSettlementDateRange.value && downSettlementDateRange.value.length === 2) {
-      params.start_date = downSettlementDateRange.value[0]
-      params.end_date = downSettlementDateRange.value[1]
-    }
+    const params = buildExportParams({ dateRange: downSettlementDateRange.value })
     const res = await downloadDownstreamSettlementsReport(params)
     downloadFile(res, `下游及管理合同结算报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
     ElMessage.success('导出成功')
