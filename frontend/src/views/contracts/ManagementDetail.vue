@@ -1,22 +1,23 @@
 <template>
-<div class="app-container">
-    
-    <!-- Header -->
-    <div class="page-header">
-      <div class="header-left">
-        <div class="back-link" @click="handleBack">
-          <el-icon><ArrowLeft /></el-icon> 返回
-        </div>
-        <h2 class="title">{{ contract.contract_name || '合同详情' }}</h2>
-        <el-tag :type="getStatusType(contract.status)">{{ contract.status }}</el-tag>
-      </div>
-      <div class="header-right">
-        <!-- Edit is usually done in the list view, but could be added here if needed -->
-      </div>
+<div class="app-container detail-workspace">
+    <div class="detail-workspace__hero">
+      <AppPageHeader
+        eyebrow="Contracts"
+        :title="detailTitle"
+        :description="detailDescription"
+      >
+        <template #actions>
+          <el-tag v-if="contract.status" :type="getStatusType(contract.status)">{{ contract.status }}</el-tag>
+          <el-button plain @click="handleBack">
+            <el-icon><ArrowLeft /></el-icon>
+            返回列表
+          </el-button>
+        </template>
+      </AppPageHeader>
     </div>
 
-    <!-- Summary Cards -->
-    <!-- Summary Cards -->
+    <div class="detail-workspace__sections">
+    <AppWorkspacePanel panel-class="detail-region detail-region--summary">
     <el-row :gutter="20" class="summary-cards">
       <el-col :span="4" :xs="12">
         <StatCard
@@ -60,8 +61,9 @@
         />
       </el-col>
     </el-row>
+    </AppWorkspacePanel>
 
-    <!-- Main Content Tabs -->
+    <AppWorkspacePanel panel-class="detail-region detail-region--tabs">
     <el-tabs v-model="activeTab" class="main-tabs" type="border-card">
       
       <!-- 1. Basic Info -->
@@ -260,6 +262,8 @@
         </el-table>
       </el-tab-pane>
     </el-tabs>
+    </AppWorkspacePanel>
+    </div>
 
     <!-- Finance Create Dialog -->
     <el-dialog v-model="financeDialog.visible" :title="financeDialog.title" width="500px" append-to-body>
@@ -420,6 +424,8 @@
 import { defineAsyncComponent, ref, reactive, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 import DictSelect from '@/components/DictSelect.vue'
 import SmartDateInput from '@/components/SmartDateInput.vue'
+import AppPageHeader from '@/components/ui/AppPageHeader.vue'
+import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Document, ArrowLeft, Money, Wallet, Tickets, CircleCheck } from '@element-plus/icons-vue'
 import { 
@@ -487,6 +493,18 @@ const paymentPercentage = computed(() => {
 
 const totalSettlements = computed(() => {
   return settlements.value.reduce((sum, item) => sum + Number(item.settlement_amount), 0)
+})
+
+const detailTitle = computed(() => contract.value.contract_name || '管理合同详情')
+
+const detailDescription = computed(() => {
+  const summary = [
+    contract.value.contract_code,
+    contract.value.upstream_contract_name,
+    contract.value.party_b_name
+  ].filter(Boolean)
+
+  return summary.join(' / ') || '查看管理合同基础信息、应付款、挂账、付款与结算数据。'
 })
 
 // Summary Methods for Tables
@@ -849,41 +867,35 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped lang="scss">
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    
-    .back-link {
-      display: flex;
-      align-items: center;
-      color: #606266;
-      text-decoration: none;
-      font-size: 14px;
-      cursor: pointer;
-      line-height: 1;
-      
-      &:hover {
-        color: var(--color-primary);
-      }
-      
-      .el-icon {
-        margin-right: 4px;
-      }
-    }
-    
-    .title { margin: 0; font-size: 20px; }
-  }
+.detail-workspace {
+  display: grid;
+  gap: 24px;
+}
+
+.detail-workspace__hero {
+  display: grid;
+}
+
+.detail-workspace__sections {
+  display: grid;
+  gap: 24px;
+}
+
+.detail-region {
+  gap: 20px;
+}
+
+.detail-region--tabs {
+  padding-bottom: 8px;
 }
 
 .summary-cards {
-  margin-bottom: 20px;
+  margin: 0;
+
+  :deep(.el-col) {
+    margin-bottom: 16px;
+  }
+
   .amount-text {
     font-size: 24px;
     font-weight: bold;
@@ -897,5 +909,18 @@ onBeforeUnmount(() => {
 
 .tab-actions {
   margin-bottom: 15px;
+}
+
+.main-tabs {
+  :deep(.el-tabs__content) {
+    padding: 20px 0 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .detail-workspace,
+  .detail-workspace__sections {
+    gap: 20px;
+  }
 }
 </style>

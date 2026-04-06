@@ -1,6 +1,8 @@
 import { shallowMount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import UpstreamDetail from '@/views/contracts/UpstreamDetail.vue'
+import ManagementDetail from '@/views/contracts/ManagementDetail.vue'
+import DownstreamDetail from '@/views/contracts/DownstreamDetail.vue'
 
 vi.mock('vue-router', async (importOriginal) => {
   const actual = await importOriginal()
@@ -24,6 +26,30 @@ vi.mock('@/api/contractUpstream', () => ({
   getReceivables: vi.fn().mockResolvedValue([]),
   getInvoices: vi.fn().mockResolvedValue([]),
   getReceipts: vi.fn().mockResolvedValue([]),
+  getSettlements: vi.fn().mockResolvedValue([])
+}))
+
+vi.mock('@/api/contractManagement', () => ({
+  getContract: vi.fn().mockResolvedValue({
+    contract_name: 'Test Management Contract',
+    status: 'DRAFT',
+    contract_amount: 0
+  }),
+  getPayables: vi.fn().mockResolvedValue([]),
+  getInvoices: vi.fn().mockResolvedValue([]),
+  getPayments: vi.fn().mockResolvedValue([]),
+  getSettlements: vi.fn().mockResolvedValue([])
+}))
+
+vi.mock('@/api/contractDownstream', () => ({
+  getContract: vi.fn().mockResolvedValue({
+    contract_name: 'Test Downstream Contract',
+    status: 'DRAFT',
+    contract_amount: 0
+  }),
+  getPayables: vi.fn().mockResolvedValue([]),
+  getInvoices: vi.fn().mockResolvedValue([]),
+  getPayments: vi.fn().mockResolvedValue([]),
   getSettlements: vi.fn().mockResolvedValue([])
 }))
 
@@ -61,8 +87,8 @@ const elementStubs = elementStubNames.reduce((stubs, name) => {
   return stubs
 }, {})
 
-const mountPage = () =>
-  shallowMount(UpstreamDetail, {
+const mountPage = (component) =>
+  shallowMount(component, {
     global: {
       stubs: {
         ...elementStubs,
@@ -73,9 +99,15 @@ const mountPage = () =>
   })
 
 describe('Contract detail workspace shell', () => {
-  it('wraps contract detail content in the new detail workspace shell', () => {
-    const wrapper = mountPage()
+  it.each([
+    ['UpstreamDetail', UpstreamDetail],
+    ['ManagementDetail', ManagementDetail],
+    ['DownstreamDetail', DownstreamDetail]
+  ])('wraps %s content in the shared detail workspace shell', (_name, component) => {
+    const wrapper = mountPage(component)
 
     expect(wrapper.find('.detail-workspace').exists()).toBe(true)
+    expect(wrapper.find('.detail-workspace__hero').exists()).toBe(true)
+    expect(wrapper.find('.detail-workspace__sections').exists()).toBe(true)
   })
 })
