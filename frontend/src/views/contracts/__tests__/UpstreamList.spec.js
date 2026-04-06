@@ -298,6 +298,13 @@ describe('dashboard shell structure', () => {
     expect(wrapper.find('.upstream-page-tabs').exists()).toBe(true)
   })
 
+  it('uses the shared page header wrapper inside the upstream shell', () => {
+    const wrapper = mountPage()
+
+    expect(wrapper.find('.upstream-page-shell').exists()).toBe(true)
+    expect(wrapper.find('.app-page-header').exists()).toBe(true)
+  })
+
   it('groups filter and table regions into dashboard sections', () => {
     const wrapper = mountPage()
 
