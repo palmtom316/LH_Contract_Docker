@@ -17,6 +17,54 @@ if (!styleMatch) {
 
 const compiledAppFilterBarStyles = compileString(styleMatch[1]).css
 
+const getBlockContent = (source, startIndex) => {
+  let depth = 0
+  let i = startIndex
+  for (; i < source.length; i += 1) {
+    if (source[i] === '{') {
+      depth += 1
+      break
+    }
+  }
+  if (depth === 0) return ''
+  const blockStart = i + 1
+  for (i = blockStart; i < source.length; i += 1) {
+    if (source[i] === '{') depth += 1
+    if (source[i] === '}') depth -= 1
+    if (depth === 0) {
+      return source.slice(blockStart, i)
+    }
+  }
+  return ''
+}
+
+const getMediaBlock = (source, query) => {
+  const mediaIndex = source.indexOf(query)
+  if (mediaIndex !== -1) return getBlockContent(source, mediaIndex)
+  const mediaMatch = source.match(/@media\s*\(max-width:\s*1280px\)/)
+  if (!mediaMatch) return ''
+  const matchIndex = source.indexOf(mediaMatch[0])
+  if (matchIndex === -1) return ''
+  return getBlockContent(source, matchIndex)
+}
+
+const getSelectorDeclarations = (source, selector) => {
+  const selectorIndex = source.indexOf(selector)
+  if (selectorIndex === -1) return {}
+  const block = getBlockContent(source, selectorIndex + selector.length)
+  if (!block) return {}
+  return block
+    .split(';')
+    .map((declaration) => declaration.trim())
+    .filter(Boolean)
+    .reduce((acc, declaration) => {
+      const [property, ...valueParts] = declaration.split(':')
+      if (!property || valueParts.length === 0) return acc
+      acc[property.trim()] = valueParts.join(':').trim()
+      return acc
+    }, {})
+}
+
 describe('AppFilterBar', () => {
   it('renders inline actions after filter controls', () => {
     const wrapper = mount(AppFilterBar, {
@@ -36,7 +84,12 @@ describe('AppFilterBar', () => {
       props: { inlineActions: true },
       slots: {
         default:
-          '<div class="filter-control--search">keyword</div><div class="filter-control--time">range</div>',
+          [
+            '<div class="filter-control--search">keyword</div>',
+            '<div class="filter-control--time">range</div>',
+            '<div class="filter-control--range-wide">日期</div>',
+            '<div class="filter-control--wide">状态</div>'
+          ].join(''),
         actions: '<button>查询</button>'
       }
     })
@@ -44,26 +97,32 @@ describe('AppFilterBar', () => {
     const items = wrapper.find('.app-filter-bar__main').findAll(':scope > *')
     expect(items[0].classes()).toContain('filter-control--search')
     expect(items[1].classes()).toContain('filter-control--time')
-    const inlineActions = items[2]
+    expect(items[2].classes()).toContain('filter-control--range-wide')
+    expect(items[3].classes()).toContain('filter-control--wide')
+    const inlineActions = items[4]
     expect(inlineActions.classes()).toContain('app-filter-bar__actions--inline')
     expect(inlineActions.text()).toBe('查询')
   })
 
-  it('enforces the medium breakpoint layout in the compiled styles', () => {
-    const mediaIndex = compiledAppFilterBarStyles.indexOf('@media (max-width: 1280px)')
-    expect(mediaIndex).toBeGreaterThan(-1)
-    expect(
-      compiledAppFilterBarStyles.indexOf('grid-template-columns: repeat(8, minmax(0, 1fr))', mediaIndex)
-    ).toBeGreaterThan(mediaIndex)
+  it('keeps medium breakpoint layout compact without reordering inline actions', () => {
+    const mediaBlock = getMediaBlock(compiledAppFilterBarStyles, '@media (max-width: 1280px)')
+    expect(mediaBlock).not.toBe('')
 
-    const rangeIndex = compiledAppFilterBarStyles.indexOf('filter-control--range-wide', mediaIndex)
-    expect(rangeIndex).toBeGreaterThan(mediaIndex)
-    expect(compiledAppFilterBarStyles.indexOf('grid-column: span 4', rangeIndex)).toBeGreaterThan(rangeIndex)
-    expect(compiledAppFilterBarStyles.indexOf('grid-row: 2', rangeIndex)).toBeGreaterThan(rangeIndex)
+    const mainGrid = getSelectorDeclarations(mediaBlock, '.app-filter-bar__main')
+    expect(mainGrid['grid-template-columns']).toBe('repeat(8, minmax(0, 1fr))')
 
-    const actionsIndex = compiledAppFilterBarStyles.indexOf('app-filter-bar__actions--inline', mediaIndex)
-    expect(actionsIndex).toBeGreaterThan(mediaIndex)
-    expect(compiledAppFilterBarStyles.indexOf('grid-column: 7/-1', actionsIndex)).toBeGreaterThan(actionsIndex)
-    expect(compiledAppFilterBarStyles.indexOf('grid-row: 1', actionsIndex)).toBeGreaterThan(actionsIndex)
+    const searchRule = getSelectorDeclarations(mediaBlock, '.app-filter-bar__main :deep(.filter-control--search)')
+    const timeRule = getSelectorDeclarations(mediaBlock, '.app-filter-bar__main :deep(.filter-control--time)')
+    const rangeRule = getSelectorDeclarations(
+      mediaBlock,
+      '.app-filter-bar__main :deep(.filter-control--range-wide)'
+    )
+    const actionsRule = getSelectorDeclarations(mediaBlock, '.app-filter-bar__actions--inline')
+
+    expect(searchRule['grid-column']).toBe('span 3')
+    expect(timeRule['grid-column']).toBe('span 3')
+    expect(rangeRule['grid-column']).toBe('span 4')
+    expect(actionsRule['grid-column']).toBe('span 3')
+    expect(actionsRule['grid-row']).toBeUndefined()
   })
 })
