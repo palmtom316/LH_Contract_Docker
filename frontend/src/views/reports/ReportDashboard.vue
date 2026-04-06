@@ -3,14 +3,14 @@
     <AppSectionCard>
       <template #header>月度 / 季度成本报表</template>
       <AppFilterBar>
-        <AppRangeField
-          v-model="costMonthRange"
+        <el-date-picker
+          v-model="costMonth"
           class="filter-control--time"
           type="month"
           value-format="YYYY-MM"
-          display-format="YYYY年MM月"
-          start-placeholder="开始月份"
-          end-placeholder="结束月份"
+          format="YYYY年MM月"
+          placeholder="选择月份"
+          clearable
         />
         <template #actions>
         <el-button type="primary" :loading="costLoading" @click="handleQueryCostReport">查询报表</el-button>
@@ -265,7 +265,7 @@ const COST_FIELDS = [
 
 const now = new Date()
 const currentMonthValue = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-const costMonthRange = ref([currentMonthValue, currentMonthValue])
+const costMonth = ref(currentMonthValue)
 const costLoading = ref(false)
 const costExportLoading = ref(false)
 const costActiveTab = ref('monthly')
@@ -344,7 +344,7 @@ const yearlyTableData = computed(() => {
 const yearlyRowCount = computed(() => costReportData.value.yearly?.rows?.length || 0)
 
 function parseYearMonth() {
-  const selected = costMonthRange.value?.[0] || currentMonthValue
+  const selected = costMonth.value || currentMonthValue
   if (!selected) return { year: now.getFullYear(), month: now.getMonth() + 1 }
   const [yearStr, monthStr] = selected.split('-')
   const year = Number(yearStr)

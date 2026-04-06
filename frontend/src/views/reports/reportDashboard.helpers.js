@@ -2,8 +2,10 @@ export function buildExportParams(filters = {}) {
   const params = {}
 
   const dateRange = filters.dateRange || []
-  if (dateRange[0] && dateRange[1]) {
+  if (dateRange[0]) {
     params.start_date = dateRange[0]
+  }
+  if (dateRange[1]) {
     params.end_date = dateRange[1]
   }
 
