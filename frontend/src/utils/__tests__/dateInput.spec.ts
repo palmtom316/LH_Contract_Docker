@@ -16,12 +16,26 @@ describe('parseFlexibleDateInput', () => {
     })
   })
 
+  it('returns null for empty or missing input', () => {
+    expect(parseFlexibleDateInput('')).toBeNull()
+    expect(parseFlexibleDateInput(null)).toBeNull()
+    expect(parseFlexibleDateInput(undefined)).toBeNull()
+  })
+
   it('parses two-digit year into 2000-2099', () => {
     expect(parseFlexibleDateInput('26/4/6')?.isoValue).toBe('2026-04-06')
   })
 
   it('normalizes mixed separators', () => {
     expect(parseFlexibleDateInput('2026。4-6')?.displayValue).toBe('2026/04/06')
+  })
+
+  it('handles dotted separators', () => {
+    expect(parseFlexibleDateInput('26.4.6')?.isoValue).toBe('2026-04-06')
+  })
+
+  it('ignores whitespace around the value', () => {
+    expect(parseFlexibleDateInput(' 2026 / 4 / 6 ')?.displayValue).toBe('2026/04/06')
   })
 
   it('rejects impossible calendar dates', () => {
