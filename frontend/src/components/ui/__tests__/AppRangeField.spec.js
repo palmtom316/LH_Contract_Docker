@@ -98,6 +98,24 @@ describe('AppRangeField', () => {
     expect(wrapper.emitted('update:modelValue').at(-1)).toEqual([['', '']])
   })
 
+  it('clears invalid raw text when parent resets the range', async () => {
+    const wrapper = mountRange({ modelValue: [] })
+    const inputs = wrapper.findAll('input')
+
+    await inputs[0].setValue('2026/2/31')
+    await inputs[0].trigger('blur')
+
+    expect(inputs[0].element.value).toBe('2026/2/31')
+    expect(wrapper.text()).toContain('日期格式无法识别')
+
+    await wrapper.setProps({ modelValue: [] })
+    await wrapper.vm.$nextTick()
+
+    const resetInputs = wrapper.findAll('input')
+    expect(resetInputs[0].element.value).toBe('')
+    expect(wrapper.text()).not.toContain('日期格式无法识别')
+  })
+
   it('supports month-mode pickers with the existing API', async () => {
     const wrapper = mountRange({ modelValue: [], type: 'month' })
     const inputs = wrapper.findAll('[data-test="month-picker"]')

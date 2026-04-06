@@ -28,6 +28,7 @@
     </template>
     <template v-else>
       <SmartDateInput
+        :key="startResetKey"
         :model-value="startValue"
         class="app-range-field__input"
         :placeholder="startPlaceholder"
@@ -36,6 +37,7 @@
       />
       <span class="app-range-field__separator">至</span>
       <SmartDateInput
+        :key="endResetKey"
         :model-value="endValue"
         class="app-range-field__input"
         :placeholder="endPlaceholder"
@@ -96,6 +98,8 @@ const startValid = ref(true)
 const endValid = ref(true)
 const rangeError = ref('')
 const lastEmitted = ref([props.modelValue?.[0] || '', props.modelValue?.[1] || ''])
+const startResetKey = ref(0)
+const endResetKey = ref(0)
 
 watch(
   () => props.modelValue,
@@ -103,20 +107,28 @@ watch(
     const nextStart = value?.[0] || ''
     const nextEnd = value?.[1] || ''
     const [lastStart, lastEnd] = lastEmitted.value
+    const isExternalReset =
+      !value ||
+      value.length === 0 ||
+      (!nextStart && !nextEnd && (lastStart || lastEnd || startValue.value || endValue.value))
     const echoedStart = nextStart === '' && lastStart === ''
     const echoedEnd = nextEnd === '' && lastEnd === ''
 
-    if (!( !startValid.value && echoedStart )) {
+    if (isExternalReset || !(!startValid.value && echoedStart)) {
       startValue.value = nextStart
     }
-    if (!( !endValid.value && echoedEnd )) {
+    if (isExternalReset || !(!endValid.value && echoedEnd)) {
       endValue.value = nextEnd
     }
 
-    if (!echoedStart && !echoedEnd) {
+    if (isExternalReset || (!echoedStart && !echoedEnd)) {
       startValid.value = true
       endValid.value = true
       rangeError.value = ''
+      if (isExternalReset) {
+        startResetKey.value += 1
+        endResetKey.value += 1
+      }
     }
   },
   { deep: true }
