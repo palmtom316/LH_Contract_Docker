@@ -55,4 +55,17 @@ describe('SmartDateInput', () => {
 
     expect(wrapper.emitted('update:modelValue')[0]).toEqual([null])
   })
+
+  it('resyncs display and clears error after parent updates modelValue', async () => {
+    const wrapper = mountInput({ modelValue: '2026-04-06' })
+    await wrapper.find('input').setValue('2026/2/31')
+    await wrapper.find('input').trigger('blur')
+
+    expect(wrapper.text()).toContain('日期格式无法识别')
+
+    await wrapper.setProps({ modelValue: '2026-04-10' })
+
+    expect(wrapper.find('input').element.value).toBe('2026/04/10')
+    expect(wrapper.text()).not.toContain('日期格式无法识别')
+  })
 })

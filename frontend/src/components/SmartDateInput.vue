@@ -40,9 +40,8 @@ const errorMessage = ref('')
 watch(
   () => props.modelValue,
   (value) => {
-    if (!errorMessage.value) {
-      displayValue.value = formatDateInputDisplay(value)
-    }
+    errorMessage.value = ''
+    displayValue.value = formatDateInputDisplay(value)
   }
 )
 
