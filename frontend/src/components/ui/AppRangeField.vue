@@ -1,52 +1,36 @@
 <template>
-  <div class="app-range-field" :class="{ 'app-range-field--month': type === 'month' }">
+  <div class="app-range-field" :class="{ 'app-range-field--error': rangeError }">
     <div class="app-range-field__icon">
       <el-icon><Calendar /></el-icon>
     </div>
-    <el-date-picker
-      v-model="startValue"
-      class="app-range-field__picker"
-      :type="pickerType"
-      :value-format="resolvedValueFormat"
-      :format="resolvedDisplayFormat"
+    <SmartDateInput
+      :model-value="startValue"
+      class="app-range-field__input"
       :placeholder="startPlaceholder"
-      :clearable="clearable"
-      unlink-panels
+      @update:model-value="handleStartUpdate"
+      @validity-change="handleStartValidity"
     />
     <span class="app-range-field__separator">至</span>
-    <el-date-picker
-      v-model="endValue"
-      class="app-range-field__picker"
-      :type="pickerType"
-      :value-format="resolvedValueFormat"
-      :format="resolvedDisplayFormat"
+    <SmartDateInput
+      :model-value="endValue"
+      class="app-range-field__input"
       :placeholder="endPlaceholder"
-      :clearable="clearable"
-      unlink-panels
+      @update:model-value="handleEndUpdate"
+      @validity-change="handleEndValidity"
     />
   </div>
+  <div v-if="rangeError" class="app-range-field__error">{{ rangeError }}</div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, watch } from 'vue'
 import { Calendar } from '@element-plus/icons-vue'
+import SmartDateInput from '@/components/SmartDateInput.vue'
 
 const props = defineProps({
   modelValue: {
     type: Array,
     default: () => []
-  },
-  type: {
-    type: String,
-    default: 'date'
-  },
-  valueFormat: {
-    type: String,
-    default: 'YYYY-MM-DD'
-  },
-  displayFormat: {
-    type: String,
-    default: ''
   },
   startPlaceholder: {
     type: String,
@@ -55,49 +39,70 @@ const props = defineProps({
   endPlaceholder: {
     type: String,
     default: '结束日期'
-  },
-  clearable: {
-    type: Boolean,
-    default: true
   }
 })
 
 const emit = defineEmits(['update:modelValue'])
 
-const pickerType = computed(() => (props.type === 'month' ? 'month' : 'date'))
-const resolvedValueFormat = computed(() => props.valueFormat || (props.type === 'month' ? 'YYYY-MM' : 'YYYY-MM-DD'))
-const resolvedDisplayFormat = computed(() => props.displayFormat || (props.type === 'month' ? 'YYYY-MM' : 'YYYY-MM-DD'))
+const startValue = ref(props.modelValue?.[0] || '')
+const endValue = ref(props.modelValue?.[1] || '')
+const startValid = ref(true)
+const endValid = ref(true)
+const rangeError = ref('')
 
-const startValue = computed({
-  get: () => normalizeValue(props.modelValue?.[0]),
-  set: (value) => {
-    emit('update:modelValue', normalizeRange(value, props.modelValue?.[1] || ''))
-  }
-})
+watch(
+  () => props.modelValue,
+  (value) => {
+    startValue.value = value?.[0] || ''
+    endValue.value = value?.[1] || ''
+    startValid.value = true
+    endValid.value = true
+    rangeError.value = ''
+  },
+  { deep: true }
+)
 
-const endValue = computed({
-  get: () => normalizeValue(props.modelValue?.[1]),
-  set: (value) => {
-    emit('update:modelValue', normalizeRange(props.modelValue?.[0] || '', value))
-  }
-})
-
-function normalizeValue(value) {
-  if (!value) return ''
-
-  if (typeof value === 'string') {
-    return props.type === 'month' ? value.slice(0, 7) : value.slice(0, 10)
-  }
-
-  return value
+function handleStartUpdate(value) {
+  startValue.value = value || ''
+  startValid.value = true
+  emitRange()
 }
 
-function normalizeRange(start, end) {
-  const normalizedStart = normalizeValue(start)
-  const normalizedEnd = normalizeValue(end)
+function handleEndUpdate(value) {
+  endValue.value = value || ''
+  endValid.value = true
+  emitRange()
+}
 
-  if (!normalizedStart && !normalizedEnd) return []
-  return [normalizedStart || '', normalizedEnd || '']
+function handleStartValidity(payload) {
+  startValid.value = payload?.valid !== false
+  if (!startValid.value) {
+    emitRange()
+  }
+}
+
+function handleEndValidity(payload) {
+  endValid.value = payload?.valid !== false
+  if (!endValid.value) {
+    emitRange()
+  }
+}
+
+function emitRange() {
+  if (!startValid.value || !endValid.value) {
+    rangeError.value = ''
+    emit('update:modelValue', [startValid.value ? startValue.value : '', endValid.value ? endValue.value : ''])
+    return
+  }
+
+  if (startValue.value && endValue.value && startValue.value > endValue.value) {
+    rangeError.value = '开始日期不能晚于结束日期'
+    emit('update:modelValue', ['', ''])
+    return
+  }
+
+  rangeError.value = ''
+  emit('update:modelValue', [startValue.value || '', endValue.value || ''])
 }
 </script>
 
@@ -133,14 +138,13 @@ function normalizeRange(start, end) {
   white-space: nowrap;
 }
 
-.app-range-field__picker {
+.app-range-field__input {
   width: 100%;
   min-width: 0;
   position: relative;
 }
 
-.app-range-field :deep(.el-date-editor.el-input),
-.app-range-field :deep(.el-date-editor.el-input__wrapper) {
+.app-range-field :deep(.smart-date-input) {
   width: 100%;
   min-width: 0;
   max-width: 100%;
@@ -167,12 +171,18 @@ function normalizeRange(start, end) {
   text-overflow: ellipsis;
 }
 
-.app-range-field__picker:first-of-type {
+.app-range-field__input:first-of-type {
   padding-right: 2px;
   border-right: 1px solid color-mix(in srgb, var(--border-subtle) 72%, transparent);
 }
 
-.app-range-field__picker:last-of-type {
+.app-range-field__input:last-of-type {
   padding-left: 2px;
+}
+
+.app-range-field__error {
+  margin-top: 4px;
+  color: var(--color-danger, #e24d4d);
+  font-size: 12px;
 }
 </style>
