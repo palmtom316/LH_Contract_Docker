@@ -27,9 +27,9 @@ defineProps({
 .app-filter-bar {
   position: relative;
   padding: 16px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--workspace-panel-border);
   border-radius: 16px;
-  background: #fff;
+  background: var(--workspace-panel-muted);
   box-shadow: none;
 }
 
@@ -74,10 +74,10 @@ defineProps({
 .app-filter-bar__main :deep(.el-input__wrapper),
 .app-filter-bar__main :deep(.el-select__wrapper),
 .app-filter-bar__main :deep(.app-range-field) {
-  min-height: 40px;
-  border-radius: 12px;
-  box-shadow: 0 0 0 1px var(--border-subtle) inset;
-  background: #fff;
+  min-height: var(--workspace-control-height);
+  border-radius: var(--workspace-control-radius);
+  box-shadow: 0 0 0 1px var(--workspace-panel-border) inset;
+  background: var(--workspace-panel-muted);
 }
 
 .app-filter-bar__main :deep(.el-input__wrapper.is-focus),
@@ -103,7 +103,7 @@ defineProps({
 }
 
 .app-filter-bar__main :deep(.app-range-field) {
-  min-height: 40px;
+  min-height: var(--workspace-control-height);
 }
 
 .app-filter-bar__main :deep(.filter-control--search) {
@@ -141,11 +141,11 @@ defineProps({
 
 .app-filter-bar__actions :deep(.el-button) {
   min-width: 0;
-  height: 40px;
+  height: var(--workspace-control-height);
   padding-inline: 14px;
-  border-radius: 12px;
-  border-color: var(--border-subtle);
-  background: #fff;
+  border-radius: var(--workspace-control-radius);
+  border-color: var(--workspace-panel-border);
+  background: var(--workspace-panel-muted);
   color: var(--text-secondary);
   box-shadow: none;
   white-space: nowrap;

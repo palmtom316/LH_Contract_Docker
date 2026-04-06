@@ -268,16 +268,25 @@ function normalizePickerRange(start, end) {
   gap: 6px;
   width: 100%;
   min-width: 0;
-  height: 40px;
-  min-height: 40px;
+  height: var(--workspace-control-height);
+  min-height: var(--workspace-control-height);
   box-sizing: border-box;
   padding: 0 10px;
-  border-radius: 12px;
-  background: #fff;
-  border: 1px solid var(--border-subtle);
+  border-radius: var(--workspace-control-radius);
+  background: var(--workspace-panel-muted);
+  border: 1px solid var(--workspace-panel-border);
   container-type: inline-size;
   overflow: hidden;
   box-shadow: none;
+}
+
+.app-range-field:focus-within {
+  border-color: color-mix(in srgb, var(--brand-primary) 32%, var(--workspace-panel-border) 68%);
+  box-shadow: var(--shadow-focus);
+}
+
+.app-range-field--error {
+  border-color: var(--status-danger);
 }
 
 .app-range-field__icon {

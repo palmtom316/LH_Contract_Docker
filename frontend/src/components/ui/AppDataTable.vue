@@ -33,17 +33,23 @@
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   border-radius: 16px;
-  border: 1px solid var(--border-subtle);
-  background: #fff;
+  border: 1px solid var(--workspace-panel-border);
+  background: var(--workspace-panel-muted);
   box-shadow: none;
 }
 
 .app-data-table__scroll :deep(.el-table) {
   min-width: 100%;
+  --el-table-border-color: var(--workspace-panel-border);
+  --el-table-border: 1px solid var(--workspace-panel-border);
+  --el-table-header-bg-color: #f8fafc;
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--brand-primary-soft) 28%, #ffffff 72%);
 }
 
 .app-data-table__scroll :deep(.el-table th.el-table__cell) {
   background: #f8fafc;
+  color: var(--text-muted);
+  font-weight: 600;
 }
 
 @media (max-width: 767px) {

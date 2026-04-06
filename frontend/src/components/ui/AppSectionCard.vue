@@ -16,9 +16,9 @@
 
 <style scoped lang="scss">
 .app-section-card {
-  border-radius: 20px;
-  border: 1px solid var(--border-subtle);
-  background: rgba(255, 255, 255, 0.86);
+  border-radius: var(--workspace-card-radius);
+  border: 1px solid var(--workspace-panel-border);
+  background: var(--workspace-panel-background);
   box-shadow: none;
 }
 
