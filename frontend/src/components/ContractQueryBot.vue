@@ -441,11 +441,13 @@ const handleSearch = async () => {
   const category = companyCategory.value.trim()
   const partyA = partyAName.value.trim()
   const partyB = partyBName.value.trim()
-  const hasDateRange = Array.isArray(signDateRange.value) && signDateRange.value.length === 2
-  const signDateStart = hasDateRange ? signDateRange.value[0] : ''
-  const signDateEnd = hasDateRange ? signDateRange.value[1] : ''
+  const isDateRangeArray = Array.isArray(signDateRange.value) && signDateRange.value.length === 2
+  const hasCommittedDateRange =
+    isDateRangeArray && signDateRange.value.some((date) => (date ?? '').toString().trim().length > 0)
+  const signDateStart = isDateRangeArray ? signDateRange.value[0] : ''
+  const signDateEnd = isDateRangeArray ? signDateRange.value[1] : ''
 
-  if (!query && !category && !partyA && !partyB && !hasDateRange) {
+  if (!query && !category && !partyA && !partyB && !hasCommittedDateRange) {
     ElMessage.warning('请至少输入一个搜索条件')
     return
   }
