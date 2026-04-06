@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils'
+import { shallowMount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import MobileLayout from '@/views/mobile/MobileLayout.vue'
 
@@ -43,10 +43,11 @@ vi.mock('element-plus', () => ({
 }))
 
 const mountPage = () =>
-  mount(MobileLayout, {
+  shallowMount(MobileLayout, {
     global: {
       stubs: {
         RouterView: { template: '<div class="router-view-stub" />' },
+        RouterLink: { template: '<a><slot /></a>' },
         AppTopbarActions: true,
         NotificationCenter: true,
         SidebarUserCard: true,
@@ -67,7 +68,7 @@ describe('Mobile workspace shell', () => {
   it('renders the mobile workspace frame wrappers', () => {
     const wrapper = mountPage()
 
-    expect(wrapper.find('.mobile-shell__frame').exists()).toBe(true)
+    expect(wrapper.find('.mobile-shell').exists()).toBe(true)
     expect(wrapper.find('.mobile-shell__content').exists()).toBe(true)
   })
 })

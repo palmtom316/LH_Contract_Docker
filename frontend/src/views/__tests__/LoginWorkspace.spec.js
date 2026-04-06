@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils'
+import { shallowMount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import Login from '@/views/Login.vue'
 
@@ -17,7 +17,7 @@ vi.mock('element-plus', () => ({
 }))
 
 const mountPage = () =>
-  mount(Login, {
+  shallowMount(Login, {
     global: {
       stubs: {
         ElForm: { template: '<form><slot /></form>' },

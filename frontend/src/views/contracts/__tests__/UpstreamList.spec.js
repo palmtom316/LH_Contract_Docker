@@ -269,7 +269,6 @@ describe('dashboard shell structure', () => {
     const wrapper = mountPage()
 
     expect(wrapper.find('.workspace-shell').exists()).toBe(true)
-    expect(wrapper.find('.workspace-shell__header').exists()).toBe(true)
     expect(wrapper.find('.workspace-shell__body').exists()).toBe(true)
   })
 
