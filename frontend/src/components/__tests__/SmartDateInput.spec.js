@@ -104,4 +104,18 @@ describe('SmartDateInput', () => {
     const values = updates.map(([value]) => value)
     expect(values).toContain('2026-04-10')
   })
+
+  it('clears after resync and emits a single null update on manual clear', async () => {
+    const wrapper = mountInput({ modelValue: '2026-04-06' })
+    await wrapper.find('[data-test="clear"]').trigger('click')
+    await wrapper.setProps({ modelValue: '2026-04-10' })
+    const updatesBefore = wrapper.emitted('update:modelValue') || []
+    const nullCountBefore = updatesBefore.filter(([value]) => value === null).length
+    await wrapper.find('input').setValue('')
+    await wrapper.find('input').trigger('blur')
+
+    const updates = wrapper.emitted('update:modelValue') || []
+    const nullCountAfter = updates.filter(([value]) => value === null).length
+    expect(nullCountAfter - nullCountBefore).toBe(1)
+  })
 })

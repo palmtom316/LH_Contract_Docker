@@ -42,6 +42,7 @@ const clearedViaAction = ref(false)
 watch(
   () => props.modelValue,
   (value) => {
+    clearedViaAction.value = false
     errorMessage.value = ''
     displayValue.value = formatDateInputDisplay(value)
   }
