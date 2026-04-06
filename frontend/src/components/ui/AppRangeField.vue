@@ -3,27 +3,52 @@
     <div class="app-range-field__icon">
       <el-icon><Calendar /></el-icon>
     </div>
-    <SmartDateInput
-      :model-value="startValue"
-      class="app-range-field__input"
-      :placeholder="startPlaceholder"
-      @update:model-value="handleStartUpdate"
-      @validity-change="handleStartValidity"
-    />
-    <span class="app-range-field__separator">至</span>
-    <SmartDateInput
-      :model-value="endValue"
-      class="app-range-field__input"
-      :placeholder="endPlaceholder"
-      @update:model-value="handleEndUpdate"
-      @validity-change="handleEndValidity"
-    />
+    <template v-if="isMonthMode">
+      <el-date-picker
+        v-model="startPickerValue"
+        class="app-range-field__picker"
+        :type="pickerType"
+        :value-format="resolvedValueFormat"
+        :format="resolvedDisplayFormat"
+        :placeholder="startPlaceholder"
+        :clearable="clearable"
+        unlink-panels
+      />
+      <span class="app-range-field__separator">至</span>
+      <el-date-picker
+        v-model="endPickerValue"
+        class="app-range-field__picker"
+        :type="pickerType"
+        :value-format="resolvedValueFormat"
+        :format="resolvedDisplayFormat"
+        :placeholder="endPlaceholder"
+        :clearable="clearable"
+        unlink-panels
+      />
+    </template>
+    <template v-else>
+      <SmartDateInput
+        :model-value="startValue"
+        class="app-range-field__input"
+        :placeholder="startPlaceholder"
+        @update:model-value="handleStartUpdate"
+        @validity-change="handleStartValidity"
+      />
+      <span class="app-range-field__separator">至</span>
+      <SmartDateInput
+        :model-value="endValue"
+        class="app-range-field__input"
+        :placeholder="endPlaceholder"
+        @update:model-value="handleEndUpdate"
+        @validity-change="handleEndValidity"
+      />
+    </template>
   </div>
   <div v-if="rangeError" class="app-range-field__error">{{ rangeError }}</div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { Calendar } from '@element-plus/icons-vue'
 import SmartDateInput from '@/components/SmartDateInput.vue'
 
@@ -32,6 +57,18 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  type: {
+    type: String,
+    default: 'date'
+  },
+  valueFormat: {
+    type: String,
+    default: 'YYYY-MM-DD'
+  },
+  displayFormat: {
+    type: String,
+    default: ''
+  },
   startPlaceholder: {
     type: String,
     default: '开始日期'
@@ -39,25 +76,48 @@ const props = defineProps({
   endPlaceholder: {
     type: String,
     default: '结束日期'
+  },
+  clearable: {
+    type: Boolean,
+    default: true
   }
 })
 
 const emit = defineEmits(['update:modelValue'])
+
+const isMonthMode = computed(() => props.type === 'month')
+const pickerType = computed(() => (props.type === 'month' ? 'month' : 'date'))
+const resolvedValueFormat = computed(() => props.valueFormat || (props.type === 'month' ? 'YYYY-MM' : 'YYYY-MM-DD'))
+const resolvedDisplayFormat = computed(() => props.displayFormat || (props.type === 'month' ? 'YYYY-MM' : 'YYYY-MM-DD'))
 
 const startValue = ref(props.modelValue?.[0] || '')
 const endValue = ref(props.modelValue?.[1] || '')
 const startValid = ref(true)
 const endValid = ref(true)
 const rangeError = ref('')
+const lastEmitted = ref([props.modelValue?.[0] || '', props.modelValue?.[1] || ''])
 
 watch(
   () => props.modelValue,
   (value) => {
-    startValue.value = value?.[0] || ''
-    endValue.value = value?.[1] || ''
-    startValid.value = true
-    endValid.value = true
-    rangeError.value = ''
+    const nextStart = value?.[0] || ''
+    const nextEnd = value?.[1] || ''
+    const [lastStart, lastEnd] = lastEmitted.value
+    const echoedStart = nextStart === '' && lastStart === ''
+    const echoedEnd = nextEnd === '' && lastEnd === ''
+
+    if (!( !startValid.value && echoedStart )) {
+      startValue.value = nextStart
+    }
+    if (!( !endValid.value && echoedEnd )) {
+      endValue.value = nextEnd
+    }
+
+    if (!echoedStart && !echoedEnd) {
+      startValid.value = true
+      endValid.value = true
+      rangeError.value = ''
+    }
   },
   { deep: true }
 )
@@ -91,18 +151,53 @@ function handleEndValidity(payload) {
 function emitRange() {
   if (!startValid.value || !endValid.value) {
     rangeError.value = ''
-    emit('update:modelValue', [startValid.value ? startValue.value : '', endValid.value ? endValue.value : ''])
+    lastEmitted.value = [startValid.value ? startValue.value : '', endValid.value ? endValue.value : '']
+    emit('update:modelValue', lastEmitted.value)
     return
   }
 
   if (startValue.value && endValue.value && startValue.value > endValue.value) {
     rangeError.value = '开始日期不能晚于结束日期'
-    emit('update:modelValue', ['', ''])
+    lastEmitted.value = ['', '']
+    emit('update:modelValue', lastEmitted.value)
     return
   }
 
   rangeError.value = ''
-  emit('update:modelValue', [startValue.value || '', endValue.value || ''])
+  lastEmitted.value = [startValue.value || '', endValue.value || '']
+  emit('update:modelValue', lastEmitted.value)
+}
+
+const startPickerValue = computed({
+  get: () => normalizePickerValue(props.modelValue?.[0]),
+  set: (value) => {
+    emit('update:modelValue', normalizePickerRange(value, props.modelValue?.[1] || ''))
+  }
+})
+
+const endPickerValue = computed({
+  get: () => normalizePickerValue(props.modelValue?.[1]),
+  set: (value) => {
+    emit('update:modelValue', normalizePickerRange(props.modelValue?.[0] || '', value))
+  }
+})
+
+function normalizePickerValue(value) {
+  if (!value) return ''
+
+  if (typeof value === 'string') {
+    return props.type === 'month' ? value.slice(0, 7) : value.slice(0, 10)
+  }
+
+  return value
+}
+
+function normalizePickerRange(start, end) {
+  const normalizedStart = normalizePickerValue(start)
+  const normalizedEnd = normalizePickerValue(end)
+
+  if (!normalizedStart && !normalizedEnd) return []
+  return [normalizedStart || '', normalizedEnd || '']
 }
 </script>
 
@@ -138,7 +233,8 @@ function emitRange() {
   white-space: nowrap;
 }
 
-.app-range-field__input {
+.app-range-field__input,
+.app-range-field__picker {
   width: 100%;
   min-width: 0;
   position: relative;
