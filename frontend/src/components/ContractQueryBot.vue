@@ -62,16 +62,14 @@
           />
         </div>
         <div class="input-row">
-          <el-date-picker
+          <AppRangeField
             v-model="signDateRange"
-            type="daterange"
-            range-separator="至"
             start-placeholder="签约开始日期"
             end-placeholder="签约结束日期"
-            value-format="YYYY-MM-DD"
             class="sign-date-input"
           />
         </div>
+        <p class="sign-date-tip">签约时间范围支持输入如 2026/04/06、26.4.6、2026-4-6。</p>
         <div class="action-row">
           <el-button type="primary" size="large" @click="handleSearch" :loading="loading" class="search-btn">
             <el-icon><Search /></el-icon> 查询
@@ -96,7 +94,7 @@
             <li><strong>公司合同分类</strong>（如：劳务合同、材料合同）</li>
             <li><strong>上游合同甲方单位</strong>（如：某某电力公司）</li>
             <li><strong>下游/管理合同乙方单位</strong>（如：某某供应商）</li>
-            <li><strong>签约时间范围</strong>（开始/结束日期）</li>
+            <li><strong>签约时间范围</strong>（开始/结束日期，支持 2026/04/06、26.4.6、2026-4-6）</li>
           </ul>
           <p>可同时输入多个条件进行组合查询。</p>
         </el-alert>
@@ -384,6 +382,7 @@ import { ElMessage } from 'element-plus'
 import { Search, Document, DocumentCopy, FolderChecked, Money } from '@element-plus/icons-vue'
 import { searchContracts } from '@/api/contractSearch'
 import DictSelect from '@/components/DictSelect.vue'
+import AppRangeField from '@/components/ui/AppRangeField.vue'
 
 // State
 const dialogVisible = ref(false)
@@ -600,6 +599,12 @@ const sumExpenses = (expenses) => {
       flex: 1;
       min-width: 280px;
     }
+  }
+
+  .sign-date-tip {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-secondary);
   }
 
   .search-btn {
