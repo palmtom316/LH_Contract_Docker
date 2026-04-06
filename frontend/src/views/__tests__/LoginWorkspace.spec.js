@@ -1,5 +1,6 @@
 import { shallowMount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
+import { defineComponent } from 'vue'
 import Login from '@/views/Login.vue'
 
 vi.mock('vue-router', () => ({
@@ -16,13 +17,18 @@ vi.mock('element-plus', () => ({
   ElMessage: { success: vi.fn(), error: vi.fn() }
 }))
 
+const ElInputStub = defineComponent({
+  props: ['modelValue', 'type', 'placeholder', 'size', 'disabled'],
+  template: '<div class="el-input-stub" />'
+})
+
 const mountPage = () =>
   shallowMount(Login, {
     global: {
       stubs: {
         ElForm: { template: '<form><slot /></form>' },
         ElFormItem: { template: '<div><slot /></div>' },
-        ElInput: { template: '<input />' },
+        ElInput: ElInputStub,
         ElButton: { template: '<button type="button"><slot /></button>' }
       }
     }
