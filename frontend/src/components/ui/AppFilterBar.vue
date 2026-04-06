@@ -145,7 +145,13 @@ defineProps({
   }
 
   .app-filter-bar__actions--inline {
-    grid-column: span 2;
+    grid-column: 7 / -1;
+    grid-row: 1;
+  }
+
+  .app-filter-bar__main :deep(.filter-control--range-wide) {
+    grid-column: span 4;
+    grid-row: 2;
   }
 }
 
