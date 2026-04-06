@@ -1,84 +1,73 @@
 
 <template>
-  <el-input 
-    v-model="displayValue" 
-    placeholder="YYYY-MM-DD" 
-    @blur="handleBlur"
-    @keyup.enter="handleBlur"
-    clearable
-  >
-    <template #prefix>
+  <div class="smart-date-input">
+    <el-input
+      v-model="displayValue"
+      :placeholder="placeholder"
+      @blur="commitInput"
+      @keyup.enter="commitInput"
+      clearable
+    >
+      <template #prefix>
         <el-icon><Calendar /></el-icon>
-    </template>
-  </el-input>
+      </template>
+    </el-input>
+    <div v-if="hasError" class="smart-date-input__error">{{ errorMessage }}</div>
+  </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
-import { Calendar } from '@element-plus/icons-vue' // Assuming Element Plus icons globally available or imported
+import { computed, ref, watch } from 'vue'
+import { Calendar } from '@element-plus/icons-vue'
+import { formatDateInputDisplay, parseFlexibleDateInput } from '@/utils/dateInput'
 
 const props = defineProps({
-  modelValue: String // Expect YYYY-MM-DD
+  modelValue: {
+    type: String,
+    default: null
+  },
+  placeholder: {
+    type: String,
+    default: '请输入日期'
+  }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'validity-change'])
 
-const displayValue = ref(props.modelValue)
+const displayValue = ref(formatDateInputDisplay(props.modelValue))
+const errorMessage = ref('')
 
-watch(() => props.modelValue, (val) => {
-    displayValue.value = val
-})
-
-function handleBlur() {
-    const raw = displayValue.value
-    if (!raw) {
-        emit('update:modelValue', null)
-        return
+watch(
+  () => props.modelValue,
+  (value) => {
+    if (!errorMessage.value) {
+      displayValue.value = formatDateInputDisplay(value)
     }
+  }
+)
 
-    // Attempt to parse
-    // Replace custom separators with '-'
-    // Separators: . / - — 。
-    const normalized = raw.replace(/[./—。]/g, '-')
-    // Try native Date parse? Strings like 2025-12-25 work.
-    // 2025-1-1 works.
-    
-    // Check pattern YYYY-MM-DD
-    const parts = normalized.split('-')
-    if (parts.length === 3) {
-        let y = parseInt(parts[0])
-        let m = parseInt(parts[1])
-        let d = parseInt(parts[2])
-        
-        if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
-            // Pad
-            const mStr = m.toString().padStart(2, '0')
-            const dStr = d.toString().padStart(2, '0')
-            const result = `${y}-${mStr}-${dStr}`
-            
-            // Validate validity
-            const dateObj = new Date(result)
-            if (!isNaN(dateObj.getTime())) {
-                displayValue.value = result
-                emit('update:modelValue', result)
-                return
-            }
-        }
-    } else if (raw.length === 8 && !isNaN(Number(raw))) {
-         // 20251225 support
-         const y = raw.substring(0, 4)
-         const m = raw.substring(4, 6)
-         const d = raw.substring(6, 8)
-         const result = `${y}-${m}-${d}`
-         displayValue.value = result
-         emit('update:modelValue', result)
-         return
-    }
-    
-    // If failed, maybe revert or keep as is (but emit null?)
-    // Requirement says "converted to standard". If fail, user might want to correct.
-    // We'll leave it but maybe show warning?
-    // For now, if invalid, we don't update modelValue or we update with invalid string?
-    // Better to only update if valid.
+const hasError = computed(() => Boolean(errorMessage.value))
+
+function commitInput() {
+  const raw = displayValue.value?.trim() ?? ''
+
+  if (!raw) {
+    errorMessage.value = ''
+    emit('update:modelValue', null)
+    emit('validity-change', { valid: true, value: null })
+    return
+  }
+
+  const parsed = parseFlexibleDateInput(raw)
+  if (!parsed) {
+    errorMessage.value = '日期格式无法识别，请输入如 2026/04/06'
+    emit('validity-change', { valid: false, value: null, raw })
+    return
+  }
+
+  errorMessage.value = ''
+  displayValue.value = parsed.displayValue
+  emit('update:modelValue', parsed.isoValue)
+  emit('validity-change', { valid: true, value: parsed.isoValue, raw: parsed.displayValue })
 }
 </script>
