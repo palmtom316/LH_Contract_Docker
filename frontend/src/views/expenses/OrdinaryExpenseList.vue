@@ -7,7 +7,7 @@
           <el-option label="项目费用" value="项目费用" />
         </el-select>
         <AppRangeField
-          v-model="queryParams.dateRange"
+          v-model="dateRange"
           class="filter-control--time"
           start-placeholder="开始日期"
           end-placeholder="结束日期"
@@ -373,6 +373,7 @@ const fileList = ref([])
 const upstreamContracts = ref([])
 const loadingContracts = ref(false)
 const isMobile = ref(false)
+const dateRange = ref([])
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth < 768
@@ -384,8 +385,6 @@ const queryParams = reactive({
 
   attribution: '',
   category: '',
-
-  dateRange: null,
   upstream_contract_id: ''
 })
 
@@ -436,9 +435,10 @@ const getList = async () => {
       upstream_contract_id: queryParams.upstream_contract_id || undefined
     }
     // Handle date range
-    if (queryParams.dateRange && queryParams.dateRange.length === 2) {
-      params.start_date = queryParams.dateRange[0]
-      params.end_date = queryParams.dateRange[1]
+    const [startDate, endDate] = dateRange.value || []
+    if (startDate && endDate) {
+      params.start_date = startDate
+      params.end_date = endDate
     }
     const res = await getExpenses(params)
     expenseList.value = res.items
@@ -456,7 +456,7 @@ const handleQuery = () => {
 const resetQuery = () => {
   queryParams.attribution = ''
   queryParams.category = ''
-  queryParams.dateRange = null
+  dateRange.value = []
   queryParams.upstream_contract_id = ''
   handleQuery()
 }
@@ -502,9 +502,10 @@ const handleExport = async () => {
       upstream_contract_id: queryParams.upstream_contract_id || undefined
     }
     
-    if (queryParams.dateRange && queryParams.dateRange.length === 2) {
-      params.start_date = queryParams.dateRange[0]
-      params.end_date = queryParams.dateRange[1]
+    const [startDate, endDate] = dateRange.value || []
+    if (startDate && endDate) {
+      params.start_date = startDate
+      params.end_date = endDate
     }
 
     const res = await exportExpenses(params)

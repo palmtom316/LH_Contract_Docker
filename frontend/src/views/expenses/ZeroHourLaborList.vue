@@ -3,7 +3,7 @@
     <AppSectionCard>
       <AppFilterBar>
         <AppRangeField
-          v-model="queryParams.dateRange"
+          v-model="dateRange"
           class="filter-control--time"
           start-placeholder="开始日期"
           end-placeholder="结束日期"
@@ -469,6 +469,7 @@ const upstreamContracts = ref([])
 const filterUpstreamContracts = ref([])
 const loadingContracts = ref(false)
 const fileList = ref([])
+const dateRange = ref([])
 
 // Material Options - In real app fetch from DB, for now hardcoded commonly used ones or empty to start
 const materialOptions = ref(['水泥', '沙子', '红砖', '铁丝', '钉子'])
@@ -477,7 +478,6 @@ const queryParams = reactive({
     page: 1,
     page_size: 20,
     attribution: '',
-    dateRange: null,
     keyword: '',
     upstream_contract_id: null
 })
@@ -601,9 +601,10 @@ const getList = async () => {
             keyword: queryParams.keyword || undefined,
             upstream_contract_id: queryParams.upstream_contract_id || undefined
         }
-        if (queryParams.dateRange && queryParams.dateRange.length === 2) {
-            params.start_date = queryParams.dateRange[0]
-            params.end_date = queryParams.dateRange[1]
+        const [startDate, endDate] = dateRange.value || []
+        if (startDate && endDate) {
+            params.start_date = startDate
+            params.end_date = endDate
         }
         const res = await getZeroHourLaborList(params)
         list.value = res.items
@@ -641,7 +642,7 @@ const handleQuery = () => {
 
 const resetQuery = () => {
     queryParams.attribution = ''
-    queryParams.dateRange = null
+    dateRange.value = []
     queryParams.keyword = ''
     queryParams.upstream_contract_id = null
     filterUpstreamContracts.value = []
@@ -656,9 +657,10 @@ const handleExport = async () => {
             keyword: queryParams.keyword || undefined,
             upstream_contract_id: queryParams.upstream_contract_id || undefined
         }
-        if (queryParams.dateRange && queryParams.dateRange.length === 2) {
-            params.start_date = queryParams.dateRange[0]
-            params.end_date = queryParams.dateRange[1]
+        const [startDate, endDate] = dateRange.value || []
+        if (startDate && endDate) {
+            params.start_date = startDate
+            params.end_date = endDate
         }
         
         const blob = await exportZeroHourLabor(params)

@@ -741,17 +741,19 @@ const handleResize = () => {
 
 const getList = () => {
   // Sync date range for basic_info tab
-  if (activeTab.value === 'basic_info' && dateRange.value && dateRange.value.length === 2) {
-    queryParams.start_date = dateRange.value[0]
-    queryParams.end_date = dateRange.value[1]
+  const [startDate, endDate] = dateRange.value || []
+  if (activeTab.value === 'basic_info' && startDate && endDate) {
+    queryParams.start_date = startDate
+    queryParams.end_date = endDate
   } else {
     queryParams.start_date = undefined
     queryParams.end_date = undefined
   }
   // Sync month range for management tab
-  if (activeTab.value === 'management' && monthRange.value && monthRange.value.length === 2) {
-    queryParams.start_month = monthRange.value[0]
-    queryParams.end_month = monthRange.value[1]
+  const [startMonth, endMonth] = monthRange.value || []
+  if (activeTab.value === 'management' && startMonth && endMonth) {
+    queryParams.start_month = startMonth
+    queryParams.end_month = endMonth
   } else {
     queryParams.start_month = undefined
     queryParams.end_month = undefined

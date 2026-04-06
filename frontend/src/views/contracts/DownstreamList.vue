@@ -431,9 +431,10 @@ const dateRange = ref([])
 
 const handleQuery = () => {
   queryParams.page = 1
-  if (dateRange.value && dateRange.value.length === 2) {
-    queryParams.start_date = dateRange.value[0]
-    queryParams.end_date = dateRange.value[1]
+  const [startDate, endDate] = dateRange.value || []
+  if (startDate && endDate) {
+    queryParams.start_date = startDate
+    queryParams.end_date = endDate
   } else {
     queryParams.start_date = undefined
     queryParams.end_date = undefined

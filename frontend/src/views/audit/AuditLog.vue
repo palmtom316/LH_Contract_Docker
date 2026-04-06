@@ -181,7 +181,7 @@ const { isMobile } = useDevice()
 const loading = ref(false)
 const logList = ref([])
 const total = ref(0)
-const dateRange = ref(null)
+const dateRange = ref([])
 const detailVisible = ref(false)
 const currentLog = ref({})
 
@@ -270,9 +270,10 @@ const formatJson = jsonStr => {
 const fetchLogs = async () => {
   loading.value = true
   try {
-    if (dateRange.value && dateRange.value.length === 2) {
-      queryParams.start_date = dateRange.value[0]
-      queryParams.end_date = dateRange.value[1]
+    const [startDate, endDate] = dateRange.value || []
+    if (startDate && endDate) {
+      queryParams.start_date = startDate
+      queryParams.end_date = endDate
     } else {
       queryParams.start_date = ''
       queryParams.end_date = ''
@@ -307,7 +308,7 @@ const resetQuery = () => {
   queryParams.action = ''
   queryParams.resource_type = ''
   queryParams.keyword = ''
-  dateRange.value = null
+  dateRange.value = []
   fetchLogs()
 }
 
