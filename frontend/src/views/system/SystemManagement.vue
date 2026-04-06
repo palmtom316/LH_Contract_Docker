@@ -1,5 +1,14 @@
 <template>
-  <div class="system-management">
+  <div class="system-management-shell">
+    <AppPageHeader
+      class="system-management-header"
+      eyebrow="System"
+      title="系统管理"
+      description="管理用户、配置与运维操作，延续统一工作台的面板结构。"
+      meta="Admin"
+    />
+
+    <AppWorkspacePanel panel-class="system-management-panel">
     <AppSectionCard>
       <template #header>系统工作台</template>
       <el-tabs v-model="activeTab" class="app-tabs--line system-management__tabs">
@@ -136,6 +145,7 @@
         </el-tab-pane>
       </el-tabs>
     </AppSectionCard>
+    </AppWorkspacePanel>
   </div>
 </template>
 
@@ -143,7 +153,9 @@
 import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Upload, Download, Coin, CircleCheck, RefreshLeft, Delete } from '@element-plus/icons-vue'
+import AppPageHeader from '@/components/ui/AppPageHeader.vue'
 import AppSectionCard from '@/components/ui/AppSectionCard.vue'
+import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 import UserManagement from '@/views/users/UserManagement.vue'
 import SystemSettings from './SystemSettings.vue'
 import { deleteAuditLogsBefore } from '@/api/audit'
@@ -312,9 +324,17 @@ const handleAuditDelete = async () => {
 </script>
 
 <style scoped lang="scss">
-.system-management {
+.system-management-shell {
   display: grid;
-  gap: 20px;
+  gap: var(--space-5);
+}
+
+.system-management-header {
+  margin-bottom: 0;
+}
+
+.system-management-panel {
+  gap: var(--space-4);
 }
 
 .operation-summary {

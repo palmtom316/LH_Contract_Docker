@@ -8,6 +8,11 @@ const mountPage = () =>
       stubs: {
         Overview: { template: '<div class="overview-stub" />' },
         Business: { template: '<div class="business-stub" />' },
+        AppPageHeader: { template: '<div class="app-page-header-stub"><slot name="actions" /></div>' },
+        AppWorkspacePanel: {
+          props: ['panelClass'],
+          template: '<section class="app-workspace-panel-stub" :class="panelClass"><slot /></section>'
+        },
         ElTabs: { template: '<div><slot /></div>' },
         ElTabPane: { template: '<div><slot /></div>' }
       }
@@ -20,5 +25,7 @@ describe('Dashboard workspace shell', () => {
 
     expect(wrapper.find('.dashboard-page-header').exists()).toBe(true)
     expect(wrapper.find('.dashboard-shell').exists()).toBe(true)
+    expect(wrapper.find('.dashboard-tabs-panel').exists()).toBe(true)
+    expect(wrapper.find('.dashboard-tab-panel').exists()).toBe(true)
   })
 })

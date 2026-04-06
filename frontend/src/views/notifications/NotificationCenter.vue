@@ -1,11 +1,14 @@
 <template>
-  <div class="notification-center-page app-container">
-    <section class="notification-center-shell">
-      <header class="notification-center-header">
-        <span class="notification-center-header__eyebrow">消息中心</span>
-        <h2>系统通知</h2>
-      </header>
+  <div class="notification-center-shell">
+    <AppPageHeader
+      class="notification-center-header"
+      eyebrow="Inbox"
+      title="系统通知"
+      description="集中查看合同到期、审计事件和系统提醒。"
+      :meta="`${filteredNotifications.length} 条可见`"
+    />
 
+    <AppWorkspacePanel panel-class="notification-center-panel">
       <section class="notification-center-toolbar">
         <el-segmented v-model="activeFilter" :options="filterOptions" />
       </section>
@@ -27,13 +30,15 @@
         </article>
       </div>
       <el-empty v-else description="当前没有新的系统提醒。" />
-    </section>
+    </AppWorkspacePanel>
   </div>
 </template>
 
 <script setup>
 import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
+import AppPageHeader from '@/components/ui/AppPageHeader.vue'
+import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 import { useSystemStore } from '@/stores/system'
 
 const systemStore = useSystemStore()
@@ -76,44 +81,21 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.notification-center-page {
-  padding: 0;
-}
-
 .notification-center-shell {
   display: grid;
+  gap: var(--space-5);
+  padding: var(--space-5);
+}
+
+.notification-center-panel {
   gap: 18px;
-  padding: 20px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 20px;
   background:
     radial-gradient(circle at top right, color-mix(in srgb, var(--brand-primary) 10%, transparent) 0, transparent 36%),
     linear-gradient(180deg, var(--surface-panel), color-mix(in srgb, var(--surface-panel) 88%, var(--surface-panel-muted) 12%));
-  box-shadow: var(--shadow-soft);
 }
 
 .notification-center-header {
-  display: grid;
-  gap: 10px;
-  padding: 4px 2px 0;
-}
-
-.notification-center-header__eyebrow {
-  display: inline-flex;
-  min-height: 24px;
-  align-items: center;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--brand-primary) 12%, var(--surface-panel) 88%);
-  color: var(--brand-primary-strong);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.notification-center-header h2 {
-  margin: 0;
-  font-size: clamp(22px, 3vw, 30px);
-  line-height: 1.2;
+  margin-bottom: 0;
 }
 
 .notification-center-toolbar {
@@ -160,12 +142,8 @@ onMounted(async () => {
 
 @media (max-width: 768px) {
   .notification-center-shell {
-    padding: 16px;
-    border-radius: 16px;
-  }
-
-  .notification-center-header h2 {
-    font-size: 24px;
+    gap: var(--space-4);
+    padding: var(--space-4);
   }
 
   .notification-item__top {

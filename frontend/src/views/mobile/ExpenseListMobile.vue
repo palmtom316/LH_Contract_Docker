@@ -1,110 +1,106 @@
 <template>
   <div class="mobile-expense-list">
-    <!-- 顶部导航栏 -->
-    <van-nav-bar fixed placeholder title="费用管理" z-index="100" />
-      
-    <!-- 选项卡切换 -->
-    <van-tabs v-model:active="activeType" sticky offset-top="46" @change="handleTypeChange">
-      <van-tab title="普通费用" name="ordinary" />
-      <van-tab title="零星用工" name="labor" />
-    </van-tabs>
+    <div class="mobile-expense-list__controls">
+      <section class="mobile-expense-list__toolbar">
+        <span class="mobile-expense-list__eyebrow">费用类型</span>
+        <van-tabs v-model:active="activeType" @change="handleTypeChange">
+          <van-tab title="普通费用" name="ordinary" />
+          <van-tab title="零星用工" name="labor" />
+        </van-tabs>
+      </section>
 
-    <!-- 搜索栏 -->
-    <van-search
-      v-model="queryParams.keyword"
-      placeholder="搜索内容..."
-      show-action
-      @search="handleQuery"
-      @cancel="resetQuery"
-    />
+      <section class="mobile-expense-list__filters">
+        <van-search
+          v-model="queryParams.keyword"
+          placeholder="搜索内容..."
+          show-action
+          @search="handleQuery"
+          @cancel="resetQuery"
+        />
+      </section>
+    </div>
 
-    <!-- 内容列表 -->
-    <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
-      <van-list
-        v-model:loading="listLoading"
-        :finished="finished"
-        finished-text="没有更多了"
-        :immediate-check="false"
-        @load="loadMore"
-      >
-        <!-- 普通费用卡片 -->
-        <template v-if="activeType === 'ordinary'">
+    <section class="mobile-expense-list__cards">
+      <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
+        <van-list
+          v-model:loading="listLoading"
+          :finished="finished"
+          finished-text="没有更多了"
+          :immediate-check="false"
+          @load="loadMore"
+        >
+          <template v-if="activeType === 'ordinary'">
             <van-cell-group inset v-for="item in list" :key="item.id" class="expense-card">
-            <van-cell :title="item.expense_type" :label="item.project_name" >
+              <van-cell :title="item.expense_type" :label="item.project_name">
                 <template #value>
-                <div class="amount-info">
+                  <div class="amount-info">
                     <div class="amount">¥{{ formatMoney(item.amount) }}</div>
                     <van-tag :type="item.is_paid ? 'success' : 'warning'">{{ item.is_paid ? '已支付' : '未支付' }}</van-tag>
-                </div>
+                  </div>
                 </template>
-            </van-cell>
-            <van-cell>
+              </van-cell>
+              <van-cell>
                 <template #title>
-                 <div class="detail-row">
+                  <div class="detail-row">
                     <span>经办人: {{ item.handler_name }}</span>
                     <span>日期: {{ formatDate(item.expense_date) }}</span>
-                 </div>
-                 <div class="detail-row" v-if="item.notes">
+                  </div>
+                  <div class="detail-row" v-if="item.notes">
                     <span class="notes">备注: {{ item.notes }}</span>
-                 </div>
+                  </div>
                 </template>
-            </van-cell>
-            <van-cell v-if="item.attachments && item.attachments.length" title="附件" is-link @click="viewAttachments(item.attachments)">
-                 <template #value>
-                    {{ item.attachments.length }}个附件
-                 </template>
-            </van-cell>
-            </van-cell-group>
-        </template>
-
-        <!-- 零星用工卡片 -->
-        <template v-else>
-             <van-cell-group inset v-for="item in list" :key="item.id" class="expense-card">
-            <van-cell :title="item.worker_name" :label="item.job_content" >
+              </van-cell>
+              <van-cell v-if="item.attachments && item.attachments.length" title="附件" is-link @click="viewAttachments(item.attachments)">
                 <template #value>
-                <div class="amount-info">
-                    <div class="amount">¥{{ formatMoney(item.amount) }}</div>
-                     <div class="date">{{ formatDate(item.work_date) }}</div>
-                </div>
+                  {{ item.attachments.length }}个附件
                 </template>
-            </van-cell>
-            <van-cell>
+              </van-cell>
+            </van-cell-group>
+          </template>
+
+          <template v-else>
+            <van-cell-group inset v-for="item in list" :key="item.id" class="expense-card">
+              <van-cell :title="item.worker_name" :label="item.job_content">
+                <template #value>
+                  <div class="amount-info">
+                    <div class="amount">¥{{ formatMoney(item.amount) }}</div>
+                    <div class="date">{{ formatDate(item.work_date) }}</div>
+                  </div>
+                </template>
+              </van-cell>
+              <van-cell>
                 <template #title>
-                 <div class="detail-row">
+                  <div class="detail-row">
                     <span>工时: {{ item.work_hours }}小时</span>
                     <span>单价: ¥{{ item.unit_price }}</span>
-                 </div>
-                 <div class="detail-row" v-if="item.notes">
+                  </div>
+                  <div class="detail-row" v-if="item.notes">
                     <span class="notes">备注: {{ item.notes }}</span>
-                 </div>
+                  </div>
                 </template>
-            </van-cell>
+              </van-cell>
             </van-cell-group>
-        </template>
+          </template>
 
-        <van-empty
-          v-if="!listLoading && list.length === 0"
-          description="暂无数据"
-        />
-      </van-list>
-    </van-pull-refresh>
-
-    <!-- 附件预览弹窗 (简化版，仅提示) -->
-    <!-- 实际项目中可能需要图片预览组件 -->
+          <van-empty
+            v-if="!listLoading && list.length === 0"
+            description="暂无数据"
+          />
+        </van-list>
+      </van-pull-refresh>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed, watch } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import dayjs from 'dayjs';
 import { showToast, showImagePreview } from 'vant';
 import * as expenseApi from '@/api/expense';
 import * as laborApi from '@/api/zeroHourLabor';
 import { formatMoney, getFileUrl } from '@/utils/common';
 
-// Vant Components
 import {
-  NavBar as VanNavBar,
   Tabs as VanTabs,
   Tab as VanTab,
   Search as VanSearch,
@@ -238,15 +234,77 @@ onMounted(() => {
 
 <style scoped>
 .mobile-expense-list {
-  min-height: 100vh;
-  background-color: #f7f8fa;
-  padding-bottom: env(safe-area-inset-bottom);
+  display: grid;
+  gap: 14px;
+}
+
+.mobile-expense-list__controls {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: grid;
+  gap: 14px;
+}
+
+.mobile-expense-list__toolbar,
+.mobile-expense-list__filters,
+.mobile-expense-list__cards {
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--surface-panel) 92%, transparent);
+  box-shadow: var(--shadow-soft);
+}
+
+.mobile-expense-list__toolbar {
+  padding: 14px 14px 6px;
+}
+
+.mobile-expense-list__eyebrow {
+  display: inline-flex;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.mobile-expense-list__cards {
+  padding: 12px;
 }
 
 .expense-card {
-  margin: 12px;
-  border-radius: 8px;
+  margin: 0 0 12px;
+  border-radius: 16px;
   overflow: hidden;
+}
+
+.mobile-expense-list__cards :deep(.van-list) {
+  display: grid;
+  gap: 12px;
+}
+
+.mobile-expense-list__cards :deep(.van-cell-group--inset) {
+  margin: 0;
+  background: var(--surface-panel);
+}
+
+.mobile-expense-list__cards :deep(.van-cell) {
+  padding: 14px 16px;
+}
+
+.mobile-expense-list__filters :deep(.van-search__content) {
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: var(--surface-panel);
+}
+
+.mobile-expense-list__toolbar :deep(.van-tabs__wrap) {
+  padding-bottom: 6px;
+}
+
+.mobile-expense-list__toolbar :deep(.van-tabs__line) {
+  background: var(--brand-primary);
 }
 
 .amount-info {

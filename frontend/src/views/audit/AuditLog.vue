@@ -1,7 +1,18 @@
 <template>
-  <div class="audit-log">
-    <AppSectionCard>
-      <template #header>日志筛选</template>
+  <div class="audit-log-shell">
+    <AppPageHeader
+      class="audit-log-header"
+      eyebrow="Audit"
+      title="审计日志"
+      description="筛选并查看关键操作记录，保留现有查询与详情能力。"
+      meta="Security"
+    />
+
+    <AppWorkspacePanel panel-class="audit-log-panel audit-log-panel--filters">
+      <div class="audit-log-panel__heading">
+        <h3>日志筛选</h3>
+        <p>按操作、资源类型、时间范围与关键词缩小日志范围。</p>
+      </div>
       <AppFilterBar inline-actions>
         <el-select v-model="queryParams.action" placeholder="操作类型" clearable>
           <el-option v-for="item in actionOptions" :key="item.value" :label="item.label" :value="item.value" />
@@ -21,10 +32,13 @@
         <el-button @click="resetQuery">重置</el-button>
         </template>
       </AppFilterBar>
-    </AppSectionCard>
+    </AppWorkspacePanel>
 
-    <AppSectionCard>
-      <template #header>操作记录</template>
+    <AppWorkspacePanel panel-class="audit-log-panel audit-log-panel--records">
+      <div class="audit-log-panel__heading">
+        <h3>操作记录</h3>
+        <p>支持桌面表格与移动端卡片两种呈现方式。</p>
+      </div>
 
       <AppEmptyState
         v-if="!loading && !logList.length"
@@ -137,7 +151,7 @@
           </template>
         </AppDataTable>
       </template>
-    </AppSectionCard>
+    </AppWorkspacePanel>
 
     <el-dialog title="操作详情" v-model="detailVisible" :width="isMobile ? '92%' : '720px'">
       <div class="audit-detail">
@@ -168,11 +182,12 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import AppFilterBar from '@/components/ui/AppFilterBar.vue'
 import AppDataTable from '@/components/ui/AppDataTable.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import AppRangeField from '@/components/ui/AppRangeField.vue'
+import AppPageHeader from '@/components/ui/AppPageHeader.vue'
+import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 import request from '@/utils/request'
 import { useDevice } from '@/composables/useDevice'
 
@@ -318,9 +333,36 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.audit-log {
+.audit-log-shell {
   display: grid;
-  gap: 20px;
+  gap: var(--space-5);
+}
+
+.audit-log-header {
+  margin-bottom: 0;
+}
+
+.audit-log-panel {
+  gap: var(--space-4);
+}
+
+.audit-log-panel__heading {
+  display: grid;
+  gap: 4px;
+}
+
+.audit-log-panel__heading h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.audit-log-panel__heading p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
 }
 
 .audit-card-list {

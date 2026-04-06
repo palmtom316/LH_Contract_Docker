@@ -1,101 +1,101 @@
 <template>
   <div class="mobile-contract-list">
-    <!-- 顶部导航栏 -->
-    <van-nav-bar fixed placeholder z-index="100">
-      <template #title>
-        <van-dropdown-menu>
-          <van-dropdown-item v-model="contractType" :options="contractTypeOptions" @change="handleTypeChange" />
-        </van-dropdown-menu>
-      </template>
-      <template #right>
-        <button
-          v-if="canCreate"
-          type="button"
-          class="create-button"
-          aria-label="新建合同"
-          @click="showActionSheet = true"
-        >
-          <van-icon name="plus" size="18" />
-        </button>
-      </template>
-    </van-nav-bar>
-
-    <!-- 搜索栏 -->
-    <van-search
-      v-model="queryParams.keyword"
-      placeholder="搜索合同名称或编号"
-      show-action
-      @search="handleQuery"
-      @cancel="resetQuery"
-    />
-
-    <!-- 筛选标签 -->
-    <van-tabs v-model:active="activeStatusTab" sticky offset-top="90" @change="handleTabChange">
-      <van-tab title="全部" name="all" />
-      <van-tab title="执行中" name="执行中" />
-      <van-tab title="已完成" name="已完成" />
-      <van-tab title="已终止" name="合同终止" />
-    </van-tabs>
-
-    <!-- 下拉刷新容器 -->
-    <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
-      <!-- 合同卡片列表 -->
-      <van-list
-        v-model:loading="listLoading"
-        :finished="finished"
-        finished-text="没有更多了"
-        :immediate-check="false"
-        @load="loadMore"
-      >
-        <van-cell-group inset v-for="contract in list" :key="contract.id" class="contract-card">
-          <van-cell
-            :title="contract.contract_name"
-            :label="contract.contract_code"
-            is-link
-            @click="goToDetail(contract.id)"
+    <div class="mobile-contract-list__controls">
+      <section class="mobile-contract-list__toolbar">
+        <div class="mobile-contract-list__picker">
+          <span class="mobile-contract-list__eyebrow">合同类型</span>
+          <van-dropdown-menu>
+            <van-dropdown-item v-model="contractType" :options="contractTypeOptions" @change="handleTypeChange" />
+          </van-dropdown-menu>
+        </div>
+        <div class="mobile-contract-list__actions">
+          <button
+            v-if="canCreate"
+            type="button"
+            class="create-button"
+            aria-label="新建合同"
+            @click="showActionSheet = true"
           >
-            <template #value>
-              <van-tag 
-                :type="getVantTagType(contract.status) as any"
-                class="status-tag"
-              >
-                {{ contract.status }}
-              </van-tag>
-            </template>
-          </van-cell>
-          
-          <!-- 合同详情摘要 -->
-          <van-cell>
-            <template #title>
-              <div class="contract-parties">
-                <div class="party-row">
-                  <span class="label">甲方:</span>
-                  <span class="value">{{ contract.party_a_name || '-' }}</span>
-                </div>
-                <div class="party-row">
-                  <span class="label">乙方:</span>
-                  <span class="value">{{ contract.party_b_name || '-' }}</span>
-                </div>
-              </div>
-            </template>
-            <template #value>
-              <div class="contract-amount">
-                <div class="amount">¥{{ formatMoney(contract.contract_amount) }}</div>
-                <div class="date">{{ formatDate(contract.sign_date) }}</div>
-              </div>
-            </template>
-          </van-cell>
-        </van-cell-group>
+            <van-icon name="plus" size="18" />
+            <span>新建</span>
+          </button>
+        </div>
+      </section>
 
-        <!-- 空状态 -->
-        <van-empty
-          v-if="!listLoading && list.length === 0"
-          description="暂无合同数据"
+      <section class="mobile-contract-list__filters">
+        <van-search
+          v-model="queryParams.keyword"
+          placeholder="搜索合同名称或编号"
+          show-action
+          @search="handleQuery"
+          @cancel="resetQuery"
         />
-      </van-list>
-    </van-pull-refresh>
 
-    <!-- 新建合同操作菜单 -->
+        <van-tabs v-model:active="activeStatusTab" @change="handleTabChange">
+          <van-tab title="全部" name="all" />
+          <van-tab title="执行中" name="执行中" />
+          <van-tab title="已完成" name="已完成" />
+          <van-tab title="已终止" name="合同终止" />
+        </van-tabs>
+      </section>
+    </div>
+
+    <section class="mobile-contract-list__cards">
+      <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
+        <van-list
+          v-model:loading="listLoading"
+          :finished="finished"
+          finished-text="没有更多了"
+          :immediate-check="false"
+          @load="loadMore"
+        >
+          <van-cell-group inset v-for="contract in list" :key="contract.id" class="contract-card">
+            <van-cell
+              :title="contract.contract_name"
+              :label="contract.contract_code"
+              is-link
+              @click="goToDetail(contract.id)"
+            >
+              <template #value>
+                <van-tag
+                  :type="getVantTagType(contract.status) as any"
+                  class="status-tag"
+                >
+                  {{ contract.status }}
+                </van-tag>
+              </template>
+            </van-cell>
+
+            <van-cell>
+              <template #title>
+                <div class="contract-parties">
+                  <div class="party-row">
+                    <span class="label">甲方:</span>
+                    <span class="value">{{ contract.party_a_name || '-' }}</span>
+                  </div>
+                  <div class="party-row">
+                    <span class="label">乙方:</span>
+                    <span class="value">{{ contract.party_b_name || '-' }}</span>
+                  </div>
+                </div>
+              </template>
+              <template #value>
+                <div class="contract-amount">
+                  <div class="amount">¥{{ formatMoney(contract.contract_amount) }}</div>
+                  <div class="date">{{ formatDate(contract.sign_date) }}</div>
+                </div>
+              </template>
+            </van-cell>
+          </van-cell-group>
+
+          <van-empty
+            v-if="!listLoading && list.length === 0"
+            description="暂无合同数据"
+          />
+        </van-list>
+      </van-pull-refresh>
+    </section>
+
     <van-action-sheet
       v-model:show="showActionSheet"
       :actions="createActions"
@@ -106,7 +106,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, reactive } from 'vue';
+import { ref, computed, onMounted, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 import { showToast } from 'vant';
@@ -117,9 +117,7 @@ import { useUserStore } from '@/stores/user';
 import { formatMoney } from '@/utils/common';
 import type { ContractItem, PaginatedResponse } from '@/types/api';
 
-// Vant 组件
 import {
-  NavBar as VanNavBar,
   DropdownMenu as VanDropdownMenu,
   DropdownItem as VanDropdownItem,
   Icon as VanIcon,
@@ -309,16 +307,81 @@ onMounted(() => {
 
 <style scoped>
 .mobile-contract-list {
-  min-height: 100vh;
-  background-color: var(--surface-page);
-  padding-bottom: env(safe-area-inset-bottom);
+  display: grid;
+  gap: 14px;
+}
+
+.mobile-contract-list__controls {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: grid;
+  gap: 14px;
+}
+
+.mobile-contract-list__toolbar,
+.mobile-contract-list__filters,
+.mobile-contract-list__cards {
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--surface-panel) 92%, transparent);
+  box-shadow: var(--shadow-soft);
+}
+
+.mobile-contract-list__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+}
+
+.mobile-contract-list__picker {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 6px;
+}
+
+.mobile-contract-list__eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.mobile-contract-list__actions {
+  flex-shrink: 0;
+}
+
+.mobile-contract-list__filters {
+  overflow: hidden;
+}
+
+.mobile-contract-list__cards {
+  padding: 12px;
 }
 
 .contract-card {
-  margin: 12px;
-  border-radius: 12px;
+  margin: 0 0 12px;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: var(--shadow-soft);
+  box-shadow: none;
+}
+
+.mobile-contract-list__cards :deep(.van-list) {
+  display: grid;
+  gap: 12px;
+}
+
+.mobile-contract-list__cards :deep(.van-cell-group--inset) {
+  margin: 0;
+  background: var(--surface-panel);
+}
+
+.mobile-contract-list__cards :deep(.van-cell) {
+  padding: 14px 16px;
 }
 
 .contract-parties {
@@ -365,27 +428,29 @@ onMounted(() => {
 }
 
 .create-button {
-  width: 36px;
-  height: 36px;
+  min-height: 42px;
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  background: var(--surface-panel);
-  color: var(--brand-primary);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--text-primary) 92%, transparent);
+  color: var(--text-inverse);
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
+  padding: 0 14px;
   cursor: pointer;
+  font-weight: 600;
 }
 
-/* Customize Dropdown Menu to blend with NavBar */
 :deep(.van-dropdown-menu__bar) {
     background-color: transparent;
     box-shadow: none;
-    height: 46px; /* Match navbar height */
+    height: 40px;
 }
+
 :deep(.van-dropdown-menu__title) {
     font-weight: 600;
-    font-size: 16px;
+    font-size: 15px;
     color: var(--text-primary);
 }
 
@@ -395,8 +460,12 @@ onMounted(() => {
 
 :deep(.van-search__content) {
     border: 1px solid var(--border-subtle);
-    border-radius: 12px;
+    border-radius: 14px;
     background: var(--surface-panel);
+}
+
+:deep(.van-tabs__wrap) {
+    padding: 0 12px 10px;
 }
 
 :deep(.van-tabs__line) {

@@ -1,16 +1,21 @@
 <template>
   <div class="mobile-shell">
-    <header class="mobile-topbar">
-      <button type="button" class="menu-trigger" aria-label="打开菜单" @click="drawerOpen = true">
-        <van-icon name="wap-nav" />
-      </button>
-      <h1 class="mobile-title">{{ pageTitle }}</h1>
-      <AppTopbarActions :unread-count="unreadCount" />
-    </header>
+    <div class="mobile-shell__frame">
+      <header class="mobile-topbar">
+        <button type="button" class="menu-trigger" aria-label="打开菜单" @click="drawerOpen = true">
+          <van-icon name="wap-nav" />
+        </button>
+        <div class="mobile-topbar__copy">
+          <span class="mobile-topbar__eyebrow">Workspace</span>
+          <h1 class="mobile-title">{{ pageTitle }}</h1>
+        </div>
+        <AppTopbarActions :unread-count="unreadCount" />
+      </header>
 
-    <main class="mobile-content">
-      <router-view />
-    </main>
+      <main class="mobile-content">
+        <router-view />
+      </main>
+    </div>
 
     <van-tabbar v-model="activeTab" route safe-area-inset-bottom class="mobile-tabbar">
       <van-tabbar-item to="/m/contracts" icon="orders-o">合同</van-tabbar-item>
@@ -187,20 +192,35 @@ function confirmLogout() {
   background: var(--surface-page);
   display: flex;
   flex-direction: column;
+  gap: 12px;
+  padding: 12px 12px 0;
+}
+
+.mobile-shell__frame {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  border: 1px solid var(--border-subtle);
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--surface-panel) 92%, transparent);
+  box-shadow: var(--shadow-frame);
+  overflow: hidden;
 }
 
 .mobile-topbar {
-  height: 56px;
+  min-height: 62px;
   border-bottom: 1px solid var(--border-subtle);
-  background: var(--surface-panel);
+  background: color-mix(in srgb, var(--surface-panel) 92%, transparent);
   display: grid;
   grid-template-columns: 36px 1fr auto;
-  align-items: center;
-  gap: 8px;
-  padding: 0 10px;
+  align-items: start;
+  gap: 10px;
+  padding: 12px 12px 10px;
   position: sticky;
   top: 0;
   z-index: 20;
+  backdrop-filter: blur(18px);
 }
 
 .menu-trigger {
@@ -212,10 +232,24 @@ function confirmLogout() {
   color: var(--text-secondary);
 }
 
+.mobile-topbar__copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.mobile-topbar__eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 .mobile-title {
   margin: 0;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -224,13 +258,20 @@ function confirmLogout() {
 
 .mobile-content {
   flex: 1;
-  padding-bottom: 50px;
+  min-height: 0;
+  padding: 14px 14px 72px;
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .mobile-tabbar {
   z-index: 1000;
+  margin-bottom: env(safe-area-inset-bottom);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface-panel) 94%, transparent);
   box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
 }
 
 .menu-drawer {

@@ -40,5 +40,7 @@ describe('Login workspace shell', () => {
 
     expect(wrapper.find('.login-shell').exists()).toBe(true)
     expect(wrapper.find('.login-shell__panel').exists()).toBe(true)
+    expect(wrapper.find('.login-shell__brand').exists()).toBe(true)
+    expect(wrapper.find('.login-shell__form').exists()).toBe(true)
   })
 })

@@ -1,31 +1,29 @@
 <template>
   <div class="business-dashboard" v-loading="loading">
-    <section class="dashboard-filter-bar">
-      <div class="dashboard-filter-bar__group">
-        <span class="dashboard-filter-bar__label">统计周期</span>
-        <el-date-picker
-          v-model="currentYear"
-          class="dashboard-filter-bar__control dashboard-filter-bar__control--year"
-          type="year"
-          placeholder="选择年份"
-          value-format="YYYY"
-          @change="handleFilterChange"
-        />
-        <el-select
-          v-model="currentMonth"
-          class="dashboard-filter-bar__control dashboard-filter-bar__control--month"
-          placeholder="选择月份"
-          clearable
-          @change="handleFilterChange"
-        >
-          <el-option label="全年数据" :value="null" />
-          <el-option v-for="m in 12" :key="m" :label="`${m}月`" :value="m" />
-        </el-select>
-      </div>
-      <div class="dashboard-filter-bar__actions">
+    <AppFilterBar class="dashboard-filter-bar" inline-actions>
+      <span class="dashboard-filter-bar__label">统计周期</span>
+      <el-date-picker
+        v-model="currentYear"
+        class="dashboard-filter-bar__control dashboard-filter-bar__control--year"
+        type="year"
+        placeholder="选择年份"
+        value-format="YYYY"
+        @change="handleFilterChange"
+      />
+      <el-select
+        v-model="currentMonth"
+        class="dashboard-filter-bar__control dashboard-filter-bar__control--month"
+        placeholder="选择月份"
+        clearable
+        @change="handleFilterChange"
+      >
+        <el-option label="全年数据" :value="null" />
+        <el-option v-for="m in 12" :key="m" :label="`${m}月`" :value="m" />
+      </el-select>
+      <template #actions>
         <el-button type="primary" icon="Refresh" @click="fetchData">刷新看板</el-button>
-      </div>
-    </section>
+      </template>
+    </AppFilterBar>
 
     <section class="metric-grid">
       <article class="metric-card metric-card--primary">
@@ -190,6 +188,7 @@ import {
   Wallet,
   Coin,
 } from "@element-plus/icons-vue";
+import AppFilterBar from "@/components/ui/AppFilterBar.vue";
 
 // State
 const loading = ref(false);
@@ -699,27 +698,14 @@ onBeforeUnmount(() => {
   gap: var(--space-5);
 }
 
-.dashboard-filter-bar {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px 14px;
+:deep(.app-filter-bar.dashboard-filter-bar) {
   padding: 14px 16px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--surface-panel) 88%, var(--surface-panel-muted) 12%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
-}
-
-.dashboard-filter-bar__group,
-.dashboard-filter-bar__actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
 }
 
 .dashboard-filter-bar__label {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--workspace-control-height);
   font-size: 13px;
   font-weight: 700;
   color: var(--text-secondary);
@@ -1010,19 +996,17 @@ onBeforeUnmount(() => {
     gap: var(--space-4);
   }
 
-  .dashboard-filter-bar {
+  :deep(.app-filter-bar.dashboard-filter-bar) {
     padding: 16px;
-    align-items: stretch;
-    flex-direction: column;
   }
 
-  .dashboard-filter-bar__group,
-  .dashboard-filter-bar__actions {
+  :deep(.app-filter-bar.dashboard-filter-bar .app-filter-bar__main),
+  :deep(.app-filter-bar.dashboard-filter-bar .app-filter-bar__actions) {
     width: 100%;
   }
 
   .dashboard-filter-bar__control,
-  .dashboard-filter-bar__actions :deep(.el-button) {
+  :deep(.app-filter-bar.dashboard-filter-bar .app-filter-bar__actions .el-button) {
     width: 100%;
   }
 

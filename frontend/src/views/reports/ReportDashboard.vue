@@ -1,5 +1,15 @@
 <template>
-  <div class="report-dashboard">
+  <div class="report-dashboard-shell">
+    <AppPageHeader
+      class="report-dashboard-header"
+      eyebrow="Reports"
+      title="报表统计"
+      description="查询月度成本报表与业务导出数据，在统一工作台内完成分析与导出。"
+      :meta="reportHeaderMeta"
+    />
+
+    <div class="report-dashboard-panels">
+    <AppWorkspacePanel panel-class="report-dashboard-panel report-dashboard-panel--cost">
     <AppSectionCard>
       <template #header>月度 / 季度成本报表</template>
       <AppFilterBar>
@@ -168,7 +178,9 @@
         </el-tab-pane>
       </el-tabs>
     </AppSectionCard>
+    </AppWorkspacePanel>
 
+    <AppWorkspacePanel panel-class="report-dashboard-panel report-dashboard-panel--exports">
     <AppSectionCard>
       <template #header>数据查询与导出</template>
       <div class="report-export-grid">
@@ -220,17 +232,21 @@
         </article>
       </div>
     </AppSectionCard>
+    </AppWorkspacePanel>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import AppPageHeader from '@/components/ui/AppPageHeader.vue'
 import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import AppFilterBar from '@/components/ui/AppFilterBar.vue'
 import AppDataTable from '@/components/ui/AppDataTable.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import AppRangeField from '@/components/ui/AppRangeField.vue'
+import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 import { buildExportParams } from '@/views/reports/reportDashboard.helpers'
 import {
   getCostMonthlyQuarterlyReport,
@@ -725,6 +741,8 @@ const exportCards = computed(() => [
   }
 ])
 
+const reportHeaderMeta = computed(() => `${costMonth.value || currentMonthValue} · ${exportCards.value.length} 类导出`)
+
 function downloadFile(response, filename) {
   const url = window.URL.createObjectURL(new Blob([response]))
   const link = document.createElement('a')
@@ -742,9 +760,26 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.report-dashboard {
+.report-dashboard-shell {
   display: grid;
   gap: var(--space-6);
+}
+
+.report-dashboard-header {
+  margin-bottom: 0;
+}
+
+.report-dashboard-panels {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.report-dashboard-panel {
+  gap: var(--space-4);
+}
+
+.report-dashboard-panel :deep(.app-section-card) {
+  border-radius: 22px;
 }
 
 .cost-title {
@@ -801,38 +836,38 @@ onMounted(() => {
   margin: 0;
 }
 
-.report-export-card__filters :deep(.app-filter-bar) {
+:deep(.app-filter-bar.report-export-card__filters) {
   padding: 0;
   border: 0;
   background: transparent;
   box-shadow: none;
 }
 
-.report-export-card__filters :deep(.app-filter-bar__main) {
+:deep(.app-filter-bar.report-export-card__filters .app-filter-bar__main) {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.report-export-card__filters :deep(.app-filter-bar__actions) {
+:deep(.app-filter-bar.report-export-card__filters .app-filter-bar__actions) {
   width: 100%;
   padding-top: 0;
   margin-left: 0;
 }
 
-.report-export-card__filters :deep(.el-date-editor),
-.report-export-card__filters :deep(.el-input),
-.report-export-card__filters :deep(.el-select) {
+:deep(.app-filter-bar.report-export-card__filters .el-date-editor),
+:deep(.app-filter-bar.report-export-card__filters .el-input),
+:deep(.app-filter-bar.report-export-card__filters .el-select) {
   width: 100%;
   max-width: 100%;
 }
 
-.report-export-card__filters--daterange-with-status :deep(.app-filter-bar__main) {
+:deep(.app-filter-bar.report-export-card__filters--daterange-with-status .app-filter-bar__main) {
   display: flex;
   flex-direction: column;
 }
 
-.report-export-card__filters--daterange-with-status :deep(.el-date-editor) {
+:deep(.app-filter-bar.report-export-card__filters--daterange-with-status .el-date-editor) {
   width: 100%;
 }
 
@@ -850,7 +885,11 @@ onMounted(() => {
 }
 
 @media (max-width: 767px) {
-  .report-dashboard {
+  .report-dashboard-shell {
+    gap: var(--space-4);
+  }
+
+  .report-dashboard-panels {
     gap: var(--space-4);
   }
 
