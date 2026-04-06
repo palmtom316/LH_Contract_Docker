@@ -4,15 +4,18 @@ import SmartDateInput from '@/components/SmartDateInput.vue'
 
 const ElInputStub = {
   props: ['modelValue', 'placeholder'],
-  emits: ['update:modelValue', 'blur', 'keyup.enter'],
+  emits: ['update:modelValue', 'blur', 'keyup.enter', 'clear'],
   template: `
-    <input
-      :value="modelValue"
-      :placeholder="placeholder"
-      @input="$emit('update:modelValue', $event.target.value)"
-      @blur="$emit('blur')"
-      @keyup.enter="$emit('keyup.enter')"
-    />
+    <div>
+      <input
+        :value="modelValue"
+        :placeholder="placeholder"
+        @input="$emit('update:modelValue', $event.target.value)"
+        @blur="$emit('blur')"
+        @keyup.enter="$emit('keyup.enter')"
+      />
+      <button type="button" data-test="clear" @click="$emit('clear')">clear</button>
+    </div>
   `
 }
 
@@ -54,6 +57,14 @@ describe('SmartDateInput', () => {
     await wrapper.find('input').trigger('blur')
 
     expect(wrapper.emitted('update:modelValue')[0]).toEqual([null])
+  })
+
+  it('clears the committed value when using the clear action', async () => {
+    const wrapper = mountInput({ modelValue: '2026-04-06' })
+    await wrapper.find('[data-test="clear"]').trigger('click')
+
+    expect(wrapper.emitted('update:modelValue')[0]).toEqual([null])
+    expect(wrapper.text()).not.toContain('日期格式无法识别')
   })
 
   it('resyncs display and clears error after parent updates modelValue', async () => {

@@ -5,6 +5,7 @@
       v-model="displayValue"
       :placeholder="placeholder"
       @blur="commitInput"
+      @clear="handleClear"
       @keyup.enter="commitInput"
       clearable
     >
@@ -68,5 +69,12 @@ function commitInput() {
   displayValue.value = parsed.displayValue
   emit('update:modelValue', parsed.isoValue)
   emit('validity-change', { valid: true, value: parsed.isoValue, raw: parsed.displayValue })
+}
+
+function handleClear() {
+  displayValue.value = ''
+  errorMessage.value = ''
+  emit('update:modelValue', null)
+  emit('validity-change', { valid: true, value: null })
 }
 </script>
