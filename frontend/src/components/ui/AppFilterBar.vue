@@ -138,6 +138,15 @@ defineProps({
   .app-filter-bar__main {
     grid-template-columns: repeat(8, minmax(0, 1fr));
   }
+
+  .app-filter-bar__main :deep(.filter-control--search),
+  .app-filter-bar__main :deep(.filter-control--time) {
+    grid-column: span 3;
+  }
+
+  .app-filter-bar__actions--inline {
+    grid-column: span 2;
+  }
 }
 
 @media (max-width: 900px) {
