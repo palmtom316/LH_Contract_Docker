@@ -4,12 +4,12 @@
       <p v-if="eyebrow" class="app-page-header__eyebrow">{{ eyebrow }}</p>
       <h1 class="app-page-header__title">{{ title }}</h1>
       <p v-if="description" class="app-page-header__description">{{ description }}</p>
-      <div v-if="meta || $slots.meta" class="app-page-header__meta">
-        <slot name="meta">{{ meta }}</slot>
-      </div>
     </div>
-    <div v-if="$slots.actions" class="app-page-header__actions">
-      <slot name="actions" />
+    <div v-if="meta || $slots.actions" class="app-page-header__side">
+      <div v-if="meta" class="app-page-header__meta">{{ meta }}</div>
+      <div v-if="$slots.actions" class="app-page-header__actions">
+        <slot name="actions" />
+      </div>
     </div>
   </header>
 </template>
@@ -75,21 +75,29 @@ defineProps({
 
 .app-page-header__description {
   margin: 0;
-  max-width: 72ch;
+  max-width: var(--workspace-copy-width);
   font-size: 14px;
   line-height: 1.6;
   color: var(--text-secondary);
 }
 
+.app-page-header__side {
+  display: grid;
+  justify-items: end;
+  align-content: start;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
 .app-page-header__meta {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  justify-content: flex-end;
   min-height: 24px;
   color: var(--text-muted);
   font-size: 13px;
   line-height: 1.5;
+  text-align: right;
 }
 
 .app-page-header__actions {
@@ -98,7 +106,6 @@ defineProps({
   justify-content: flex-end;
   gap: 10px;
   flex-wrap: wrap;
-  flex-shrink: 0;
 }
 
 @media (max-width: 768px) {
@@ -107,9 +114,15 @@ defineProps({
     flex-direction: column;
   }
 
-  .app-page-header__actions {
+  .app-page-header__side {
     width: 100%;
+    justify-items: start;
+  }
+
+  .app-page-header__meta,
+  .app-page-header__actions {
     justify-content: flex-start;
+    text-align: left;
   }
 }
 
