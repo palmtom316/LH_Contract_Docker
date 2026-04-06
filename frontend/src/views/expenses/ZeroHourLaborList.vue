@@ -1,7 +1,7 @@
 <template>
   <div class="zero-hour-page">
     <AppSectionCard>
-      <AppFilterBar>
+      <AppFilterBar inline-actions>
         <AppRangeField
           v-model="dateRange"
           class="filter-control--time"

@@ -4,6 +4,12 @@
       <template #header>合同筛选</template>
       <AppFilterBar inline-actions>
         <el-input v-model="queryParams.keyword" class="filter-control--search" placeholder="合同序号/编号/名称/乙方" clearable @keyup.enter="handleQuery" />
+        <AppRangeField
+          v-model="dateRange"
+          class="filter-control--time"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+        />
         <el-select v-model="queryParams.status" placeholder="合同状态" clearable>
           <el-option label="执行中" value="执行中" />
           <el-option label="已完工" value="已完工" />
@@ -12,12 +18,6 @@
           <el-option label="合同终止" value="合同终止" />
           <el-option label="合同中止" value="合同中止" />
         </el-select>
-        <AppRangeField
-          v-model="dateRange"
-          class="filter-control--time"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-        />
         <DictSelect v-model="queryParams.category" category="downstream_contract_category" placeholder="合同分类" clearable />
         <template #actions>
         <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>

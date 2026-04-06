@@ -2,7 +2,7 @@
   <div class="audit-log">
     <AppSectionCard>
       <template #header>日志筛选</template>
-      <AppFilterBar>
+      <AppFilterBar inline-actions>
         <el-select v-model="queryParams.action" placeholder="操作类型" clearable>
           <el-option v-for="item in actionOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
