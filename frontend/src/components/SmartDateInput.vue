@@ -50,19 +50,20 @@ watch(
 const hasError = computed(() => Boolean(errorMessage.value))
 
 function commitInput() {
-  if (clearedViaAction.value) {
-    clearedViaAction.value = false
-    return
-  }
   const raw = displayValue.value?.trim() ?? ''
 
   if (!raw) {
+    if (clearedViaAction.value) {
+      clearedViaAction.value = false
+      return
+    }
     errorMessage.value = ''
     emit('update:modelValue', null)
     emit('validity-change', { valid: true, value: null })
     return
   }
 
+  clearedViaAction.value = false
   const parsed = parseFlexibleDateInput(raw)
   if (!parsed) {
     errorMessage.value = '日期格式无法识别，请输入如 2026/04/06'

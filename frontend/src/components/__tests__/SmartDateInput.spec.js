@@ -93,4 +93,15 @@ describe('SmartDateInput', () => {
     const nullValidity = validity.filter(([payload]) => payload?.value === null)
     expect(nullValidity).toHaveLength(1)
   })
+
+  it('emits a new value after clear then new input on blur', async () => {
+    const wrapper = mountInput({ modelValue: '2026-04-06' })
+    await wrapper.find('[data-test="clear"]').trigger('click')
+    await wrapper.find('input').setValue('2026/4/10')
+    await wrapper.find('input').trigger('blur')
+
+    const updates = wrapper.emitted('update:modelValue') || []
+    const values = updates.map(([value]) => value)
+    expect(values).toContain('2026-04-10')
+  })
 })
