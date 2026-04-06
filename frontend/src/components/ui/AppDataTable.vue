@@ -15,7 +15,7 @@
 <style scoped lang="scss">
 .app-data-table {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .app-data-table__toolbar,
@@ -32,9 +32,10 @@
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  border-radius: 18px;
+  border-radius: 16px;
   border: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--surface-panel) 96%, var(--brand-primary) 4%);
+  background: #fff;
+  box-shadow: none;
 }
 
 .app-data-table__scroll :deep(.el-table) {
@@ -42,7 +43,7 @@
 }
 
 .app-data-table__scroll :deep(.el-table th.el-table__cell) {
-  background: color-mix(in srgb, var(--surface-panel-muted) 72%, var(--surface-panel) 28%);
+  background: #f8fafc;
 }
 
 @media (max-width: 767px) {

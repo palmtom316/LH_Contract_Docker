@@ -26,26 +26,23 @@ defineProps({
 <style scoped lang="scss">
 .app-filter-bar {
   position: relative;
-  padding: 12px 14px;
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 78%, var(--brand-primary) 22%);
-  border-radius: 18px;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface-panel) 96%, white 4%), color-mix(in srgb, var(--surface-panel) 88%, var(--surface-panel-muted) 12%));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.6),
-    0 8px 22px rgba(15, 23, 42, 0.04);
+  padding: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: none;
 }
 
 .app-filter-bar__content {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 
 .app-filter-bar__main {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -74,6 +71,23 @@ defineProps({
   min-width: 0;
 }
 
+.app-filter-bar__main :deep(.el-input__wrapper),
+.app-filter-bar__main :deep(.el-select__wrapper),
+.app-filter-bar__main :deep(.app-range-field) {
+  min-height: 40px;
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px var(--border-subtle) inset;
+  background: #fff;
+}
+
+.app-filter-bar__main :deep(.el-input__wrapper.is-focus),
+.app-filter-bar__main :deep(.el-select__wrapper.is-focused),
+.app-filter-bar__main :deep(.app-range-field:focus-within) {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--brand-primary) 32%, var(--border-subtle) 68%) inset,
+    var(--shadow-focus);
+}
+
 .app-filter-bar__main :deep(.filter-control--wide) {
   grid-column: span 4;
 }
@@ -89,7 +103,7 @@ defineProps({
 }
 
 .app-filter-bar__main :deep(.app-range-field) {
-  min-height: 42px;
+  min-height: 40px;
 }
 
 .app-filter-bar__main :deep(.filter-control--search) {
@@ -98,10 +112,8 @@ defineProps({
 
 .app-filter-bar__main :deep(.filter-control--search .el-input__wrapper),
 .app-filter-bar__main :deep(.filter-control--search.el-input__wrapper) {
-  background: color-mix(in srgb, var(--surface-panel) 92%, white 8%);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--border-subtle) 72%, var(--brand-primary) 28%) inset,
-    0 8px 18px rgba(37, 99, 235, 0.06);
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--border-subtle) inset;
 }
 
 .app-filter-bar__main :deep(.filter-control--search .el-input__inner) {
@@ -131,7 +143,18 @@ defineProps({
   min-width: 0;
   height: 40px;
   padding-inline: 14px;
+  border-radius: 12px;
+  border-color: var(--border-subtle);
+  background: #fff;
+  color: var(--text-secondary);
+  box-shadow: none;
   white-space: nowrap;
+}
+
+.app-filter-bar__actions :deep(.el-button--primary) {
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+  color: var(--text-inverse);
 }
 
 @media (max-width: 1280px) {
@@ -178,7 +201,7 @@ defineProps({
 
 @media (max-width: 640px) {
   .app-filter-bar {
-    padding: 12px;
+    padding: 14px;
     border-radius: 16px;
   }
 

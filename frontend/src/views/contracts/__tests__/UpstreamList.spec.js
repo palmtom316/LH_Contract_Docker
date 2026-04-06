@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { defineComponent, reactive, ref } from 'vue'
+import Layout from '@/views/Layout.vue'
 import UpstreamList from '@/views/contracts/UpstreamList.vue'
 
 const { getListMock, queryParamsState } = vi.hoisted(() => ({
@@ -50,18 +51,60 @@ vi.mock('@/composables/useContractList', () => {
   }
 })
 
+const routeMock = reactive({
+  query: {},
+  meta: { title: '首页' },
+  path: '/'
+})
+const routerMock = { push: vi.fn() }
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual('vue-router')
   return {
     ...actual,
-    useRouter: () => ({ push: vi.fn() }),
-    useRoute: () => ({ query: {} })
+    useRouter: () => routerMock,
+    useRoute: () => routeMock
   }
 })
 
 vi.mock('@/stores/user', () => ({
   useUserStore: () => ({
-    canManageUpstreamContracts: false
+    canManageUpstreamContracts: false,
+    canViewDashboard: true,
+    canViewUpstreamContracts: true,
+    canViewDownstreamContracts: true,
+    canViewManagementContracts: true,
+    canViewExpenses: true,
+    canViewReports: true,
+    canManageUsers: true,
+    isAdmin: false
+  })
+}))
+
+const fetchConfigMock = vi.fn()
+const fetchNotificationsMock = vi.fn()
+vi.mock('@/stores/system', () => ({
+  useSystemStore: () => ({
+    config: {
+      system_name: '蓝海合同管理',
+      system_name_line_2: 'Platform'
+    },
+    notifications: [],
+    fetchConfig: fetchConfigMock,
+    fetchNotifications: fetchNotificationsMock
+  })
+}))
+
+const closeNotificationDrawerMock = vi.fn()
+vi.mock('@/stores/ui', () => ({
+  useUiStore: () => ({
+    notificationDrawerOpen: false,
+    closeNotificationDrawer: closeNotificationDrawerMock
+  })
+}))
+
+vi.mock('@/composables/useDevice', () => ({
+  useDevice: () => ({
+    isMobile: ref(false)
   })
 }))
 
@@ -119,42 +162,68 @@ const ElTabPaneStub = defineComponent({
   template: '<div class="el-tab-pane-stub" :data-label="label" :data-name="name"><span class="tab-label">{{ label }}</span><slot /></div>'
 })
 
+const layoutElementStubs = {
+  AppSectionCard: { template: '<section><slot name="header" /><slot /><slot name="actions" /></section>' },
+  AppFilterBar: { template: '<div><slot /><slot name="actions" /></div>' },
+  AppDataTable: { template: '<div><slot /></div>' },
+  AppEmptyState: true,
+  AppRangeField: RangeFieldStub,
+  DictSelect: true,
+  SmartDateInput: true,
+  ElInput: true,
+  ElSelect: true,
+  ElOption: true,
+  ElButton: ElButtonStub,
+  ElTable: true,
+  ElTableColumn: true,
+  ElPagination: true,
+  ElDialog: true,
+  ElForm: true,
+  ElFormItem: true,
+  ElInputNumber: true,
+  ElTag: true,
+  ElRow: true,
+  ElCol: true,
+  ElCard: true,
+  ElDropdown: true,
+  ElDropdownMenu: true,
+  ElDropdownItem: true,
+  ElUpload: true,
+  ElTooltip: true,
+  ElIcon: true,
+  ElTabs: { template: '<div><slot /></div>' },
+  ElTabPane: ElTabPaneStub,
+  ElResult: true,
+  ElDivider: true
+}
+
 const mountPage = () =>
   mount(UpstreamList, {
     global: {
+      stubs: layoutElementStubs
+    }
+  })
+
+const mountLayoutShell = () =>
+  mount(Layout, {
+    global: {
       stubs: {
-        AppSectionCard: { template: '<section><slot name="header" /><slot /><slot name="actions" /></section>' },
-        AppFilterBar: { template: '<div><slot /><slot name="actions" /></div>' },
-        AppDataTable: { template: '<div><slot /></div>' },
-        AppEmptyState: true,
-        AppRangeField: RangeFieldStub,
-        DictSelect: true,
-        SmartDateInput: true,
-        ElInput: true,
-        ElSelect: true,
-        ElOption: true,
-        ElButton: ElButtonStub,
-        ElTable: true,
-        ElTableColumn: true,
-        ElPagination: true,
+        RouterView: { template: '<main />' },
+        ContractQueryBot: true,
+        AppTopbarActions: true,
+        SidebarUserCard: true,
+        NotificationCenter: true,
+        ElMenu: true,
+        ElMenuItem: true,
+        ElDrawer: true,
         ElDialog: true,
         ElForm: true,
         ElFormItem: true,
-        ElInputNumber: true,
-        ElTag: true,
-        ElRow: true,
-        ElCol: true,
-        ElCard: true,
-        ElDropdown: true,
-        ElDropdownMenu: true,
-        ElDropdownItem: true,
-        ElUpload: true,
-        ElTooltip: true,
+        ElInput: true,
+        ElButton: true,
         ElIcon: true,
-        ElTabs: { template: '<div><slot /></div>' },
-        ElTabPane: ElTabPaneStub,
-        ElResult: true,
-        ElDivider: true
+        ElBreadcrumb: true,
+        ElBreadcrumbItem: true
       }
     }
   })
@@ -217,5 +286,29 @@ describe('UpstreamList filters', () => {
     expect(wrapper.text()).toContain('重置')
     expect(searchButton.text()).toBe('搜索')
     expect(resetButton.text()).toBe('重置')
+  })
+})
+
+describe('dashboard shell structure', () => {
+  it('renders upstream content inside dashboard page wrappers', () => {
+    const wrapper = mountPage()
+
+    expect(wrapper.find('.upstream-page-shell').exists()).toBe(true)
+    expect(wrapper.find('.upstream-page-header').exists()).toBe(true)
+    expect(wrapper.find('.upstream-page-tabs').exists()).toBe(true)
+  })
+
+  it('groups filter and table regions into dashboard sections', () => {
+    const wrapper = mountPage()
+
+    expect(wrapper.find('.upstream-filter-section').exists()).toBe(true)
+    expect(wrapper.find('.upstream-table-section').exists()).toBe(true)
+  })
+
+  it('renders the layout topbar copy and framed workspace canvas', () => {
+    const wrapper = mountLayoutShell()
+
+    expect(wrapper.find('.topbar-copy').exists()).toBe(true)
+    expect(wrapper.find('.app-main__frame').exists()).toBe(true)
   })
 })

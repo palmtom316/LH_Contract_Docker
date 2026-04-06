@@ -1,10 +1,20 @@
 <template>
-  <div class="contract-surface">
-    <el-tabs v-model="activeTab" class="contract-tabs app-tabs--line" @tab-change="handleTabChange">
+  <div class="upstream-page-shell">
+    <header class="upstream-page-header">
+      <div>
+        <p class="upstream-page-header__eyebrow">Contracts</p>
+        <h1 class="upstream-page-header__title">上游合同</h1>
+        <p class="upstream-page-header__description">浏览、筛选、导出和维护上游合同数据。</p>
+      </div>
+    </header>
+
+    <section class="upstream-page-tabs">
+      <div class="contract-surface">
+        <el-tabs v-model="activeTab" class="contract-tabs contract-tabs--dashboard app-tabs--line" @tab-change="handleTabChange">
       <!-- Tab 1: Contract Management -->
       <el-tab-pane label="合同管理" name="management">
         <!-- Search Bar -->
-        <AppSectionCard>
+        <AppSectionCard class="upstream-filter-section">
           <template #header>合同筛选</template>
           <template #actions>
             <el-button type="primary" plain icon="Download" @click="handleExport">导出</el-button>
@@ -46,7 +56,7 @@
         </AppSectionCard>
 
         <!-- Table View (PC) -->
-        <AppSectionCard v-if="!isMobile">
+        <AppSectionCard v-if="!isMobile" class="upstream-table-section">
           <template #header>合同列表</template>
           <AppDataTable>
           <el-table 
@@ -151,7 +161,7 @@
         </AppSectionCard>
 
         <!-- Card View (Mobile) -->
-        <AppSectionCard v-else>
+        <AppSectionCard v-else class="upstream-table-section">
           <template #header>合同列表</template>
           <AppEmptyState
             v-if="!loading && !contractList.length"
@@ -216,7 +226,7 @@
 
       <!-- Tab 2: Basic Information List -->
       <el-tab-pane label="上游合同基本信息" name="basic_info">
-        <AppSectionCard>
+        <AppSectionCard class="upstream-filter-section">
           <template #header>基础信息筛选</template>
           <AppFilterBar inline-actions>
             <el-input v-model="queryParams.keyword" class="filter-control--search" placeholder="合同序号/编号/名称/甲方" clearable @keyup.enter="handleQuery" />
@@ -233,7 +243,7 @@
           </AppFilterBar>
         </AppSectionCard>
 
-        <AppSectionCard v-if="!isMobile">
+        <AppSectionCard v-if="!isMobile" class="upstream-table-section">
           <template #header>基础信息列表</template>
           <AppDataTable>
           <el-table 
@@ -314,7 +324,7 @@
           </div>
           </AppDataTable>
         </AppSectionCard>
-        <AppSectionCard v-else>
+        <AppSectionCard v-else class="upstream-table-section">
           <template #header>基础信息列表</template>
           <AppEmptyState
             v-if="!loading && !contractList.length"
@@ -371,7 +381,9 @@
           </div>
         </AppSectionCard>
       </el-tab-pane>
-    </el-tabs>
+        </el-tabs>
+      </div>
+    </section>
 
     <!-- Edit/Create Dialog -->
     <el-dialog
@@ -1045,6 +1057,47 @@ onBeforeUnmount(() => {
 
 <style scoped lang="scss">
 
+.upstream-page-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.upstream-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 4px 2px 0;
+}
+
+.upstream-page-header__eyebrow {
+  margin: 0 0 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.upstream-page-header__title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.upstream-page-header__description {
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.upstream-page-tabs {
+  display: grid;
+  gap: var(--space-5);
+}
+
 .contract-surface {
   display: grid;
   gap: var(--space-5);
@@ -1054,14 +1107,41 @@ onBeforeUnmount(() => {
   margin-bottom: 18px;
 }
 
+.contract-tabs--dashboard :deep(.el-tabs__nav-wrap) {
+  padding: 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.contract-tabs--dashboard :deep(.el-tabs__nav) {
+  gap: 6px;
+}
+
+.contract-tabs--dashboard :deep(.el-tabs__item) {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.contract-tabs--dashboard :deep(.el-tabs__item.is-active) {
+  color: var(--text-primary);
+  background: var(--surface-panel);
+}
+
+.contract-tabs--dashboard :deep(.el-tabs__active-bar) {
+  display: none;
+}
+
 .contract-surface :deep(.app-section-card) {
-  border-radius: 24px;
+  border-radius: 20px;
 }
 
 .contract-surface :deep(.app-filter-bar) {
-  border-radius: 20px;
-  background:
-    linear-gradient(180deg, var(--surface-panel), color-mix(in srgb, var(--surface-panel) 92%, var(--surface-panel-muted) 8%));
+  border-radius: 16px;
+  background: #fff;
 }
 
 .contract-surface :deep(.el-table__inner-wrapper::before) {
@@ -1083,6 +1163,19 @@ onBeforeUnmount(() => {
   --el-table-header-text-color: var(--text-secondary);
   --el-table-text-color: var(--text-primary);
   --el-table-row-hover-bg-color: color-mix(in srgb, var(--surface-panel-muted) 58%, var(--surface-panel) 42%);
+}
+
+.upstream-filter-section,
+.upstream-table-section {
+  background: transparent;
+}
+
+.upstream-filter-section :deep(.el-card__body) {
+  padding-top: 16px;
+}
+
+.upstream-table-section :deep(.el-card__body) {
+  padding-top: 16px;
 }
 
 .filter-actions {
@@ -1107,13 +1200,13 @@ onBeforeUnmount(() => {
 }
 
 .pagination-container {
-  margin-top: 20px;
+  margin-top: 16px;
   display: flex;
   justify-content: flex-end;
 }
 
 .card-list .contract-card {
-  border-radius: 20px;
+  border-radius: 18px;
 }
 
 /* Mobile Card View */
@@ -1123,7 +1216,7 @@ onBeforeUnmount(() => {
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
     background: var(--surface-panel);
-    box-shadow: var(--shadow-soft);
+    box-shadow: none;
     
     .card-header {
       display: flex;

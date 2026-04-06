@@ -126,4 +126,24 @@ describe('AppFilterBar', () => {
     expect(actionsRule['grid-column']).toBe('span 3')
     expect(actionsRule['grid-row']).toBeUndefined()
   })
+
+  it('uses the dashboard workspace chrome for radius, padding, and grid spacing', () => {
+    const wrapper = mount(AppFilterBar, {
+      props: { inlineActions: true },
+      slots: {
+        default: '<div class="filter-control--search">keyword</div>',
+        actions: '<button>查询</button>'
+      }
+    })
+
+    expect(wrapper.find('.app-filter-bar').classes()).toContain('app-filter-bar')
+
+    const shellRule = getSelectorDeclarations(compiledAppFilterBarStyles, '.app-filter-bar')
+    const mainGrid = getSelectorDeclarations(compiledAppFilterBarStyles, '.app-filter-bar__main')
+
+    expect(shellRule.padding).toBe('16px')
+    expect(shellRule['border-radius']).toBe('16px')
+    expect(shellRule['box-shadow']).toBe('none')
+    expect(mainGrid.gap).toBe('10px')
+  })
 })

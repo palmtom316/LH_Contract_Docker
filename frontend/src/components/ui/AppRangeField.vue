@@ -268,15 +268,16 @@ function normalizePickerRange(start, end) {
   gap: 6px;
   width: 100%;
   min-width: 0;
-  height: 42px;
-  min-height: 42px;
+  height: 40px;
+  min-height: 40px;
   box-sizing: border-box;
-  padding: 0 8px;
+  padding: 0 10px;
   border-radius: 12px;
-  background: color-mix(in srgb, var(--surface-panel) 96%, var(--surface-panel-muted) 4%);
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 82%, var(--brand-primary) 18%);
+  background: #fff;
+  border: 1px solid var(--border-subtle);
   container-type: inline-size;
   overflow: hidden;
+  box-shadow: none;
 }
 
 .app-range-field__icon {
@@ -326,7 +327,7 @@ function normalizePickerRange(start, end) {
   height: 100%;
   min-height: 100%;
   padding-inline: 2px;
-  border-radius: 8px;
+  border-radius: 10px;
   box-shadow: none;
   background: transparent;
 }
@@ -346,7 +347,7 @@ function normalizePickerRange(start, end) {
 
 .app-range-field__input:first-of-type {
   padding-right: 2px;
-  border-right: 1px solid color-mix(in srgb, var(--border-subtle) 72%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--border-subtle) 86%, transparent);
 }
 
 .app-range-field__input:last-of-type {

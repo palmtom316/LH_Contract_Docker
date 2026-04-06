@@ -8,88 +8,94 @@
       @click="closeSidebar"
     />
 
-    <aside class="sidebar" :class="{ collapsed: isCollapse }">
-      <div class="brand">
-        <img v-if="!isCollapse" :src="displayLogo" class="brand-logo" alt="logo" />
-        <el-icon v-else class="brand-icon"><Monitor /></el-icon>
-        <div v-if="!isCollapse" class="brand-text">
-          <span>{{ displayName }}</span>
-          <small>{{ displayNameLine2 }}</small>
+    <div class="shell-body">
+      <aside class="sidebar" :class="{ collapsed: isCollapse }">
+        <div class="brand">
+          <img v-if="!isCollapse" :src="displayLogo" class="brand-logo" alt="logo" />
+          <el-icon v-else class="brand-icon"><Monitor /></el-icon>
+          <div v-if="!isCollapse" class="brand-text">
+            <span>{{ displayName }}</span>
+            <small>{{ displayNameLine2 }}</small>
+          </div>
         </div>
-      </div>
 
-      <el-menu
-        :default-active="activeMenu"
-        :collapse="isCollapse"
-        :collapse-transition="false"
-        class="sidebar-menu"
-        router
-      >
-        <el-menu-item v-if="userStore.canViewDashboard" index="/">
-          <el-icon><HomeFilled /></el-icon>
-          <template #title>首页概览</template>
-        </el-menu-item>
-        <el-menu-item v-if="userStore.canViewUpstreamContracts" index="/contracts/upstream">
-          <el-icon><Document /></el-icon>
-          <template #title>上游合同</template>
-        </el-menu-item>
-        <el-menu-item v-if="userStore.canViewDownstreamContracts" index="/contracts/downstream">
-          <el-icon><DocumentCopy /></el-icon>
-          <template #title>下游合同</template>
-        </el-menu-item>
-        <el-menu-item v-if="userStore.canViewManagementContracts" index="/contracts/management">
-          <el-icon><FolderChecked /></el-icon>
-          <template #title>管理合同</template>
-        </el-menu-item>
-        <el-menu-item v-if="userStore.canViewExpenses" index="/expenses">
-          <el-icon><Money /></el-icon>
-          <template #title>无合同费用</template>
-        </el-menu-item>
-        <el-menu-item v-if="userStore.canViewReports" index="/reports">
-          <el-icon><DataAnalysis /></el-icon>
-          <template #title>报表导出</template>
-        </el-menu-item>
-        <el-menu-item v-if="userStore.canManageUsers" index="/system">
-          <el-icon><Setting /></el-icon>
-          <template #title>系统管理</template>
-        </el-menu-item>
-        <el-menu-item v-if="userStore.isAdmin" index="/audit">
-          <el-icon><Document /></el-icon>
-          <template #title>审计日志</template>
-        </el-menu-item>
-      </el-menu>
+        <el-menu
+          :default-active="activeMenu"
+          :collapse="isCollapse"
+          :collapse-transition="false"
+          class="sidebar-menu"
+          router
+        >
+          <el-menu-item v-if="userStore.canViewDashboard" index="/">
+            <el-icon><HomeFilled /></el-icon>
+            <template #title>首页概览</template>
+          </el-menu-item>
+          <el-menu-item v-if="userStore.canViewUpstreamContracts" index="/contracts/upstream">
+            <el-icon><Document /></el-icon>
+            <template #title>上游合同</template>
+          </el-menu-item>
+          <el-menu-item v-if="userStore.canViewDownstreamContracts" index="/contracts/downstream">
+            <el-icon><DocumentCopy /></el-icon>
+            <template #title>下游合同</template>
+          </el-menu-item>
+          <el-menu-item v-if="userStore.canViewManagementContracts" index="/contracts/management">
+            <el-icon><FolderChecked /></el-icon>
+            <template #title>管理合同</template>
+          </el-menu-item>
+          <el-menu-item v-if="userStore.canViewExpenses" index="/expenses">
+            <el-icon><Money /></el-icon>
+            <template #title>无合同费用</template>
+          </el-menu-item>
+          <el-menu-item v-if="userStore.canViewReports" index="/reports">
+            <el-icon><DataAnalysis /></el-icon>
+            <template #title>报表导出</template>
+          </el-menu-item>
+          <el-menu-item v-if="userStore.canManageUsers" index="/system">
+            <el-icon><Setting /></el-icon>
+            <template #title>系统管理</template>
+          </el-menu-item>
+          <el-menu-item v-if="userStore.isAdmin" index="/audit">
+            <el-icon><Document /></el-icon>
+            <template #title>审计日志</template>
+          </el-menu-item>
+        </el-menu>
 
-      <div v-if="!isCollapse" class="sidebar-footer">
-        <SidebarUserCard @change-password="openChangePasswordDialog" @logout="confirmLogout" />
-        <small class="system-version">{{ systemVersion }}</small>
-      </div>
-    </aside>
-
-    <main class="content" :class="{ collapsed: isCollapse }">
-      <header class="topbar">
-        <div class="topbar-left">
-          <button type="button" class="menu-btn" aria-label="切换侧边栏" @click="toggleSidebar">
-            <el-icon>
-              <Fold v-if="!isCollapse" />
-              <Expand v-else />
-            </el-icon>
-          </button>
-          <el-breadcrumb separator="/" class="breadcrumb hidden-xs-only">
-            <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
-            <el-breadcrumb-item>{{ route.meta.title }}</el-breadcrumb-item>
-          </el-breadcrumb>
+        <div v-if="!isCollapse" class="sidebar-footer">
+          <SidebarUserCard @change-password="openChangePasswordDialog" @logout="confirmLogout" />
+          <small class="system-version">{{ systemVersion }}</small>
         </div>
-        <AppTopbarActions :unread-count="unreadCount" />
-      </header>
+      </aside>
 
-      <section class="app-main">
-        <router-view v-slot="{ Component }">
-          <transition name="fade-transform" mode="out-in">
-            <component :is="Component" />
-          </transition>
-        </router-view>
-      </section>
-    </main>
+      <div class="workspace">
+        <main class="content" :class="{ collapsed: isCollapse }">
+          <header class="topbar">
+            <div class="topbar-left">
+              <button type="button" class="menu-btn" aria-label="切换侧边栏" @click="toggleSidebar">
+                <el-icon>
+                  <Fold v-if="!isCollapse" />
+                  <Expand v-else />
+                </el-icon>
+              </button>
+              <div class="topbar-copy">
+                <div class="topbar-copy__title">{{ route.meta.title }}</div>
+                <div class="topbar-copy__meta">Workspace</div>
+              </div>
+            </div>
+            <AppTopbarActions :unread-count="unreadCount" />
+          </header>
+
+          <section class="app-main">
+            <div class="app-main__frame">
+              <router-view v-slot="{ Component }">
+                <transition name="fade-transform" mode="out-in">
+                  <component :is="Component" />
+                </transition>
+              </router-view>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
 
     <el-drawer
       v-model="uiStore.notificationDrawerOpen"
@@ -266,45 +272,59 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .shell {
-  display: flex;
-  width: 100%;
   min-height: 100vh;
-  background: var(--surface-page);
+  width: 100%;
+  padding: 32px 28px 40px;
+  background:
+    radial-gradient(circle at top left, rgba(148, 163, 184, 0.08), transparent 28%),
+    var(--surface-page);
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  position: relative;
+}
+
+.shell-body {
+  width: 100%;
+  max-width: 1400px;
+  display: flex;
+  gap: 28px;
 }
 
 .shell-overlay {
   position: fixed;
   inset: 0;
   border: 0;
-  background: rgba(2, 6, 23, 0.45);
+  background: rgba(2, 6, 23, 0.35);
   z-index: 40;
 }
 
 .sidebar {
-  width: 260px;
-  min-height: 100vh;
-  height: 100vh;
-  background: var(--surface-sidebar);
-  border-right: 1px solid var(--border-subtle);
-  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.18);
+  width: 272px;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--surface-sidebar) 92%, white 8%);
+  padding: 24px 16px 20px;
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-soft);
   display: flex;
   flex-direction: column;
   position: sticky;
-  top: 0;
-  z-index: 41;
+  top: 32px;
+  align-self: flex-start;
   overflow-y: auto;
+  max-height: calc(100vh - 64px);
 }
 
 .sidebar.collapsed {
-  width: 70px;
+  width: 74px;
 }
 
 .brand {
-  padding: 24px 18px 18px;
+  padding-bottom: 12px;
   min-height: 82px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .brand-logo {
@@ -317,7 +337,7 @@ onMounted(() => {
 
 .brand-icon {
   color: var(--brand-primary);
-  font-size: 22px;
+  font-size: 24px;
 }
 
 .brand-text {
@@ -344,43 +364,51 @@ onMounted(() => {
   border-right: 0;
   background: transparent;
   flex: 1;
-  padding: 0 10px;
+  padding: 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .sidebar-footer {
   margin-top: auto;
-  padding: 16px 16px 20px;
-  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 84%, transparent 16%);
+  padding: 16px 8px 4px;
+  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 90%, transparent 10%);
   position: sticky;
   bottom: 0;
-  background: color-mix(in srgb, var(--surface-sidebar) 92%, transparent);
-  backdrop-filter: blur(12px);
+  background: transparent;
 }
 
 .system-version {
   display: block;
-  margin-top: 8px;
+  margin-top: 6px;
   color: var(--text-muted);
   font-size: 11px;
 }
 
+.workspace {
+  flex: 1;
+  display: flex;
+}
+
 .content {
   flex: 1;
-  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
 }
 
 .topbar {
-  height: 68px;
-  padding: 0 24px;
-  border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 84%, transparent 16%);
-  background: color-mix(in srgb, var(--surface-panel) 86%, transparent);
+  min-height: var(--header-height, 72px);
+  padding: 0 28px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.78);
   backdrop-filter: blur(18px);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  position: sticky;
-  top: 0;
-  z-index: 30;
+  border-radius: 24px 24px 0 0;
 }
 
 .topbar-left {
@@ -393,15 +421,46 @@ onMounted(() => {
 .menu-btn {
   width: 40px;
   height: 40px;
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 78%, var(--brand-primary) 22%);
+  border: 1px solid var(--border-subtle);
   border-radius: 14px;
-  background: color-mix(in srgb, var(--surface-panel) 92%, var(--brand-primary) 8%);
+  background: rgba(255, 255, 255, 0.86);
   color: var(--text-secondary);
   cursor: pointer;
 }
 
+.topbar-copy {
+  min-width: 0;
+}
+
+.topbar-copy__title {
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.topbar-copy__meta {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .app-main {
-  min-height: calc(100vh - 68px);
+  flex: 1;
+  padding: 0 0 32px;
+  background: transparent;
+  margin: 0;
+}
+
+.app-main__frame {
+  min-height: 100%;
+  border: 1px solid var(--border-subtle);
+  border-top: 0;
+  border-radius: 0 0 24px 24px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow-frame);
   padding: 24px;
 }
 
@@ -458,29 +517,56 @@ onMounted(() => {
   box-shadow: none;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1100px) {
+  .shell {
+    padding: 20px;
+  }
+
+  .shell-body {
+    flex-direction: column;
+    gap: 18px;
+  }
+
   .sidebar {
     position: fixed;
-    left: 0;
     top: 0;
-    transform: translateX(0);
+    left: 0;
+    max-height: 100vh;
+    z-index: 41;
+    transition: transform 0.3s ease;
   }
 
   .sidebar.collapsed {
-    transform: translateX(-100%);
-    width: 260px;
+    transform: translateX(-110%);
   }
 
   .topbar {
-    padding: 0 12px;
+    padding: 0 16px;
+  }
+}
+
+@media (max-width: 767px) {
+  .shell {
+    padding: 0;
   }
 
-  .breadcrumb {
-    display: none;
+  .shell-body {
+    max-width: 100%;
+  }
+
+  .topbar {
+    border-radius: 0;
   }
 
   .app-main {
-    padding: 14px;
+    padding-bottom: 0;
+  }
+
+  .app-main__frame {
+    padding: 16px;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
   }
 }
 </style>

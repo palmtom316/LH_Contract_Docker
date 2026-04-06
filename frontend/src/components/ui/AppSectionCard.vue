@@ -15,12 +15,19 @@
 </template>
 
 <style scoped lang="scss">
+.app-section-card {
+  border-radius: 20px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: none;
+}
+
 .app-section-card:deep(.el-card__header) {
-  padding: 22px 24px 0;
+  padding: 20px 20px 0;
 }
 
 .app-section-card:deep(.el-card__body) {
-  padding: 22px 24px 24px;
+  padding: 18px 20px 20px;
 }
 
 .app-section-card__header {
@@ -33,9 +40,9 @@
 .app-section-card__title {
   min-width: 0;
   color: var(--text-primary);
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .app-section-card__actions {
