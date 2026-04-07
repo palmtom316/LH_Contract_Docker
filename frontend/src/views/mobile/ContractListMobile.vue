@@ -462,4 +462,41 @@ onMounted(() => {
 :deep(.van-tabs__line) {
     background: var(--brand-primary);
 }
+
+@media (min-width: 768px) {
+  .mobile-contract-list__controls {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.92fr);
+    align-items: start;
+  }
+
+  .mobile-contract-list__cards :deep(.van-list) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 420px) {
+  .mobile-contract-list__toolbar {
+    flex-wrap: wrap;
+  }
+
+  .mobile-contract-list__actions,
+  .create-button {
+    width: 100%;
+  }
+
+  .mobile-contract-list__cards :deep(.van-cell__value) {
+    min-width: 96px;
+  }
+
+  .contract-amount {
+    display: grid;
+    gap: 4px;
+    text-align: left;
+  }
+
+  .party-row {
+    display: grid;
+    gap: 2px;
+  }
+}
 </style>

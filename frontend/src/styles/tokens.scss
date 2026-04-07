@@ -1,49 +1,56 @@
 :root,
 :root[data-theme='light'] {
   color-scheme: light;
-  --background: 214 32% 97%;
+  --background: 210 38% 97%;
   --foreground: 221 35% 15%;
   --card: 0 0% 100%;
   --card-foreground: 221 35% 15%;
   --popover: 0 0% 100%;
   --popover-foreground: 221 35% 15%;
-  --primary: 214 72% 45%;
+  --primary: 210 76% 44%;
   --primary-foreground: 210 40% 98%;
-  --secondary: 210 32% 96%;
+  --secondary: 196 34% 95%;
   --secondary-foreground: 221 35% 15%;
-  --muted: 210 28% 94%;
+  --muted: 200 26% 93%;
   --muted-foreground: 215 14% 41%;
-  --accent: 214 82% 95%;
+  --accent: 184 58% 94%;
   --accent-foreground: 221 35% 15%;
   --destructive: 0 72% 51%;
   --destructive-foreground: 210 40% 98%;
-  --border: 214 24% 88%;
-  --input: 214 25% 87%;
-  --ring: 214 72% 45%;
+  --border: 210 25% 86%;
+  --input: 210 24% 86%;
+  --ring: 210 76% 44%;
   --radius: 0.75rem;
 
   --font-family-base: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
   --brand-primary: hsl(var(--primary));
   --brand-primary-strong: hsl(var(--primary));
   --brand-primary-soft: hsl(var(--primary) / 0.10);
-  --brand-accent: hsl(168 76% 35%);
+  --brand-accent: hsl(171 72% 36%);
   --status-success: #059669;
   --status-warning: #d97706;
   --status-danger: #dc2626;
-  --status-info: #475569;
+  --status-info: #2563eb;
   --status-highlight: #f6edc6;
   --surface-page: hsl(var(--background));
   --surface-page-gradient:
-    radial-gradient(circle at top left, hsl(211 100% 94% / 0.92) 0%, transparent 34%),
-    radial-gradient(circle at top right, hsl(171 48% 92% / 0.82) 0%, transparent 28%),
-    linear-gradient(180deg, hsl(214 31% 98%), hsl(var(--background)));
+    radial-gradient(circle at top left, hsl(var(--primary) / 0.14) 0%, transparent 32%),
+    radial-gradient(circle at top right, hsl(171 72% 36% / 0.12) 0%, transparent 26%),
+    radial-gradient(circle at bottom right, hsl(40 96% 52% / 0.08) 0%, transparent 24%),
+    linear-gradient(180deg, hsl(208 45% 98%), hsl(var(--background)));
   --surface-panel: hsl(var(--card));
   --surface-panel-elevated:
-    linear-gradient(180deg, hsl(var(--card)) 0%, color-mix(in srgb, hsl(var(--card)) 84%, hsl(var(--accent)) 16%) 100%);
+    linear-gradient(180deg, color-mix(in srgb, hsl(var(--card)) 92%, hsl(var(--primary)) 8%) 0%, color-mix(in srgb, hsl(var(--card)) 82%, hsl(var(--accent)) 18%) 100%);
   --surface-panel-muted: color-mix(in srgb, hsl(var(--muted)) 72%, hsl(var(--card)) 28%);
-  --surface-sidebar: color-mix(in srgb, hsl(var(--card)) 90%, hsl(var(--accent)) 10%);
-  --surface-sidebar-hover: color-mix(in srgb, hsl(var(--muted)) 66%, hsl(var(--card)) 34%);
-  --surface-sidebar-active: color-mix(in srgb, hsl(var(--primary)) 11%, hsl(var(--card)) 89%);
+  --surface-sidebar:
+    linear-gradient(180deg, color-mix(in srgb, hsl(var(--card)) 88%, hsl(var(--primary)) 12%) 0%, color-mix(in srgb, hsl(var(--card)) 86%, hsl(var(--accent)) 14%) 52%, color-mix(in srgb, hsl(var(--card)) 92%, hsl(40 96% 52%) 8%) 100%);
+  --surface-sidebar-accent: color-mix(in srgb, hsl(var(--accent)) 58%, hsl(var(--card)) 42%);
+  --surface-sidebar-hover: color-mix(in srgb, hsl(var(--primary)) 10%, hsl(var(--card)) 90%);
+  --surface-sidebar-active:
+    linear-gradient(90deg, color-mix(in srgb, hsl(var(--primary)) 16%, hsl(var(--card)) 84%) 0%, color-mix(in srgb, hsl(var(--accent)) 18%, hsl(var(--card)) 82%) 100%);
+  --surface-topbar:
+    linear-gradient(180deg, color-mix(in srgb, hsl(var(--card)) 92%, hsl(var(--primary)) 8%) 0%, color-mix(in srgb, hsl(var(--card)) 88%, hsl(var(--accent)) 12%) 100%);
+  --sidebar-active-rail: color-mix(in srgb, hsl(var(--primary)) 82%, hsl(171 72% 36%) 18%);
   --surface-overlay: hsl(222 47% 11% / 0.45);
   --border-subtle: color-mix(in srgb, hsl(var(--border)) 88%, hsl(var(--card)) 12%);
   --border-strong: hsl(var(--border));
@@ -51,6 +58,8 @@
   --text-secondary: hsl(var(--muted-foreground));
   --text-muted: hsl(var(--muted-foreground));
   --text-inverse: hsl(var(--primary-foreground));
+  --workspace-panel-highlight:
+    linear-gradient(90deg, hsl(var(--primary) / 0.34) 0%, hsl(171 72% 36% / 0.22) 52%, hsl(40 96% 52% / 0.18) 100%);
   --shadow-card: 0 14px 34px hsl(219 38% 20% / 0.08);
   --shadow-soft: 0 8px 20px hsl(219 38% 20% / 0.05);
   --shadow-frame: 0 20px 52px hsl(219 38% 16% / 0.12);
@@ -121,16 +130,27 @@
   --status-danger: #fb7185;
   --status-info: #94a3b8;
   --status-highlight: #493f1f;
-  --surface-page-gradient: linear-gradient(180deg, hsl(222 47% 7%), hsl(222 43% 8%));
+  --surface-page-gradient:
+    radial-gradient(circle at top left, hsl(var(--primary) / 0.16) 0%, transparent 24%),
+    radial-gradient(circle at top right, hsl(171 78% 52% / 0.10) 0%, transparent 22%),
+    linear-gradient(180deg, hsl(222 47% 7%), hsl(222 43% 8%));
   --surface-panel-elevated:
-    linear-gradient(180deg, hsl(var(--card)) 0%, color-mix(in srgb, hsl(var(--card)) 78%, hsl(var(--accent)) 22%) 100%);
+    linear-gradient(180deg, color-mix(in srgb, hsl(var(--card)) 90%, hsl(var(--primary)) 10%) 0%, color-mix(in srgb, hsl(var(--card)) 78%, hsl(var(--accent)) 22%) 100%);
   --surface-panel-muted: color-mix(in srgb, hsl(var(--muted)) 78%, hsl(var(--card)) 22%);
-  --surface-sidebar: color-mix(in srgb, hsl(var(--card)) 86%, hsl(var(--accent)) 14%);
-  --surface-sidebar-hover: color-mix(in srgb, hsl(var(--muted)) 72%, hsl(var(--card)) 28%);
-  --surface-sidebar-active: color-mix(in srgb, hsl(var(--primary)) 18%, hsl(var(--card)) 82%);
+  --surface-sidebar:
+    linear-gradient(180deg, color-mix(in srgb, hsl(var(--card)) 86%, hsl(var(--primary)) 14%) 0%, color-mix(in srgb, hsl(var(--card)) 90%, hsl(var(--accent)) 10%) 100%);
+  --surface-sidebar-accent: color-mix(in srgb, hsl(var(--primary)) 18%, hsl(var(--card)) 82%);
+  --surface-sidebar-hover: color-mix(in srgb, hsl(var(--primary)) 12%, hsl(var(--card)) 88%);
+  --surface-sidebar-active:
+    linear-gradient(90deg, color-mix(in srgb, hsl(var(--primary)) 24%, hsl(var(--card)) 76%) 0%, color-mix(in srgb, hsl(var(--accent)) 18%, hsl(var(--card)) 82%) 100%);
+  --surface-topbar:
+    linear-gradient(180deg, color-mix(in srgb, hsl(var(--card)) 88%, hsl(var(--primary)) 12%) 0%, color-mix(in srgb, hsl(var(--card)) 95%, hsl(var(--background)) 5%) 100%);
+  --sidebar-active-rail: color-mix(in srgb, hsl(var(--primary)) 78%, hsl(168 78% 52%) 22%);
   --border-subtle: color-mix(in srgb, hsl(var(--border)) 88%, hsl(var(--card)) 12%);
   --surface-overlay: hsl(222 47% 5% / 0.72);
   --text-inverse: hsl(var(--foreground));
+  --workspace-panel-highlight:
+    linear-gradient(90deg, hsl(var(--primary) / 0.42) 0%, hsl(168 78% 52% / 0.24) 52%, hsl(40 96% 62% / 0.18) 100%);
   --shadow-card: 0 1px 2px hsl(222 47% 4% / 0.36);
   --shadow-soft: 0 1px 2px hsl(222 47% 4% / 0.28);
   --shadow-frame: 0 12px 36px hsl(222 47% 4% / 0.42);

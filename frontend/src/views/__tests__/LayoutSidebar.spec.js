@@ -10,8 +10,13 @@ const layoutSource = readFileSync(
 describe('Layout sidebar shell', () => {
   it('uses a flat sidebar navigation without section headers or project stack card', () => {
     expect(layoutSource).toContain('sidebar-nav')
-    expect(layoutSource).toContain('gap: 1px;')
+    expect(layoutSource).toContain('sidebar-nav__group')
+    expect(layoutSource).toContain('sidebar-nav__group--secondary')
+    expect(layoutSource).toContain('gap: 18px;')
+    expect(layoutSource).toContain('gap: 2px;')
     expect(layoutSource).toContain('align-content: start;')
+    expect(layoutSource).toContain('.sidebar-nav-item::after')
+    expect(layoutSource).toContain('transform: translateX(2px);')
     expect(layoutSource).toContain('min-height: var(--shell-header-band-height, var(--header-height));')
     expect(layoutSource).toContain('min-height: 40px;')
     expect(layoutSource).toContain('min-height: 44px;')

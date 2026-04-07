@@ -45,7 +45,18 @@ defineProps({
   border-radius: 22px;
   background: var(--surface-panel-elevated);
   box-shadow: var(--workspace-panel-shadow);
+  position: relative;
+  overflow: hidden;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.app-metric-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: var(--workspace-panel-highlight);
+  opacity: 0.9;
 }
 
 .app-metric-card:hover {

@@ -73,17 +73,38 @@ function handleVisibleChange(visible) {
   gap: 12px;
   text-align: left;
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
   transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.user-menu__trigger::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(110deg, transparent 0%, hsl(var(--card) / 0.58) 48%, transparent 100%);
+  opacity: 0;
+  transform: translateX(-18%);
+  transition: opacity 180ms ease, transform 220ms ease;
+  pointer-events: none;
 }
 
 .user-menu__trigger:hover,
 .user-menu__trigger.is-open {
   background: var(--surface-sidebar-hover);
   color: hsl(var(--foreground));
+  transform: translateX(2px);
 }
 
 .user-menu__trigger.is-open {
   box-shadow: inset 0 0 0 1px hsl(var(--border));
+}
+
+.user-menu__trigger:hover::after,
+.user-menu__trigger.is-open::after {
+  opacity: 0.72;
+  transform: translateX(0);
 }
 
 .user-menu__icon {
@@ -101,6 +122,7 @@ function handleVisibleChange(visible) {
 .user-menu__trigger:hover .user-menu__icon,
 .user-menu__trigger.is-open .user-menu__icon {
   background: var(--surface-panel);
+  box-shadow: 0 10px 18px hsl(var(--primary) / 0.08);
 }
 
 .user-menu__icon :deep(.el-avatar) {

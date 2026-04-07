@@ -324,4 +324,30 @@ onMounted(() => {
   font-size: 12px;
   color: var(--text-muted);
 }
+
+@media (min-width: 768px) {
+  .mobile-expense-list__controls {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.88fr);
+    align-items: start;
+  }
+
+  .mobile-expense-list__cards :deep(.van-list) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 420px) {
+  .detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .amount-info {
+    display: grid;
+    justify-items: start;
+    gap: 4px;
+    text-align: left;
+  }
+}
 </style>

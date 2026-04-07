@@ -24,7 +24,7 @@
       <van-tabbar-item v-if="userStore.canManageUsers" to="/m/profile" icon="user-o">我的</van-tabbar-item>
     </van-tabbar>
 
-    <van-popup v-model:show="drawerOpen" position="left" class="menu-drawer" :style="{ width: '84%', height: '100%' }">
+    <van-popup v-model:show="drawerOpen" position="left" class="menu-drawer" :style="{ width: drawerWidth, height: '100%' }">
       <nav class="drawer-nav">
         <router-link
           v-for="item in menuItems"
@@ -50,7 +50,7 @@
       <NotificationCenter />
     </van-popup>
 
-    <el-dialog title="修改密码" v-model="changePwdVisible" width="92%" :close-on-click-modal="false">
+    <el-dialog title="修改密码" v-model="changePwdVisible" :width="dialogWidth" :close-on-click-modal="false">
       <el-form ref="pwdFormRef" :model="pwdForm" :rules="pwdRules" label-width="88px">
         <el-form-item label="当前密码" prop="old_password">
           <el-input v-model="pwdForm.old_password" type="password" show-password />
@@ -79,6 +79,7 @@ import request from '@/utils/request'
 import { useSystemStore } from '@/stores/system'
 import { useUiStore } from '@/stores/ui'
 import { useUserStore } from '@/stores/user'
+import { useDevice } from '@/composables/useDevice'
 import AppTopbarActions from '@/components/layout/AppTopbarActions.vue'
 import NotificationCenter from '@/views/notifications/NotificationCenter.vue'
 import SidebarUserCard from '@/components/layout/SidebarUserCard.vue'
@@ -88,6 +89,7 @@ const router = useRouter()
 const userStore = useUserStore()
 const systemStore = useSystemStore()
 const uiStore = useUiStore()
+const { isTablet, isLandscape, screenWidth } = useDevice()
 
 const activeTab = ref(0)
 const drawerOpen = ref(false)
@@ -102,6 +104,17 @@ const pwdForm = reactive({
 })
 
 const pageTitle = computed(() => route.meta.title || '蓝海合同')
+const drawerWidth = computed(() => {
+  if (screenWidth.value <= 480) return '100%'
+  if (isTablet.value && isLandscape.value) return '360px'
+  if (isTablet.value) return '420px'
+  return '84%'
+})
+const dialogWidth = computed(() => {
+  if (screenWidth.value <= 480) return '100%'
+  if (isTablet.value) return '560px'
+  return '92%'
+})
 const unreadCount = computed(() => {
   const items = systemStore.notifications || []
   return items.filter(item => item.unread !== false).length
@@ -213,7 +226,7 @@ function confirmLogout() {
   border-bottom: 1px solid var(--border-subtle);
   background: color-mix(in srgb, var(--surface-panel) 92%, transparent);
   display: grid;
-  grid-template-columns: 36px 1fr auto;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
   align-items: start;
   gap: 10px;
   padding: 12px 12px 10px;
@@ -224,10 +237,10 @@ function confirmLogout() {
 }
 
 .menu-trigger {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border: 1px solid var(--border-subtle);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--surface-panel);
   color: var(--text-secondary);
 }
@@ -259,7 +272,7 @@ function confirmLogout() {
 .mobile-content {
   flex: 1;
   min-height: 0;
-  padding: 14px 14px 72px;
+  padding: 14px 14px calc(80px + env(safe-area-inset-bottom));
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -305,5 +318,60 @@ function confirmLogout() {
 
 :deep(.topbar-actions) {
   gap: 6px;
+}
+
+.mobile-topbar :deep(.app-chrome-icon-button) {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+@media (min-width: 768px) {
+  .mobile-shell {
+    padding: 16px 16px 0;
+  }
+
+  .mobile-shell__frame {
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  .mobile-content {
+    padding: 18px 18px calc(88px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 480px) {
+  .mobile-shell {
+    gap: 0;
+    padding: 0;
+  }
+
+  .mobile-shell__frame {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .mobile-topbar {
+    padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
+  }
+
+  .mobile-topbar__eyebrow {
+    display: none;
+  }
+
+  .mobile-content {
+    padding: 12px 12px calc(78px + env(safe-area-inset-bottom));
+  }
+
+  .mobile-tabbar {
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 18px 18px 0 0;
+    margin-bottom: 0;
+  }
 }
 </style>

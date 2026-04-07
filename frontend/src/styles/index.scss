@@ -214,6 +214,8 @@ a:focus-visible,
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    position: relative;
+    overflow: hidden;
     box-shadow: var(--shadow-soft);
     transition:
         background-color 160ms ease,
@@ -223,6 +225,18 @@ a:focus-visible,
         transform 160ms ease;
 }
 
+.app-chrome-icon-button::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(110deg, transparent 0%, hsl(var(--card) / 0.58) 48%, transparent 100%);
+    opacity: 0;
+    transform: translateX(-18%);
+    transition: opacity 180ms ease, transform 220ms ease;
+    pointer-events: none;
+}
+
 .app-chrome-icon-button:hover {
     background: var(--surface-sidebar-hover);
     border-color: hsl(var(--border));
@@ -230,8 +244,26 @@ a:focus-visible,
     transform: translateY(-1px);
 }
 
+.app-chrome-icon-button:hover::after {
+    opacity: 0.72;
+    transform: translateX(0);
+}
+
 .app-chrome-icon-button .el-icon {
     font-size: 18px;
+    position: relative;
+    z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-chrome-icon-button,
+    .app-chrome-icon-button::after {
+        transition: none;
+    }
+
+    .app-chrome-icon-button:hover {
+        transform: none;
+    }
 }
 
 .el-input__wrapper,

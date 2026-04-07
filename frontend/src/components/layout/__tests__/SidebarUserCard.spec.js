@@ -16,6 +16,8 @@ describe('SidebarUserCard', () => {
     expect(sidebarUserCardSource).toContain('padding: 4px 10px;')
     expect(sidebarUserCardSource).toContain('.user-menu__trigger:hover')
     expect(sidebarUserCardSource).toContain('.user-menu__trigger.is-open')
+    expect(sidebarUserCardSource).toContain('.user-menu__trigger::after')
+    expect(sidebarUserCardSource).toContain('transform: translateX(2px);')
     expect(sidebarUserCardSource).toContain('.user-menu__icon {')
     expect(sidebarUserCardSource).toContain('width: 32px;')
     expect(sidebarUserCardSource).toContain('height: 32px;')

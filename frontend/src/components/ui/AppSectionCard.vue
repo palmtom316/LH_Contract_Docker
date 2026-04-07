@@ -26,6 +26,15 @@
   transition: box-shadow 180ms ease, border-color 180ms ease;
 }
 
+.app-section-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: var(--workspace-panel-highlight);
+  opacity: 0.9;
+}
+
 .app-section-card__header {
   display: flex;
   align-items: center;

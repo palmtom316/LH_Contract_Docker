@@ -21,21 +21,41 @@
         </div>
 
         <div class="sidebar-nav">
-          <button
-            v-for="item in visibleSidebarItems"
-            :key="item.index"
-            type="button"
-            class="sidebar-nav-item"
-            :class="{ 'is-active': isRouteActive(item.index) }"
-            :title="isCollapse ? item.label : ''"
-            :aria-label="item.label"
-            @click="navigateTo(item.index)"
-          >
-            <span class="sidebar-nav-item__icon">
-              <el-icon><component :is="item.icon" /></el-icon>
-            </span>
-            <span v-if="!isCollapse" class="sidebar-nav-item__label">{{ item.label }}</span>
-          </button>
+          <div class="sidebar-nav__group">
+            <button
+              v-for="item in primarySidebarItems"
+              :key="item.index"
+              type="button"
+              class="sidebar-nav-item"
+              :class="{ 'is-active': isRouteActive(item.index) }"
+              :title="isCollapse ? item.label : ''"
+              :aria-label="item.label"
+              @click="navigateTo(item.index)"
+            >
+              <span class="sidebar-nav-item__icon">
+                <el-icon><component :is="item.icon" /></el-icon>
+              </span>
+              <span v-if="!isCollapse" class="sidebar-nav-item__label">{{ item.label }}</span>
+            </button>
+          </div>
+
+          <div v-if="secondarySidebarItems.length" class="sidebar-nav__group sidebar-nav__group--secondary">
+            <button
+              v-for="item in secondarySidebarItems"
+              :key="item.index"
+              type="button"
+              class="sidebar-nav-item"
+              :class="{ 'is-active': isRouteActive(item.index) }"
+              :title="isCollapse ? item.label : ''"
+              :aria-label="item.label"
+              @click="navigateTo(item.index)"
+            >
+              <span class="sidebar-nav-item__icon">
+                <el-icon><component :is="item.icon" /></el-icon>
+              </span>
+              <span v-if="!isCollapse" class="sidebar-nav-item__label">{{ item.label }}</span>
+            </button>
+          </div>
         </div>
 
         <div class="sidebar-footer" :class="{ 'sidebar-footer--collapsed': isCollapse }">
@@ -158,16 +178,19 @@ const displayLogo = computed(() => {
 const displayName = computed(() => systemStore.config.system_name || '蓝海合同管理')
 const displayNameLine2 = computed(() => systemStore.config.system_name_line_2 || '')
 
-const visibleSidebarItems = computed(() => [
-  userStore.canViewDashboard ? { index: '/', label: '首页概览', icon: HomeFilled } : null,
-  userStore.canViewUpstreamContracts ? { index: '/contracts/upstream', label: '上游合同', icon: Document } : null,
-  userStore.canViewDownstreamContracts ? { index: '/contracts/downstream', label: '下游合同', icon: DocumentCopy } : null,
-  userStore.canViewManagementContracts ? { index: '/contracts/management', label: '管理合同', icon: FolderChecked } : null,
-  userStore.canViewExpenses ? { index: '/expenses', label: '无合同费用', icon: Money } : null,
-  userStore.canViewReports ? { index: '/reports', label: '报表导出', icon: DataAnalysis } : null,
-  userStore.canManageUsers ? { index: '/system', label: '系统管理', icon: Setting } : null,
-  userStore.isAdmin ? { index: '/audit', label: '审计日志', icon: Document } : null
+const allSidebarItems = computed(() => [
+  userStore.canViewDashboard ? { index: '/', label: '首页概览', icon: HomeFilled, group: 'primary' } : null,
+  userStore.canViewUpstreamContracts ? { index: '/contracts/upstream', label: '上游合同', icon: Document, group: 'primary' } : null,
+  userStore.canViewDownstreamContracts ? { index: '/contracts/downstream', label: '下游合同', icon: DocumentCopy, group: 'primary' } : null,
+  userStore.canViewManagementContracts ? { index: '/contracts/management', label: '管理合同', icon: FolderChecked, group: 'primary' } : null,
+  userStore.canViewExpenses ? { index: '/expenses', label: '无合同费用', icon: Money, group: 'primary' } : null,
+  userStore.canViewReports ? { index: '/reports', label: '报表导出', icon: DataAnalysis, group: 'secondary' } : null,
+  userStore.canManageUsers ? { index: '/system', label: '系统管理', icon: Setting, group: 'secondary' } : null,
+  userStore.isAdmin ? { index: '/audit', label: '审计日志', icon: Document, group: 'secondary' } : null
 ].filter(Boolean))
+
+const primarySidebarItems = computed(() => allSidebarItems.value.filter(item => item.group === 'primary'))
+const secondarySidebarItems = computed(() => allSidebarItems.value.filter(item => item.group === 'secondary'))
 
 watch(isMobile, (mobile) => {
   isCollapse.value = mobile
@@ -298,7 +321,7 @@ onMounted(() => {
   width: var(--sidebar-width);
   background: var(--surface-sidebar);
   padding: 0 12px 12px;
-  border-right: 1px solid hsl(var(--border));
+  border-right: 1px solid color-mix(in srgb, hsl(var(--border)) 82%, var(--sidebar-active-rail) 18%);
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -318,7 +341,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 14px;
-  border-bottom: 1px solid hsl(var(--border));
+  border-bottom: 1px solid color-mix(in srgb, hsl(var(--border)) 74%, var(--sidebar-active-rail) 26%);
   margin-bottom: 12px;
 }
 
@@ -331,12 +354,13 @@ onMounted(() => {
   width: 42px;
   height: 42px;
   border-radius: 14px;
-  border: 1px solid hsl(var(--border));
-  background: var(--surface-panel-elevated);
+  border: 1px solid color-mix(in srgb, hsl(var(--border)) 70%, var(--sidebar-active-rail) 30%);
+  background: linear-gradient(180deg, hsl(var(--card)) 0%, var(--surface-sidebar-accent) 100%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 10px 24px hsl(var(--primary) / 0.10);
 }
 
 .brand-logo {
@@ -358,11 +382,12 @@ onMounted(() => {
 .brand-text span {
   font-size: 15px;
   letter-spacing: -0.015em;
+  color: color-mix(in srgb, hsl(var(--foreground)) 84%, var(--brand-primary-strong) 16%);
 }
 
 .brand-text small {
   font-size: 11px;
-  color: hsl(var(--muted-foreground));
+  color: color-mix(in srgb, hsl(var(--muted-foreground)) 76%, var(--brand-primary-strong) 24%);
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
@@ -370,9 +395,20 @@ onMounted(() => {
 .sidebar-nav {
   flex: 1;
   display: grid;
-  gap: 1px;
+  gap: 18px;
   align-content: start;
   min-height: 0;
+  padding: 4px 0 6px;
+}
+
+.sidebar-nav__group {
+  display: grid;
+  gap: 2px;
+}
+
+.sidebar-nav__group--secondary {
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, hsl(var(--border)) 84%, var(--surface-sidebar-accent) 16%);
 }
 
 .sidebar-nav-item {
@@ -388,18 +424,39 @@ onMounted(() => {
   gap: 12px;
   text-align: left;
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
   transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.sidebar-nav-item::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(110deg, transparent 0%, hsl(var(--card) / 0.58) 48%, transparent 100%);
+  opacity: 0;
+  transform: translateX(-18%);
+  transition: opacity 180ms ease, transform 220ms ease;
+  pointer-events: none;
 }
 
 .sidebar-nav-item:hover {
   background: var(--surface-sidebar-hover);
   color: hsl(var(--foreground));
+  transform: translateX(2px);
 }
 
 .sidebar-nav-item.is-active {
   background: var(--surface-sidebar-active);
   color: hsl(var(--foreground));
-  box-shadow: inset 0 0 0 1px hsl(var(--border));
+  box-shadow: inset 0 0 0 1px hsl(var(--border)), 0 10px 20px hsl(var(--primary) / 0.08);
+}
+
+.sidebar-nav-item:hover::after,
+.sidebar-nav-item.is-active::after {
+  opacity: 0.72;
+  transform: translateX(0);
 }
 
 .sidebar-nav-item__icon {
@@ -411,12 +468,15 @@ onMounted(() => {
   justify-content: center;
   flex-shrink: 0;
   background: transparent;
+  position: relative;
+  z-index: 1;
   transition: background-color 160ms ease, color 160ms ease;
 }
 
 .sidebar-nav-item:hover .sidebar-nav-item__icon,
 .sidebar-nav-item.is-active .sidebar-nav-item__icon {
-  background: var(--surface-panel);
+  background: linear-gradient(180deg, hsl(var(--card)) 0%, var(--surface-sidebar-accent) 100%);
+  color: var(--brand-primary-strong);
 }
 
 .sidebar-nav-item__label {
@@ -424,6 +484,8 @@ onMounted(() => {
   font-size: 13px;
   font-weight: 600;
   line-height: 1.2;
+  position: relative;
+  z-index: 1;
 }
 
 .sidebar-footer {
@@ -437,13 +499,24 @@ onMounted(() => {
   gap: 12px;
 }
 
+.sidebar-footer::before {
+  content: '';
+  position: absolute;
+  top: -18px;
+  left: 0;
+  right: 0;
+  height: 18px;
+  background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--surface-sidebar) 84%, hsl(var(--card)) 16%) 100%);
+  pointer-events: none;
+}
+
 .sidebar-footer--collapsed {
   justify-items: center;
 }
 
 .system-version {
   display: block;
-  color: hsl(var(--muted-foreground));
+  color: color-mix(in srgb, hsl(var(--muted-foreground)) 74%, var(--brand-primary-strong) 26%);
   font-size: 11px;
   text-align: center;
 }
@@ -465,8 +538,8 @@ onMounted(() => {
 .topbar {
   min-height: var(--shell-header-band-height, var(--header-height));
   padding: 0 20px;
-  border-bottom: 1px solid hsl(var(--border));
-  background: color-mix(in srgb, var(--surface-page) 88%, var(--surface-panel) 12%);
+  border-bottom: 1px solid color-mix(in srgb, hsl(var(--border)) 82%, var(--sidebar-active-rail) 18%);
+  background: var(--surface-topbar);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -488,7 +561,7 @@ onMounted(() => {
 }
 
 .topbar-copy__title {
-  color: hsl(var(--foreground));
+  color: color-mix(in srgb, hsl(var(--foreground)) 88%, var(--brand-primary-strong) 12%);
   font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.01em;
