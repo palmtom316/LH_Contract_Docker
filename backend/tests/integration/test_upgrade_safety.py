@@ -48,7 +48,7 @@ async def test_existing_expense_records_remain_queryable_after_upgrade(
     await test_db.commit()
 
     response = await client.get(
-        "/api/v1/expenses",
+        "/api/v1/expenses/",
         params={"expense_type": "历史管理费"},
         headers={"Authorization": f"Bearer {admin_token}"},
     )

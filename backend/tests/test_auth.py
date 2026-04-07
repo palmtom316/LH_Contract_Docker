@@ -38,7 +38,9 @@ class TestAuthentication:
         )
         
         assert response.status_code == 401
-        assert "用户名或密码错误" in response.json()["detail"]
+        payload = response.json()
+        assert payload["message"] == "用户名或密码错误"
+        assert payload["detail"] == "请检查您的登录凭据"
     
     async def test_login_nonexistent_user(self, client: AsyncClient):
         """Test login with nonexistent user"""

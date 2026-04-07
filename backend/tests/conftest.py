@@ -20,6 +20,7 @@ from app.main import app
 from app.database import get_db, Base
 from app.models.user import User, UserRole
 from app.services.auth import get_password_hash, create_access_token
+from app.core.rate_limit import limiter
 
 
 # Test database URL (isolated PostgreSQL database)
@@ -156,6 +157,10 @@ def client(event_loop, test_db: AsyncSession):
     Create test HTTP client
     Uses test database instead of production database
     """
+    storage = getattr(limiter, "_storage", None)
+    if storage and hasattr(storage, "reset"):
+        storage.reset()
+
     # Override database dependency
     async def override_get_db():
         yield test_db
@@ -169,6 +174,8 @@ def client(event_loop, test_db: AsyncSession):
     finally:
         _run(event_loop, client_cm.__aexit__(None, None, None))
         app.dependency_overrides.clear()
+        if storage and hasattr(storage, "reset"):
+            storage.reset()
 
 
 @pytest.fixture

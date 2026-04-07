@@ -2,7 +2,8 @@ from pathlib import Path
 
 
 def test_system_router_keeps_authoritative_reset_endpoint():
-    system_router = Path("backend/app/routers/system.py")
+    backend_root = Path(__file__).resolve().parents[1]
+    system_router = backend_root / "app/routers/system.py"
     content = system_router.read_text(encoding="utf-8")
 
     assert '@router.post("/reset")' in content
@@ -10,6 +11,7 @@ def test_system_router_keeps_authoritative_reset_endpoint():
 
 
 def test_backend_router_directory_has_no_orphaned_reset_snippet():
-    orphaned_snippet = Path("backend/app/routers/system_reset_snippet.py")
+    backend_root = Path(__file__).resolve().parents[1]
+    orphaned_snippet = backend_root / "app/routers/system_reset_snippet.py"
 
     assert not orphaned_snippet.exists()
