@@ -773,10 +773,6 @@ const handleDelete = (type, row) => {
 
 const submitFinance = async () => {
   try {
-    console.log('Submitting finance form:', financeForm)
-    console.log('Finance type:', financeDialog.type)
-    console.log('File path:', financeForm.file_path)
-    
     if (financeDialog.type === 'payable') {
       if (financeDialog.isEdit) {
         await updatePayable(contractId, financeDialog.editingId, financeForm)

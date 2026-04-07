@@ -10,6 +10,7 @@ from sqlalchemy.sql import func
 
 from app.models.audit_log import AuditLog
 from app.models.user import User
+from app.core.rate_limit import get_client_ip as resolve_client_ip
 
 
 class AuditAction:
@@ -152,22 +153,8 @@ async def get_audit_logs(
 
 
 def get_client_ip(request) -> Optional[str]:
-    """Extract client IP from request"""
-    # Check X-Forwarded-For header (for proxied requests)
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    
-    # Check X-Real-IP header
-    real_ip = request.headers.get("X-Real-IP")
-    if real_ip:
-        return real_ip
-    
-    # Fall back to client host
-    if request.client:
-        return request.client.host
-    
-    return None
+    """Extract client IP from request using trusted proxy rules."""
+    return resolve_client_ip(request)
 
 
 def get_user_agent(request) -> Optional[str]:

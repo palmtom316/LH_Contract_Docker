@@ -13,6 +13,7 @@ vi.mock('@/api/notifications', () => ({
 describe('system store notifications', () => {
   beforeEach(() => {
     localStorage.clear()
+    localStorage.setItem('user_info', JSON.stringify({ id: 1, username: 'alice' }))
     setActivePinia(createPinia())
     fetchNotificationsMock.mockReset()
     fetchNotificationsMock.mockResolvedValue([
@@ -48,5 +49,41 @@ describe('system store notifications', () => {
 
     store.removeNotification('local-blocked-delete')
     expect(store.notifications.map(item => item.id)).not.toContain('local-blocked-delete')
+  })
+
+  it('isolates notification state by logged-in user scope', async () => {
+    const store = useSystemStore()
+
+    await store.fetchNotifications()
+    store.pushNotification({
+      id: 'local-user-1',
+      type: 'general',
+      title: '用户一通知',
+      subtitle: 'alice',
+      createdAt: '2026-04-07T10:00:00.000Z',
+      unread: true
+    })
+    store.markNotificationRead('remote-1')
+
+    expect(store.notifications.map(item => item.id)).toContain('local-user-1')
+    expect(store.notifications.find(item => item.id === 'remote-1')?.unread).toBe(false)
+
+    localStorage.setItem('user_info', JSON.stringify({ id: 2, username: 'bob' }))
+    store.resetNotificationState()
+
+    expect(store.notifications.map(item => item.id)).not.toContain('local-user-1')
+    expect(store.notifications).toEqual([])
+
+    await store.fetchNotifications()
+    expect(store.notifications.find(item => item.id === 'remote-1')?.unread).toBe(true)
+
+    localStorage.setItem('user_info', JSON.stringify({ id: 1, username: 'alice' }))
+    store.resetNotificationState()
+
+    expect(store.notifications.map(item => item.id)).toContain('local-user-1')
+    expect(store.notifications.find(item => item.id === 'remote-1')).toBeUndefined()
+
+    await store.fetchNotifications()
+    expect(store.notifications.find(item => item.id === 'remote-1')?.unread).toBe(false)
   })
 })

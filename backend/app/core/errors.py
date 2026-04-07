@@ -84,25 +84,30 @@ class AppException(HTTPException):
     ):
         self.error_code = error_code
         self.message = message
-        self.detail = detail
+        self.detail_message = detail
         self.data = data or {}
-        
-        # Construct response body
-        response_body = {
-            "error_code": error_code.value,
-            "message": message,
-        }
-        
-        if detail:
-            response_body["detail"] = detail
-        
-        if data:
-            response_body["data"] = data
-        
+
+        response_body = self.to_response()
+
         super().__init__(
             status_code=status_code,
             detail=response_body
         )
+
+    def to_response(self) -> Dict[str, Any]:
+        """Return the canonical API error payload."""
+        response_body = {
+            "error_code": self.error_code.value,
+            "message": self.message,
+        }
+
+        if self.detail_message:
+            response_body["detail"] = self.detail_message
+
+        if self.data:
+            response_body["data"] = self.data
+
+        return response_body
 
 
 # Predefined exceptions for common scenarios

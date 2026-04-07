@@ -142,7 +142,8 @@ describe('ExpenseList workspace shell', () => {
     const wrapper = mountExpensePage()
 
     expect(wrapper.find('.expense-page-shell').exists()).toBe(true)
-    expect(wrapper.find('.expense-page-header').exists()).toBe(false)
+    expect(wrapper.find('.expense-page-header').exists()).toBe(true)
+    expect(wrapper.text()).toContain('费用管理')
     expect(wrapper.find('.expense-page-panel').exists()).toBe(true)
     expect(wrapper.find('.expense-overview').exists()).toBe(false)
     expect(wrapper.find('.expense-page-tabs').exists()).toBe(true)

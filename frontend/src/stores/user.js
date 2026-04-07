@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { login, getInfo, logout, refreshToken as refreshTokenApi } from '@/api/auth'
 import { persistSession, syncAccessTokenCookie, clearSessionStorage } from '@/utils/authSession'
+import { useSystemStore } from '@/stores/system'
 
 export const useUserStore = defineStore('user', {
     state: () => ({
@@ -140,6 +141,8 @@ export const useUserStore = defineStore('user', {
                     user
                 })
 
+                useSystemStore().resetNotificationState()
+
                 return res
             } catch (error) {
                 throw error
@@ -154,6 +157,7 @@ export const useUserStore = defineStore('user', {
 
                 localStorage.setItem('user_info', JSON.stringify(res))
                 localStorage.setItem('user_permissions', JSON.stringify(res.permissions || []))
+                useSystemStore().resetNotificationState()
 
                 return res
             } catch (error) {
@@ -173,6 +177,7 @@ export const useUserStore = defineStore('user', {
                 this.user = {}
                 this.permissions = []
                 clearSessionStorage()
+                useSystemStore().resetNotificationState()
             }
         },
 
@@ -201,6 +206,8 @@ export const useUserStore = defineStore('user', {
                     expiresIn: expires_in,
                     user
                 })
+
+                useSystemStore().resetNotificationState()
 
                 return res
             } catch (error) {

@@ -11,8 +11,6 @@
  * @param {string} mimeType - The MIME type of the file
  */
 export function downloadBlob(data, filename, mimeType = 'application/octet-stream') {
-    console.log('downloadBlob called with:', { data, filename, mimeType })
-
     if (!data) {
         console.error('downloadBlob: No data provided')
         throw new Error('下载数据为空')
@@ -21,7 +19,6 @@ export function downloadBlob(data, filename, mimeType = 'application/octet-strea
     try {
         // Create a new Blob with explicit type
         const blob = new Blob([data], { type: mimeType })
-        console.log('downloadBlob: Created blob, size:', blob.size)
 
         // Native download
         const url = window.URL.createObjectURL(blob)
@@ -33,7 +30,6 @@ export function downloadBlob(data, filename, mimeType = 'application/octet-strea
         link.click()
         document.body.removeChild(link)
         window.URL.revokeObjectURL(url)
-        console.log('downloadBlob: Download initiated successfully')
     } catch (error) {
         console.error('downloadBlob error:', error)
         throw error
@@ -46,7 +42,6 @@ export function downloadBlob(data, filename, mimeType = 'application/octet-strea
  * @param {string} filename - The filename (should end with .xlsx)
  */
 export function downloadExcel(data, filename) {
-    console.log('downloadExcel called with:', { dataType: data?.constructor?.name, filename })
     const mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     downloadBlob(data, filename, mimeType)
 }

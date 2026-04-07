@@ -8,6 +8,7 @@ import inspect
 import os
 import re
 import asyncpg
+import socket
 from typing import Generator
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -88,6 +89,23 @@ async def _ensure_postgres_test_database():
         await conn.close()
 
 
+def _database_unavailable_message(exc: Exception) -> str:
+    if isinstance(exc, PermissionError):
+        return f"PostgreSQL test database unavailable: permission denied ({exc})"
+    if isinstance(exc, (asyncpg.PostgresError, OSError, socket.error)):
+        return f"PostgreSQL test database unavailable: {exc}"
+    return f"PostgreSQL test database unavailable: {type(exc).__name__}: {exc}"
+
+
+def _ensure_postgres_test_database_or_skip(event_loop) -> None:
+    try:
+        _run(event_loop, _ensure_postgres_test_database())
+    except pytest.skip.Exception:
+        raise
+    except Exception as exc:
+        pytest.skip(_database_unavailable_message(exc))
+
+
 @pytest.fixture(scope="session")
 def event_loop() -> Generator:
     """Create event loop for async tests"""
@@ -102,7 +120,7 @@ def test_db(event_loop) -> Generator[AsyncSession, None, None]:
     Create a test database session
     Each test gets a fresh database
     """
-    _run(event_loop, _ensure_postgres_test_database())
+    _ensure_postgres_test_database_or_skip(event_loop)
     engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool, echo=False)
 
     async def _reset_tables():

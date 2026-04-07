@@ -115,11 +115,7 @@ async def health_check():
 async def app_exception_handler(request: Request, exc: AppException):
     return JSONResponse(
         status_code=exc.status_code,
-        content=exc.detail if isinstance(exc.detail, dict) else {
-            "error_code": exc.error_code.value,
-            "message": exc.message,
-            "detail": exc.detail
-        }
+        content=exc.to_response(),
     )
 
 # Routers

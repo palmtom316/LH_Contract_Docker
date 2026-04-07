@@ -49,6 +49,8 @@ logs/
 *.log.*
 *_log.txt
 *_logs.txt
+backend/logs/*
+!backend/logs/.gitkeep
 
 # Database
 *.db
@@ -58,6 +60,8 @@ logs/
 # Uploads
 uploads/*
 !uploads/.gitkeep
+backend/uploads/*
+!backend/uploads/.gitkeep
 
 # Backups
 backups/
@@ -109,3 +113,4 @@ Thumbs.db
 *.key
 *.crt
 secrets/
+token.json

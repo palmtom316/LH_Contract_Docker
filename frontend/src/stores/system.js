@@ -8,6 +8,25 @@ const NOTIFICATION_READ_KEY = 'lh_notifications_read'
 const NOTIFICATION_DELETED_KEY = 'lh_notifications_deleted'
 const NOTIFICATION_LOCAL_KEY = 'lh_notifications_local'
 
+function getNotificationScope() {
+    try {
+        const user = JSON.parse(localStorage.getItem('user_info') || '{}')
+        if (user.id !== undefined && user.id !== null && user.id !== '') {
+            return `user-${user.id}`
+        }
+        if (user.username) {
+            return `user-${user.username}`
+        }
+    } catch {
+        // Fall back to anonymous scope.
+    }
+    return 'anonymous'
+}
+
+function scopedNotificationKey(baseKey, scope) {
+    return `${baseKey}:${scope}`
+}
+
 function readJsonStorage(key, fallback) {
     try {
         const raw = localStorage.getItem(key)
@@ -43,11 +62,31 @@ export const useSystemStore = defineStore('system', () => {
 
     const dictionaries = ref({}) // key: category, value: Array of options
     const remoteNotifications = ref([])
-    const localNotifications = ref(readJsonStorage(NOTIFICATION_LOCAL_KEY, []))
-    const readNotificationIds = ref(readJsonStorage(NOTIFICATION_READ_KEY, []))
-    const deletedNotificationIds = ref(readJsonStorage(NOTIFICATION_DELETED_KEY, []))
+    const notificationScope = ref(getNotificationScope())
+    const localNotifications = ref([])
+    const readNotificationIds = ref([])
+    const deletedNotificationIds = ref([])
     const notifications = ref([])
     const notificationsError = ref('')
+
+    function loadNotificationState(scope = notificationScope.value) {
+        localNotifications.value = readJsonStorage(scopedNotificationKey(NOTIFICATION_LOCAL_KEY, scope), [])
+        readNotificationIds.value = readJsonStorage(scopedNotificationKey(NOTIFICATION_READ_KEY, scope), [])
+        deletedNotificationIds.value = readJsonStorage(scopedNotificationKey(NOTIFICATION_DELETED_KEY, scope), [])
+    }
+
+    function ensureNotificationScope() {
+        const scope = getNotificationScope()
+        if (scope === notificationScope.value) {
+            return
+        }
+
+        notificationScope.value = scope
+        remoteNotifications.value = []
+        notificationsError.value = ''
+        loadNotificationState(scope)
+        rebuildNotifications()
+    }
 
     function rebuildNotifications() {
         const deletedSet = new Set(deletedNotificationIds.value)
@@ -68,9 +107,17 @@ export const useSystemStore = defineStore('system', () => {
     }
 
     function persistNotificationState() {
-        writeJsonStorage(NOTIFICATION_LOCAL_KEY, localNotifications.value)
-        writeJsonStorage(NOTIFICATION_READ_KEY, readNotificationIds.value)
-        writeJsonStorage(NOTIFICATION_DELETED_KEY, deletedNotificationIds.value)
+        writeJsonStorage(scopedNotificationKey(NOTIFICATION_LOCAL_KEY, notificationScope.value), localNotifications.value)
+        writeJsonStorage(scopedNotificationKey(NOTIFICATION_READ_KEY, notificationScope.value), readNotificationIds.value)
+        writeJsonStorage(scopedNotificationKey(NOTIFICATION_DELETED_KEY, notificationScope.value), deletedNotificationIds.value)
+    }
+
+    function resetNotificationState() {
+        notificationScope.value = getNotificationScope()
+        remoteNotifications.value = []
+        notificationsError.value = ''
+        loadNotificationState(notificationScope.value)
+        rebuildNotifications()
     }
 
     // Actions
@@ -148,6 +195,7 @@ export const useSystemStore = defineStore('system', () => {
     }
 
     async function fetchNotifications() {
+        ensureNotificationScope()
         notificationsError.value = ''
         try {
             remoteNotifications.value = await fetchNotificationsApi()
@@ -162,6 +210,7 @@ export const useSystemStore = defineStore('system', () => {
     }
 
     function pushNotification(notification) {
+        ensureNotificationScope()
         const normalized = {
             id: notification.id || `local-${Date.now()}`,
             type: notification.type || 'general',
@@ -187,6 +236,7 @@ export const useSystemStore = defineStore('system', () => {
     }
 
     function markNotificationRead(notificationId) {
+        ensureNotificationScope()
         if (!readNotificationIds.value.includes(notificationId)) {
             readNotificationIds.value = [...readNotificationIds.value, notificationId]
             persistNotificationState()
@@ -195,6 +245,7 @@ export const useSystemStore = defineStore('system', () => {
     }
 
     function removeNotification(notificationId) {
+        ensureNotificationScope()
         if (!deletedNotificationIds.value.includes(notificationId)) {
             deletedNotificationIds.value = [...deletedNotificationIds.value, notificationId]
         }
@@ -203,6 +254,7 @@ export const useSystemStore = defineStore('system', () => {
         rebuildNotifications()
     }
 
+    loadNotificationState()
     rebuildNotifications()
 
     return {
@@ -213,6 +265,7 @@ export const useSystemStore = defineStore('system', () => {
         pushNotification,
         markNotificationRead,
         removeNotification,
+        resetNotificationState,
         fetchConfig,
         updateConfig,
         fetchOptions,

@@ -15,6 +15,18 @@ const appWorkspacePanelSource = readFileSync(
 )
 
 describe('AppPageHeader', () => {
+  it('renders the title even when no actions slot is provided', () => {
+    const wrapper = mount(AppPageHeader, {
+      props: {
+        title: '系统设置'
+      }
+    })
+
+    expect(wrapper.find('.app-page-header').exists()).toBe(true)
+    expect(wrapper.text()).toContain('系统设置')
+    expect(wrapper.find('.app-page-header__side').exists()).toBe(false)
+  })
+
   it('renders a compact title row with only actions in the side wrapper', () => {
     const wrapper = mount(AppPageHeader, {
       props: {
@@ -36,10 +48,11 @@ describe('AppPageHeader', () => {
     expect(wrapper.find('.app-page-header__side').text()).not.toContain('12 active contracts')
   })
 
-  it('uses flat workspace chrome instead of panelized header wrappers', () => {
+  it('keeps the page header flat while workspace panels remain elevated containers', () => {
     expect(appPageHeaderSource).toContain('border-b border-border pb-3')
     expect(appPageHeaderSource).not.toContain('padding: var(--panel-padding);')
     expect(appWorkspacePanelSource).toContain('gap: 16px;')
-    expect(appWorkspacePanelSource).not.toContain('border-radius: var(--workspace-panel-radius);')
+    expect(appWorkspacePanelSource).toContain('border-radius: var(--workspace-panel-radius);')
+    expect(appWorkspacePanelSource).toContain('background: var(--surface-panel-elevated);')
   })
 })

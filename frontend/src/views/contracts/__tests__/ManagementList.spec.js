@@ -208,7 +208,8 @@ describe('ManagementList date range query', () => {
     const wrapper = mountPage()
 
     expect(wrapper.find('.management-page-shell').exists()).toBe(true)
-    expect(wrapper.find('.management-page-header').exists()).toBe(false)
+    expect(wrapper.find('.management-page-header').exists()).toBe(true)
+    expect(wrapper.text()).toContain('管理合同')
     expect(wrapper.find('.contract-page-shell').exists()).toBe(false)
     expect(wrapper.findAll('.management-page-panel')).toHaveLength(2)
     expect(wrapper.find('.management-page-panel--filters').exists()).toBe(true)

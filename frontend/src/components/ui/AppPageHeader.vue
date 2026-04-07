@@ -1,5 +1,5 @@
 <template>
-  <header v-if="showHeader" class="app-page-header border-b border-border pb-3">
+  <header class="app-page-header border-b border-border pb-3">
     <div class="app-page-header__copy">
       <h1 class="text-lg font-semibold tracking-tight text-foreground">{{ title }}</h1>
     </div>
@@ -12,10 +12,6 @@
 </template>
 
 <script setup>
-import { computed, useSlots } from 'vue'
-
-const slots = useSlots()
-
 defineProps({
   eyebrow: {
     type: String,
@@ -34,8 +30,6 @@ defineProps({
     default: ''
   }
 })
-
-const showHeader = computed(() => Boolean(slots.actions))
 </script>
 
 <style scoped lang="scss">

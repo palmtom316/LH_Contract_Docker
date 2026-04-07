@@ -101,15 +101,15 @@
 - **脚本位置**: `d:\LH_Contract_Docker\start_dev.ps1`
 - **功能**:
     1.  **数据库检查**: 自动检测 PostgreSQL 容器状态，未启动则自动启动。
-    2.  **数据重置与填充 (Idempotent Data Population)**: 
-        - 自动执行 `populate_test_data.py`。
-        - **关键改进**: 脚本在插入新数据前，会**强制清空 (TRUNCATE)** 所有相关业务表，解决 `UniqueViolationError` 主键冲突问题，确保测试数据的一致性。
+    2.  **后端环境检查**:
+        - 校验 `backend\venv_win\Scripts\python.exe` 是否存在。
+        - 若 Windows 后端虚拟环境缺失，脚本会直接报错退出，避免伪装成功。
     3.  **后端启动**: 在新窗口启动 FastAPI 服务 (Port 8000)。
-    4.  **前端启动**: 在新窗口启动 Vite 开发服务。
+    4.  **前端启动**: 在新窗口启动 Vite 开发服务 (Port 3000)。
+    5.  **访问入口**: 启动完成后从 `http://localhost:3000` 访问前端。
 
 ### 6.2 常见问题解决 (Troubleshooting)
-- **Problem**: 启动时提示 `UniqueViolationError` 或数据重复。
-    - **Solution**: 使用 `start_dev.ps1` 启动，脚本内置的 data cleaner 会自动清空旧数据。
+- **Problem**: 启动时提示找不到 `backend\venv_win\Scripts\python.exe`。
+    - **Solution**: 先创建或恢复 Windows 开发虚拟环境，再重新运行 `start_dev.ps1`。
 - **Problem**: Dashboard 显示为空，或出现 Network Error。
     - **Solution**: 检查 `frontend/vite.config.js` 中的 proxy target 是否为 `http://localhost:8000` (而非 9000)。`start_dev.ps1` 启动的后端默认为 8000 端口。
-

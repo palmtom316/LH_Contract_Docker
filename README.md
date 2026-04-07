@@ -1,404 +1,219 @@
-# 蓝海合同管理系统 V1.1
+# 蓝海合同管理系统 1.6
 
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/yourusername/LH_Contract_Docker)
-[![License](https://img.shields.io/badge/license-Proprietary-red.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
-[![Vue](https://img.shields.io/badge/vue-3.x-green.svg)](https://vuejs.org/)
-[![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://www.docker.com/)
+企业级合同全生命周期管理系统，覆盖合同台账、财务跟踪、文件上传、审计日志、报表与权限管理。
 
-> 企业级合同全生命周期管理系统 - 生产就绪版本
+## 当前状态
 
----
+- 当前开发基线：`1.6`
+- 前端：`Vue 3` + `Vite` + `Element Plus` + `Pinia`
+- 后端：`FastAPI` + `SQLAlchemy Async` + `PostgreSQL`
+- 对象存储：本地上传目录，可选 `MinIO/S3`
+- 缓存：`Redis`
 
-## 📋 目录
+## 核心能力
 
-- [功能特性](#功能特性)
-- [技术栈](#技术栈)
-- [快速开始](#快速开始)
-- [项目结构](#项目结构)
-- [部署指南](#部署指南)
-- [文档](#文档)
-- [更新日志](#更新日志)
-- [贡献指南](#贡献指南)
+- 上游、下游、管理类合同全流程管理
+- 应收、应付、开票、收付款、结算等财务记录管理
+- 基于角色的访问控制与管理员能力隔离
+- 合同附件上传、下载、预览
+- 审计日志与关键操作追踪
+- Dashboard 与报表查询
 
----
+## 目录结构
 
-## ✨ 功能特性
-
-### 核心功能
-
-- **📝 合同管理**: 上游/下游/管理三类合同全流程管理
-- **💰 财务管理**: 应收应付、开票收票、收款付款、项目结算
-- **👥 用户权限**: 基于RBAC的细粒度权限控制
-- **📊 数据报表**: 多维度统计分析和数据可视化
-- **📁 文件管理**: 合同文件上传、预览、下载
-- **🔍 审计日志**: 完整的操作审计追踪
-
-### V1.1新特性 🎉
-
-#### 🔐 企业级安全
-- ✅ 请求频率限制（防暴力破解）
-- ✅ 文件上传5重验证
-- ✅ 日志自动脱敏
-- ✅ 密码强度验证
-
-#### ⚡ 生产级性能
-- ✅ 42个性能索引（查询速度+81%）
-- ✅ Redis分布式缓存（响应速度+300%）
-- ✅ N+1查询优化
-- ✅ 数据库负载-70%
-
-#### 📊 优秀代码质量
-- ✅ 36个标准化错误码
-- ✅ 100%统一错误响应
-- ✅ 20+单元测试用例
-- ✅ 95%代码一致性
-
-#### 🔧 自动化运维
-- ✅ 3级健康检查系统
-- ✅ CI/CD自动化部署
-- ✅ 自动备份脚本
-- ✅ 监控告警系统
-
----
-
-## 🛠️ 技术栈
-
-### 后端
-- **框架**: FastAPI 0.104.1
-- **语言**: Python 3.11
-- **ORM**: SQLAlchemy (Async)
-- **数据库**: PostgreSQL 15
-- **缓存**: Redis 7
-- **认证**: JWT + Bcrypt
-
-### 前端
-- **框架**: Vue 3
-- **构建工具**: Vite 5
-- **UI库**: Element Plus
-- **状态管理**: Pinia
-- **路由**: Vue Router
-- **图表**: ECharts
-
-### 基础设施
-- **容器**: Docker & Docker Compose
-- **反向代理**: Nginx
-- **CI/CD**: GitHub Actions
-- **监控**: 自定义健康检查系统
-
----
-
-## 🚀 快速开始
-
-### 前置要求
-
-- **Docker** >= 20.10
-- **Docker Compose** >= 2.0
-- **Git**
-
-### 开发环境
-
-1. **克隆仓库**:
-```bash
-git clone https://github.com/yourusername/LH_Contract_Docker.git
-cd LH_Contract_Docker
+```text
+LH_Contract_Docker/
+├── backend/                    # FastAPI 后端
+│   ├── app/
+│   │   ├── core/              # 配置、错误、缓存、限流等基础设施
+│   │   ├── models/            # SQLAlchemy 模型
+│   │   ├── routers/           # API 路由
+│   │   ├── schemas/           # Pydantic 模型
+│   │   ├── services/          # 业务服务层
+│   │   └── utils/             # 工具函数
+│   ├── tests/                 # Pytest 测试
+│   ├── uploads/               # 本地运行期上传目录
+│   └── requirements*.txt
+├── frontend/                   # Vue 前端
+│   ├── src/
+│   │   ├── api/
+│   │   ├── components/
+│   │   ├── router/
+│   │   ├── stores/
+│   │   ├── utils/
+│   │   └── views/
+│   ├── package.json
+│   └── vite.config.js
+├── docs/                       # 报告、计划、补充文档
+├── docker-compose.yml          # 开发/联调环境
+├── docker-compose.prod.yml     # 生产部署参考
+└── README.md
 ```
 
-2. **启动服务**:
-```bash
-# 启动数据库和Redis
-docker-compose up -d db redis
+## 开发启动
 
-# 后端
+### 1. 准备环境变量
+
+复制模板：
+
+```bash
+cp .env.example .env
+```
+
+至少确认以下变量已经配置：
+
+- `SECRET_KEY`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `POSTGRES_DB`
+- `DATABASE_URL`
+- `INIT_ADMIN_TOKEN`（建议在首次初始化管理员时设置）
+
+### 2. 启动依赖服务
+
+```bash
+docker-compose up -d db redis minio
+```
+
+默认端口：
+
+- PostgreSQL: `5432`
+- Redis: `6379`
+- MinIO API: `9000`
+- MinIO Console: `9001`
+
+### 3. 启动后端
+
+```bash
 cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-# 前端 (新终端)
+后端地址：
+
+- API: `http://localhost:8000`
+- OpenAPI: `http://localhost:8000/docs`
+- 健康检查: `http://localhost:8000/health`
+
+### 4. 启动前端
+
+```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-3. **访问系统**:
-- 前端: http://localhost:5173
-- 后端API: http://localhost:8000
-- API文档: http://localhost:8000/docs
+前端默认地址：
 
-4. **默认账号**:
-- 用户名: `admin`
-- 密码: `admin123`
+- `http://localhost:3000`
 
-### 生产环境
+## 管理员初始化
 
-#### Docker Compose 部署
+当前版本不会在启动时自动创建默认管理员账户。
 
-使用Docker Compose一键部署:
+首次初始化管理员时：
 
-```bash
-# 复制环境配置
-cp .env.example .env.production
+1. 在 `.env` 中设置 `INIT_ADMIN_TOKEN`
+2. 保证系统中还没有任何用户
+3. 调用 `POST /api/v1/auth/init-admin`
+4. 在请求头中传入 `X-Init-Admin-Token`
 
-# 编辑配置（设置SECRET_KEY等）
-vim .env.production
-
-# 启动生产环境
-docker-compose -f docker-compose.prod.yml up -d
-
-# 查看健康状态
-curl http://localhost/health/detailed
-```
-
-#### PVE LXC 部署 (推荐) ⭐
-
-适用于铭凡MS-A2等小型服务器的专业部署方案：
+示例：
 
 ```bash
-# 在PVE LXC容器中执行自动部署脚本
-wget https://raw.githubusercontent.com/palmtom316/LH_Contract_Docker/release/v1.1/scripts/deploy_lxc.sh
-chmod +x deploy_lxc.sh
-sudo ./deploy_lxc.sh
+curl -X POST http://localhost:8000/api/v1/auth/init-admin \
+  -H 'Content-Type: application/json' \
+  -H 'X-Init-Admin-Token: your-init-token' \
+  -d '{
+    "username": "admin",
+    "password": "ChangeMe123!",
+    "email": "admin@lanhai.com",
+    "full_name": "系统管理员"
+  }'
 ```
 
-详细部署说明: 
-- 📘 完整指南: [PVE_LXC_DEPLOYMENT_GUIDE.md](PVE_LXC_DEPLOYMENT_GUIDE.md)
-- 📋 快速参考: [QUICK_REFERENCE.md](QUICK_REFERENCE.md)
-- 🚀 通用部署: [DEPLOYMENT.md](DEPLOYMENT.md)
-- 🔧 运维手册: [OPERATIONS_MANUAL.md](OPERATIONS_MANUAL.md)
+如果系统已有用户，再次初始化会被拒绝。
 
----
+## 测试
 
-## 📁 项目结构
-
-```
-LH_Contract_Docker/
-├── backend/                    # 后端代码
-│   ├── app/
-│   │   ├── core/              # 核心功能
-│   │   │   ├── cache.py       # Redis缓存
-│   │   │   ├── errors.py      # 错误处理
-│   │   │   ├── health.py      # 健康检查
-│   │   │   └── rate_limit.py  # 频率限制
-│   │   ├── models/            # 数据模型
-│   │   ├── routers/           # API路由
-│   │   ├── schemas/           # Pydantic模型
-│   │   ├── services/          # 业务逻辑
-│   │   └── utils/             # 工具函数
-│   ├── migrations/            # 数据库迁移
-│   ├── tests/                 # 单元测试
-│   └── requirements.txt       # Python依赖
-│
-├── frontend/                  # 前端代码
-│   ├── src/
-│   │   ├── api/              # API调用
-│   │   ├── components/       # Vue组件
-│   │   ├── router/           # 路由配置
-│   │   ├── stores/           # Pinia状态
-│   │   └── views/            # 页面视图
-│   └── package.json          # Node依赖
-│
-├── scripts/                   # 运维脚本
-│   ├── backup.sh             # 自动备份
-│   └── monitor.sh            # 健康监控
-│
-├── .github/
-│   └── workflows/
-│       └── ci-cd.yml         # CI/CD配置
-│
-├── docker-compose.yml         # 开发环境
-├── docker-compose.prod.yml   # 生产环境
-│
-├── DEPLOYMENT.md             # 部署文档
-├── OPERATIONS_MANUAL.md      # 运维手册
-├── REQUIREMENTS.md           # 需求文档
-├── RELEASE_NOTES_V1.1.md     # 发布说明
-└── README.md                 # 本文档
-```
-
----
-
-## 📚 文档
-
-### 核心文档
-- 📖 [需求文档](REQUIREMENTS.md)
-- 🚀 [部署指南](DEPLOYMENT.md)
-- 🖥️ [PVE LXC部署指南](PVE_LXC_DEPLOYMENT_GUIDE.md) ⭐ 新增
-- 📝 [快速参考手册](QUICK_REFERENCE.md)
-- 🔧 [运维手册](OPERATIONS_MANUAL.md)
-- 📋 [发布说明](RELEASE_NOTES_V1.1.md)
-- 📤 [GitHub上传指南](GITHUB_UPLOAD_GUIDE.md)
-
-### Phase报告
-- 🔐 [Phase 1: 安全加固](PHASE_1_SECURITY_COMPLETE.md)
-- ⚡ [Phase 2: 性能优化](PHASE_2_PERFORMANCE_COMPLETE.md)
-- 📊 [Phase 3: 代码质量](PHASE_3_CODE_QUALITY_COMPLETE.md)
-- 🔧 [Phase 4: 监控运维](PHASE_4_MONITORING_COMPLETE.md)
-
-### 技术指南
-- 🎨 [前端组件重构](frontend/docs/COMPONENT_REFACTORING_GUIDE.md)
-- 🔍 [N+1查询优化](backend/docs/N+1_QUERY_OPTIMIZATION.md)
-- ❌ [错误处理系统](ERROR_HANDLING_FINAL_SUMMARY.md)
-- 🚀 [Redis缓存系统](REDIS_ENABLED_REPORT.md)
-
----
-
-## 📊 性能指标
-
-| 指标 | V1.0 | V1.1 | 提升 |
-|------|------|------|------|
-| 响应速度 | 2000ms | 400ms | **+300%** |
-| 数据库负载 | 100% | 30% | **-70%** |
-| 缓存命中率 | 0% | 85% | **+85%** |
-| 服务可用性 | 95% | 99.5% | **+4.7%** |
-
----
-
-## 🔐 安全特性
-
-- ✅ JWT身份认证
-- ✅ RBAC权限控制
-- ✅ 请求频率限制
-- ✅ 文件上传验证
-- ✅ SQL注入防护
-- ✅ XSS跨站脚本防护
-- ✅ 密码强度验证
-- ✅ 日志自动脱敏
-
----
-
-## 📈 更新日志
-
-### V1.1.0 (2025-12-16) - 重大更新
-
-**新增**:
-- 🔐 企业级安全加固
-- ⚡ 生产级性能优化  
-- 📊 代码质量提升
-- 🔧 自动化运维体系
-
-**改进**:
-- 响应速度提升300%
-- 数据库负载降低70%
-- 服务可用性达99.5%
-
-详细更新: [RELEASE_NOTES_V1.1.md](RELEASE_NOTES_V1.1.md)
-
-### V1.0.0 (2025-12-01) - 初始版本
-
-基础功能实现
-
----
-
-## 🧪 测试
-
-### 运行测试
+### 前端
 
 ```bash
-cd backend
-
-# 安装测试依赖
-pip install -r requirements-test.txt
-
-# 运行所有测试
-pytest
-
-# 运行特定测试
-pytest tests/test_auth.py
-
-# 生成覆盖率报告
-pytest --cov=app --cov-report=html
+npm test --prefix frontend
 ```
 
-### 当前测试覆盖
+### 后端纯单元/契约测试
 
-- **单元测试**: 20+ 测试用例
-- **覆盖率**: 15% (持续提升中)
-- **测试框架**: Pytest + AsyncIO
+这类测试不依赖本地 PostgreSQL：
 
----
+```bash
+./.venv39/bin/pytest \
+  backend/tests/test_errors.py \
+  backend/tests/test_audit_service.py \
+  backend/tests/test_file_compatibility.py \
+  backend/tests/test_test_infrastructure.py \
+  -q
+```
 
-## 🤝 贡献指南
+### 后端数据库/接口集成测试
 
-欢迎贡献！请遵循以下步骤：
+这类测试依赖本地 PostgreSQL。若测试环境不可连接，测试会明确 `skip`。
 
-1. Fork 本仓库
-2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
+```bash
+./.venv39/bin/pytest backend/tests/test_api_integration.py -q
+```
 
-### 代码规范
+## 部署说明
 
-- Python: PEP 8
-- Vue: Vue 3 Style Guide
-- Git提交: Conventional Commits
+当前仓库提供多套部署资料，但适用范围不同：
 
----
+- [`docker-compose.yml`](docker-compose.yml)：本地开发/联调
+- [`docker-compose.prod.yml`](docker-compose.prod.yml)：生产部署参考
+- [`DEPLOYMENT.md`](DEPLOYMENT.md)：通用部署说明
+- [`OPERATIONS_MANUAL.md`](OPERATIONS_MANUAL.md)：运维与排障
+- [`docs/archive/deployment-history/PVE_LXC_DEPLOYMENT_GUIDE.md`](docs/archive/deployment-history/PVE_LXC_DEPLOYMENT_GUIDE.md)：历史 LXC 部署参考
 
-## 📝 许可证
+使用历史部署文档前，先核对版本、环境变量和依赖版本，不要直接套用旧版本说明。
+
+## 关键配置说明
+
+- `SECRET_KEY`：生产环境必须设置
+- `DATABASE_URL`：后端数据库连接串
+- `REDIS_URL`：Redis 连接串
+- `UPLOAD_DIR`：本地上传目录
+- `INIT_ADMIN_TOKEN`：首次管理员初始化令牌
+- `TRUSTED_PROXIES`：客户端 IP 提取时使用的可信代理列表
+- `MINIO_ENDPOINT` / `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`：对象存储配置
+
+## 文档索引
+
+### 当前可直接参考
+
+- [`DEPLOYMENT.md`](DEPLOYMENT.md)
+- [`OPERATIONS_MANUAL.md`](OPERATIONS_MANUAL.md)
+- [`QUICK_REFERENCE.md`](QUICK_REFERENCE.md)
+- [`backend/docs/N+1_QUERY_OPTIMIZATION.md`](backend/docs/N+1_QUERY_OPTIMIZATION.md)
+- [`frontend/docs/COMPONENT_REFACTORING_GUIDE.md`](frontend/docs/COMPONENT_REFACTORING_GUIDE.md)
+- [`docs/reports/2026-04-07-code-review-report.md`](docs/reports/2026-04-07-code-review-report.md)
+- [`docs/reports/2026-04-07-remediation-optimization-report.md`](docs/reports/2026-04-07-remediation-optimization-report.md)
+
+### 历史资料
+
+以下文档用于追溯版本演进，不应直接视为 1.6 的当前操作手册：
+
+- 历史发布说明：[`docs/archive/root-history/RELEASE_NOTES_V1.1.md`](docs/archive/root-history/RELEASE_NOTES_V1.1.md)、[`docs/archive/root-history/RELEASE_NOTES_V1.1.1.md`](docs/archive/root-history/RELEASE_NOTES_V1.1.1.md)、[`docs/archive/root-history/RELEASE_NOTES_V1.2.md`](docs/archive/root-history/RELEASE_NOTES_V1.2.md)
+- 历史升级与部署资料：[`docs/archive/deployment-history/`](docs/archive/deployment-history/)
+- 历史阶段总结、审计与专项记录：[`docs/archive/root-history/`](docs/archive/root-history/)
+
+## 当前已知说明
+
+- `backend/uploads/` 现在只作为本地运行期目录，不再跟踪上传产物
+- 后端错误响应已统一为结构化对象
+- 测试已区分纯单元场景与数据库集成场景
+
+## 许可证
 
 保留所有权利。
-
----
-
-## 👥 团队
-
-**开发团队**: 蓝海科技  
-**技术支持**: support@example.com  
-**GitHub**: https://github.com/yourusername/LH_Contract_Docker
-
----
-
-## 🎯 路线图
-
-### V1.2 (计划中)
-
-- [ ] Sentry错误监控集成
-- [ ] WebSocket实时通知
-- [ ] 移动端适配
-- [ ] 测试覆盖率提升到60%
-
-### V2.0 (未来)
-
-- [ ] 微服务架构重构
-- [ ] 多租户支持
-- [ ] 国际化支持
-- [ ] AI辅助功能
-
----
-
-## ❓ 常见问题
-
-**Q: 如何修改默认密码？**  
-A: 登录后在"个人中心"修改密码。
-
-**Q: 如何备份数据？**  
-A: 运行 `scripts/backup.sh` 或参考运维手册。
-
-**Q: 如何重置系统数据？**  
-A: 系统提供了安全的数据重置功能（仅限管理员）：
-1. 登录管理员账号
-2. 进入"系统设置" → "系统重置"
-3. 输入确认码 `RESET`
-4. 点击"确认重置"
-
-**警告**: 此操作将删除所有业务数据（合同、财务记录等），但保留管理员账号和系统配置。请谨慎使用！
-
-**Q: 如何升级版本？**  
-A: 查看 [RELEASE_NOTES_V1.1.md](RELEASE_NOTES_V1.1.md) 中的升级指南。
-
-更多问题请查看 [OPERATIONS_MANUAL.md](OPERATIONS_MANUAL.md)
-
----
-
-## 🌟 Star History
-
-如果这个项目对您有帮助，请给我们一个Star ⭐！
-
----
-
-**🎉 感谢使用蓝海合同管理系统！**
-
-系统已达到企业级生产标准，可以安心投入使用！ 🚀✨

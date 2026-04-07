@@ -166,7 +166,6 @@ const handleUploadRequest = async (option) => {
   uploading.value = true
   try {
     const res = await uploadFile(option.file, props.uploadDir)
-    console.log('[PdfUpload] Upload response:', res)
     
     if (res && (res.path || res.key)) {
       // Prefer key, fallback to path if key missing (legacy)

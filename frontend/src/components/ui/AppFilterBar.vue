@@ -28,10 +28,10 @@ defineProps({
   position: relative;
   min-width: 0;
   padding: 14px;
-  border: 1px solid var(--workspace-panel-border);
+  border: 1px solid hsl(var(--border));
   border-radius: var(--workspace-panel-radius);
-  background: var(--surface-panel-elevated);
-  box-shadow: var(--workspace-panel-shadow);
+  background: hsl(var(--background));
+  box-shadow: none;
 }
 
 .app-filter-bar__content {
@@ -149,7 +149,7 @@ defineProps({
   padding-inline: 14px;
   border-radius: var(--workspace-control-radius);
   border-color: hsl(var(--border));
-  background: var(--surface-panel-elevated);
+  background: hsl(var(--background));
   color: hsl(var(--muted-foreground));
   box-shadow: none;
   white-space: nowrap;

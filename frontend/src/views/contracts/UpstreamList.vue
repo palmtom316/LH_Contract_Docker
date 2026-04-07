@@ -864,7 +864,6 @@ const handleUploadRequest = async (option) => {
       custom_filename: customName
     })
     
-    console.log('Upload response:', res)
     if (res && res.path) {
       form.contract_file_path = res.path
       if (res.key) form.contract_file_key = res.key
