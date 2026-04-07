@@ -1,7 +1,7 @@
 <template>
   <button
     type="button"
-    class="theme-toggle"
+    class="theme-toggle inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     :aria-label="isDark ? '切换为浅色模式' : '切换为深色模式'"
     @click="uiStore.toggleTheme()"
   >
@@ -23,22 +23,6 @@ const isDark = computed(() => uiStore.theme === 'dark')
 
 <style scoped lang="scss">
 .theme-toggle {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  border: 1px solid var(--border-subtle);
-  background: var(--surface-panel);
-  color: var(--text-secondary);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   cursor: pointer;
-  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
-
-  &:hover {
-    color: var(--text-primary);
-    border-color: var(--border-strong);
-    background: var(--surface-panel-muted);
-  }
 }
 </style>

@@ -36,7 +36,10 @@ function persistTheme(theme) {
 
 function applyTheme(theme) {
   if (typeof globalThis.document === 'undefined') return
-  globalThis.document.documentElement.dataset.theme = theme
+  const root = globalThis.document.documentElement
+  root.dataset.theme = theme
+  root.classList.toggle('dark', theme === 'dark')
+  root.style.colorScheme = theme
 }
 
 export const useUiStore = defineStore('ui', {

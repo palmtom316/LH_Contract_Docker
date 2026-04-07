@@ -88,6 +88,9 @@ const ElTabPaneStub = defineComponent({
 const mountPage = () =>
   mount(OrdinaryExpenseList, {
     global: {
+      directives: {
+        loading: {}
+      },
       stubs: {
         AppSectionCard: { template: '<section><slot name="header" /><slot /><slot name="actions" /></section>' },
         AppFilterBar: { template: '<div><slot /><slot name="actions" /></div>' },
@@ -135,11 +138,11 @@ const mountExpensePage = () =>
   })
 
 describe('ExpenseList workspace shell', () => {
-  it('renders the expense page shell, header, and tab panel with page-specific naming', () => {
+  it('renders the expense page shell and tab panel with page-specific naming', () => {
     const wrapper = mountExpensePage()
 
     expect(wrapper.find('.expense-page-shell').exists()).toBe(true)
-    expect(wrapper.find('.expense-page-header').exists()).toBe(true)
+    expect(wrapper.find('.expense-page-header').exists()).toBe(false)
     expect(wrapper.find('.expense-page-panel').exists()).toBe(true)
     expect(wrapper.find('.expense-overview').exists()).toBe(false)
     expect(wrapper.find('.expense-page-tabs').exists()).toBe(true)

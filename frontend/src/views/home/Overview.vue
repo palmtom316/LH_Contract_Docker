@@ -4,10 +4,8 @@
       <AppMetricCard
         v-for="item in metricCards"
         :key="item.title"
-        :eyebrow="item.eyebrow"
         :title="item.title"
         :value="item.value"
-        :description="item.description"
       >
         <template #badge>
           <span class="metric-badge" :class="`metric-badge--${item.tone}`">{{ item.badge }}</span>

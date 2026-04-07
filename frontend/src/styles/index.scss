@@ -1,40 +1,43 @@
 @use './tokens.scss';
 @use './variables.scss' as *;
 
-// Global Styles
-
 html,
 body,
 #app {
     min-height: 100vh;
 }
 
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
 :root {
-    /* Element Plus semantic bridge */
-    --el-color-primary: var(--brand-primary);
-    --el-color-primary-light-9: var(--brand-primary-soft);
-    --el-bg-color: var(--surface-panel);
-    --el-bg-color-page: var(--surface-page);
-    --el-fill-color-blank: var(--surface-panel);
-    --el-fill-color-light: var(--surface-panel-muted);
-    --el-fill-color-lighter: var(--surface-panel-muted);
-    --el-fill-color-extra-light: var(--surface-panel-muted);
-    --el-text-color-primary: var(--text-primary);
-    --el-text-color-regular: var(--text-secondary);
-    --el-text-color-secondary: var(--text-secondary);
-    --el-text-color-placeholder: var(--text-muted);
-    --el-border-color: var(--border-subtle);
-    --el-border-color-light: var(--border-subtle);
-    --el-border-color-lighter: var(--border-subtle);
-    --el-border-color-extra-light: var(--border-subtle);
+    --el-color-primary: hsl(var(--primary));
+    --el-color-primary-light-9: hsl(var(--primary) / 0.12);
+    --el-bg-color: hsl(var(--card));
+    --el-bg-color-page: hsl(var(--background));
+    --el-fill-color-blank: hsl(var(--card));
+    --el-fill-color-light: hsl(var(--muted));
+    --el-fill-color-lighter: hsl(var(--muted));
+    --el-fill-color-extra-light: hsl(var(--muted));
+    --el-text-color-primary: hsl(var(--foreground));
+    --el-text-color-regular: hsl(var(--muted-foreground));
+    --el-text-color-secondary: hsl(var(--muted-foreground));
+    --el-text-color-placeholder: hsl(var(--muted-foreground));
+    --el-border-color: hsl(var(--border));
+    --el-border-color-light: hsl(var(--border));
+    --el-border-color-lighter: hsl(var(--border));
+    --el-border-color-extra-light: hsl(var(--border));
     --el-mask-color: var(--surface-overlay);
     --el-box-shadow: var(--shadow-card);
     --el-box-shadow-light: var(--shadow-soft);
-    --el-card-bg-color: var(--surface-panel);
-    --el-dialog-bg-color: var(--surface-panel);
-    --el-table-bg-color: var(--surface-panel);
-    --el-table-tr-bg-color: var(--surface-panel);
-    --el-table-header-bg-color: var(--surface-panel-muted);
+    --el-card-bg-color: hsl(var(--card));
+    --el-dialog-bg-color: hsl(var(--card));
+    --el-table-bg-color: hsl(var(--card));
+    --el-table-tr-bg-color: hsl(var(--card));
+    --el-table-header-bg-color: hsl(var(--muted));
 }
 
 body {
@@ -42,9 +45,14 @@ body {
     -moz-osx-font-smoothing: grayscale;
     -webkit-font-smoothing: antialiased;
     font-family: var(--font-family-base);
-    background: var(--surface-page);
-    color: var(--text-primary);
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
     transition: background-color 160ms ease, color 160ms ease;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
 }
 
 button,
@@ -54,13 +62,29 @@ textarea {
     font: inherit;
 }
 
+::selection {
+    background: hsl(var(--primary) / 0.16);
+}
+
 button:focus-visible,
 a:focus-visible,
-input:focus-visible,
+.native-input:focus-visible,
+.el-select:focus-visible,
+.el-textarea:focus-visible,
 .el-button:focus-visible,
 .el-input__wrapper.is-focus {
     outline: 2px solid transparent;
     box-shadow: var(--shadow-focus);
+}
+
+.el-input__inner:focus,
+.el-input__inner:focus-visible,
+.el-textarea__inner:focus,
+.el-textarea__inner:focus-visible,
+.el-select__selected-item:focus,
+.el-select__selected-item:focus-visible {
+    outline: none;
+    box-shadow: none !important;
 }
 
 .el-button,
@@ -72,62 +96,63 @@ input:focus-visible,
 }
 
 .app-container {
-    color: var(--text-primary);
+    color: hsl(var(--foreground));
 }
 
 .el-button {
     min-height: 36px;
-    border-radius: 11px;
+    height: 36px;
+    border-radius: 10px;
     font-weight: 600;
-    padding-inline: 13px;
+    padding-inline: 14px;
     letter-spacing: 0.01em;
-    box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
+    box-shadow: none;
 }
 
 .el-button:hover,
 .el-button:focus-visible {
-    transform: translateY(-1px);
+    box-shadow: none;
 }
 
 .el-button--default {
-    background: color-mix(in srgb, var(--surface-panel) 92%, var(--brand-primary) 8%);
-    border-color: color-mix(in srgb, var(--border-subtle) 78%, var(--brand-primary) 22%);
-    color: var(--brand-primary-strong);
+    background: hsl(var(--card));
+    border-color: hsl(var(--border));
+    color: hsl(var(--foreground));
 }
 
 .el-button--default:hover,
 .el-button--default:focus-visible {
-    background: color-mix(in srgb, var(--surface-panel) 84%, var(--brand-primary) 16%);
-    border-color: color-mix(in srgb, var(--border-strong) 70%, var(--brand-primary) 30%);
-    color: var(--brand-primary-strong);
+    background: hsl(var(--muted));
+    border-color: hsl(var(--border));
+    color: hsl(var(--foreground));
 }
 
 .el-button--primary {
-    background: var(--brand-primary);
-    border-color: var(--brand-primary);
-    color: #f8fbff;
+    background: hsl(var(--primary));
+    border-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
 }
 
 .el-button--primary:hover,
 .el-button--primary:focus-visible {
-    background: var(--brand-primary-strong);
-    border-color: var(--brand-primary-strong);
+    background: hsl(var(--primary) / 0.92);
+    border-color: hsl(var(--primary) / 0.92);
 }
 
 .el-button.is-plain,
 .el-button--primary.is-plain {
-    background: color-mix(in srgb, var(--brand-primary) 9%, var(--surface-panel) 91%);
-    border-color: color-mix(in srgb, var(--brand-primary) 18%, var(--border-subtle) 82%);
-    color: var(--brand-primary-strong);
+    background: hsl(var(--card));
+    border-color: hsl(var(--border));
+    color: hsl(var(--foreground));
 }
 
 .el-button.is-plain:hover,
 .el-button.is-plain:focus-visible,
 .el-button--primary.is-plain:hover,
 .el-button--primary.is-plain:focus-visible {
-    background: color-mix(in srgb, var(--brand-primary) 15%, var(--surface-panel) 85%);
-    border-color: color-mix(in srgb, var(--brand-primary) 30%, var(--border-subtle) 70%);
-    color: var(--brand-primary-strong);
+    background: hsl(var(--muted));
+    border-color: hsl(var(--border));
+    color: hsl(var(--foreground));
 }
 
 .el-button [class*='el-icon'] + span,
@@ -160,36 +185,46 @@ input:focus-visible,
 }
 
 .el-card {
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    background: var(--surface-panel);
-    box-shadow: var(--shadow-soft);
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    background: hsl(var(--card));
+    box-shadow: 0 1px 2px hsl(222 47% 11% / 0.04);
 }
 
 .el-card__header {
-    padding: 18px 20px 0;
+    padding: 16px 16px 0;
     border-bottom: 0;
 }
 
 .el-card__body {
-    padding: 20px;
+    padding: 16px;
 }
 
 .el-input__wrapper,
 .el-select__wrapper,
 .el-textarea__inner,
 .el-date-editor.el-input__wrapper {
-    min-height: 42px;
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--surface-panel) 96%, var(--surface-panel-muted) 4%);
-    box-shadow: 0 0 0 1px var(--border-subtle) inset;
+    min-height: 36px;
+    border-radius: 10px;
+    background: hsl(var(--background));
+    border: 1px solid hsl(var(--input));
+    box-shadow: none;
 }
 
 .el-input__wrapper:hover,
 .el-select__wrapper:hover,
 .el-textarea__inner:hover,
 .el-date-editor.el-input__wrapper:hover {
-    box-shadow: 0 0 0 1px var(--border-strong) inset;
+    border-color: hsl(var(--border));
+    box-shadow: none;
+}
+
+.el-input__wrapper.is-focus,
+.el-select__wrapper.is-focused,
+.el-textarea__inner:focus,
+.el-date-editor.el-input__wrapper.is-focus {
+    border-color: hsl(var(--ring));
+    box-shadow: var(--shadow-focus);
 }
 
 .el-input__inner,
@@ -197,11 +232,12 @@ input:focus-visible,
 .el-textarea__inner,
 .el-date-editor .el-range-input {
     font-size: 14px;
+    color: hsl(var(--foreground));
 }
 
 .el-input__inner::placeholder,
 .el-textarea__inner::placeholder {
-    color: color-mix(in srgb, var(--text-muted) 86%, transparent);
+    color: hsl(var(--muted-foreground));
 }
 
 .el-date-editor,
@@ -224,7 +260,7 @@ input:focus-visible,
 .el-date-editor .el-range-separator,
 .el-date-editor .el-range__icon,
 .el-date-editor .el-range__close-icon {
-    color: var(--text-muted);
+    color: hsl(var(--muted-foreground));
 }
 
 .el-date-editor--daterange.el-input__wrapper,
@@ -236,7 +272,7 @@ input:focus-visible,
     min-width: 0 !important;
     gap: 8px;
     padding-inline: 12px;
-    border-radius: 12px;
+    border-radius: 10px;
     overflow: hidden;
 }
 
@@ -257,114 +293,92 @@ input:focus-visible,
 .el-select__popper.el-popper,
 .el-picker__popper.el-popper,
 .el-dropdown__popper.el-popper {
-    border: 1px solid var(--border-subtle) !important;
-    background: var(--surface-panel) !important;
-    box-shadow: var(--shadow-card) !important;
+    border: 1px solid hsl(var(--border)) !important;
+    background: hsl(var(--popover)) !important;
+    box-shadow: var(--shadow-frame) !important;
 }
 
 .el-select-dropdown,
 .el-picker-panel,
 .el-dropdown-menu {
-    background: var(--surface-panel) !important;
-    color: var(--text-primary) !important;
+    background: hsl(var(--popover)) !important;
+    color: hsl(var(--popover-foreground)) !important;
 }
 
 .el-select-dropdown__item,
 .el-dropdown-menu__item {
-    color: var(--text-secondary) !important;
+    color: hsl(var(--muted-foreground)) !important;
+    border-radius: 8px;
 }
 
 .el-select-dropdown__item.hover,
 .el-select-dropdown__item:hover,
 .el-dropdown-menu__item:hover {
-    background: var(--surface-panel-muted) !important;
-    color: var(--text-primary) !important;
+    background: hsl(var(--muted)) !important;
+    color: hsl(var(--foreground)) !important;
 }
 
 .el-select-dropdown__item.selected {
-    color: var(--brand-primary-strong) !important;
+    color: hsl(var(--primary)) !important;
     font-weight: 600;
 }
 
-:root[data-theme='dark'] .el-select__popper.el-popper,
-:root[data-theme='dark'] .el-picker__popper.el-popper,
-:root[data-theme='dark'] .el-dropdown__popper.el-popper {
-    border-color: var(--border-strong) !important;
-    background: #162238 !important;
-}
-
-:root[data-theme='dark'] .el-select-dropdown,
-:root[data-theme='dark'] .el-picker-panel,
-:root[data-theme='dark'] .el-dropdown-menu {
-    background: #162238 !important;
-    color: var(--text-primary) !important;
-}
-
-:root[data-theme='dark'] .el-select-dropdown__item,
-:root[data-theme='dark'] .el-dropdown-menu__item {
-    color: #d6e3f5 !important;
-}
-
-:root[data-theme='dark'] .el-select-dropdown__item.hover,
-:root[data-theme='dark'] .el-select-dropdown__item:hover,
-:root[data-theme='dark'] .el-dropdown-menu__item:hover {
-    background: #21314d !important;
-    color: #f8fbff !important;
-}
-
-:root[data-theme='dark'] .el-select-dropdown__item.selected {
-    color: #8fc0ff !important;
-}
-
 .el-table {
-    border-radius: var(--radius-md);
+    border-radius: 0;
     overflow: hidden;
 }
 
 .el-table th.el-table__cell {
     font-weight: 600;
-    color: var(--text-secondary);
+    color: hsl(var(--muted-foreground));
+    background: hsl(var(--muted));
+    font-size: 12px;
 }
 
 .el-table td.el-table__cell {
-    color: var(--text-primary);
+    color: hsl(var(--foreground));
+    font-size: 14px;
+    padding-top: 8px;
+    padding-bottom: 8px;
 }
 
 .el-table tr:hover > td.el-table__cell {
-    background: var(--surface-panel-muted);
+    background: hsl(var(--muted) / 0.55);
 }
 
 .el-tag {
     border-radius: 999px;
     padding-inline: 10px;
-    min-height: 26px;
+    min-height: 24px;
     font-weight: 600;
-    border-color: transparent;
+    border-color: hsl(var(--border));
+    background: hsl(var(--muted));
+    color: hsl(var(--foreground));
 }
 
 .el-tag--info {
-    background: color-mix(in srgb, var(--surface-panel-muted) 86%, var(--brand-primary) 14%);
-    color: var(--text-secondary);
+    background: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
 }
 
 .el-tag--success {
-    background: color-mix(in srgb, var(--status-success) 14%, var(--surface-panel) 86%);
-    color: color-mix(in srgb, var(--status-success) 88%, #0b1220 12%);
+    background: rgb(16 185 129 / 0.12);
+    color: rgb(5 150 105);
 }
 
 .el-tag--warning {
-    background: color-mix(in srgb, var(--status-warning) 16%, var(--surface-panel) 84%);
-    color: color-mix(in srgb, var(--status-warning) 90%, #0b1220 10%);
+    background: rgb(245 158 11 / 0.14);
+    color: rgb(180 83 9);
 }
 
 .el-tag--danger {
-    background: color-mix(in srgb, var(--status-danger) 14%, var(--surface-panel) 86%);
-    color: color-mix(in srgb, var(--status-danger) 90%, #0b1220 10%);
+    background: rgb(244 63 94 / 0.14);
+    color: rgb(190 24 93);
 }
 
 .el-tag.el-tag--primary {
-    background: color-mix(in srgb, var(--brand-primary) 14%, var(--surface-panel) 86%);
-    color: var(--brand-primary-strong);
+    background: hsl(var(--primary) / 0.12);
+    color: hsl(var(--primary));
 }
 
 .app-tabs {
@@ -376,20 +390,20 @@ input:focus-visible,
 }
 
 .app-tabs .el-tabs__nav-wrap::after {
-    background: var(--border-subtle);
+    background: hsl(var(--border));
 }
 
 .app-tabs .el-tabs__item {
     height: auto;
-    padding: 10px 14px;
-    color: var(--text-secondary);
+    padding: 8px 12px;
+    color: hsl(var(--muted-foreground));
     border-radius: 12px 12px 0 0;
     transition: color 160ms ease, background-color 160ms ease;
 }
 
 .app-tabs .el-tabs__item.is-active {
-    color: var(--brand-primary);
-    background: color-mix(in srgb, var(--surface-panel) 82%, var(--brand-primary) 18%);
+    color: hsl(var(--primary));
+    background: hsl(var(--accent));
 }
 
 .app-tabs--line :deep(.el-tabs__header) {
@@ -397,33 +411,33 @@ input:focus-visible,
 }
 
 .app-tabs--line :deep(.el-tabs__nav-wrap::after) {
-    background: var(--border-subtle);
+    background: hsl(var(--border));
 }
 
 .app-tabs--line :deep(.el-tabs__item) {
-    height: 40px;
+    height: 36px;
     padding: 0 4px;
-    margin-right: 28px;
+    margin-right: 20px;
     border-radius: 0;
-    color: var(--text-secondary);
+    color: hsl(var(--muted-foreground));
     background: transparent;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
 }
 
 .app-tabs--line :deep(.el-tabs__item.is-active) {
-    color: var(--brand-primary-strong);
+    color: hsl(var(--foreground));
     background: transparent;
 }
 
 .app-tabs--line :deep(.el-tabs__active-bar) {
-    height: 3px;
+    height: 2px;
     border-radius: 999px;
-    background: var(--brand-primary);
+    background: hsl(var(--primary));
 }
 
 .app-tabs--line :deep(.el-tabs__content) {
-    padding-top: var(--space-5);
+    padding-top: 12px;
 }
 
 .custom-footer-table .el-table__footer-wrapper tbody td,
@@ -431,29 +445,23 @@ input:focus-visible,
 .custom-footer-table .el-table__footer-wrapper tbody tr,
 .custom-footer-table .el-table__fixed-footer-wrapper tbody tr {
     background-color: var(--status-highlight) !important;
-    color: var(--text-primary) !important;
+    color: hsl(var(--foreground)) !important;
     font-weight: 700 !important;
-    font-size: 15px !important;
+    font-size: 14px !important;
     --el-table-row-hover-bg-color: var(--status-highlight) !important;
 }
 
 .custom-footer-table .el-table__footer-wrapper tbody td .cell,
 .custom-footer-table .el-table__fixed-footer-wrapper tbody td .cell {
     background-color: var(--status-highlight) !important;
-    color: var(--text-primary) !important;
+    color: hsl(var(--foreground)) !important;
     font-weight: 700 !important;
     white-space: nowrap !important;
 }
 
-// Global utilities can go here
-
-// Global Mobile Overrides
 @media only screen and (max-width: $mobile-width) {
-
-    // Fix Element Plus Dialog on mobile
     .el-dialog {
         width: 90% !important;
         max-width: none !important;
     }
-
 }

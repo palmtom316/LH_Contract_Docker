@@ -78,7 +78,6 @@
               </button>
               <div class="topbar-copy">
                 <div class="topbar-copy__title">{{ route.meta.title }}</div>
-                <div class="topbar-copy__meta">Workspace</div>
               </div>
             </div>
             <AppTopbarActions :unread-count="unreadCount" />
@@ -274,21 +273,15 @@ onMounted(() => {
 .shell {
   min-height: 100vh;
   width: 100%;
-  padding: 32px 28px 40px;
-  background:
-    radial-gradient(circle at top left, rgba(148, 163, 184, 0.08), transparent 28%),
-    var(--surface-page);
-  display: flex;
-  justify-content: center;
-  gap: 32px;
+  background: hsl(var(--background));
   position: relative;
 }
 
 .shell-body {
   width: 100%;
-  max-width: 1400px;
-  display: flex;
-  gap: 28px;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
 }
 
 .shell-overlay {
@@ -300,95 +293,93 @@ onMounted(() => {
 }
 
 .sidebar {
-  width: 272px;
-  border-radius: 22px;
-  background: color-mix(in srgb, var(--surface-sidebar) 92%, white 8%);
-  padding: 24px 16px 20px;
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-soft);
+  width: var(--sidebar-width);
+  background: hsl(var(--card));
+  padding: 20px 14px 14px;
+  border-right: 1px solid hsl(var(--border));
   display: flex;
   flex-direction: column;
   position: sticky;
-  top: 32px;
-  align-self: flex-start;
+  top: 0;
+  height: 100vh;
   overflow-y: auto;
-  max-height: calc(100vh - 64px);
+  overflow-x: hidden;
 }
 
 .sidebar.collapsed {
-  width: 74px;
+  width: 84px;
 }
 
 .brand {
-  padding-bottom: 12px;
-  min-height: 82px;
+  padding: 0 8px 18px;
+  min-height: 64px;
   display: flex;
   align-items: center;
   gap: 12px;
+  border-bottom: 1px solid hsl(var(--border));
+  margin-bottom: 14px;
 }
 
 .brand-logo {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   object-fit: cover;
-  border-radius: 12px;
-  box-shadow: var(--shadow-soft);
+  border-radius: 10px;
 }
 
 .brand-icon {
-  color: var(--brand-primary);
-  font-size: 24px;
+  color: hsl(var(--foreground));
+  font-size: 18px;
 }
 
 .brand-text {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  color: var(--text-primary);
+  color: hsl(var(--foreground));
   font-weight: 600;
 }
 
 .brand-text span {
-  font-size: 17px;
-  letter-spacing: -0.02em;
+  font-size: 15px;
+  letter-spacing: -0.01em;
 }
 
 .brand-text small {
-  font-size: 11px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
 }
 
 .sidebar-menu {
   border-right: 0;
   background: transparent;
   flex: 1;
-  padding: 0 8px;
+  padding: 0 6px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .sidebar-footer {
   margin-top: auto;
-  padding: 16px 8px 4px;
-  border-top: 1px solid color-mix(in srgb, var(--border-subtle) 90%, transparent 10%);
+  padding: 14px 6px 0;
+  border-top: 1px solid hsl(var(--border));
   position: sticky;
   bottom: 0;
-  background: transparent;
+  background: hsl(var(--card));
 }
 
 .system-version {
   display: block;
-  margin-top: 6px;
-  color: var(--text-muted);
+  margin-top: 8px;
+  color: hsl(var(--muted-foreground));
   font-size: 11px;
 }
 
 .workspace {
   flex: 1;
   display: flex;
+  min-width: 0;
 }
 
 .content {
@@ -400,15 +391,13 @@ onMounted(() => {
 }
 
 .topbar {
-  min-height: var(--header-height, 72px);
-  padding: 0 28px;
-  border-bottom: 1px solid var(--border-subtle);
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(18px);
+  min-height: var(--header-height, 60px);
+  padding: 0 20px;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-radius: 24px 24px 0 0;
 }
 
 .topbar-left {
@@ -419,12 +408,12 @@ onMounted(() => {
 }
 
 .menu-btn {
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.86);
-  color: var(--text-secondary);
+  width: 36px;
+  height: 36px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  background: hsl(var(--card));
+  color: hsl(var(--muted-foreground));
   cursor: pointer;
 }
 
@@ -433,35 +422,23 @@ onMounted(() => {
 }
 
 .topbar-copy__title {
-  color: var(--text-primary);
-  font-size: 16px;
+  color: hsl(var(--foreground));
+  font-size: 15px;
   font-weight: 600;
-  letter-spacing: -0.02em;
-}
-
-.topbar-copy__meta {
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.4;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: -0.01em;
 }
 
 .app-main {
   flex: 1;
-  padding: 0 0 32px;
-  background: transparent;
+  padding: 0;
   margin: 0;
+  min-width: 0;
 }
 
 .app-main__frame {
   min-height: 100%;
-  border: 1px solid var(--border-subtle);
-  border-top: 0;
-  border-radius: 0 0 24px 24px;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: var(--shadow-frame);
-  padding: 24px;
+  background: hsl(var(--background));
+  padding: 20px;
 }
 
 :deep(.el-menu) {
@@ -469,69 +446,39 @@ onMounted(() => {
 }
 
 :deep(.el-menu-item) {
-  color: var(--text-secondary);
-  height: 46px;
-  margin: 4px 0;
-  border-radius: 14px;
+  color: hsl(var(--muted-foreground));
+  height: 40px;
+  margin: 2px 0;
+  border-radius: 10px;
   font-weight: 600;
+  transition: background-color 160ms ease, color 160ms ease;
 }
 
 :deep(.el-menu-item:hover) {
-  background: var(--surface-sidebar-hover) !important;
-  color: var(--text-primary) !important;
+  background: hsl(var(--muted)) !important;
+  color: hsl(var(--foreground)) !important;
 }
 
 :deep(.el-menu-item.is-active) {
-  color: var(--brand-primary-strong) !important;
-  background: var(--surface-sidebar-active) !important;
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--brand-primary) 16%, transparent 84%),
-    0 10px 18px rgba(37, 99, 235, 0.08);
-}
-
-:global(:root[data-theme='dark']) .brand-icon {
-  color: var(--text-inverse);
-}
-
-:global(:root[data-theme='dark']) .brand-text {
-  color: var(--text-inverse);
-}
-
-:global(:root[data-theme='dark']) .brand-text small,
-:global(:root[data-theme='dark']) .system-version {
-  color: rgba(248, 250, 252, 0.62);
-}
-
-:global(:root[data-theme='dark']) :deep(.el-menu-item) {
-  color: rgba(248, 250, 252, 0.78);
-}
-
-:global(:root[data-theme='dark']) :deep(.el-menu-item:hover) {
-  background: rgba(148, 163, 184, 0.18) !important;
-  color: var(--text-inverse) !important;
-}
-
-:global(:root[data-theme='dark']) :deep(.el-menu-item.is-active) {
-  color: var(--text-inverse) !important;
-  background: rgba(148, 163, 184, 0.28) !important;
-  box-shadow: none;
+  color: hsl(var(--foreground)) !important;
+  background: hsl(var(--accent)) !important;
+  box-shadow: inset 0 0 0 1px hsl(var(--border));
 }
 
 @media (max-width: 1100px) {
   .shell {
-    padding: 20px;
+    min-height: 100vh;
   }
 
   .shell-body {
-    flex-direction: column;
-    gap: 18px;
+    grid-template-columns: 1fr;
   }
 
   .sidebar {
     position: fixed;
     top: 0;
     left: 0;
-    max-height: 100vh;
+    height: 100vh;
     z-index: 41;
     transition: transform 0.3s ease;
   }
@@ -550,12 +497,10 @@ onMounted(() => {
     padding: 0;
   }
 
-  .shell-body {
-    max-width: 100%;
-  }
-
   .topbar {
-    border-radius: 0;
+    position: sticky;
+    top: 0;
+    z-index: 20;
   }
 
   .app-main {
@@ -564,9 +509,6 @@ onMounted(() => {
 
   .app-main__frame {
     padding: 16px;
-    border: none;
-    border-radius: 0;
-    box-shadow: none;
   }
 }
 </style>

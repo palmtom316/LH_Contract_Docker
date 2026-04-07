@@ -15,7 +15,7 @@ const appWorkspacePanelSource = readFileSync(
 )
 
 describe('AppPageHeader', () => {
-  it('renders eyebrow, title, description, meta, and actions within the shared side wrapper', () => {
+  it('renders a compact title row with only actions in the side wrapper', () => {
     const wrapper = mount(AppPageHeader, {
       props: {
         eyebrow: 'Contracts',
@@ -29,18 +29,17 @@ describe('AppPageHeader', () => {
     })
 
     expect(wrapper.find('.app-page-header').exists()).toBe(true)
-    expect(wrapper.find('.app-page-header__eyebrow').text()).toBe('Contracts')
-    expect(wrapper.find('.app-page-header__title').text()).toBe('Upstream Contracts')
-    expect(wrapper.find('.app-page-header__description').text()).toBe('Manage upstream contract records.')
+    expect(wrapper.text()).toContain('Upstream Contracts')
     expect(wrapper.find('.app-page-header__side').exists()).toBe(true)
-    expect(wrapper.find('.app-page-header__meta').text()).toBe('12 active contracts')
     expect(wrapper.find('.app-page-header__actions').text()).toContain('New Contract')
+    expect(wrapper.find('.app-page-header__copy').text()).not.toContain('Manage upstream contract records.')
+    expect(wrapper.find('.app-page-header__side').text()).not.toContain('12 active contracts')
   })
 
-  it('uses shared panel spacing tokens for header and workspace wrappers', () => {
-    expect(appPageHeaderSource).toContain('padding: var(--panel-padding);')
-    expect(appPageHeaderSource).toContain('border-radius: var(--workspace-panel-radius);')
-    expect(appWorkspacePanelSource).toContain('padding: var(--panel-padding);')
-    expect(appWorkspacePanelSource).toContain('border-radius: var(--workspace-panel-radius);')
+  it('uses flat workspace chrome instead of panelized header wrappers', () => {
+    expect(appPageHeaderSource).toContain('border-b border-border pb-3')
+    expect(appPageHeaderSource).not.toContain('padding: var(--panel-padding);')
+    expect(appWorkspacePanelSource).toContain('gap: 16px;')
+    expect(appWorkspacePanelSource).not.toContain('border-radius: var(--workspace-panel-radius);')
   })
 })

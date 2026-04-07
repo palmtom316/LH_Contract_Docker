@@ -32,7 +32,7 @@
           >
             <div style="display: flex; flex-direction: column; gap: 2px; line-height: 1.4;">
               <span>{{ buildUpstreamOptionLabel(item) }}</span>
-              <span style="font-size: 12px; color: #8492a6;">{{ buildUpstreamOptionMeta(item) }}</span>
+              <span class="contract-option-meta">{{ buildUpstreamOptionMeta(item) }}</span>
             </div>
           </el-option>
         </el-select>
@@ -62,7 +62,6 @@
       <AppEmptyState
         v-if="!loading && !list.length"
         title="暂无零星用工记录"
-        description="调整筛选条件后重试，或新建一条用工记录。"
       />
       <div v-else class="labor-card-list">
         <article v-for="row in list" :key="row.id" class="labor-card">
@@ -152,7 +151,7 @@
                     :icon="Document" 
                     @click="viewFile(row.dispatch_file_path)"
                 >查看</el-button>
-                <span v-else class="text-gray">-</span>
+                <span v-else class="cell-placeholder">-</span>
             </template>
         </el-table-column>
 
@@ -174,7 +173,7 @@
                     :icon="Document" 
                     @click="viewFile(row.approval_pdf_path)"
                 >查看</el-button>
-                <span v-else class="text-gray">-</span>
+                <span v-else class="cell-placeholder">-</span>
             </template>
         </el-table-column>
 
@@ -243,17 +242,17 @@
             </el-row>
 
             <!-- Approval Status (Read Only) -->
-            <div v-if="form.approval_status && form.approval_status !== 'DRAFT'" class="dialog-banner">
+            <div v-if="form.approval_status && form.approval_status !== 'DRAFT'" class="approval-strip">
                 <el-row :gutter="20">
                     <el-col :span="12">
-                        <el-form-item label="审批状态" class="dialog-banner__item">
+                        <el-form-item label="审批状态" class="approval-strip__item">
                              <el-tag :type="getApprovalStatusType(form.approval_status)">
                                 {{ formatApprovalStatus(form.approval_status) }}
                             </el-tag>
                         </el-form-item>
                     </el-col>
                     <el-col :span="12">
-                        <el-form-item label="审批单" class="dialog-banner__item">
+                        <el-form-item label="审批单" class="approval-strip__item">
                              <el-button 
                                 v-if="form.approval_pdf_path" 
                                 link 
@@ -275,9 +274,6 @@
                         <span v-else>可选</span>
                     </template>
                 </el-input>
-                <div class="dialog-helper-text">
-                    用于关联飞书审批流程。若为空，则无法通过Webhook自动同步审批状态。
-                </div>
             </el-form-item>
 
             <div v-if="form.attribution === 'PROJECT'" class="dialog-subsection">
@@ -433,7 +429,7 @@
                     >
                         <el-button type="primary" :icon="Upload">上传派工单</el-button>
                          <template #tip>
-                          <div class="el-upload__tip">支持 PDF 文件，只能上传一个</div>
+                          <div class="el-upload__tip">仅支持一个 PDF</div>
                         </template>
                     </el-upload>
                 </el-col>
@@ -1065,22 +1061,25 @@ onMounted(() => {
   gap: 8px;
 }
 
-.dialog-banner {
+.contract-option-meta,
+.cell-placeholder {
+  color: var(--text-muted);
+}
+
+.contract-option-meta {
+  font-size: 12px;
+}
+
+.approval-strip {
   margin-bottom: 18px;
   padding: 12px;
   border-radius: 12px;
-  background: color-mix(in srgb, var(--surface-panel) 78%, var(--status-success) 22%);
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-panel-muted) 76%, var(--surface-panel) 24%);
 }
 
-.dialog-banner__item {
+.approval-strip__item {
   margin-bottom: 0;
-}
-
-.dialog-helper-text {
-  margin-top: 4px;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--text-muted);
 }
 
 .dialog-subsection {
@@ -1131,10 +1130,6 @@ onMounted(() => {
 
 .action-item {
   display: inline-flex;
-}
-
-.text-gray {
-  color: var(--text-muted);
 }
 
 @media (max-width: 767px) {

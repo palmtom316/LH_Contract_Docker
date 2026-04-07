@@ -119,7 +119,7 @@ defineExpose({
 }
 
 .no-file-text {
-  color: #c0c4cc;
+  color: var(--text-muted);
   font-size: 14px;
 }
 </style>

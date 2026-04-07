@@ -144,9 +144,10 @@ const handleBack = () => {
 .error-message {
   font-family: 'Consolas', 'Monaco', monospace;
   font-size: 12px;
-  background-color: #f5f5f5;
+  background-color: color-mix(in srgb, var(--surface-panel-muted) 82%, var(--surface-panel) 18%);
   padding: 12px;
   border-radius: 4px;
+  color: var(--text-primary);
   overflow-x: auto;
   white-space: pre-wrap;
   word-break: break-all;

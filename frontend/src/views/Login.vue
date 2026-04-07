@@ -2,30 +2,13 @@
   <div class="login-shell">
     <div class="login-shell__panel">
       <section class="login-shell__brand">
-        <p class="login-shell__eyebrow">财务与合同业务工作台</p>
         <h1 class="login-shell__title">蓝海合同管理系统</h1>
-        <p class="login-shell__subtitle">稳定、安全、适合日常高频录入与审核</p>
-
-        <div class="login-shell__highlights">
-          <article class="login-shell__highlight">
-            <span class="login-shell__highlight-label">Workspace</span>
-            <strong>合同、费用、报表统一入口</strong>
-          </article>
-          <article class="login-shell__highlight">
-            <span class="login-shell__highlight-label">Control</span>
-            <strong>延续统一工作台的克制面板语言</strong>
-          </article>
-          <article class="login-shell__highlight">
-            <span class="login-shell__highlight-label">Access</span>
-            <strong>登录后直接进入完整业务工作台</strong>
-          </article>
-        </div>
+        <p class="login-shell__subtitle">登录到企业工作台</p>
       </section>
 
       <section class="login-shell__form">
         <div class="login-shell__form-copy">
-          <p>Sign in</p>
-          <h2>使用账号密码继续</h2>
+          <h2>账号登录</h2>
         </div>
 
         <el-form
@@ -124,151 +107,104 @@ const handleLogin = async () => {
   place-items: center;
   padding: 24px;
   background:
-    radial-gradient(circle at top left, var(--brand-primary-soft), transparent 34%),
-    radial-gradient(circle at bottom right, color-mix(in srgb, var(--brand-accent) 12%, transparent), transparent 32%),
-    linear-gradient(180deg, var(--surface-panel-muted) 0%, var(--surface-page) 100%);
+    linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background)) 100%);
 }
 
 .login-shell__panel {
-  width: min(960px, 100%);
+  width: min(920px, 100%);
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
-  gap: 20px;
-  padding: 20px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.82);
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
+  border: 1px solid hsl(var(--border));
+  border-radius: 18px;
+  background: hsl(var(--card));
   box-shadow: var(--shadow-frame);
-  backdrop-filter: blur(18px);
+  overflow: hidden;
 }
 
 .login-shell__brand,
 .login-shell__form {
-  border: 1px solid var(--border-subtle);
-  border-radius: 24px;
-  background: color-mix(in srgb, var(--surface-panel) 92%, transparent);
+  min-width: 0;
 }
 
 .login-shell__brand {
   display: grid;
-  align-content: space-between;
-  gap: 28px;
-  padding: 32px;
+  align-content: end;
+  gap: 12px;
+  padding: 36px;
+  border-right: 1px solid hsl(var(--border));
   background:
-    radial-gradient(circle at top left, color-mix(in srgb, var(--brand-primary) 12%, transparent), transparent 38%),
-    linear-gradient(180deg, color-mix(in srgb, var(--surface-panel) 96%, transparent), color-mix(in srgb, var(--surface-panel-muted) 72%, var(--surface-panel) 28%));
-}
-
-.login-shell__eyebrow {
-  margin: 0;
-  color: var(--brand-primary);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+    linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--muted) / 0.48) 100%);
 }
 
 .login-shell__title {
-  margin: 0 0 10px;
-  font-size: clamp(32px, 4vw, 42px);
-  line-height: 1.06;
-  color: var(--text-primary);
+  margin: 0;
+  font-size: clamp(28px, 3.5vw, 40px);
+  line-height: 1.02;
+  color: hsl(var(--foreground));
   font-weight: 700;
   letter-spacing: -0.03em;
 }
 
 .login-shell__subtitle {
   margin: 0;
-  max-width: 34ch;
-  font-size: 14px;
-  line-height: 1.7;
-  color: var(--text-secondary);
-}
-
-.login-shell__highlights {
-  display: grid;
-  gap: 12px;
-}
-
-.login-shell__highlight {
-  display: grid;
-  gap: 6px;
-  padding: 16px 18px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--surface-panel) 88%, transparent);
-}
-
-.login-shell__highlight-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.login-shell__highlight strong {
   font-size: 14px;
   line-height: 1.6;
-  color: var(--text-primary);
+  color: hsl(var(--muted-foreground));
 }
 
 .login-shell__form {
   display: grid;
   align-content: center;
-  gap: 24px;
-  padding: 32px;
-}
-
-.login-shell__form-copy p {
-  margin: 0 0 8px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-muted);
+  gap: 20px;
+  padding: 36px;
 }
 
 .login-shell__form-copy h2 {
   margin: 0;
-  font-size: 24px;
+  font-size: 20px;
   line-height: 1.2;
-  color: var(--text-primary);
+  color: hsl(var(--foreground));
 }
 
 .login-form :deep(.el-form-item__label) {
-  color: var(--text-secondary);
+  color: hsl(var(--muted-foreground));
   font-weight: 600;
 }
 
 .login-form :deep(.el-input__wrapper) {
-  min-height: 46px;
-  border-radius: 12px;
-  box-shadow: 0 0 0 1px var(--border-subtle) inset;
-  background: var(--surface-panel);
+  min-height: 36px;
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px hsl(var(--border)) inset;
+  background: hsl(var(--background));
 }
 
 .login-form :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px var(--brand-primary) inset, var(--shadow-focus);
+  box-shadow: 0 0 0 1px hsl(var(--ring)) inset, var(--shadow-focus);
 }
 
 .login-form .login-button {
   width: 100%;
-  min-height: 46px;
-  background-color: var(--text-primary);
-  border-color: var(--text-primary);
+  min-height: 36px;
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.08em;
 }
 
 .login-form .login-button:hover {
-  background-color: var(--brand-primary-strong);
-  border-color: var(--brand-primary-strong);
+  background-color: hsl(var(--primary) / 0.92);
+  border-color: hsl(var(--primary) / 0.92);
 }
 
 @media (max-width: 900px) {
   .login-shell__panel {
     grid-template-columns: 1fr;
+  }
+
+  .login-shell__brand {
+    border-right: 0;
+    border-bottom: 1px solid hsl(var(--border));
+    align-content: start;
   }
 }
 
@@ -277,15 +213,9 @@ const handleLogin = async () => {
     padding: 16px;
   }
 
-  .login-shell__panel {
-    padding: 14px;
-    border-radius: 24px;
-  }
-
   .login-shell__brand,
   .login-shell__form {
     padding: 24px 20px;
-    border-radius: 20px;
   }
 
   .login-shell__title {

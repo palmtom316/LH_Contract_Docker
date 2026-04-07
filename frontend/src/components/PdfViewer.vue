@@ -49,7 +49,7 @@ const download = () => {
   .toolbar {
     margin-bottom: 10px;
     z-index: 10;
-    background: #fff;
+    background: var(--surface-panel);
     padding: 10px;
     position: sticky;
     top: 0;
@@ -84,7 +84,7 @@ const download = () => {
     min-height: 75vh;
     border: 1px solid var(--border-subtle);
     border-radius: 12px;
-    background: #fff;
+    background: var(--surface-panel);
   }
 }
 </style>

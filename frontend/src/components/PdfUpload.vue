@@ -230,8 +230,8 @@ defineExpose({
     align-items: center;
     gap: 8px;
     padding: 8px 12px;
-    background: #f0f9ff;
-    border: 1px solid #b3d8ff;
+    background: color-mix(in srgb, var(--surface-panel-muted) 72%, var(--surface-panel) 28%);
+    border: 1px solid var(--border-subtle);
     border-radius: 4px;
     
     .el-button {
@@ -242,7 +242,7 @@ defineExpose({
   .upload-component {
     :deep(.el-upload__tip) {
       margin-top: 6px;
-      color: #909399;
+      color: var(--text-muted);
       font-size: 12px;
     }
   }

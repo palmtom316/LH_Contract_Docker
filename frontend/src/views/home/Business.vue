@@ -190,6 +190,9 @@ import {
 } from "@element-plus/icons-vue";
 import AppFilterBar from "@/components/ui/AppFilterBar.vue";
 
+const getThemeColor = (name, fallback = "") =>
+  getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+
 // State
 const loading = ref(false);
 const currentYear = ref(new Date().getFullYear().toString());
@@ -530,7 +533,7 @@ const initUpstreamPie = (data) => {
         avoidLabelOverlap: false,
         itemStyle: {
           borderRadius: 5,
-          borderColor: "#fff",
+          borderColor: getThemeColor("--surface-panel"),
           borderWidth: 2,
         },
         label: {
@@ -578,7 +581,7 @@ const initUpstreamCompanyPie = (data) => {
         avoidLabelOverlap: false,
         itemStyle: {
           borderRadius: 5,
-          borderColor: "#fff",
+          borderColor: getThemeColor("--surface-panel"),
           borderWidth: 2,
         },
         label: {
@@ -755,10 +758,10 @@ onBeforeUnmount(() => {
   background: var(--brand-primary);
 }
 
-.metric-card--primary::before { background: #2563eb; }
-.metric-card--success::before { background: #0f9f74; }
-.metric-card--danger::before { background: #dc6a5f; }
-.metric-card--warning::before { background: #c58b22; }
+.metric-card--primary::before { background: var(--brand-primary); }
+.metric-card--success::before { background: var(--status-success); }
+.metric-card--danger::before { background: var(--status-danger); }
+.metric-card--warning::before { background: var(--status-warning); }
 
 .metric-card__top {
   display: flex;
@@ -869,11 +872,11 @@ onBeforeUnmount(() => {
 }
 
 .arap-panel__value--primary {
-  color: #2563eb;
+  color: var(--brand-primary);
 }
 
 .arap-panel__value--warning {
-  color: #b7791f;
+  color: var(--status-warning);
 }
 
 .arap-panel__stats {

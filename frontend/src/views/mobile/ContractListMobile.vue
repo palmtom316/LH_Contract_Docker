@@ -3,7 +3,6 @@
     <div class="mobile-contract-list__controls">
       <section class="mobile-contract-list__toolbar">
         <div class="mobile-contract-list__picker">
-          <span class="mobile-contract-list__eyebrow">合同类型</span>
           <van-dropdown-menu>
             <van-dropdown-item v-model="contractType" :options="contractTypeOptions" @change="handleTypeChange" />
           </van-dropdown-menu>
@@ -90,7 +89,7 @@
 
           <van-empty
             v-if="!listLoading && list.length === 0"
-            description="暂无合同数据"
+            description="暂无记录"
           />
         </van-list>
       </van-pull-refresh>
@@ -341,14 +340,6 @@ onMounted(() => {
   flex: 1;
   display: grid;
   gap: 6px;
-}
-
-.mobile-contract-list__eyebrow {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-muted);
 }
 
 .mobile-contract-list__actions {

@@ -2,10 +2,7 @@
   <div class="notification-center-shell">
     <AppPageHeader
       class="notification-center-header"
-      eyebrow="Inbox"
       title="系统通知"
-      description="集中查看合同到期、审计事件和系统提醒。"
-      :meta="`${filteredNotifications.length} 条可见`"
     />
 
     <AppWorkspacePanel panel-class="notification-center-panel">
@@ -16,7 +13,7 @@
       <el-skeleton v-if="loading" :rows="4" animated />
       <el-empty
         v-else-if="loadError"
-        description="通知加载失败，请稍后重试。"
+        description="通知加载失败"
       >
         <el-button type="primary" @click="loadNotifications">重试</el-button>
       </el-empty>
@@ -29,7 +26,7 @@
           <div class="notification-item__meta">{{ item.subtitle }}</div>
         </article>
       </div>
-      <el-empty v-else description="当前没有新的系统提醒。" />
+      <el-empty v-else description="暂无通知" />
     </AppWorkspacePanel>
   </div>
 </template>
@@ -84,14 +81,10 @@ onMounted(async () => {
 .notification-center-shell {
   display: grid;
   gap: var(--space-5);
-  padding: var(--space-5);
 }
 
 .notification-center-panel {
   gap: 18px;
-  background:
-    radial-gradient(circle at top right, color-mix(in srgb, var(--brand-primary) 10%, transparent) 0, transparent 36%),
-    linear-gradient(180deg, var(--surface-panel), color-mix(in srgb, var(--surface-panel) 88%, var(--surface-panel-muted) 12%));
 }
 
 .notification-center-header {
@@ -112,9 +105,14 @@ onMounted(async () => {
   display: grid;
   gap: 8px;
   border: 1px solid var(--border-subtle);
-  border-radius: 16px;
-  padding: 16px 18px;
-  background: color-mix(in srgb, var(--surface-panel) 94%, var(--brand-primary) 6%);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--surface-panel);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.notification-item:hover {
+  background: color-mix(in srgb, var(--surface-panel-muted) 72%, var(--surface-panel) 28%);
 }
 
 .notification-item__top {
@@ -143,7 +141,6 @@ onMounted(async () => {
 @media (max-width: 768px) {
   .notification-center-shell {
     gap: var(--space-4);
-    padding: var(--space-4);
   }
 
   .notification-item__top {

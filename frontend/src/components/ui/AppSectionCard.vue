@@ -1,45 +1,35 @@
 <template>
-  <el-card class="app-section-card" shadow="never">
-    <template v-if="$slots.header || $slots.actions" #header>
-      <div class="app-section-card__header">
-        <div class="app-section-card__title">
-          <slot name="header" />
-        </div>
-        <div v-if="$slots.actions" class="app-section-card__actions">
-          <slot name="actions" />
-        </div>
+  <section class="app-section-card rounded-xl border border-border bg-card shadow-sm">
+    <div v-if="$slots.header || $slots.actions" class="app-section-card__header">
+      <div class="app-section-card__title">
+        <slot name="header" />
       </div>
-    </template>
+      <div v-if="$slots.actions" class="app-section-card__actions">
+        <slot name="actions" />
+      </div>
+    </div>
     <slot />
-  </el-card>
+  </section>
 </template>
 
 <style scoped lang="scss">
 .app-section-card {
-  border-radius: var(--workspace-card-radius);
-  border: 1px solid var(--workspace-panel-border);
-  background: var(--workspace-panel-background);
-  box-shadow: none;
-}
-
-.app-section-card:deep(.el-card__header) {
-  padding: 20px 20px 0;
-}
-
-.app-section-card:deep(.el-card__body) {
-  padding: 18px 20px 20px;
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  min-width: 0;
 }
 
 .app-section-card__header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
 }
 
 .app-section-card__title {
   min-width: 0;
-  color: var(--text-primary);
+  color: hsl(var(--foreground));
   font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -56,14 +46,7 @@
 @media (max-width: 768px) {
   .app-section-card__header {
     flex-direction: column;
-  }
-
-  .app-section-card:deep(.el-card__header) {
-    padding: 18px 18px 0;
-  }
-
-  .app-section-card:deep(.el-card__body) {
-    padding: 18px;
+    align-items: stretch;
   }
 
   .app-section-card__actions {

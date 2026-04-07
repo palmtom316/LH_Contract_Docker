@@ -337,7 +337,8 @@ function normalizePickerRange(start, end) {
   min-height: 100%;
   padding-inline: 2px;
   border-radius: 10px;
-  box-shadow: none;
+  border: 0 !important;
+  box-shadow: none !important;
   background: transparent;
 }
 

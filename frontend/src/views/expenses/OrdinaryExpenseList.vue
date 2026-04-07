@@ -68,7 +68,6 @@
       <AppEmptyState
         v-if="!loading && !expenseList.length"
         title="暂无费用记录"
-        description="调整筛选条件后重试，或直接新增记录。"
       />
       <div v-else class="mobile-list-container">
       <el-card v-for="item in expenseList" :key="item.id" class="mobile-card" shadow="sm">
@@ -94,7 +93,7 @@
             <span class="value contract-link">{{ item.upstream_contract.contract_name }}</span>
           </div>
           <div class="mobile-card-row">
-            <span class="label">说明:</span>
+            <span class="label">备注:</span>
             <div class="value description">{{ item.description || '-' }}</div>
           </div>
         </div>
@@ -172,7 +171,7 @@
               icon="Document"
               @click="viewExpenseFile(scope.row.file_path)"
             >查看</el-button>
-            <span v-else class="text-gray">-</span>
+            <span v-else class="cell-placeholder">-</span>
           </template>
         </el-table-column>
 
@@ -182,7 +181,7 @@
             <el-tag v-if="scope.row.approval_status && scope.row.approval_status !== 'DRAFT'" :type="getApprovalStatusType(scope.row.approval_status)">
               {{ formatApprovalStatus(scope.row.approval_status) }}
             </el-tag>
-            <span v-else class="text-gray">-</span>
+            <span v-else class="cell-placeholder">-</span>
           </template>
         </el-table-column>
         <el-table-column label="审批单" width="80" align="center">
@@ -195,7 +194,7 @@
               icon="Document"
               @click="viewExpenseFile(scope.row.approval_pdf_path)"
             >查看</el-button>
-            <span v-else class="text-gray">-</span>
+            <span v-else class="cell-placeholder">-</span>
           </template>
         </el-table-column>
 
@@ -242,12 +241,7 @@
         <el-row :gutter="20">
           <el-col :xs="24" :sm="12">
              <el-form-item label="费用编号" prop="expense_code">
-              <el-input v-model="form.expense_code" placeholder="留空则自动生成 (F-年-月-序号)">
-                <template #suffix>
-                  <el-tooltip content="留空将自动生成编号，格式：F-2025-12-001" placement="top">
-                    <el-icon class="text-gray"><QuestionFilled /></el-icon>
-                  </el-tooltip>
-                </template>
+             <el-input v-model="form.expense_code" placeholder="留空则自动生成 (F-年-月-序号)">
               </el-input>
             </el-form-item>
           </el-col>
@@ -336,7 +330,7 @@
           >
             <el-button type="primary">点击上传</el-button>
             <template #tip>
-              <div class="el-upload__tip">只能上传 PDF 文件</div>
+              <div class="el-upload__tip">仅支持 PDF</div>
             </template>
           </el-upload>
         </el-form-item>
@@ -360,7 +354,7 @@
               >
                 <el-icon class="el-icon--left"><Document /></el-icon> 查看审批单
               </el-button>
-              <span v-else class="text-gray">无电子审批单</span>
+              <span v-else class="cell-placeholder">无电子审批单</span>
             </el-form-item>
           </el-col>
         </el-row>
@@ -385,7 +379,7 @@ import { getContracts, getContract } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
 import { getFileUrl, formatMoney } from '@/utils/common'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, Download, Document, Edit, Delete, QuestionFilled, More } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Download, Document, Edit, Delete, More } from '@element-plus/icons-vue'
 import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import AppFilterBar from '@/components/ui/AppFilterBar.vue'
 import AppDataTable from '@/components/ui/AppDataTable.vue'
@@ -888,7 +882,7 @@ onUnmounted(() => {
   display: inline-flex;
 }
 
-.text-gray {
+.cell-placeholder {
   color: var(--text-muted);
 }
 

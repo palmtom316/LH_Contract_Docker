@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+    darkMode: 'class',
     content: [
         "./index.html",
         "./src/**/*.{vue,js,ts,jsx,tsx}",
@@ -11,30 +12,52 @@ export default {
     theme: {
         extend: {
             colors: {
-                // LH Contract Brand Colors
+                border: 'hsl(var(--border) / <alpha-value>)',
+                input: 'hsl(var(--input) / <alpha-value>)',
+                ring: 'hsl(var(--ring) / <alpha-value>)',
+                background: 'hsl(var(--background) / <alpha-value>)',
+                foreground: 'hsl(var(--foreground) / <alpha-value>)',
                 primary: {
-                    50: '#e6f7ff',
-                    100: '#bae7ff',
-                    200: '#91d5ff',
-                    300: '#69c0ff',
-                    400: '#40a9ff',
-                    500: '#1890ff', // Main primary color
-                    600: '#096dd9',
-                    700: '#0050b3',
-                    800: '#003a8c',
-                    900: '#002766',
+                    DEFAULT: 'hsl(var(--primary) / <alpha-value>)',
+                    foreground: 'hsl(var(--primary-foreground) / <alpha-value>)',
                 },
-                success: '#52c41a',
-                warning: '#faad14',
-                danger: '#ff4d4f',
-                info: '#1890ff',
+                secondary: {
+                    DEFAULT: 'hsl(var(--secondary) / <alpha-value>)',
+                    foreground: 'hsl(var(--secondary-foreground) / <alpha-value>)',
+                },
+                destructive: {
+                    DEFAULT: 'hsl(var(--destructive) / <alpha-value>)',
+                    foreground: 'hsl(var(--destructive-foreground) / <alpha-value>)',
+                },
+                muted: {
+                    DEFAULT: 'hsl(var(--muted) / <alpha-value>)',
+                    foreground: 'hsl(var(--muted-foreground) / <alpha-value>)',
+                },
+                accent: {
+                    DEFAULT: 'hsl(var(--accent) / <alpha-value>)',
+                    foreground: 'hsl(var(--accent-foreground) / <alpha-value>)',
+                },
+                card: {
+                    DEFAULT: 'hsl(var(--card) / <alpha-value>)',
+                    foreground: 'hsl(var(--card-foreground) / <alpha-value>)',
+                },
+                popover: {
+                    DEFAULT: 'hsl(var(--popover) / <alpha-value>)',
+                    foreground: 'hsl(var(--popover-foreground) / <alpha-value>)',
+                },
             },
             fontFamily: {
-                sans: ['Inter', 'PingFang SC', 'Microsoft YaHei', 'sans-serif'],
+                sans: ['"Noto Sans SC"', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif'],
             },
             spacing: {
                 'safe-bottom': 'env(safe-area-inset-bottom)',
                 'safe-top': 'env(safe-area-inset-top)',
+            },
+            borderRadius: {
+                xl: 'calc(var(--radius) + 2px)',
+                lg: 'var(--radius)',
+                md: 'calc(var(--radius) - 2px)',
+                sm: 'calc(var(--radius) - 4px)',
             },
             screens: {
                 'xs': '375px',

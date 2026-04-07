@@ -2,14 +2,12 @@
   <div class="upstream-page-shell">
     <AppPageHeader
       class="upstream-page-header"
-      eyebrow="Contracts"
       title="上游合同"
-      description="浏览、筛选、导出和维护上游合同数据。"
     />
 
     <AppWorkspacePanel panel-class="upstream-page-tabs">
       <div class="contract-surface">
-        <el-tabs v-model="activeTab" class="contract-tabs contract-tabs--dashboard app-tabs--line" @tab-change="handleTabChange">
+        <el-tabs v-model="activeTab" class="contract-tabs app-tabs--line" @tab-change="handleTabChange">
       <!-- Tab 1: Contract Management -->
       <el-tab-pane label="合同管理" name="management">
         <!-- Search Bar -->
@@ -94,25 +92,25 @@
             <el-table-column prop="total_receivable" label="应收" width="140" align="right">
               <template #default="scope">
                 <span v-if="scope.row.total_receivable" style="white-space: nowrap;">¥ {{ formatMoney(scope.row.total_receivable) }}</span>
-                <span v-else class="text-gray">-</span>
+                <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
             <el-table-column prop="total_invoiced" label="挂账" width="140" align="right">
               <template #default="scope">
                 <span v-if="scope.row.total_invoiced" style="white-space: nowrap;">¥ {{ formatMoney(scope.row.total_invoiced) }}</span>
-                <span v-else class="text-gray">-</span>
+                <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
             <el-table-column prop="total_received" label="回款" width="140" align="right">
               <template #default="scope">
                 <span v-if="scope.row.total_received" style="white-space: nowrap;">¥ {{ formatMoney(scope.row.total_received) }}</span>
-                <span v-else class="text-gray">-</span>
+                <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
             <el-table-column prop="total_settlement" label="结算" width="140" align="right">
               <template #default="scope">
                 <span v-if="scope.row.total_settlement" style="white-space: nowrap;">¥ {{ formatMoney(scope.row.total_settlement) }}</span>
-                <span v-else class="text-gray">-</span>
+                <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
             <el-table-column prop="sign_date" label="签约日期" width="100" align="center" />
@@ -132,7 +130,7 @@
                   icon="Document"
                   @click="openPdfInNewTab(scope.row.contract_file_path)"
                 />
-                <span v-else class="text-gray">-</span>
+                <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
             <el-table-column label="操作" width="140" fixed="right">
@@ -165,7 +163,6 @@
           <AppEmptyState
             v-if="!loading && !contractList.length"
             title="暂无上游合同"
-            description="调整筛选条件后重试。"
           />
           <div v-else class="card-list">
           <el-card v-for="item in contractList" :key="item.id" class="contract-card" shadow="hover">
@@ -273,7 +270,7 @@
              <el-table-column prop="total_settlement" label="结算金额" width="140" align="right">
               <template #default="scope">
                 <span v-if="scope.row.total_settlement">¥ {{ formatMoney(scope.row.total_settlement) }}</span>
-                <span v-else class="text-gray">-</span>
+                <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
             <el-table-column prop="sign_date" label="签约时间" width="120" align="center" />
@@ -283,28 +280,28 @@
             <el-table-column label="合同文件" width="120" align="center">
               <template #default="scope">
                  <el-button v-if="scope.row.contract_file_path" link type="primary" icon="Document" @click="openPdfInNewTab(scope.row.contract_file_path)">查看</el-button>
-                 <span v-else class="text-gray">-</span>
+                 <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
             
             <el-table-column label="开工报告" width="120" align="center">
               <template #default="scope">
                  <el-button v-if="scope.row.start_report_path" link type="primary" icon="Document" @click="openPdfInNewTab(scope.row.start_report_path)">查看</el-button>
-                 <span v-else class="text-gray">-</span>
+                 <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
             
             <el-table-column label="竣工报告" width="120" align="center">
               <template #default="scope">
                  <el-button v-if="scope.row.completion_report_path" link type="primary" icon="Document" @click="openPdfInNewTab(scope.row.completion_report_path)">查看</el-button>
-                 <span v-else class="text-gray">-</span>
+                 <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
             
              <el-table-column label="结算审核文件" width="140" align="center">
               <template #default="scope">
                  <el-button v-if="scope.row.audit_report_path" link type="primary" icon="Document" @click="openPdfInNewTab(scope.row.audit_report_path)">查看</el-button>
-                 <span v-else class="text-gray">-</span>
+                 <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
           </el-table>
@@ -328,7 +325,6 @@
           <AppEmptyState
             v-if="!loading && !contractList.length"
             title="暂无基础信息"
-            description="调整筛选条件后重试。"
           />
           <div v-else class="card-list">
             <el-card v-for="item in contractList" :key="`basic-${item.id}`" class="contract-card" shadow="hover">
@@ -424,11 +420,6 @@
           <el-col :span="12">
              <el-form-item label="合同编号" prop="contract_code">
               <el-input v-model="form.contract_code" placeholder="留空则自动生成 (S-年-月-序号)">
-                <template #suffix>
-                  <el-tooltip content="留空将自动生成编号，格式：S-2025-12-001" placement="top">
-                    <el-icon class="text-gray"><QuestionFilled /></el-icon>
-                  </el-tooltip>
-                </template>
               </el-input>
             </el-form-item>
           </el-col>
@@ -626,7 +617,7 @@ import { getFileUrl } from '@/utils/common'
 import { downloadExcel } from '@/utils/download'
 import { useContractList, useTableSummary, useMobileDetection } from '@/composables/useContractList'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowDown, QuestionFilled, Download, More, Search, Refresh, Upload, Plus } from '@element-plus/icons-vue'
+import { ArrowDown, Download, More, Search, Refresh, Upload, Plus } from '@element-plus/icons-vue'
 import DictSelect from '@/components/DictSelect.vue'
 import SmartDateInput from '@/components/SmartDateInput.vue'
 import { useUserStore } from '@/stores/user'
@@ -1063,45 +1054,13 @@ onBeforeUnmount(() => {
   gap: var(--workspace-shell-gap);
 }
 
-.upstream-page-tabs {
-  padding-top: 20px;
-}
-
 .contract-surface {
   display: grid;
   gap: var(--space-5);
 }
 
 .contract-tabs :deep(.el-tabs__header) {
-  margin-bottom: 18px;
-}
-
-.contract-tabs--dashboard :deep(.el-tabs__nav-wrap) {
-  padding: 4px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 14px;
-  background: var(--workspace-panel-muted);
-}
-
-.contract-tabs--dashboard :deep(.el-tabs__nav) {
-  gap: 6px;
-}
-
-.contract-tabs--dashboard :deep(.el-tabs__item) {
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 10px;
-  color: var(--text-secondary);
-  font-weight: 600;
-}
-
-.contract-tabs--dashboard :deep(.el-tabs__item.is-active) {
-  color: var(--text-primary);
-  background: var(--surface-panel);
-}
-
-.contract-tabs--dashboard :deep(.el-tabs__active-bar) {
-  display: none;
+  margin-bottom: 16px;
 }
 
 .contract-surface :deep(.app-section-card) {
@@ -1277,7 +1236,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-.text-gray {
+.cell-placeholder {
   color: var(--text-muted);
 }
 </style>

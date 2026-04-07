@@ -2,9 +2,7 @@
 <div class="app-container detail-workspace">
     <div class="detail-workspace__hero">
       <AppPageHeader
-        eyebrow="Contracts"
         :title="detailTitle"
-        :description="detailDescription"
       >
         <template #actions>
           <el-tag v-if="contract.status" :type="getStatusType(contract.status)">{{ contract.status }}</el-tag>
@@ -24,7 +22,7 @@
           title="合同总额"
           :value="contract.contract_amount"
           icon="Document"
-          color="linear-gradient(135deg, #1890FF 0%, #36CFC9 100%)"
+          tone="info"
         />
       </el-col>
       <el-col :span="4" :xs="12">
@@ -32,7 +30,7 @@
           title="累计应收款"
           :value="totalReceivables"
           icon="Wallet"
-          color="linear-gradient(135deg, #FAAD14 0%, #FADB14 100%)"
+          tone="warning"
         />
       </el-col>
       <el-col :span="4" :xs="12">
@@ -40,7 +38,7 @@
           title="累计回款"
           :value="totalReceipts"
           icon="Money"
-          color="linear-gradient(135deg, #52C41A 0%, #95D475 100%)"
+          tone="success"
           :subInfo="`回款率: ${receiptPercentage}%`"
         />
       </el-col>
@@ -49,7 +47,7 @@
           title="累计开票"
           :value="totalInvoices"
           icon="Tickets"
-          color="linear-gradient(135deg, #722ED1 0%, #B37FEB 100%)"
+          tone="accent"
         />
       </el-col>
       <el-col :span="4" :xs="12">
@@ -57,7 +55,7 @@
           title="累计结算"
           :value="totalSettlements"
           icon="CircleCheck"
-          color="linear-gradient(135deg, #F5222D 0%, #FF7875 100%)"
+          tone="danger"
         />
       </el-col>
     </el-row>
@@ -93,7 +91,7 @@
             >
               <el-icon class="el-icon--left"><Document /></el-icon> 查看合同文件
             </el-link>
-            <span v-else style="color: #909399">未上传</span>
+            <span v-else class="detail-placeholder">未上传</span>
           </el-descriptions-item>
           <el-descriptions-item label="备注" :span="2">{{ contract.notes }}</el-descriptions-item>
           
@@ -102,7 +100,7 @@
             <el-tag v-if="contract.approval_status && contract.approval_status !== 'DRAFT'" :type="getApprovalStatusType(contract.approval_status)">
               {{ formatApprovalStatus(contract.approval_status) }}
             </el-tag>
-            <span v-else style="color: #909399">未审批</span>
+            <span v-else class="detail-placeholder">未审批</span>
           </el-descriptions-item>
           <el-descriptions-item label="审批文件">
             <el-button 
@@ -113,7 +111,7 @@
             >
               <el-icon class="el-icon--left"><Document /></el-icon> 查看审批单
             </el-button>
-            <span v-else style="color: #909399">无电子审批单</span>
+            <span v-else class="detail-placeholder">无电子审批单</span>
           </el-descriptions-item>
         </el-descriptions>
       </el-tab-pane>
@@ -179,7 +177,7 @@
               >
                 <el-icon class="el-icon--left"><Document /></el-icon> 查看文件
               </el-button>
-              <span v-else style="color: #909399">-</span>
+              <span v-else class="detail-placeholder">-</span>
             </template>
           </el-table-column>
           <el-table-column label="操作" width="120" align="center" fixed="right">
@@ -194,7 +192,7 @@
       <!-- 4. Receipts (Payment) -->
       <el-tab-pane label="回款" name="receipts">
           <div class="tab-actions">
-          <el-button v-if="userStore.canManagePayments" type="success" size="small" icon="Plus" @click="openFinanceDialog('receipt')">新增回款</el-button>
+          <el-button v-if="userStore.canManagePayments" type="primary" size="small" icon="Plus" @click="openFinanceDialog('receipt')">新增回款</el-button>
         </div>
         <el-table :data="receipts" border style="width: 100%" show-summary :summary-method="getReceiptsSummary">
           <el-table-column prop="receipt_date" label="到账日期" width="120" />
@@ -213,7 +211,7 @@
               >
                 <el-icon class="el-icon--left"><Document /></el-icon> 查看文件
               </el-button>
-              <span v-else style="color: #909399">-</span>
+              <span v-else class="detail-placeholder">-</span>
             </template>
           </el-table-column>
           <el-table-column label="操作" width="120" align="center" fixed="right">
@@ -228,7 +226,7 @@
       <!-- 5. Settlements -->
       <el-tab-pane label="结算" name="settlements">
           <div class="tab-actions">
-          <el-button v-if="userStore.canManageSettlements" type="warning" size="small" icon="Plus" @click="openFinanceDialog('settlement')">新增结算</el-button>
+          <el-button v-if="userStore.canManageSettlements" type="primary" size="small" icon="Plus" @click="openFinanceDialog('settlement')">新增结算</el-button>
         </div>
         <el-table :data="settlements" border style="width: 100%" show-summary :summary-method="getSettlementsSummary">
           <el-table-column prop="settlement_code" label="结算单号" width="150" />
@@ -244,7 +242,7 @@
               <el-button v-if="row.audit_report_path" link type="primary" @click="openFile(row.audit_report_path)">
                 <el-icon class="el-icon--left"><Document /></el-icon> 查看
               </el-button>
-              <span v-else style="color: #909399">-</span>
+              <span v-else class="detail-placeholder">-</span>
             </template>
           </el-table-column>
           <el-table-column label="开工报告" width="100" align="center">
@@ -252,7 +250,7 @@
               <el-button v-if="row.start_report_path" link type="primary" @click="openFile(row.start_report_path)">
                 <el-icon class="el-icon--left"><Document /></el-icon> 查看
               </el-button>
-              <span v-else style="color: #909399">-</span>
+              <span v-else class="detail-placeholder">-</span>
             </template>
           </el-table-column>
           <el-table-column label="竣工报告" width="100" align="center">
@@ -260,7 +258,7 @@
               <el-button v-if="row.completion_report_path" link type="primary" @click="openFile(row.completion_report_path)">
                 <el-icon class="el-icon--left"><Document /></el-icon> 查看
               </el-button>
-              <span v-else style="color: #909399">-</span>
+              <span v-else class="detail-placeholder">-</span>
             </template>
           </el-table-column>
           <el-table-column label="操作" width="120" align="center" fixed="right">
@@ -990,21 +988,7 @@ onBeforeUnmount(() => {
   margin: 0;
 
   :deep(.el-col) {
-    margin-bottom: 16px;
-  }
-
-  .amount-text {
-    font-size: 24px;
-    font-weight: bold;
-    color: #303133;
-    
-    &.success-text { color: #67c23a; }
-    &.info-text { color: #409eff; }
-  }
-  .percentage-inline {
-    font-size: 14px;
-    font-weight: normal;
-    color: #909399;
+    margin-bottom: 12px;
   }
 }
 
@@ -1020,6 +1004,10 @@ onBeforeUnmount(() => {
 
 :deep(.amount-input-right .el-input__inner) {
   text-align: right;
+}
+
+.detail-placeholder {
+  color: var(--text-muted);
 }
 
 @media (max-width: 768px) {

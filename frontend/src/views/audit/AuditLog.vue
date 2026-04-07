@@ -2,17 +2,10 @@
   <div class="audit-log-shell">
     <AppPageHeader
       class="audit-log-header"
-      eyebrow="Audit"
       title="审计日志"
-      description="筛选并查看关键操作记录，保留现有查询与详情能力。"
-      meta="Security"
     />
 
     <AppWorkspacePanel panel-class="audit-log-panel audit-log-panel--filters">
-      <div class="audit-log-panel__heading">
-        <h3>日志筛选</h3>
-        <p>按操作、资源类型、时间范围与关键词缩小日志范围。</p>
-      </div>
       <AppFilterBar inline-actions>
         <el-select v-model="queryParams.action" placeholder="操作类型" clearable>
           <el-option v-for="item in actionOptions" :key="item.value" :label="item.label" :value="item.value" />
@@ -35,15 +28,9 @@
     </AppWorkspacePanel>
 
     <AppWorkspacePanel panel-class="audit-log-panel audit-log-panel--records">
-      <div class="audit-log-panel__heading">
-        <h3>操作记录</h3>
-        <p>支持桌面表格与移动端卡片两种呈现方式。</p>
-      </div>
-
       <AppEmptyState
         v-if="!loading && !logList.length"
         title="暂无审计日志"
-        description="当前筛选条件下没有可展示的操作记录。"
       />
 
       <template v-else-if="isMobile">
@@ -131,7 +118,7 @@
                 >
                   详情
                 </el-button>
-                <span v-else class="text-gray">-</span>
+                <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
           </el-table>
@@ -346,25 +333,6 @@ onMounted(() => {
   gap: var(--space-4);
 }
 
-.audit-log-panel__heading {
-  display: grid;
-  gap: 4px;
-}
-
-.audit-log-panel__heading h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.audit-log-panel__heading p {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--text-secondary);
-}
-
 .audit-card-list {
   display: grid;
   gap: 12px;
@@ -418,7 +386,7 @@ onMounted(() => {
 }
 
 .audit-card__placeholder,
-.text-gray {
+.cell-placeholder {
   color: var(--text-muted);
 }
 

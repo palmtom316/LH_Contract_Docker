@@ -37,20 +37,21 @@ const displayName = computed(() => userStore.user.full_name || userStore.user.us
 
 .user-menu__trigger {
   width: 100%;
-  border: 0;
-  background: transparent;
-  padding: 0 2px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  padding: 8px 10px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
   gap: 10px;
   cursor: pointer;
-  min-height: 36px;
+  min-height: 44px;
+  border-radius: 12px;
 }
 
 .user-name {
   display: block;
-  color: var(--text-primary);
+  color: hsl(var(--foreground));
   font-size: 13px;
   line-height: 1.3;
   overflow: hidden;

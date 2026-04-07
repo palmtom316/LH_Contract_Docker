@@ -26,23 +26,20 @@ defineProps({
 <style scoped lang="scss">
 .app-filter-bar {
   position: relative;
-  padding: 16px;
-  border: 1px solid var(--workspace-panel-border);
-  border-radius: 16px;
-  background: var(--workspace-panel-muted);
-  box-shadow: none;
+  min-width: 0;
 }
 
 .app-filter-bar__content {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
 }
 
 .app-filter-bar__main {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
+  align-items: end;
   min-width: 0;
 }
 
@@ -74,18 +71,19 @@ defineProps({
 .app-filter-bar__main :deep(.el-input__wrapper),
 .app-filter-bar__main :deep(.el-select__wrapper),
 .app-filter-bar__main :deep(.app-range-field) {
-  min-height: var(--workspace-control-height);
+  min-height: 36px;
+  height: 36px;
   border-radius: var(--workspace-control-radius);
-  box-shadow: 0 0 0 1px var(--workspace-panel-border) inset;
-  background: var(--workspace-control-background);
+  border: 1px solid hsl(var(--input));
+  box-shadow: none;
+  background: hsl(var(--background));
 }
 
 .app-filter-bar__main :deep(.el-input__wrapper.is-focus),
 .app-filter-bar__main :deep(.el-select__wrapper.is-focused),
 .app-filter-bar__main :deep(.app-range-field:focus-within) {
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--brand-primary) 32%, var(--workspace-panel-border) 68%) inset,
-    var(--shadow-focus);
+  border-color: hsl(var(--ring));
+  box-shadow: var(--shadow-focus);
 }
 
 .app-filter-bar__main :deep(.filter-control--wide) {
@@ -103,7 +101,7 @@ defineProps({
 }
 
 .app-filter-bar__main :deep(.app-range-field) {
-  min-height: var(--workspace-control-height);
+  min-height: 36px;
 }
 
 .app-filter-bar__main :deep(.filter-control--search) {
@@ -112,8 +110,9 @@ defineProps({
 
 .app-filter-bar__main :deep(.filter-control--search .el-input__wrapper),
 .app-filter-bar__main :deep(.filter-control--search.el-input__wrapper) {
-  background: var(--workspace-control-background);
-  box-shadow: 0 0 0 1px var(--workspace-panel-border) inset;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--input));
+  box-shadow: none;
 }
 
 .app-filter-bar__main :deep(.filter-control--search .el-input__inner) {
@@ -124,7 +123,7 @@ defineProps({
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
   padding-top: 2px;
 }
@@ -141,20 +140,20 @@ defineProps({
 
 .app-filter-bar__actions :deep(.el-button) {
   min-width: 0;
-  height: var(--workspace-control-height);
+  height: 36px;
   padding-inline: 14px;
   border-radius: var(--workspace-control-radius);
-  border-color: var(--workspace-panel-border);
-  background: var(--workspace-control-background);
-  color: var(--text-secondary);
+  border-color: hsl(var(--border));
+  background: hsl(var(--card));
+  color: hsl(var(--muted-foreground));
   box-shadow: none;
   white-space: nowrap;
 }
 
 .app-filter-bar__actions :deep(.el-button--primary) {
-  background: var(--text-primary);
-  border-color: var(--text-primary);
-  color: var(--text-inverse);
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
 }
 
 @media (max-width: 1280px) {
@@ -200,11 +199,6 @@ defineProps({
 }
 
 @media (max-width: 640px) {
-  .app-filter-bar {
-    padding: 14px;
-    border-radius: 16px;
-  }
-
   .app-filter-bar__content,
   .app-filter-bar__main {
     gap: 10px;

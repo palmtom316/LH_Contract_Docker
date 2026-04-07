@@ -69,7 +69,6 @@
             class="sign-date-input"
           />
         </div>
-        <p class="sign-date-tip">签约时间范围支持输入如 2026/04/06、26.4.6、2026-4-6。</p>
         <div class="action-row">
           <el-button type="primary" size="large" @click="handleSearch" :loading="loading" class="search-btn">
             <el-icon><Search /></el-icon> 查询
@@ -80,26 +79,6 @@
         </div>
       </div>
 
-      <!-- Tip -->
-      <div class="tip-section" v-if="!results.length && !loading && !hasSearched">
-        <el-alert type="info" :closable="false">
-          <template #title>
-            <span class="tip-title">使用提示</span>
-          </template>
-          <p>您可以输入以下内容进行搜索：</p>
-          <ul>
-            <li>合同序号（如：1、2、10）</li>
-            <li>合同名称的任意部分（如：装修、建设）</li>
-            <li>合同编号的任意部分</li>
-            <li><strong>公司合同分类</strong>（如：劳务合同、材料合同）</li>
-            <li><strong>上游合同甲方单位</strong>（如：某某电力公司）</li>
-            <li><strong>下游/管理合同乙方单位</strong>（如：某某供应商）</li>
-            <li><strong>签约时间范围</strong>（开始/结束日期，支持 2026/04/06、26.4.6、2026-4-6）</li>
-          </ul>
-          <p>可同时输入多个条件进行组合查询。</p>
-        </el-alert>
-      </div>
-
       <!-- Loading -->
       <div class="loading-section" v-if="loading">
         <el-skeleton :rows="5" animated />
@@ -107,7 +86,7 @@
 
       <!-- No Results -->
       <div class="no-results" v-if="hasSearched && !loading && !hasAnyResults">
-        <el-empty description="未找到匹配的合同，请尝试其他关键词" />
+        <el-empty description="未找到匹配合同" />
       </div>
 
       <!-- Results Section -->
@@ -254,7 +233,7 @@
 
               <!-- Empty States -->
               <div class="section empty" v-if="!contract.downstream_contracts.length && !contract.management_contracts.length && !contract.expenses_by_category.length">
-                <el-empty description="该合同暂无关联的下游合同、管理合同或无合同费用" :image-size="80" />
+                <el-empty description="暂无关联数据" :image-size="80" />
               </div>
             </div>
           </el-collapse-item>
@@ -699,7 +678,7 @@ const sumExpenses = (expenses) => {
     border-radius: 10px;
 
     &.upstream-section {
-      background: #f2f6f9;
+      background: color-mix(in srgb, var(--surface-panel-muted) 72%, var(--surface-panel) 28%);
     }
 
     &.empty {
@@ -752,19 +731,19 @@ const sumExpenses = (expenses) => {
     }
     
     &.blue-card {
-      background: #edf4f8;
+      background: color-mix(in srgb, var(--brand-primary) 8%, var(--surface-panel) 92%);
     }
     
     &.orange-card {
-      background: #faf3e2;
+      background: color-mix(in srgb, var(--status-warning) 10%, var(--surface-panel) 90%);
     }
 
     &.purple-card {
-      background: #f1eef7;
+      background: color-mix(in srgb, var(--status-info) 10%, var(--surface-panel) 90%);
     }
     
     &.green-card {
-      background: #edf5f0;
+      background: color-mix(in srgb, var(--status-success) 10%, var(--surface-panel) 90%);
     }
   }
 }
@@ -778,16 +757,16 @@ const sumExpenses = (expenses) => {
   align-items: center;
   gap: 16px;
   padding: 8px 12px;
-  background: #fff;
+  background: var(--surface-panel);
   border-radius: 4px;
   font-size: 13px;
 
   .label {
-    color: #8c8c8c;
+    color: var(--text-muted);
   }
 
   .item {
-    color: #595959;
+    color: var(--text-secondary);
 
     strong {
       color: var(--brand-primary);
@@ -799,12 +778,12 @@ const sumExpenses = (expenses) => {
 .summary-section {
   margin-top: 20px;
   padding: 12px;
-  background: #fafafa;
+  background: color-mix(in srgb, var(--surface-panel-muted) 72%, var(--surface-panel) 28%);
   border-radius: 8px;
 
   .summary-title {
     font-weight: 600;
-    color: #262626;
+    color: var(--text-primary);
     margin-bottom: 10px;
   }
 
@@ -815,8 +794,8 @@ const sumExpenses = (expenses) => {
   }
 
   .summary-card {
-    background: #fff;
-    border: 1px solid #e8e8e8;
+    background: var(--surface-panel);
+    border: 1px solid var(--border-subtle);
     border-radius: 8px;
     padding: 12px;
   }
@@ -830,16 +809,16 @@ const sumExpenses = (expenses) => {
 
     .summary-label {
       font-weight: 600;
-      color: #262626;
+      color: var(--text-primary);
     }
 
     .summary-keyword {
-      color: #8c8c8c;
+      color: var(--text-muted);
       font-size: 12px;
     }
 
     .summary-count {
-      color: #595959;
+      color: var(--text-secondary);
       font-size: 12px;
     }
   }
@@ -851,14 +830,14 @@ const sumExpenses = (expenses) => {
   }
 
   .summary-metric {
-    background: #f5f5f5;
+    background: color-mix(in srgb, var(--surface-panel-muted) 70%, var(--surface-panel) 30%);
     border-radius: 6px;
     padding: 8px 10px;
 
     .metric-label {
       display: block;
       font-size: 12px;
-      color: #8c8c8c;
+      color: var(--text-muted);
     }
 
     .metric-value {
@@ -881,12 +860,12 @@ const sumExpenses = (expenses) => {
     justify-content: space-between;
     align-items: center;
     padding: 10px 12px;
-    background: #fff;
+    background: var(--surface-panel);
     border-radius: 6px;
     border-left: 3px solid var(--brand-primary);
 
     .category {
-      color: #595959;
+      color: var(--text-secondary);
       font-size: 13px;
     }
 
@@ -900,7 +879,7 @@ const sumExpenses = (expenses) => {
 .expense-total {
   text-align: right;
   padding: 8px 12px;
-  background: #fff;
+  background: var(--surface-panel);
   border-radius: 4px;
   font-size: 14px;
 

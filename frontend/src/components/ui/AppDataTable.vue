@@ -15,7 +15,8 @@
 <style scoped lang="scss">
 .app-data-table {
   display: grid;
-  gap: 14px;
+  gap: 12px;
+  min-width: 0;
 }
 
 .app-data-table__toolbar,
@@ -32,23 +33,23 @@
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  border-radius: 16px;
-  border: 1px solid var(--workspace-panel-border);
-  background: var(--workspace-panel-muted);
+  border-radius: 12px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
   box-shadow: none;
 }
 
 .app-data-table__scroll :deep(.el-table) {
   min-width: 100%;
-  --el-table-border-color: var(--workspace-panel-border);
-  --el-table-border: 1px solid var(--workspace-panel-border);
-  --el-table-header-bg-color: var(--workspace-table-header-background);
-  --el-table-row-hover-bg-color: color-mix(in srgb, var(--brand-primary-soft) 28%, var(--workspace-control-background) 72%);
+  --el-table-border-color: hsl(var(--border));
+  --el-table-border: 1px solid hsl(var(--border));
+  --el-table-header-bg-color: hsl(var(--muted));
+  --el-table-row-hover-bg-color: hsl(var(--muted) / 0.65);
 }
 
 .app-data-table__scroll :deep(.el-table th.el-table__cell) {
-  background: var(--workspace-table-header-background);
-  color: var(--text-muted);
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
   font-weight: 600;
 }
 

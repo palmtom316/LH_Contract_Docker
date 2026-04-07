@@ -220,13 +220,13 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-subtle);
   padding-bottom: 8px;
 }
 .username {
   font-weight: 600;
   font-size: 15px;
-  color: #303133;
+  color: var(--text-primary);
 }
 .card-body {
   font-size: 14px;
@@ -237,19 +237,19 @@
   line-height: 1.4;
 }
 .label {
-  color: #909399;
+  color: var(--text-muted);
   width: 70px;
   flex-shrink: 0;
 }
 .value {
-  color: #606266;
+  color: var(--text-secondary);
   flex: 1;
   word-break: break-all;
 }
 .card-footer {
   margin-top: 8px;
   text-align: right;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--border-subtle);
   padding-top: 8px;
 }
 .pc-view {

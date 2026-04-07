@@ -1,12 +1,6 @@
 <template>
   <div class="dashboard-shell">
-    <AppPageHeader
-      class="dashboard-page-header"
-      eyebrow="Workspace"
-      title="首页概览"
-      description="在统一工作台内查看年度指标、经营趋势与业务结构。"
-      meta="Dashboard"
-    />
+    <AppPageHeader class="dashboard-page-header" title="首页概览" />
 
     <AppWorkspacePanel panel-class="dashboard-tabs-panel">
       <el-tabs v-model="activeTab" class="home-tabs app-tabs--line">

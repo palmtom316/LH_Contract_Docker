@@ -131,7 +131,7 @@ describe('AppFilterBar', () => {
     expect(actionsRule['grid-row']).toBeUndefined()
   })
 
-  it('uses the dashboard workspace chrome for radius, padding, and grid spacing', () => {
+  it('uses a compact dense grid instead of a nested card wrapper', () => {
     const wrapper = mount(AppFilterBar, {
       props: { inlineActions: true },
       slots: {
@@ -143,21 +143,20 @@ describe('AppFilterBar', () => {
     expect(wrapper.find('.app-filter-bar').classes()).toContain('app-filter-bar')
 
     const shellRule = getSelectorDeclarations(compiledAppFilterBarStyles, '.app-filter-bar')
+    const contentRule = getSelectorDeclarations(compiledAppFilterBarStyles, '.app-filter-bar__content')
     const mainGrid = getSelectorDeclarations(compiledAppFilterBarStyles, '.app-filter-bar__main')
 
-    expect(shellRule.padding).toBe('16px')
-    expect(shellRule['border-radius']).toBe('16px')
-    expect(shellRule['box-shadow']).toBe('none')
-    expect(mainGrid.gap).toBe('10px')
+    expect(shellRule['min-width']).toBe('0')
+    expect(contentRule.gap).toBe('12px')
+    expect(mainGrid.gap).toBe('12px')
+    expect(mainGrid['align-items']).toBe('end')
   })
 
   it('uses theme-aware surface tokens instead of hardcoded light colors in shared chrome', () => {
-    expect(appFilterBarSource).toContain('background: var(--workspace-control-background);')
+    expect(appFilterBarSource).toContain('background: hsl(var(--background));')
     expect(appFilterBarSource).not.toContain('background: #fff;')
-    expect(appDataTableSource).toContain('--el-table-header-bg-color: var(--workspace-table-header-background);')
-    expect(appDataTableSource).toContain(
-      '--el-table-row-hover-bg-color: color-mix(in srgb, var(--brand-primary-soft) 28%, var(--workspace-control-background) 72%);'
-    )
+    expect(appDataTableSource).toContain('--el-table-header-bg-color: hsl(var(--muted));')
+    expect(appDataTableSource).toContain('--el-table-row-hover-bg-color: hsl(var(--muted) / 0.65);')
     expect(appDataTableSource).not.toContain('#f8fafc')
     expect(appDataTableSource).not.toContain('#ffffff')
   })

@@ -32,7 +32,7 @@
     <!-- Empty state -->
     <div v-if="!loading && items.length === 0" class="virtual-list-empty">
       <slot name="empty">
-        <el-empty description="暂无数据" />
+        <el-empty description="暂无记录" />
       </slot>
     </div>
   </div>
@@ -217,7 +217,7 @@ defineExpose({
   justify-content: center;
   padding: 20px;
   gap: 8px;
-  color: #909399;
+  color: var(--text-muted);
 }
 
 .virtual-list-loading .is-loading {

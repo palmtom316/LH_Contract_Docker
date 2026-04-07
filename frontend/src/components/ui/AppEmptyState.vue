@@ -1,5 +1,5 @@
 <template>
-  <section class="app-empty-state">
+  <section class="app-empty-state rounded-xl border border-dashed border-border bg-muted/40">
     <div class="app-empty-state__icon">
       <slot name="icon">+</slot>
     </div>
@@ -29,36 +29,33 @@ defineProps({
   display: grid;
   justify-items: center;
   gap: 12px;
-  padding: 32px 20px;
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-md);
-  background: var(--surface-panel-muted);
+  padding: 28px 20px;
   text-align: center;
 }
 
 .app-empty-state__icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   display: grid;
   place-items: center;
-  font-size: 22px;
-  color: var(--brand-primary);
-  background: var(--brand-primary-soft);
+  font-size: 18px;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.08);
 }
 
 .app-empty-state__title {
   margin: 0;
-  font-size: 18px;
-  color: var(--text-primary);
+  font-size: 16px;
+  color: hsl(var(--foreground));
 }
 
 .app-empty-state__description {
   margin: 0;
   max-width: 420px;
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
 }
 
 .app-empty-state__actions {

@@ -1,12 +1,6 @@
 <template>
   <div class="report-dashboard-shell">
-    <AppPageHeader
-      class="report-dashboard-header"
-      eyebrow="Reports"
-      title="报表统计"
-      description="查询月度成本报表与业务导出数据，在统一工作台内完成分析与导出。"
-      :meta="reportHeaderMeta"
-    />
+    <AppPageHeader class="report-dashboard-header" title="报表统计" />
 
     <div class="report-dashboard-panels">
     <AppWorkspacePanel panel-class="report-dashboard-panel report-dashboard-panel--cost">
@@ -62,7 +56,6 @@
           <AppEmptyState
             v-else-if="!costLoading"
             title="暂无月度成本数据"
-            description="调整统计月份后重试，或先执行“查询报表”。"
           />
         </el-tab-pane>
 
@@ -99,7 +92,6 @@
           <AppEmptyState
             v-else-if="!costLoading"
             title="暂无季度成本数据"
-            description="切换统计月份后重新查询。"
           />
         </el-tab-pane>
 
@@ -136,7 +128,6 @@
           <AppEmptyState
             v-else-if="!costLoading"
             title="暂无半年度成本数据"
-            description="请重新选择月份后查询。"
           />
         </el-tab-pane>
 
@@ -173,7 +164,6 @@
           <AppEmptyState
             v-else-if="!costLoading"
             title="暂无年度成本数据"
-            description="请重新选择月份后查询。"
           />
         </el-tab-pane>
       </el-tabs>
@@ -187,7 +177,6 @@
         <article v-for="card in exportCards" :key="card.title" class="report-export-card">
           <div class="report-export-card__header">
             <h3>{{ card.title }}</h3>
-            <p>{{ card.description }}</p>
           </div>
 
           <AppFilterBar class="report-export-card__filters" :class="`report-export-card__filters--${card.type}`">
@@ -227,8 +216,6 @@
               <el-button type="primary" plain :loading="card.loading.value" @click="card.action">导出</el-button>
             </template>
           </AppFilterBar>
-
-          <p class="report-export-card__footnote">{{ card.footnote }}</p>
         </article>
       </div>
     </AppSectionCard>

@@ -1,12 +1,13 @@
 
 <template>
-  <div class="app-container">
-    <el-tabs v-model="activeTab" class="demo-tabs app-tabs--line">
+  <div class="system-settings-page">
+    <AppPageHeader title="系统设置" />
+
+    <AppWorkspacePanel panel-class="system-settings-panel">
+    <el-tabs v-model="activeTab" class="system-settings-tabs app-tabs--line">
       <el-tab-pane label="系统配置" name="config">
-        <el-card>
-            <template #header>
-                <span>基础设置</span>
-            </template>
+        <AppSectionCard class="system-settings-card">
+            <template #header>基础设置</template>
             <el-form :model="configForm" label-width="120px">
                 <el-form-item label="系统名称(第一行)">
                     <el-input v-model="configForm.system_name" placeholder="例如：蓝海" />
@@ -26,35 +27,33 @@
                         <img v-if="configForm.system_logo" :src="configForm.system_logo" class="avatar" />
                         <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
                     </el-upload>
-                    <div class="el-upload__tip">建议使用 PNG 格式，点击图片替换</div>
                 </el-form-item>
                 <el-form-item>
                     <el-button type="primary" @click="saveConfig">保存配置</el-button>
                 </el-form-item>
             </el-form>
-        </el-card>
+        </AppSectionCard>
       </el-tab-pane>
 
       <el-tab-pane label="数据字典" name="dict">
-        <!-- Global actions for all categories -->
-        <div class="dict-global-actions" style="margin-bottom: 15px;">
-          <el-button type="success" :icon="Download" @click="handleExportDict">导出全部字典Excel</el-button>
+        <AppSectionCard class="system-settings-card">
+        <template #header>数据字典</template>
+        <template #actions>
+          <el-button type="primary" plain :icon="Download" @click="handleExportDict">导出</el-button>
           <el-upload
-            class="upload-demo"
-            style="display: inline-block; margin-left: 10px;"
+            class="upload-inline"
             action="#"
             :http-request="handleImportDict"
             :show-file-list="false"
             accept=".xlsx,.xls"
           >
-            <el-button type="warning" :icon="Upload">导入Excel</el-button>
+            <el-button :icon="Upload">导入</el-button>
           </el-upload>
-          <span style="margin-left: 20px; color: #999; font-size: 12px;">导入导出包含所有分类的数据字典</span>
-        </div>
+        </template>
         
-        <el-container style="height: 550px; border: 1px solid #eee">
-            <el-aside width="220px" style="background-color: #fcfcfc">
-                <el-menu :default-active="activeCategory" @select="handleSelectCategory">
+        <div class="dict-layout">
+            <aside class="dict-layout__aside">
+                <el-menu :default-active="activeCategory" class="dict-menu" @select="handleSelectCategory">
                     <el-menu-item index="contract_category">上游合同类别</el-menu-item>
                     <el-menu-item index="project_category">上游合同公司分类</el-menu-item>
                     <el-menu-item index="pricing_mode">上游合同计价模式</el-menu-item>
@@ -66,14 +65,14 @@
                     <el-menu-item index="payment_category">下游及管理合同应付款类别</el-menu-item>
                     <el-menu-item index="expense_type">无合同费用类别</el-menu-item>
                 </el-menu>
-            </el-aside>
-            <el-main>
-                <div class="filter-container">
+            </aside>
+            <div class="dict-layout__main">
+                <div class="dict-toolbar">
                     <el-button type="primary" :icon="Plus" @click="handleCreateOption">新增选项</el-button>
-                    <span style="margin-left:20px; color:#999">当前分类: {{ categoryLabels[activeCategory] }}</span>
+                    <span class="dict-current-category">{{ categoryLabels[activeCategory] }}</span>
                 </div>
                 
-                <el-table :data="currentOptions" v-loading="loading" border style="width: 100%; margin-top: 10px;">
+                <el-table :data="currentOptions" v-loading="loading" border class="dict-table">
                     <el-table-column prop="label" label="显示名称" />
                     <el-table-column prop="value" label="存值" />
                     <el-table-column prop="sort_order" label="排序" width="80" />
@@ -84,10 +83,12 @@
                         </template>
                     </el-table-column>
                 </el-table>
-            </el-main>
-        </el-container>
+            </div>
+        </div>
+        </AppSectionCard>
       </el-tab-pane>
     </el-tabs>
+    </AppWorkspacePanel>
 
     <!-- Option Dialog -->
     <el-dialog v-model="dialogVisible" :title="dialogType==='create'?'新增选项':'编辑选项'">
@@ -97,7 +98,6 @@
             </el-form-item>
             <el-form-item label="存储值">
                  <el-input v-model="optionForm.value" :disabled="dialogType==='edit' && false" />
-                 <div style="font-size:12px;color:#999">建议与显示名称一致</div>
             </el-form-item>
             <el-form-item label="排序">
                 <el-input-number v-model="optionForm.sort_order" :min="0" />
@@ -117,6 +117,9 @@ import { useSystemStore } from '@/stores/system'
 import { Plus, Download, Upload } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
+import AppPageHeader from '@/components/ui/AppPageHeader.vue'
+import AppSectionCard from '@/components/ui/AppSectionCard.vue'
+import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 
 const activeTab = ref('config')
 const systemStore = useSystemStore()
@@ -279,9 +282,100 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.system-settings-page {
+  display: grid;
+  gap: var(--workspace-shell-gap);
+}
+
+.system-settings-panel {
+  gap: 0;
+}
+
+.system-settings-card {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.system-settings-card :deep(.el-card__header) {
+  padding: 0 0 16px;
+}
+
+.system-settings-card :deep(.el-card__body) {
+  padding: 0;
+}
+
+.system-settings-tabs :deep(.el-tabs__header) {
+  margin-bottom: 20px;
+}
+
+.upload-inline {
+  display: inline-flex;
+}
+
+.dict-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  min-height: 560px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--surface-panel);
+}
+
+.dict-layout__aside {
+  border-right: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-panel-muted) 70%, var(--surface-panel) 30%);
+}
+
+.dict-layout__main {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 16px;
+  min-width: 0;
+}
+
+.dict-menu {
+  border-right: 0;
+  background: transparent;
+}
+
+.dict-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dict-current-category {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.dict-table {
+  width: 100%;
+}
+
+.dict-table :deep(.el-table__cell) {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
 .avatar-uploader .avatar {
   width: 178px;
   height: 178px;
   display: block;
+}
+
+@media (max-width: 900px) {
+  .dict-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .dict-layout__aside {
+    border-right: 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
 }
 </style>

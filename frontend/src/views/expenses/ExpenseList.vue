@@ -1,11 +1,6 @@
 <template>
   <div class="expense-page-shell">
-    <AppPageHeader
-      class="expense-page-header"
-      eyebrow="Expenses"
-      title="费用管理"
-      description="查看普通费用报销与零星用工记录，保留原有筛选、导出和维护能力。"
-    />
+    <AppPageHeader class="expense-page-header" title="费用管理" />
 
     <AppWorkspacePanel panel-class="expense-page-panel">
       <el-tabs v-model="activeTab" class="app-tabs--line expense-page-tabs">
@@ -37,38 +32,14 @@ const activeTab = ref('valuable')
 }
 
 .expense-page-panel {
-  padding-top: 20px;
+  padding-top: 4px;
 }
 
 .expense-page-tabs :deep(.el-tabs__header) {
-  margin-bottom: 20px;
-}
-
-.expense-page-tabs :deep(.el-tabs__nav-wrap) {
-  padding: 4px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 14px;
-  background: var(--workspace-panel-muted);
+  margin-bottom: 16px;
 }
 
 .expense-page-tabs :deep(.el-tab-pane) {
   min-width: 0;
-}
-
-.expense-page-tabs :deep(.el-tabs__active-bar) {
-  display: none;
-}
-
-.expense-page-tabs :deep(.el-tabs__item) {
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 10px;
-  color: var(--text-secondary);
-  font-weight: 600;
-}
-
-.expense-page-tabs :deep(.el-tabs__item.is-active) {
-  color: var(--text-primary);
-  background: var(--surface-panel);
 }
 </style>

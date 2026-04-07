@@ -1,12 +1,6 @@
 <template>
   <div class="system-management-shell">
-    <AppPageHeader
-      class="system-management-header"
-      eyebrow="System"
-      title="系统管理"
-      description="管理用户、配置与运维操作，延续统一工作台的面板结构。"
-      meta="Admin"
-    />
+    <AppPageHeader class="system-management-header" title="系统管理" />
 
     <AppWorkspacePanel panel-class="system-management-panel">
     <AppSectionCard>
@@ -21,21 +15,6 @@
         </el-tab-pane>
 
         <el-tab-pane label="系统运维" name="operations">
-          <div class="operation-summary">
-            <article class="operation-summary__item">
-              <span class="operation-summary__label">系统备份</span>
-              <strong>整站配置与数据</strong>
-            </article>
-            <article class="operation-summary__item">
-              <span class="operation-summary__label">数据库运维</span>
-              <strong>本地备份与恢复</strong>
-            </article>
-            <article class="operation-summary__item operation-summary__item--warning">
-              <span class="operation-summary__label">高风险操作</span>
-              <strong>重置与日志清理</strong>
-            </article>
-          </div>
-
           <section class="operation-grid">
             <AppSectionCard class="operation-panel">
               <template #header>
@@ -44,7 +23,6 @@
                   <span>系统备份</span>
                 </div>
               </template>
-              <p class="operation-panel__description">备份系统配置和业务数据到本地文件，适用于迁移前与重大变更前存档。</p>
               <el-button type="primary" :loading="backupLoading" @click="handleSystemBackup">立即备份</el-button>
             </AppSectionCard>
 
@@ -55,7 +33,6 @@
                   <span>系统恢复</span>
                 </div>
               </template>
-              <p class="operation-panel__description">从历史备份恢复系统配置和数据，恢复后会跳转回登录页面。</p>
               <el-upload
                 action="#"
                 :auto-upload="false"
@@ -75,7 +52,6 @@
                   <span>数据库备份</span>
                 </div>
               </template>
-              <p class="operation-panel__description">导出数据库快照，用于审计留档、版本切换和故障回滚前保护。</p>
               <el-button type="primary" :loading="dbBackupLoading" @click="handleDbBackup">导出数据库</el-button>
             </AppSectionCard>
 
@@ -86,7 +62,6 @@
                   <span>数据库恢复</span>
                 </div>
               </template>
-              <p class="operation-panel__description">从 SQL 或 dump 文件恢复数据库，请确保当前数据已完成备份。</p>
               <el-upload
                 action="#"
                 :auto-upload="false"
@@ -106,13 +81,6 @@
                   <span>系统重置</span>
                 </div>
               </template>
-              <el-alert
-                title="重置后将清空业务数据，仅保留管理员账户。"
-                type="error"
-                :closable="false"
-                show-icon
-              />
-              <p class="operation-panel__description">该操作不可恢复，只应在测试环境初始化或严格审批后执行。</p>
               <el-button type="danger" :loading="resetLoading" @click="handleSystemReset">重置系统</el-button>
             </AppSectionCard>
 
@@ -123,7 +91,6 @@
                   <span>审计日志清理</span>
                 </div>
               </template>
-              <p class="operation-panel__description">删除指定日期之前的审计日志，适合做归档后清理。</p>
               <div class="operation-panel__field">
                 <el-date-picker
                   v-model="auditDeleteDate"
@@ -337,33 +304,6 @@ const handleAuditDelete = async () => {
   gap: var(--space-4);
 }
 
-.operation-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 20px;
-}
-
-.operation-summary__item {
-  display: grid;
-  gap: 6px;
-  padding: 18px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--surface-panel-muted);
-}
-
-.operation-summary__item--warning {
-  background: color-mix(in srgb, var(--surface-panel) 72%, var(--status-warning) 28%);
-}
-
-.operation-summary__label {
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
 .operation-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -394,12 +334,6 @@ const handleAuditDelete = async () => {
   font-weight: 700;
 }
 
-.operation-panel__description {
-  margin: 0;
-  color: var(--text-secondary);
-  line-height: 1.7;
-}
-
 .operation-panel__field {
   display: grid;
   gap: 12px;
@@ -416,7 +350,6 @@ const handleAuditDelete = async () => {
 }
 
 @media (max-width: 900px) {
-  .operation-summary,
   .operation-grid {
     grid-template-columns: 1fr;
   }

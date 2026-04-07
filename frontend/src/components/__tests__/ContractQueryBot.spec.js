@@ -77,7 +77,7 @@ describe('ContractQueryBot', () => {
     expect(wrapper.html()).not.toContain('el-date-picker')
   })
 
-  it('ignores an empty AppRangeField payload as a date filter and reiterates guidance text', async () => {
+  it('ignores an empty AppRangeField payload without applying a date filter', async () => {
     const wrapper = createWrapper()
 
     await wrapper.find('.bot-button').trigger('click')
@@ -92,11 +92,6 @@ describe('ContractQueryBot', () => {
     expect(warningSpy).toHaveBeenCalledWith('请至少输入一个搜索条件')
     expect(wrapper.vm.signDateRange).toEqual(['', ''])
     expect(searchContracts).not.toHaveBeenCalled()
-
-    const tipSection = wrapper.find('.tip-section')
-    const tipText = tipSection.text()
-    expect(tipText).toContain('签约时间范围')
-    expect(tipText).toContain('26.4.6')
 
     warningSpy.mockRestore()
   })

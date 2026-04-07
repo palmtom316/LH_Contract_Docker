@@ -275,9 +275,9 @@ describe('upstream workspace shell structure', () => {
     const wrapper = mountPage()
 
     expect(wrapper.find('.upstream-page-shell').exists()).toBe(true)
-    expect(wrapper.find('.upstream-page-header').exists()).toBe(true)
+    expect(wrapper.find('.upstream-page-header').exists()).toBe(false)
     expect(wrapper.find('.contract-page-shell').exists()).toBe(false)
     expect(wrapper.find('.upstream-page-tabs').exists()).toBe(true)
-    expect(wrapper.find('.contract-tabs--dashboard').exists()).toBe(true)
+    expect(wrapper.find('.contract-tabs').exists()).toBe(true)
   })
 })

@@ -2,9 +2,7 @@
   <div class="downstream-page-shell">
     <AppPageHeader
       class="downstream-page-header"
-      eyebrow="Contracts"
       title="下游合同"
-      description="浏览、筛选、导出和维护下游合同数据。"
     />
 
     <AppWorkspacePanel panel-class="downstream-page-panel downstream-page-panel--filters">
@@ -31,7 +29,7 @@
           >
             <div style="display: flex; flex-direction: column; gap: 2px; line-height: 1.4;">
               <span>{{ buildUpstreamOptionLabel(item) }}</span>
-              <span style="font-size: 12px; color: #8492a6;">{{ buildUpstreamOptionMeta(item) }}</span>
+              <span class="contract-option-meta">{{ buildUpstreamOptionMeta(item) }}</span>
             </div>
           </el-option>
         </el-select>
@@ -98,25 +96,25 @@
         <el-table-column prop="total_payable" label="应付款" width="140" align="right">
           <template #default="scope">
             <span v-if="scope.row.total_payable" style="white-space: nowrap;">¥ {{ Number(scope.row.total_payable).toLocaleString() }}</span>
-            <span v-else class="text-gray">-</span>
+            <span v-else class="cell-placeholder">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="total_invoiced" label="挂账" width="140" align="right">
           <template #default="scope">
             <span v-if="scope.row.total_invoiced" style="white-space: nowrap;">¥ {{ Number(scope.row.total_invoiced).toLocaleString() }}</span>
-            <span v-else class="text-gray">-</span>
+            <span v-else class="cell-placeholder">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="total_paid" label="已付款" width="140" align="right">
           <template #default="scope">
             <span v-if="scope.row.total_paid" style="white-space: nowrap;">¥ {{ Number(scope.row.total_paid).toLocaleString() }}</span>
-            <span v-else class="text-gray">-</span>
+            <span v-else class="cell-placeholder">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="total_settlement" label="结算" width="140" align="right">
           <template #default="scope">
             <span v-if="scope.row.total_settlement" style="white-space: nowrap;">¥ {{ Number(scope.row.total_settlement).toLocaleString() }}</span>
-            <span v-else class="text-gray">-</span>
+            <span v-else class="cell-placeholder">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="sign_date" label="签订日期" width="100" sortable />
@@ -135,7 +133,7 @@
               icon="Document"
               @click="openPdfInNewTab(scope.row.contract_file_path)"
             >查看</el-button>
-            <span v-else class="text-gray">-</span>
+            <span v-else class="cell-placeholder">-</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="190" fixed="right">
@@ -168,7 +166,6 @@
       <AppEmptyState
         v-if="!loading && !contractList.length"
         title="暂无下游合同"
-        description="调整筛选条件后重试。"
       />
       <div v-else class="card-list">
       <el-card v-for="item in contractList" :key="item.id" class="contract-card" shadow="hover">
@@ -274,28 +271,25 @@
             >
               <div style="display: flex; flex-direction: column; gap: 2px; line-height: 1.4;">
                 <span>{{ buildUpstreamOptionLabel(item) }}</span>
-                <span style="font-size: 12px; color: #8492a6;">{{ buildUpstreamOptionMeta(item) }}</span>
+                <span class="contract-option-meta">{{ buildUpstreamOptionMeta(item) }}</span>
               </div>
             </el-option>
           </el-select>
         </el-form-item>
 
         <!-- Summary Banner -->
-        <div v-if="upstreamSummary" class="summary-banner">
-          <div class="banner-title"><el-icon><Connection /></el-icon> 已关联上游合同信息</div>
-          <div class="banner-grid">
-            <div class="item">
-              <span class="label">合同编号:</span>
-              <span class="value">{{ upstreamSummary.contract_code }}</span>
-            </div>
-            <div class="item">
-              <span class="label">甲方:</span>
-              <span class="value">{{ upstreamSummary.party_a_name }}</span>
-            </div>
-            <div class="item">
-              <span class="label">总金额:</span>
-              <span class="value">¥ {{ Number(upstreamSummary.contract_amount).toLocaleString() }}</span>
-            </div>
+        <div v-if="upstreamSummary" class="summary-strip">
+          <div class="summary-strip__item">
+            <span class="summary-strip__label">上游编号</span>
+            <span class="summary-strip__value">{{ upstreamSummary.contract_code }}</span>
+          </div>
+          <div class="summary-strip__item">
+            <span class="summary-strip__label">甲方</span>
+            <span class="summary-strip__value">{{ upstreamSummary.party_a_name }}</span>
+          </div>
+          <div class="summary-strip__item">
+            <span class="summary-strip__label">总金额</span>
+            <span class="summary-strip__value">¥ {{ Number(upstreamSummary.contract_amount).toLocaleString() }}</span>
           </div>
         </div>
 
@@ -303,11 +297,6 @@
           <el-col :span="12">
              <el-form-item label="合同编号" prop="contract_code">
               <el-input v-model="form.contract_code" placeholder="留空则自动生成 (X-年-月-序号)">
-                <template #suffix>
-                  <el-tooltip content="留空将自动生成编号，格式：X-2025-12-001" placement="top">
-                    <el-icon class="text-gray"><QuestionFilled /></el-icon>
-                  </el-tooltip>
-                </template>
               </el-input>
             </el-form-item>
           </el-col>
@@ -426,7 +415,7 @@ const openPdfInNewTab = (path) => {
   window.open(getFileUrl(path), '_blank')
 }
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Document, Refresh, Search, Plus, Download, QuestionFilled, More } from '@element-plus/icons-vue'
+import { Document, Refresh, Search, Plus, Download, More } from '@element-plus/icons-vue'
 import DictSelect from '@/components/DictSelect.vue'
 import SmartDateInput from '@/components/SmartDateInput.vue'
 import { useUserStore } from '@/stores/user'
@@ -823,35 +812,42 @@ onBeforeUnmount(() => {
   justify-content: flex-end;
 }
 
-/* Summary Banner */
-.summary-banner {
-  background-color: #f6ffed;
-  border: 1px solid #b7eb8f;
-  border-radius: 4px;
-  padding: 10px 15px;
+.contract-option-meta,
+.cell-placeholder {
+  color: var(--text-muted);
+}
+
+.contract-option-meta {
+  font-size: 12px;
+}
+
+.summary-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
   margin-bottom: 20px;
-  
-  .banner-title {
-    font-weight: bold;
-    color: #52c41a;
-    display: flex;
-    align-items: center;
-    margin-bottom: 8px;
-    
-    .el-icon { margin-right: 5px; }
-  }
-  
-  .banner-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    
-    .item {
-      font-size: 13px;
-      .label { color: #8c8c8c; margin-right: 5px; }
-      .value { color: #262626; font-weight: 500; }
-    }
-  }
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-panel-muted) 76%, var(--surface-panel) 24%);
+}
+
+.summary-strip__item {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.summary-strip__label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.summary-strip__value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  word-break: break-word;
 }
 
 /* Mobile Card View */
@@ -861,7 +857,7 @@ onBeforeUnmount(() => {
 
   .contract-card {
     border: 1px solid var(--border-subtle);
-    border-radius: 18px;
+    border-radius: 16px;
     background: var(--surface-panel);
     box-shadow: none;
     
@@ -901,7 +897,7 @@ onBeforeUnmount(() => {
           flex: 1;
           
           &.amount {
-            color: var(--brand-primary-strong);
+            color: var(--text-primary);
             font-weight: bold;
           }
         }
@@ -917,6 +913,12 @@ onBeforeUnmount(() => {
       gap: 8px;
       flex-wrap: wrap;
     }
+  }
+}
+
+@media (max-width: 900px) {
+  .summary-strip {
+    grid-template-columns: 1fr;
   }
 }
 </style>

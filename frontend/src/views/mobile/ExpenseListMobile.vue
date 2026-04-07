@@ -2,7 +2,6 @@
   <div class="mobile-expense-list">
     <div class="mobile-expense-list__controls">
       <section class="mobile-expense-list__toolbar">
-        <span class="mobile-expense-list__eyebrow">费用类型</span>
         <van-tabs v-model:active="activeType" @change="handleTypeChange">
           <van-tab title="普通费用" name="ordinary" />
           <van-tab title="零星用工" name="labor" />
@@ -84,7 +83,7 @@
 
           <van-empty
             v-if="!listLoading && list.length === 0"
-            description="暂无数据"
+            description="暂无记录"
           />
         </van-list>
       </van-pull-refresh>
@@ -259,16 +258,6 @@ onMounted(() => {
   padding: 14px 14px 6px;
 }
 
-.mobile-expense-list__eyebrow {
-  display: inline-flex;
-  margin-bottom: 8px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
 .mobile-expense-list__cards {
   padding: 12px;
 }
@@ -314,25 +303,25 @@ onMounted(() => {
 .amount {
   font-size: 16px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 4px;
 }
 
 .detail-row {
-    font-size: 13px;
-    color: #666;
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 4px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
 }
 
 .notes {
-    color: #999;
-    font-size: 12px;
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 .date {
   font-size: 12px;
-  color: #999;
+  color: var(--text-muted);
 }
 </style>

@@ -17,6 +17,8 @@ describe('ui store', () => {
     localStorage.clear()
     setActivePinia(createPinia())
     document.documentElement.removeAttribute('data-theme')
+    document.documentElement.classList.remove('dark')
+    document.documentElement.style.colorScheme = ''
   })
 
   afterEach(() => {
@@ -33,6 +35,7 @@ describe('ui store', () => {
     expect(store.theme).toBe('dark')
     expect(localStorage.getItem('lh-theme')).toBe('dark')
     expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
   })
 
   it('rehydrates persisted theme and applies it during initTheme', () => {
@@ -46,6 +49,7 @@ describe('ui store', () => {
     store.initTheme()
 
     expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
   })
 
   it('does not crash when browser globals are unavailable', () => {
@@ -91,14 +95,14 @@ describe('ui store', () => {
     const styles = readFileSync(stylesPath, 'utf8')
     const loginView = readFileSync(loginViewPath, 'utf8')
 
-    expect(styles).toContain('--el-color-primary: var(--brand-primary);')
-    expect(styles).toContain('--el-bg-color: var(--surface-panel);')
-    expect(styles).toContain('--el-text-color-primary: var(--text-primary);')
-    expect(styles).toContain('--el-border-color: var(--border-subtle);')
+    expect(styles).toContain('--el-color-primary: hsl(var(--primary));')
+    expect(styles).toContain('--el-bg-color: hsl(var(--card));')
+    expect(styles).toContain('--el-text-color-primary: hsl(var(--foreground));')
+    expect(styles).toContain('--el-border-color: hsl(var(--border));')
 
-    expect(loginView).toContain('var(--surface-page)')
-    expect(loginView).toContain('var(--surface-panel)')
-    expect(loginView).toContain('var(--surface-panel-muted)')
+    expect(loginView).toContain('hsl(var(--background))')
+    expect(loginView).toContain('hsl(var(--card))')
+    expect(loginView).toContain('hsl(var(--muted)')
   })
 
   it('renders metric title and value content', () => {
