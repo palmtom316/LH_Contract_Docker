@@ -15,7 +15,7 @@ import { getFileUrl, formatMoney, getStatusType } from '@/utils/common'
  * @param {string} options.exportPrefix - Prefix for export filename
  */
 export function useContractList(options) {
-    const { api, contractType = '合同', exportPrefix = '合同导出' } = options
+    const { api, contractType = '合同', exportPrefix = '合同导出', onDeleteError } = options
 
     // State
     const loading = ref(false)
@@ -83,12 +83,17 @@ export function useContractList(options) {
             )
             await api.deleteContract(row.id)
             ElMessage.success('删除成功')
-            getList()
+            await getList()
+            return true
         } catch (e) {
-            if (e !== 'cancel') {
+            if (e !== 'cancel' && e !== 'close') {
                 console.error('Delete failed:', e)
-                ElMessage.error('删除失败')
+                const handled = typeof onDeleteError === 'function' ? await onDeleteError(e, row) : false
+                if (!handled) {
+                    ElMessage.error('删除失败')
+                }
             }
+            return false
         }
     }
 

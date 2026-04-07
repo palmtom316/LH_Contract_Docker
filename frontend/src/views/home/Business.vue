@@ -26,42 +26,20 @@
     </AppFilterBar>
 
     <section class="metric-grid">
-      <article class="metric-card metric-card--primary">
-        <div class="metric-card__top">
-          <span class="metric-card__eyebrow">年度经营</span>
-          <div class="metric-card__icon"><el-icon><Document /></el-icon></div>
-        </div>
-        <div class="metric-card__title">上游签约</div>
-        <div class="metric-card__value">{{ annualUpstreamCount }} <small>单</small></div>
-        <div class="metric-card__meta">¥ {{ formatWan(annualUpstreamAmount) }} 万</div>
-      </article>
-      <article class="metric-card metric-card--success">
-        <div class="metric-card__top">
-          <span class="metric-card__eyebrow">年度经营</span>
-          <div class="metric-card__icon"><el-icon><Money /></el-icon></div>
-        </div>
-        <div class="metric-card__title">回款总额</div>
-        <div class="metric-card__value">¥ {{ formatWan(annualReceiptsAmount) }} <small>万</small></div>
-        <div class="metric-card__meta">实际到账金额</div>
-      </article>
-      <article class="metric-card metric-card--danger">
-        <div class="metric-card__top">
-          <span class="metric-card__eyebrow">年度经营</span>
-          <div class="metric-card__icon"><el-icon><Coin /></el-icon></div>
-        </div>
-        <div class="metric-card__title">付款总额</div>
-        <div class="metric-card__value">¥ {{ formatWan(annualPaymentsAmount) }} <small>万</small></div>
-        <div class="metric-card__meta">下游、管理及零星支出</div>
-      </article>
-      <article class="metric-card metric-card--warning">
-        <div class="metric-card__top">
-          <span class="metric-card__eyebrow">年度经营</span>
-          <div class="metric-card__icon"><el-icon><Wallet /></el-icon></div>
-        </div>
-        <div class="metric-card__title">下游及管理签约</div>
-        <div class="metric-card__value">{{ annualDownMgmtCount }} <small>单</small></div>
-        <div class="metric-card__meta">¥ {{ formatWan(annualDownMgmtAmount) }} 万</div>
-      </article>
+      <AppMetricCard
+        v-for="item in businessMetricCards"
+        :key="item.title"
+        :eyebrow="''"
+        :title="item.title"
+        :value="item.value"
+      >
+        <template #badge>
+          <span class="metric-badge" :class="`metric-badge--${item.tone}`">{{ item.badge }}</span>
+        </template>
+        <template #footer>
+          <span class="business-metric-card__meta">{{ item.meta }}</span>
+        </template>
+      </AppMetricCard>
     </section>
 
     <section class="dashboard-main-grid">
@@ -182,13 +160,8 @@ import {
   getArApStats,
 } from "@/api/reports";
 import { ElMessage } from "element-plus";
-import {
-  Document,
-  Money,
-  Wallet,
-  Coin,
-} from "@element-plus/icons-vue";
 import AppFilterBar from "@/components/ui/AppFilterBar.vue";
+import AppMetricCard from '@/components/ui/AppMetricCard.vue';
 
 const getThemeColor = (name, fallback = "") =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
@@ -219,6 +192,37 @@ const annualReceiptsAmount = ref(0);
 const annualPaymentsAmount = ref(0);
 const annualDownMgmtCount = ref(0);
 const annualDownMgmtAmount = ref(0);
+
+const businessMetricCards = computed(() => [
+  {
+    badge: "签约",
+    tone: "primary",
+    title: "上游签约",
+    value: `${annualUpstreamCount.value} 单`,
+    meta: `¥ ${formatWan(annualUpstreamAmount.value)} 万`,
+  },
+  {
+    badge: "收入",
+    tone: "success",
+    title: "回款总额",
+    value: `¥ ${formatWan(annualReceiptsAmount.value)} 万`,
+    meta: "实际到账金额",
+  },
+  {
+    badge: "支出",
+    tone: "danger",
+    title: "付款总额",
+    value: `¥ ${formatWan(annualPaymentsAmount.value)} 万`,
+    meta: "下游、管理及零星支出",
+  },
+  {
+    badge: "成本",
+    tone: "warning",
+    title: "下游及管理签约",
+    value: `${annualDownMgmtCount.value} 单`,
+    meta: `¥ ${formatWan(annualDownMgmtAmount.value)} 万`,
+  },
+]);
 
 // Chart Refs
 const trendChartRef = ref(null);
@@ -729,88 +733,53 @@ onBeforeUnmount(() => {
   gap: var(--space-4);
 }
 
-.metric-card {
-  position: relative;
-  display: grid;
-  gap: 12px;
-  min-width: 0;
-  min-height: 184px;
-  padding: 22px;
-  border: 1px solid var(--border-subtle);
+.metric-grid :deep(.app-metric-card) {
+  min-height: 208px;
   border-radius: 22px;
-  background:
-    linear-gradient(180deg, var(--surface-panel), color-mix(in srgb, var(--surface-panel) 88%, var(--surface-panel-muted) 12%));
-  box-shadow: var(--shadow-soft);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.metric-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-card);
-}
-
-.metric-card::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  border-radius: 22px 0 0 22px;
-  background: var(--brand-primary);
-}
-
-.metric-card--primary::before { background: var(--brand-primary); }
-.metric-card--success::before { background: var(--status-success); }
-.metric-card--danger::before { background: var(--status-danger); }
-.metric-card--warning::before { background: var(--status-warning); }
-
-.metric-card__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.metric-card__eyebrow {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-}
-
-.metric-card__icon {
+.metric-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--brand-primary) 10%, var(--surface-panel) 90%);
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.metric-badge--primary {
+  background: var(--brand-primary-soft);
   color: var(--brand-primary-strong);
 }
 
-.metric-card__title {
+.metric-badge--warning {
+  background: color-mix(in srgb, var(--status-warning) 14%, transparent);
+  color: var(--status-warning);
+}
+
+.metric-badge--success {
+  background: color-mix(in srgb, var(--status-success) 14%, transparent);
+  color: var(--status-success);
+}
+
+.metric-badge--danger {
+  background: color-mix(in srgb, var(--status-danger) 14%, transparent);
+  color: var(--status-danger);
+}
+
+.business-metric-card__meta {
   color: var(--text-secondary);
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
-.metric-card__value {
-  font-size: clamp(28px, 3vw, 38px);
-  line-height: 1.06;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.metric-card__value small,
 .arap-panel__value small {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-muted);
-}
-
-.metric-card__meta {
-  color: var(--text-secondary);
-  font-size: 13px;
 }
 
 .dashboard-main-grid {
@@ -1019,9 +988,8 @@ onBeforeUnmount(() => {
     grid-template-columns: 1fr;
   }
 
-  .metric-card {
+  .metric-grid :deep(.app-metric-card) {
     min-height: 156px;
-    padding: 18px;
   }
 
   .chart-surface--trend,

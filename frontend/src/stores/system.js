@@ -4,6 +4,36 @@ import request from '@/utils/request'
 import { ref } from 'vue'
 import { fetchNotifications as fetchNotificationsApi } from '@/api/notifications'
 
+const NOTIFICATION_READ_KEY = 'lh_notifications_read'
+const NOTIFICATION_DELETED_KEY = 'lh_notifications_deleted'
+const NOTIFICATION_LOCAL_KEY = 'lh_notifications_local'
+
+function readJsonStorage(key, fallback) {
+    try {
+        const raw = localStorage.getItem(key)
+        return raw ? JSON.parse(raw) : fallback
+    } catch {
+        return fallback
+    }
+}
+
+function writeJsonStorage(key, value) {
+    try {
+        localStorage.setItem(key, JSON.stringify(value))
+    } catch {
+        // Ignore storage failures and keep in-memory state.
+    }
+}
+
+function toEpoch(value) {
+    const timestamp = new Date(value || 0).getTime()
+    return Number.isNaN(timestamp) ? 0 : timestamp
+}
+
+function sortNotifications(items) {
+    return [...items].sort((a, b) => toEpoch(b.createdAt) - toEpoch(a.createdAt))
+}
+
 export const useSystemStore = defineStore('system', () => {
     // State
     const config = ref({
@@ -12,8 +42,36 @@ export const useSystemStore = defineStore('system', () => {
     })
 
     const dictionaries = ref({}) // key: category, value: Array of options
+    const remoteNotifications = ref([])
+    const localNotifications = ref(readJsonStorage(NOTIFICATION_LOCAL_KEY, []))
+    const readNotificationIds = ref(readJsonStorage(NOTIFICATION_READ_KEY, []))
+    const deletedNotificationIds = ref(readJsonStorage(NOTIFICATION_DELETED_KEY, []))
     const notifications = ref([])
     const notificationsError = ref('')
+
+    function rebuildNotifications() {
+        const deletedSet = new Set(deletedNotificationIds.value)
+        const readSet = new Set(readNotificationIds.value)
+        const merged = [...localNotifications.value, ...remoteNotifications.value]
+        const deduped = merged.filter((item, index) =>
+            index === merged.findIndex(candidate => candidate.id === item.id)
+        )
+
+        notifications.value = sortNotifications(
+            deduped
+                .filter(item => !deletedSet.has(item.id))
+                .map(item => ({
+                    ...item,
+                    unread: item.unread !== false && !readSet.has(item.id)
+                }))
+        )
+    }
+
+    function persistNotificationState() {
+        writeJsonStorage(NOTIFICATION_LOCAL_KEY, localNotifications.value)
+        writeJsonStorage(NOTIFICATION_READ_KEY, readNotificationIds.value)
+        writeJsonStorage(NOTIFICATION_DELETED_KEY, deletedNotificationIds.value)
+    }
 
     // Actions
     async function fetchConfig() {
@@ -92,20 +150,69 @@ export const useSystemStore = defineStore('system', () => {
     async function fetchNotifications() {
         notificationsError.value = ''
         try {
-            notifications.value = await fetchNotificationsApi()
+            remoteNotifications.value = await fetchNotificationsApi()
+            rebuildNotifications()
             return notifications.value
         } catch (error) {
-            notifications.value = []
             notificationsError.value = error?.message || '通知加载失败'
+            remoteNotifications.value = []
+            rebuildNotifications()
             throw error
         }
     }
+
+    function pushNotification(notification) {
+        const normalized = {
+            id: notification.id || `local-${Date.now()}`,
+            type: notification.type || 'general',
+            title: notification.title || '系统通知',
+            subtitle: notification.subtitle || '系统通知',
+            content: notification.content || '',
+            relatedGroups: notification.relatedGroups || [],
+            createdAt: notification.createdAt || new Date().toISOString(),
+            unread: notification.unread !== false
+        }
+
+        localNotifications.value = [
+            normalized,
+            ...localNotifications.value.filter(item => item.id !== normalized.id)
+        ]
+        deletedNotificationIds.value = deletedNotificationIds.value.filter(id => id !== normalized.id)
+        readNotificationIds.value = normalized.unread
+            ? readNotificationIds.value.filter(id => id !== normalized.id)
+            : Array.from(new Set([...readNotificationIds.value, normalized.id]))
+        persistNotificationState()
+        rebuildNotifications()
+        return normalized
+    }
+
+    function markNotificationRead(notificationId) {
+        if (!readNotificationIds.value.includes(notificationId)) {
+            readNotificationIds.value = [...readNotificationIds.value, notificationId]
+            persistNotificationState()
+            rebuildNotifications()
+        }
+    }
+
+    function removeNotification(notificationId) {
+        if (!deletedNotificationIds.value.includes(notificationId)) {
+            deletedNotificationIds.value = [...deletedNotificationIds.value, notificationId]
+        }
+        localNotifications.value = localNotifications.value.filter(item => item.id !== notificationId)
+        persistNotificationState()
+        rebuildNotifications()
+    }
+
+    rebuildNotifications()
 
     return {
         config,
         dictionaries,
         notifications,
         notificationsError,
+        pushNotification,
+        markNotificationRead,
+        removeNotification,
         fetchConfig,
         updateConfig,
         fetchOptions,

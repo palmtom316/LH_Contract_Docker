@@ -31,10 +31,11 @@ export function updateContract(id, data) {
     })
 }
 
-export function deleteContract(id) {
+export function deleteContract(id, config = {}) {
     return request({
         url: `/contracts/upstream/${id}`,
-        method: 'delete'
+        method: 'delete',
+        ...config
     })
 }
 
@@ -201,4 +202,3 @@ export function getNextSerialNumber() {
         method: 'get'
     })
 }
-

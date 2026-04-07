@@ -10,58 +10,36 @@
 
     <div class="shell-body">
       <aside class="sidebar" :class="{ collapsed: isCollapse }">
-        <div class="brand">
-          <img v-if="!isCollapse" :src="displayLogo" class="brand-logo" alt="logo" />
-          <el-icon v-else class="brand-icon"><Monitor /></el-icon>
+        <div class="brand" :class="{ 'brand--collapsed': isCollapse }">
+          <div class="brand-mark">
+            <img :src="displayLogo" class="brand-logo" alt="logo" />
+          </div>
           <div v-if="!isCollapse" class="brand-text">
             <span>{{ displayName }}</span>
-            <small>{{ displayNameLine2 }}</small>
+            <small>{{ displayNameLine2 || 'Contract Workspace' }}</small>
           </div>
         </div>
 
-        <el-menu
-          :default-active="activeMenu"
-          :collapse="isCollapse"
-          :collapse-transition="false"
-          class="sidebar-menu"
-          router
-        >
-          <el-menu-item v-if="userStore.canViewDashboard" index="/">
-            <el-icon><HomeFilled /></el-icon>
-            <template #title>首页概览</template>
-          </el-menu-item>
-          <el-menu-item v-if="userStore.canViewUpstreamContracts" index="/contracts/upstream">
-            <el-icon><Document /></el-icon>
-            <template #title>上游合同</template>
-          </el-menu-item>
-          <el-menu-item v-if="userStore.canViewDownstreamContracts" index="/contracts/downstream">
-            <el-icon><DocumentCopy /></el-icon>
-            <template #title>下游合同</template>
-          </el-menu-item>
-          <el-menu-item v-if="userStore.canViewManagementContracts" index="/contracts/management">
-            <el-icon><FolderChecked /></el-icon>
-            <template #title>管理合同</template>
-          </el-menu-item>
-          <el-menu-item v-if="userStore.canViewExpenses" index="/expenses">
-            <el-icon><Money /></el-icon>
-            <template #title>无合同费用</template>
-          </el-menu-item>
-          <el-menu-item v-if="userStore.canViewReports" index="/reports">
-            <el-icon><DataAnalysis /></el-icon>
-            <template #title>报表导出</template>
-          </el-menu-item>
-          <el-menu-item v-if="userStore.canManageUsers" index="/system">
-            <el-icon><Setting /></el-icon>
-            <template #title>系统管理</template>
-          </el-menu-item>
-          <el-menu-item v-if="userStore.isAdmin" index="/audit">
-            <el-icon><Document /></el-icon>
-            <template #title>审计日志</template>
-          </el-menu-item>
-        </el-menu>
+        <div class="sidebar-nav">
+          <button
+            v-for="item in visibleSidebarItems"
+            :key="item.index"
+            type="button"
+            class="sidebar-nav-item"
+            :class="{ 'is-active': isRouteActive(item.index) }"
+            :title="isCollapse ? item.label : ''"
+            :aria-label="item.label"
+            @click="navigateTo(item.index)"
+          >
+            <span class="sidebar-nav-item__icon">
+              <el-icon><component :is="item.icon" /></el-icon>
+            </span>
+            <span v-if="!isCollapse" class="sidebar-nav-item__label">{{ item.label }}</span>
+          </button>
+        </div>
 
-        <div v-if="!isCollapse" class="sidebar-footer">
-          <SidebarUserCard @change-password="openChangePasswordDialog" @logout="confirmLogout" />
+        <div class="sidebar-footer" :class="{ 'sidebar-footer--collapsed': isCollapse }">
+          <SidebarUserCard :compact="isCollapse" @change-password="openChangePasswordDialog" @logout="confirmLogout" />
           <small class="system-version">{{ systemVersion }}</small>
         </div>
       </aside>
@@ -70,7 +48,7 @@
         <main class="content" :class="{ collapsed: isCollapse }">
           <header class="topbar">
             <div class="topbar-left">
-              <button type="button" class="menu-btn" aria-label="切换侧边栏" @click="toggleSidebar">
+              <button type="button" class="menu-btn app-chrome-icon-button" aria-label="切换侧边栏" @click="toggleSidebar">
                 <el-icon>
                   <Fold v-if="!isCollapse" />
                   <Expand v-else />
@@ -133,7 +111,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { DataAnalysis, Document, DocumentCopy, Expand, Fold, FolderChecked, HomeFilled, Money, Monitor, Setting } from '@element-plus/icons-vue'
+import { DataAnalysis, Document, DocumentCopy, Expand, Fold, FolderChecked, HomeFilled, Money, Setting } from '@element-plus/icons-vue'
 import pkg from '../../package.json'
 import logoNew from '@/assets/logo_new.png'
 import request from '@/utils/request'
@@ -169,7 +147,6 @@ const unreadCount = computed(() => {
   const items = systemStore.notifications || []
   return items.filter(item => item.unread !== false).length
 })
-const activeMenu = computed(() => route.path)
 const displayLogo = computed(() => {
   if (systemStore.config.system_logo) {
     return systemStore.config.system_logo.startsWith('http')
@@ -180,6 +157,17 @@ const displayLogo = computed(() => {
 })
 const displayName = computed(() => systemStore.config.system_name || '蓝海合同管理')
 const displayNameLine2 = computed(() => systemStore.config.system_name_line_2 || '')
+
+const visibleSidebarItems = computed(() => [
+  userStore.canViewDashboard ? { index: '/', label: '首页概览', icon: HomeFilled } : null,
+  userStore.canViewUpstreamContracts ? { index: '/contracts/upstream', label: '上游合同', icon: Document } : null,
+  userStore.canViewDownstreamContracts ? { index: '/contracts/downstream', label: '下游合同', icon: DocumentCopy } : null,
+  userStore.canViewManagementContracts ? { index: '/contracts/management', label: '管理合同', icon: FolderChecked } : null,
+  userStore.canViewExpenses ? { index: '/expenses', label: '无合同费用', icon: Money } : null,
+  userStore.canViewReports ? { index: '/reports', label: '报表导出', icon: DataAnalysis } : null,
+  userStore.canManageUsers ? { index: '/system', label: '系统管理', icon: Setting } : null,
+  userStore.isAdmin ? { index: '/audit', label: '审计日志', icon: Document } : null
+].filter(Boolean))
 
 watch(isMobile, (mobile) => {
   isCollapse.value = mobile
@@ -205,6 +193,20 @@ function toggleSidebar() {
 
 function closeSidebar() {
   isCollapse.value = true
+}
+
+function isRouteActive(index) {
+  if (index === '/') return route.path === '/'
+  return route.path.startsWith(index)
+}
+
+function navigateTo(index) {
+  if (!isRouteActive(index)) {
+    router.push(index)
+  }
+  if (isMobile.value) {
+    closeSidebar()
+  }
 }
 
 function openChangePasswordDialog() {
@@ -294,8 +296,8 @@ onMounted(() => {
 
 .sidebar {
   width: var(--sidebar-width);
-  background: hsl(var(--card));
-  padding: 20px 14px 14px;
+  background: var(--surface-sidebar);
+  padding: 0 12px 12px;
   border-right: 1px solid hsl(var(--border));
   display: flex;
   flex-direction: column;
@@ -307,29 +309,41 @@ onMounted(() => {
 }
 
 .sidebar.collapsed {
-  width: 84px;
+  width: 88px;
 }
 
 .brand {
-  padding: 0 8px 18px;
-  min-height: 64px;
+  padding: 0 8px;
+  min-height: var(--shell-header-band-height, var(--header-height));
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   border-bottom: 1px solid hsl(var(--border));
-  margin-bottom: 14px;
+  margin-bottom: 12px;
+}
+
+.brand--collapsed {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.brand-mark {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  border: 1px solid hsl(var(--border));
+  background: var(--surface-panel-elevated);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .brand-logo {
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   object-fit: cover;
-  border-radius: 10px;
-}
-
-.brand-icon {
-  color: hsl(var(--foreground));
-  font-size: 18px;
+  border-radius: 8px;
 }
 
 .brand-text {
@@ -338,26 +352,78 @@ onMounted(() => {
   min-width: 0;
   color: hsl(var(--foreground));
   font-weight: 600;
+  gap: 2px;
 }
 
 .brand-text span {
   font-size: 15px;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
 }
 
 .brand-text small {
-  font-size: 12px;
+  font-size: 11px;
   color: hsl(var(--muted-foreground));
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
-.sidebar-menu {
-  border-right: 0;
-  background: transparent;
+.sidebar-nav {
   flex: 1;
-  padding: 0 6px;
+  display: grid;
+  gap: 1px;
+  align-content: start;
+  min-height: 0;
+}
+
+.sidebar-nav-item {
+  width: 100%;
+  min-height: 40px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.sidebar-nav-item:hover {
+  background: var(--surface-sidebar-hover);
+  color: hsl(var(--foreground));
+}
+
+.sidebar-nav-item.is-active {
+  background: var(--surface-sidebar-active);
+  color: hsl(var(--foreground));
+  box-shadow: inset 0 0 0 1px hsl(var(--border));
+}
+
+.sidebar-nav-item__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: transparent;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.sidebar-nav-item:hover .sidebar-nav-item__icon,
+.sidebar-nav-item.is-active .sidebar-nav-item__icon {
+  background: var(--surface-panel);
+}
+
+.sidebar-nav-item__label {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .sidebar-footer {
@@ -366,14 +432,20 @@ onMounted(() => {
   border-top: 1px solid hsl(var(--border));
   position: sticky;
   bottom: 0;
-  background: hsl(var(--card));
+  background: var(--surface-sidebar);
+  display: grid;
+  gap: 12px;
+}
+
+.sidebar-footer--collapsed {
+  justify-items: center;
 }
 
 .system-version {
   display: block;
-  margin-top: 8px;
   color: hsl(var(--muted-foreground));
   font-size: 11px;
+  text-align: center;
 }
 
 .workspace {
@@ -391,10 +463,10 @@ onMounted(() => {
 }
 
 .topbar {
-  min-height: var(--header-height, 60px);
+  min-height: var(--shell-header-band-height, var(--header-height));
   padding: 0 20px;
   border-bottom: 1px solid hsl(var(--border));
-  background: hsl(var(--background));
+  background: color-mix(in srgb, var(--surface-page) 88%, var(--surface-panel) 12%);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -408,13 +480,7 @@ onMounted(() => {
 }
 
 .menu-btn {
-  width: 36px;
-  height: 36px;
-  border: 1px solid hsl(var(--border));
-  border-radius: 10px;
-  background: hsl(var(--card));
-  color: hsl(var(--muted-foreground));
-  cursor: pointer;
+  flex-shrink: 0;
 }
 
 .topbar-copy {
@@ -437,32 +503,8 @@ onMounted(() => {
 
 .app-main__frame {
   min-height: 100%;
-  background: hsl(var(--background));
+  background: transparent;
   padding: 20px;
-}
-
-:deep(.el-menu) {
-  background: transparent !important;
-}
-
-:deep(.el-menu-item) {
-  color: hsl(var(--muted-foreground));
-  height: 40px;
-  margin: 2px 0;
-  border-radius: 10px;
-  font-weight: 600;
-  transition: background-color 160ms ease, color 160ms ease;
-}
-
-:deep(.el-menu-item:hover) {
-  background: hsl(var(--muted)) !important;
-  color: hsl(var(--foreground)) !important;
-}
-
-:deep(.el-menu-item.is-active) {
-  color: hsl(var(--foreground)) !important;
-  background: hsl(var(--accent)) !important;
-  box-shadow: inset 0 0 0 1px hsl(var(--border));
 }
 
 @media (max-width: 1100px) {
@@ -510,5 +552,18 @@ onMounted(() => {
   .app-main__frame {
     padding: 16px;
   }
+}
+
+.sidebar.collapsed .sidebar-nav-item {
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 14px;
+}
+
+.sidebar.collapsed .sidebar-nav-item__icon {
+  width: 36px;
+  height: 36px;
 }
 </style>

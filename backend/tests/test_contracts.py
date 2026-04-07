@@ -11,10 +11,13 @@ from sqlalchemy import select
 from app.models.contract_upstream import ContractUpstream, FinanceUpstreamReceivable
 from app.models.contract_management import ContractManagement
 from app.models.contract_downstream import ContractDownstream
+from app.models.expense import ExpenseNonContract
+from app.models.zero_hour_labor import ZeroHourLabor
 from app.models.user import User, UserRole
 from app.services.contract_upstream_service import ContractUpstreamService
 from app.services.contract_management_service import ContractManagementService
 from app.services.contract_downstream_service import ContractDownstreamService
+from app.core.errors import AppException
 
 
 @pytest.fixture
@@ -147,6 +150,84 @@ class TestContractUpstreamService:
         result_by_serial = await service.list_contracts(keyword=str(contract.serial_number))
         assert result_by_serial["total"] == 1
         assert result_by_serial["items"][0].id == contract.id
+
+    async def test_delete_contract_blocks_when_related_records_exist(
+        self,
+        test_db: AsyncSession,
+        test_user: User
+    ):
+        upstream = ContractUpstream(
+            serial_number=188,
+            contract_code="UP-DEL-188",
+            contract_name="禁止删除的上游合同",
+            party_a_name="甲方",
+            party_b_name="乙方",
+            category="工程类",
+            contract_amount=Decimal("1000.00"),
+            sign_date=date(2024, 1, 1),
+            status="执行中",
+            created_by=test_user.id
+        )
+        test_db.add(upstream)
+        await test_db.commit()
+        await test_db.refresh(upstream)
+
+        test_db.add_all([
+            ContractDownstream(
+                serial_number=288,
+                contract_code="DOWN-188",
+                contract_name="关联下游合同",
+                party_a_name="蓝海",
+                party_b_name="供应商A",
+                upstream_contract_id=upstream.id,
+                contract_amount=Decimal("300.00"),
+                sign_date=date(2024, 2, 1),
+                status="执行中",
+                created_by=test_user.id
+            ),
+            ContractManagement(
+                serial_number=388,
+                contract_code="MGMT-188",
+                contract_name="关联管理合同",
+                party_a_name="蓝海",
+                party_b_name="供应商B",
+                upstream_contract_id=upstream.id,
+                contract_amount=Decimal("200.00"),
+                sign_date=date(2024, 2, 2),
+                status="执行中",
+                created_by=test_user.id
+            ),
+            ExpenseNonContract(
+                expense_code="EXP-188",
+                category="项目费用",
+                expense_type="管理费",
+                amount=Decimal("50.00"),
+                expense_date=date(2024, 2, 3),
+                upstream_contract_id=upstream.id,
+                created_by=test_user.id
+            ),
+            ZeroHourLabor(
+                labor_date=date(2024, 2, 4),
+                attribution="PROJECT",
+                upstream_contract_id=upstream.id,
+                total_amount=Decimal("80.00"),
+                created_by=test_user.id
+            )
+        ])
+        await test_db.commit()
+
+        service = ContractUpstreamService(test_db)
+
+        with pytest.raises(AppException) as exc_info:
+          await service.delete_contract(upstream.id, test_user)
+
+        error = exc_info.value
+        assert error.status_code == 409
+        assert error.message == "上游合同存在关联数据，无法删除"
+        assert error.data["related_records"]["downstream_contracts"][0]["contract_code"] == "DOWN-188"
+        assert error.data["related_records"]["management_contracts"][0]["contract_code"] == "MGMT-188"
+        assert error.data["related_records"]["non_contract_expenses"][0]["expense_code"] == "EXP-188"
+        assert error.data["related_records"]["zero_hour_labors"][0]["labor_date"] == "2024-02-04"
 
 
 @pytest.mark.asyncio

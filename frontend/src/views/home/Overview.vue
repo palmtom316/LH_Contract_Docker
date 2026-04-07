@@ -4,6 +4,7 @@
       <AppMetricCard
         v-for="item in metricCards"
         :key="item.title"
+        :eyebrow="item.eyebrow"
         :title="item.title"
         :value="item.value"
       >
@@ -276,10 +277,10 @@ let monthTrendData = null
 let quarterTrendData = null
 
 const cardData = ref([
-  { eyebrow: '年度经营', badge: '签约', tone: 'primary', title: '年度上游签约', value: 0, count: 0, description: '累计签约总额' },
-  { eyebrow: '年度经营', badge: '成本', tone: 'warning', title: '年度下游签约', value: 0, count: 0, description: '累计支出预算' },
-  { eyebrow: '年度经营', badge: '收入', tone: 'success', title: '年度回款总额', value: 0, description: '实际到账金额' },
-  { eyebrow: '年度经营', badge: '支出', tone: 'danger', title: '年度付款总额', value: 0, description: '实际支出金额' }
+  { eyebrow: '', badge: '签约', tone: 'primary', title: '年度上游签约', value: 0, count: 0, description: '累计签约总额' },
+  { eyebrow: '', badge: '成本', tone: 'warning', title: '年度下游签约', value: 0, count: 0, description: '累计支出预算' },
+  { eyebrow: '', badge: '收入', tone: 'success', title: '年度回款总额', value: 0, description: '实际到账金额' },
+  { eyebrow: '', badge: '支出', tone: 'danger', title: '年度付款总额', value: 0, description: '实际支出金额' }
 ])
 
 const periodStats = ref({

@@ -14,7 +14,7 @@
         :clearable="clearable"
         unlink-panels
       />
-      <span class="app-range-field__separator">至</span>
+      <span class="app-range-field__separator" aria-hidden="true" />
       <el-date-picker
         v-model="endPickerValue"
         class="app-range-field__picker"
@@ -35,7 +35,7 @@
         @update:model-value="handleStartUpdate"
         @validity-change="handleStartValidity"
       />
-      <span class="app-range-field__separator">至</span>
+      <span class="app-range-field__separator" aria-hidden="true" />
       <SmartDateInput
         :key="endResetKey"
         :model-value="endValue"
@@ -263,9 +263,9 @@ function normalizePickerRange(start, end) {
 <style scoped lang="scss">
 .app-range-field {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: 20px minmax(0, 1fr) minmax(0, 1fr);
   align-items: stretch;
-  gap: 6px;
+  gap: 8px;
   width: 100%;
   min-width: 0;
   height: var(--workspace-control-height);
@@ -298,11 +298,7 @@ function normalizePickerRange(start, end) {
 }
 
 .app-range-field__separator {
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 600;
-  padding-inline: 6px;
-  white-space: nowrap;
+  display: none;
 }
 
 .app-range-field__input,
@@ -357,7 +353,6 @@ function normalizePickerRange(start, end) {
 
 .app-range-field__input:first-of-type {
   padding-right: 2px;
-  border-right: 1px solid color-mix(in srgb, var(--border-subtle) 86%, transparent);
 }
 
 .app-range-field__input:last-of-type {

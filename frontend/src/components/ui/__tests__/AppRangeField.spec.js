@@ -46,6 +46,12 @@ function mountRange(props) {
 }
 
 describe('AppRangeField', () => {
+  it('does not render a visible separator label between the two date inputs', () => {
+    const wrapper = mountRange({ modelValue: [] })
+
+    expect(wrapper.text()).not.toContain('至')
+  })
+
   it('emits a normalized range when both dates are valid', async () => {
     const wrapper = mountRange({ modelValue: [] })
     const inputs = wrapper.findAll('input')

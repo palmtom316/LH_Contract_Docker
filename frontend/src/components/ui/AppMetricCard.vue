@@ -41,16 +41,15 @@ defineProps({
   min-height: 100%;
   min-width: 0;
   padding: 22px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--workspace-panel-border);
   border-radius: 22px;
-  background:
-    linear-gradient(180deg, var(--surface-panel), color-mix(in srgb, var(--surface-panel) 88%, var(--surface-panel-muted) 12%));
-  box-shadow: var(--shadow-soft);
+  background: var(--surface-panel-elevated);
+  box-shadow: var(--workspace-panel-shadow);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .app-metric-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: var(--shadow-card);
 }
 

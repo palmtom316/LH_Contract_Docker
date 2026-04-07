@@ -11,6 +11,9 @@ const testDir = dirname(fileURLToPath(import.meta.url))
 const tokensPath = resolve(testDir, '../../styles/tokens.scss')
 const stylesPath = resolve(testDir, '../../styles/index.scss')
 const loginViewPath = resolve(testDir, '../../views/Login.vue')
+const sectionCardPath = resolve(testDir, '../../components/ui/AppSectionCard.vue')
+const metricCardPath = resolve(testDir, '../../components/ui/AppMetricCard.vue')
+const rangeFieldPath = resolve(testDir, '../../components/ui/AppRangeField.vue')
 
 describe('ui store', () => {
   beforeEach(() => {
@@ -103,6 +106,35 @@ describe('ui store', () => {
     expect(loginView).toContain('hsl(var(--background))')
     expect(loginView).toContain('hsl(var(--card))')
     expect(loginView).toContain('hsl(var(--muted)')
+  })
+
+  it('removes visible range separators from global date-range inputs', () => {
+    const styles = readFileSync(stylesPath, 'utf8')
+    const rangeField = readFileSync(rangeFieldPath, 'utf8')
+
+    expect(styles).toContain('.el-date-editor .el-range-separator')
+    expect(styles).toContain('font-size: 0;')
+    expect(styles).toContain('padding-inline: 0;')
+    expect(styles).toContain('width: 0;')
+    expect(rangeField).not.toContain('border-right: 1px solid')
+    expect(rangeField).not.toContain('height: 1px;')
+  })
+
+  it('defines elevated workspace surfaces for the premium light theme', () => {
+    const tokens = readFileSync(tokensPath, 'utf8')
+    const styles = readFileSync(stylesPath, 'utf8')
+    const sectionCard = readFileSync(sectionCardPath, 'utf8')
+    const metricCard = readFileSync(metricCardPath, 'utf8')
+
+    expect(tokens).toContain('--surface-page-gradient:')
+    expect(tokens).toContain('--surface-panel-elevated:')
+    expect(tokens).toContain('--workspace-panel-shadow:')
+
+    expect(styles).toContain('background: var(--surface-page-gradient);')
+    expect(sectionCard).toContain('var(--surface-panel-elevated)')
+    expect(sectionCard).toContain('var(--workspace-panel-shadow)')
+    expect(metricCard).toContain('var(--surface-panel-elevated)')
+    expect(metricCard).toContain('var(--workspace-panel-shadow)')
   })
 
   it('renders metric title and value content', () => {

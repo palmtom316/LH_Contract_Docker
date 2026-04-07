@@ -80,10 +80,6 @@
               <span class="labor-field__value">{{ row.upstream_contract ? row.upstream_contract.contract_name : '-' }}</span>
             </div>
             <div class="labor-field">
-              <span class="labor-field__label">审批状态</span>
-              <span class="labor-field__value">{{ formatApprovalStatus(row.approval_status) }}</span>
-            </div>
-            <div class="labor-field">
               <span class="labor-field__label">总金额</span>
               <span class="labor-field__value labor-field__value--amount">¥ {{ formatMoney(row.total_amount) }}</span>
             </div>
@@ -91,7 +87,6 @@
           <div class="labor-card__footer">
             <div class="labor-card__links">
               <el-button v-if="row.dispatch_file_path" link type="primary" size="small" :icon="Document" @click="viewFile(row.dispatch_file_path)">派工单</el-button>
-              <el-button v-if="row.approval_pdf_path" link type="primary" size="small" :icon="Document" @click="viewFile(row.approval_pdf_path)">审批单</el-button>
             </div>
             <div class="labor-card__links">
               <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
@@ -155,29 +150,6 @@
             </template>
         </el-table-column>
 
-        <el-table-column label="审批状态" width="100">
-            <template #default="{ row }">
-                <el-tag :type="getApprovalStatusType(row.approval_status)" v-if="row.approval_status">
-                    {{ formatApprovalStatus(row.approval_status) }}
-                </el-tag>
-                <span v-else>-</span>
-            </template>
-        </el-table-column>
-        <el-table-column label="审批单" width="100" align="center">
-            <template #default="{ row }">
-                 <el-button 
-                    v-if="row.approval_pdf_path" 
-                    link 
-                    type="primary" 
-                    size="small" 
-                    :icon="Document" 
-                    @click="viewFile(row.approval_pdf_path)"
-                >查看</el-button>
-                <span v-else class="cell-placeholder">-</span>
-            </template>
-        </el-table-column>
-
-
         <el-table-column label="用工费用" width="120" align="right">
             <template #default="{ row }">¥ {{ formatMoney(row.labor_price_total) }}</template>
         </el-table-column>
@@ -240,41 +212,6 @@
                     </el-form-item>
                 </el-col>
             </el-row>
-
-            <!-- Approval Status (Read Only) -->
-            <div v-if="form.approval_status && form.approval_status !== 'DRAFT'" class="approval-strip">
-                <el-row :gutter="20">
-                    <el-col :span="12">
-                        <el-form-item label="审批状态" class="approval-strip__item">
-                             <el-tag :type="getApprovalStatusType(form.approval_status)">
-                                {{ formatApprovalStatus(form.approval_status) }}
-                            </el-tag>
-                        </el-form-item>
-                    </el-col>
-                    <el-col :span="12">
-                        <el-form-item label="审批单" class="approval-strip__item">
-                             <el-button 
-                                v-if="form.approval_pdf_path" 
-                                link 
-                                type="primary" 
-                                :icon="Document" 
-                                @click="viewFile(form.approval_pdf_path)"
-                            >查看审批单</el-button>
-                             <span v-else>暂无</span>
-                        </el-form-item>
-                    </el-col>
-                </el-row>
-            </div>
-
-            <!-- Manually Bind Feishu Instance (Optional) -->
-            <el-form-item label="飞书审批实例" prop="feishu_instance_code">
-                <el-input v-model="form.feishu_instance_code" placeholder="手动绑定审批实例ID (Instance Code)" clearable>
-                     <template #append>
-                        <el-button :icon="Document" @click="viewFile(form.approval_pdf_path)" v-if="form.approval_pdf_path" />
-                        <span v-else>可选</span>
-                    </template>
-                </el-input>
-            </el-form-item>
 
             <div v-if="form.attribution === 'PROJECT'" class="dialog-subsection">
                  <el-row :gutter="20">

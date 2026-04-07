@@ -18,12 +18,49 @@
         <el-button type="primary" @click="loadNotifications">重试</el-button>
       </el-empty>
       <div v-else-if="filteredNotifications.length" class="notification-list">
-        <article v-for="item in filteredNotifications" :key="item.id" class="notification-item">
+        <article
+          v-for="item in filteredNotifications"
+          :key="item.id"
+          class="notification-item"
+          :class="{ 'notification-item--read': item.unread === false }"
+        >
           <div class="notification-item__top">
             <div class="notification-item__title">{{ item.title }}</div>
             <span class="notification-item__time">{{ formatTime(item.createdAt) }}</span>
           </div>
           <div class="notification-item__meta">{{ item.subtitle }}</div>
+          <p v-if="item.content" class="notification-item__content">{{ item.content }}</p>
+          <div v-if="item.relatedGroups?.length" class="notification-item__details">
+            <section
+              v-for="group in item.relatedGroups"
+              :key="`${item.id}-${group.label}`"
+              class="notification-related-group"
+            >
+              <div class="notification-related-group__title">{{ group.label }}</div>
+              <ul class="notification-related-group__list">
+                <li
+                  v-for="entry in group.items"
+                  :key="`${item.id}-${group.label}-${entry}`"
+                  class="notification-related-group__item"
+                >
+                  {{ entry }}
+                </li>
+              </ul>
+            </section>
+          </div>
+          <div class="notification-item__actions">
+            <el-button
+              v-if="item.unread !== false"
+              size="small"
+              text
+              @click="systemStore.markNotificationRead(item.id)"
+            >
+              已读
+            </el-button>
+            <el-button size="small" text type="danger" @click="systemStore.removeNotification(item.id)">
+              删除
+            </el-button>
+          </div>
         </article>
       </div>
       <el-empty v-else description="暂无通知" />
@@ -111,6 +148,10 @@ onMounted(async () => {
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
+.notification-item--read {
+  opacity: 0.72;
+}
+
 .notification-item:hover {
   background: color-mix(in srgb, var(--surface-panel-muted) 72%, var(--surface-panel) 28%);
 }
@@ -132,10 +173,56 @@ onMounted(async () => {
   font-size: 13px;
 }
 
+.notification-item__content {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .notification-item__time {
   flex-shrink: 0;
   color: var(--text-muted);
   font-size: 12px;
+}
+
+.notification-item__details {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-panel-muted) 76%, var(--surface-panel) 24%);
+}
+
+.notification-related-group {
+  display: grid;
+  gap: 6px;
+}
+
+.notification-related-group__title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.notification-related-group__list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.notification-related-group__item + .notification-related-group__item {
+  margin-top: 4px;
+}
+
+.notification-item__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 @media (max-width: 768px) {

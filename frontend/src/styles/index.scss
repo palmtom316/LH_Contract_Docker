@@ -45,7 +45,9 @@ body {
     -moz-osx-font-smoothing: grayscale;
     -webkit-font-smoothing: antialiased;
     font-family: var(--font-family-base);
-    background: hsl(var(--background));
+    background: var(--surface-page-gradient);
+    background-color: hsl(var(--background));
+    background-attachment: fixed;
     color: hsl(var(--foreground));
     transition: background-color 160ms ease, color 160ms ease;
 }
@@ -185,10 +187,10 @@ a:focus-visible,
 }
 
 .el-card {
-    border: 1px solid hsl(var(--border));
+    border: 1px solid var(--workspace-panel-border);
     border-radius: var(--radius);
-    background: hsl(var(--card));
-    box-shadow: 0 1px 2px hsl(222 47% 11% / 0.04);
+    background: var(--surface-panel-elevated);
+    box-shadow: var(--workspace-panel-shadow);
 }
 
 .el-card__header {
@@ -200,13 +202,45 @@ a:focus-visible,
     padding: 16px;
 }
 
+.app-chrome-icon-button {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--workspace-panel-border);
+    border-radius: 12px;
+    background: var(--surface-panel-elevated);
+    color: hsl(var(--muted-foreground));
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--shadow-soft);
+    transition:
+        background-color 160ms ease,
+        border-color 160ms ease,
+        box-shadow 160ms ease,
+        color 160ms ease,
+        transform 160ms ease;
+}
+
+.app-chrome-icon-button:hover {
+    background: var(--surface-sidebar-hover);
+    border-color: hsl(var(--border));
+    color: hsl(var(--foreground));
+    transform: translateY(-1px);
+}
+
+.app-chrome-icon-button .el-icon {
+    font-size: 18px;
+}
+
 .el-input__wrapper,
 .el-select__wrapper,
 .el-textarea__inner,
 .el-date-editor.el-input__wrapper {
     min-height: 36px;
     border-radius: 10px;
-    background: hsl(var(--background));
+    background: var(--workspace-control-background);
     border: 1px solid hsl(var(--input));
     box-shadow: none;
 }
@@ -279,6 +313,10 @@ a:focus-visible,
 .el-date-editor .el-range-separator {
     flex: 0 0 auto;
     font-weight: 600;
+    font-size: 0;
+    padding-inline: 0;
+    width: 0;
+    overflow: hidden;
 }
 
 .el-date-editor .el-range__icon,
@@ -294,14 +332,14 @@ a:focus-visible,
 .el-picker__popper.el-popper,
 .el-dropdown__popper.el-popper {
     border: 1px solid hsl(var(--border)) !important;
-    background: hsl(var(--popover)) !important;
+    background: var(--surface-panel-elevated) !important;
     box-shadow: var(--shadow-frame) !important;
 }
 
 .el-select-dropdown,
 .el-picker-panel,
 .el-dropdown-menu {
-    background: hsl(var(--popover)) !important;
+    background: var(--surface-panel-elevated) !important;
     color: hsl(var(--popover-foreground)) !important;
 }
 
@@ -326,12 +364,13 @@ a:focus-visible,
 .el-table {
     border-radius: 0;
     overflow: hidden;
+    background: var(--surface-panel-elevated);
 }
 
 .el-table th.el-table__cell {
     font-weight: 600;
     color: hsl(var(--muted-foreground));
-    background: hsl(var(--muted));
+    background: var(--workspace-table-header-background);
     font-size: 12px;
 }
 
@@ -343,7 +382,7 @@ a:focus-visible,
 }
 
 .el-table tr:hover > td.el-table__cell {
-    background: hsl(var(--muted) / 0.55);
+    background: color-mix(in srgb, hsl(var(--muted)) 70%, hsl(var(--card)) 30%);
 }
 
 .el-tag {

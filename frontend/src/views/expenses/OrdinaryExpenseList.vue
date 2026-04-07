@@ -175,29 +175,6 @@
           </template>
         </el-table-column>
 
-        <!-- Feishu Approval Integration (V1.4) -->
-        <el-table-column label="审批状态" width="100" align="center">
-          <template #default="scope">
-            <el-tag v-if="scope.row.approval_status && scope.row.approval_status !== 'DRAFT'" :type="getApprovalStatusType(scope.row.approval_status)">
-              {{ formatApprovalStatus(scope.row.approval_status) }}
-            </el-tag>
-            <span v-else class="cell-placeholder">-</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="审批单" width="80" align="center">
-          <template #default="scope">
-            <el-button 
-              v-if="scope.row.approval_pdf_path" 
-              link 
-              type="primary" 
-              size="small"
-              icon="Document"
-              @click="viewExpenseFile(scope.row.approval_pdf_path)"
-            >查看</el-button>
-            <span v-else class="cell-placeholder">-</span>
-          </template>
-        </el-table-column>
-
         <el-table-column prop="amount" label="金额" width="120" align="right">
           <template #default="scope">
              <span style="white-space: nowrap;">¥ {{ Number(scope.row.amount).toLocaleString() }}</span>
@@ -334,32 +311,6 @@
             </template>
           </el-upload>
         </el-form-item>
-
-        <!-- Feishu Approval Info (Read Only) -->
-        <el-row :gutter="20" v-if="form.approval_status && form.approval_status !== 'DRAFT'">
-          <el-col :span="12">
-            <el-form-item label="审批状态">
-              <el-tag :type="getApprovalStatusType(form.approval_status)">
-                {{ formatApprovalStatus(form.approval_status) }}
-              </el-tag>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="审批单">
-              <el-button 
-                v-if="form.approval_pdf_path" 
-                link 
-                type="primary" 
-                @click="viewExpenseFile(form.approval_pdf_path)"
-              >
-                <el-icon class="el-icon--left"><Document /></el-icon> 查看审批单
-              </el-button>
-              <span v-else class="cell-placeholder">无电子审批单</span>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-
 
       </el-form>
       <template #footer>

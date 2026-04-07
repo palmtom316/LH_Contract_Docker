@@ -18,5 +18,10 @@ defineProps({
   display: grid;
   gap: 16px;
   min-width: 0;
+  padding: var(--workspace-panel-padding);
+  border: 1px solid var(--workspace-panel-border);
+  border-radius: var(--workspace-panel-radius);
+  background: var(--surface-panel-elevated);
+  box-shadow: var(--workspace-panel-shadow);
 }
 </style>

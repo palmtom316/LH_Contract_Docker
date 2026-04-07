@@ -621,6 +621,7 @@ import { ArrowDown, Download, More, Search, Refresh, Upload, Plus } from '@eleme
 import DictSelect from '@/components/DictSelect.vue'
 import SmartDateInput from '@/components/SmartDateInput.vue'
 import { useUserStore } from '@/stores/user'
+import { useSystemStore } from '@/stores/system'
 import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import AppFilterBar from '@/components/ui/AppFilterBar.vue'
 import AppDataTable from '@/components/ui/AppDataTable.vue'
@@ -634,6 +635,7 @@ const PdfViewer = defineAsyncComponent(() => import('@/components/PdfViewer.vue'
 const FormulaInput = defineAsyncComponent(() => import('@/components/FormulaInput.vue'))
 
 const userStore = useUserStore()
+const systemStore = useSystemStore()
 const route = useRoute()
 const { getSummaries: baseGetSummaries, footerCellStyle } = useTableSummary()
 const { isMobile, checkIsMobile } = useMobileDetection()
@@ -650,15 +652,59 @@ const {
   getList: fetchList,
   handleQuery: baseHandleQuery,
   resetQuery: baseResetQuery,
-  handleDelete,
+  handleDelete: baseHandleDelete,
   handleExport: baseHandleExport,
   formatMoney,
   getStatusType
 } = useContractList({
-  api: { getContracts, deleteContract, exportContracts },
+  api: {
+    getContracts,
+    deleteContract: (id) => deleteContract(id, { suppressGlobalErrorMessage: true }),
+    exportContracts
+  },
   contractType: '上游合同',
-  exportPrefix: '上游合同列表'
+  exportPrefix: '上游合同列表',
+  onDeleteError: async (error, row) => {
+    const detail = error?.response?.data?.detail
+    const appError = detail && typeof detail === 'object' ? detail : null
+    const relatedRecords = appError?.data?.related_records
+    if (error?.response?.status !== 409 || !relatedRecords) {
+      return false
+    }
+
+    const relatedGroups = [
+      {
+        label: '下游合同',
+        items: (relatedRecords.downstream_contracts || []).map(item => [item.contract_code, item.contract_name].filter(Boolean).join(' '))
+      },
+      {
+        label: '管理合同',
+        items: (relatedRecords.management_contracts || []).map(item => [item.contract_code, item.contract_name].filter(Boolean).join(' '))
+      },
+      {
+        label: '无合同费用',
+        items: (relatedRecords.non_contract_expenses || []).map(item => [item.expense_code, item.description].filter(Boolean).join(' '))
+      },
+      {
+        label: '零星用工',
+        items: (relatedRecords.zero_hour_labors || []).map(item => [item.labor_date, item.dispatch_unit || `总金额 ¥${formatMoney(item.total_amount || 0)}`].filter(Boolean).join(' '))
+      }
+    ].filter(group => group.items.length)
+
+    systemStore.pushNotification({
+      id: `upstream-delete-blocked-${row.id}`,
+      type: 'general',
+      title: `上游合同“${row.contract_name}”无法删除`,
+      subtitle: '存在关联的下游合同、管理合同、无合同费用或零星用工',
+      content: '请先删除以下关联记录后，再删除该上游合同。',
+      relatedGroups
+    })
+    ElMessage.warning(appError?.message || '该上游合同存在关联数据，已生成通知清单')
+    return true
+  }
 })
+
+const handleDelete = (row) => baseHandleDelete(row)
 
 const activeTab = ref('management')
 const dateRange = ref([])

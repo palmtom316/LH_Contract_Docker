@@ -18,6 +18,12 @@
   gap: 16px;
   padding: 16px;
   min-width: 0;
+  position: relative;
+  overflow: hidden;
+  border-color: var(--workspace-panel-border);
+  background: var(--surface-panel-elevated);
+  box-shadow: var(--workspace-panel-shadow);
+  transition: box-shadow 180ms ease, border-color 180ms ease;
 }
 
 .app-section-card__header {

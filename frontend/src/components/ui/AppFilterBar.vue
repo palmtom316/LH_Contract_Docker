@@ -27,6 +27,11 @@ defineProps({
 .app-filter-bar {
   position: relative;
   min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--workspace-panel-border);
+  border-radius: var(--workspace-panel-radius);
+  background: var(--surface-panel-elevated);
+  box-shadow: var(--workspace-panel-shadow);
 }
 
 .app-filter-bar__content {
@@ -76,7 +81,7 @@ defineProps({
   border-radius: var(--workspace-control-radius);
   border: 1px solid hsl(var(--input));
   box-shadow: none;
-  background: hsl(var(--background));
+  background: var(--workspace-control-background);
 }
 
 .app-filter-bar__main :deep(.el-input__wrapper.is-focus),
@@ -110,7 +115,7 @@ defineProps({
 
 .app-filter-bar__main :deep(.filter-control--search .el-input__wrapper),
 .app-filter-bar__main :deep(.filter-control--search.el-input__wrapper) {
-  background: hsl(var(--background));
+  background: var(--workspace-control-background);
   border: 1px solid hsl(var(--input));
   box-shadow: none;
 }
@@ -144,7 +149,7 @@ defineProps({
   padding-inline: 14px;
   border-radius: var(--workspace-control-radius);
   border-color: hsl(var(--border));
-  background: hsl(var(--card));
+  background: var(--surface-panel-elevated);
   color: hsl(var(--muted-foreground));
   box-shadow: none;
   white-space: nowrap;

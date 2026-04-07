@@ -12,6 +12,10 @@ from app.models.contract_upstream import (
     ProjectSettlement,
     FinanceUpstreamInvoice
 )
+from app.models.contract_downstream import ContractDownstream
+from app.models.contract_management import ContractManagement
+from app.models.expense import ExpenseNonContract
+from app.models.zero_hour_labor import ZeroHourLabor
 from app.schemas.contract_upstream import ContractUpstreamCreate, ContractUpstreamUpdate
 from app.services.cache import cache, dashboard_cache_key
 from app.services.status_service import calculate_contract_status
@@ -20,6 +24,7 @@ from app.models.user import User
 from app.services.audit_service import create_audit_log, AuditAction, ResourceType
 from app.services.contract_code_generator import ContractCodeGenerator
 from app.services.base_contract_service import BaseContractService
+from app.core.errors import AppException, ErrorCode
 
 
 class ContractWrapper:
@@ -72,6 +77,83 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
     async def get_contract_with_relations(self, contract_id: int) -> Optional[ContractUpstream]:
         """Get contract by ID with all financial relations loaded"""
         return await self.get_contract(contract_id)
+
+    async def _get_delete_blockers(self, contract_id: int) -> Dict[str, Any]:
+        downstream_result = await self.db.execute(
+            select(
+                ContractDownstream.id,
+                ContractDownstream.contract_code,
+                ContractDownstream.contract_name
+            )
+            .where(ContractDownstream.upstream_contract_id == contract_id)
+            .order_by(ContractDownstream.contract_code, ContractDownstream.id)
+        )
+        management_result = await self.db.execute(
+            select(
+                ContractManagement.id,
+                ContractManagement.contract_code,
+                ContractManagement.contract_name
+            )
+            .where(ContractManagement.upstream_contract_id == contract_id)
+            .order_by(ContractManagement.contract_code, ContractManagement.id)
+        )
+        expense_result = await self.db.execute(
+            select(
+                ExpenseNonContract.id,
+                ExpenseNonContract.expense_code,
+                ExpenseNonContract.description,
+                ExpenseNonContract.amount
+            )
+            .where(ExpenseNonContract.upstream_contract_id == contract_id)
+            .order_by(ExpenseNonContract.expense_code, ExpenseNonContract.id)
+        )
+        labor_result = await self.db.execute(
+            select(
+                ZeroHourLabor.id,
+                ZeroHourLabor.labor_date,
+                ZeroHourLabor.dispatch_unit,
+                ZeroHourLabor.total_amount
+            )
+            .where(ZeroHourLabor.upstream_contract_id == contract_id)
+            .order_by(ZeroHourLabor.labor_date.desc(), ZeroHourLabor.id.desc())
+        )
+
+        return {
+            "downstream_contracts": [
+                {
+                    "id": row.id,
+                    "contract_code": row.contract_code,
+                    "contract_name": row.contract_name,
+                }
+                for row in downstream_result.all()
+            ],
+            "management_contracts": [
+                {
+                    "id": row.id,
+                    "contract_code": row.contract_code,
+                    "contract_name": row.contract_name,
+                }
+                for row in management_result.all()
+            ],
+            "non_contract_expenses": [
+                {
+                    "id": row.id,
+                    "expense_code": row.expense_code,
+                    "description": row.description,
+                    "amount": float(row.amount or 0),
+                }
+                for row in expense_result.all()
+            ],
+            "zero_hour_labors": [
+                {
+                    "id": row.id,
+                    "labor_date": row.labor_date.isoformat() if row.labor_date else None,
+                    "dispatch_unit": row.dispatch_unit,
+                    "total_amount": float(row.total_amount or 0),
+                }
+                for row in labor_result.all()
+            ],
+        }
 
     async def list_contracts(
         self, 
@@ -459,6 +541,19 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
             "contract_name": contract.contract_name,
             "contract_code": contract.contract_code
         }
+
+        related_records = await self._get_delete_blockers(contract_id)
+        if any(related_records.values()):
+            raise AppException(
+                error_code=ErrorCode.CONSTRAINT_VIOLATION,
+                message="上游合同存在关联数据，无法删除",
+                detail="请先删除关联的下游合同、管理合同、无合同费用、零星用工",
+                status_code=409,
+                data={
+                    "contract": contract_data,
+                    "related_records": related_records,
+                }
+            )
             
         await self.db.delete(contract)
         await create_audit_log(

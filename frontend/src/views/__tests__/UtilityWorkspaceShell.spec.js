@@ -4,11 +4,34 @@ import NotificationCenter from '@/views/notifications/NotificationCenter.vue'
 import SystemManagement from '@/views/system/SystemManagement.vue'
 import AuditLog from '@/views/audit/AuditLog.vue'
 
+const { notificationsState, markNotificationReadMock, removeNotificationMock } = vi.hoisted(() => ({
+  notificationsState: [
+    {
+      id: 'local-blocked-delete',
+      title: '上游合同无法删除',
+      subtitle: '存在关联数据',
+      content: '请先删除关联记录。',
+      createdAt: '2026-04-07T10:00:00.000Z',
+      unread: true,
+      relatedGroups: [
+        {
+          label: '下游合同',
+          items: ['DOWN-001 关联下游合同']
+        }
+      ]
+    }
+  ],
+  markNotificationReadMock: vi.fn(),
+  removeNotificationMock: vi.fn()
+}))
+
 vi.mock('@/stores/system', () => ({
   useSystemStore: () => ({
-    notifications: [],
+    notifications: notificationsState,
     notificationsError: '',
-    fetchNotifications: vi.fn().mockResolvedValue([])
+    fetchNotifications: vi.fn().mockResolvedValue([]),
+    markNotificationRead: markNotificationReadMock,
+    removeNotification: removeNotificationMock
   })
 }))
 
@@ -96,6 +119,15 @@ describe('Utility workspace shells', () => {
 
     expect(wrapper.find('.notification-center-shell').exists()).toBe(true)
     expect(wrapper.find('.notification-center-panel').exists()).toBe(true)
+  })
+
+  it('renders notification actions and related record details', () => {
+    const wrapper = shallowMount(NotificationCenter, { global: globalMountOptions })
+
+    expect(wrapper.text()).toContain('已读')
+    expect(wrapper.text()).toContain('删除')
+    expect(wrapper.text()).toContain('下游合同')
+    expect(wrapper.text()).toContain('DOWN-001 关联下游合同')
   })
 
   it('renders the system workspace wrappers', () => {
