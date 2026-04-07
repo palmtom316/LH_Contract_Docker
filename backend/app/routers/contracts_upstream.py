@@ -9,6 +9,7 @@ from sqlalchemy import select
 from typing import List, Optional, Dict, Any
 from datetime import date, datetime
 import io
+import pandas as pd
 from openpyxl import Workbook
 import os
 import urllib.parse
