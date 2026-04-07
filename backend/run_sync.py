@@ -39,6 +39,18 @@ except ImportError:
     sys.exit(1)
 
 
+def get_missing_required_vars() -> list[str]:
+    """Return missing environment variables required for Feishu sync."""
+    required_vars = [
+        "FEISHU_APP_ID",
+        "FEISHU_APP_SECRET",
+        "FEISHU_BASE_APP_TOKEN",
+        "FEISHU_BASE_TABLE_ID",
+        "DATABASE_URL",
+    ]
+    return [name for name in required_vars if not os.getenv(name)]
+
+
 async def sync_job():
     """Wrapper for the sync function with error handling"""
     logger.info("=== Starting scheduled sync job ===")
@@ -61,41 +73,35 @@ def main():
     logger.info("Feishu Sync Worker Starting")
     logger.info("=" * 50)
     
-    # Check required environment variables
-    required_vars = [
-        "FEISHU_APP_ID",
-        "FEISHU_APP_SECRET",
-        "FEISHU_BASE_APP_TOKEN",
-        "FEISHU_BASE_TABLE_ID",
-        "DATABASE_URL"
-    ]
-    
-    missing = [v for v in required_vars if not os.getenv(v)]
+    missing = get_missing_required_vars()
     if missing:
         logger.warning(f"Missing environment variables: {missing}")
-        logger.warning("Sync worker will start but may not function correctly")
+        logger.warning("Sync worker will stay idle until Feishu configuration is complete")
     
     # Create scheduler
     scheduler = AsyncIOScheduler()
     
-    # Run sync every 60 minutes
-    scheduler.add_job(
-        sync_job,
-        'interval',
-        minutes=60,
-        id='contract_sync',
-        name='Sync contracts to Feishu Base'
-    )
-    
-    # Also run immediately on startup
-    scheduler.add_job(
-        sync_job,
-        'date',
-        id='initial_sync',
-        name='Initial contract sync'
-    )
-    
-    logger.info("Scheduler configured: Sync every 60 minutes")
+    if missing:
+        logger.info("Scheduler configured in idle mode")
+    else:
+        # Run sync every 60 minutes
+        scheduler.add_job(
+            sync_job,
+            'interval',
+            minutes=60,
+            id='contract_sync',
+            name='Sync contracts to Feishu Base'
+        )
+
+        # Also run immediately on startup
+        scheduler.add_job(
+            sync_job,
+            'date',
+            id='initial_sync',
+            name='Initial contract sync'
+        )
+
+        logger.info("Scheduler configured: Sync every 60 minutes")
     logger.info("Starting scheduler...")
     
     scheduler.start()

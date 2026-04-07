@@ -31,6 +31,9 @@ AsyncSessionLocal = async_sessionmaker(
     autoflush=False
 )
 
+# Backward-compatible export for legacy Feishu integrations.
+async_session = AsyncSessionLocal
+
 # Base class for models
 Base = declarative_base()
 
