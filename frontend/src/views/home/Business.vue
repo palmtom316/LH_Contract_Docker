@@ -537,6 +537,10 @@ const initExpenseStructureChart = (expenseRes) => {
   if (!expenseStructChartRef.value) return;
   if (expenseStructChart) expenseStructChart.dispose();
 
+  const breakdown = expenseRes.overall_breakdown || [];
+  const findValue = (label) =>
+    breakdown.find((item) => item.name === label)?.value || 0;
+
   expenseStructChart = echarts.init(expenseStructChartRef.value);
   expenseStructChart.setOption(
     createStackedCategoryOption({
@@ -545,28 +549,19 @@ const initExpenseStructureChart = (expenseRes) => {
       series: [
         {
           name: "下游合同",
-          data: [
-            expenseRes.overall_breakdown?.find((item) => item.name === "下游合同")
-              ?.value || 0,
-          ],
+          data: [findValue("下游合同支出")],
         },
         {
           name: "管理合同",
-          data: [
-            expenseRes.overall_breakdown?.find((item) => item.name === "管理合同")
-              ?.value || 0,
-          ],
+          data: [findValue("管理合同支出")],
         },
         {
           name: "无合同费用",
-          data: [
-            expenseRes.overall_breakdown?.find((item) => item.name === "无合同费用")
-              ?.value || 0,
-          ],
+          data: [findValue("无合同费用")],
         },
         {
           name: "零星用工",
-          data: [expenseRes.zero_hour_labor?.total || 0],
+          data: [findValue("零星用工") || expenseRes.zero_hour_labor?.total || 0],
         },
       ],
     })
