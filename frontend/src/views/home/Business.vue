@@ -119,22 +119,22 @@
             <div class="section-heading__title">分类构成</div>
           </div>
         </template>
-        <div class="pie-grid">
-          <div class="pie-card">
-            <div class="pie-card__title">上游合同分类</div>
-            <div ref="upstreamPieRef" class="chart-surface chart-surface--pie"></div>
+        <div class="business-chart-grid">
+          <div class="rank-card">
+            <div class="rank-card__title">上游合同分类</div>
+            <div ref="upstreamRankRef" class="chart-surface chart-surface--rank"></div>
           </div>
-          <div class="pie-card">
-            <div class="pie-card__title">上游公司分类</div>
-            <div ref="upstreamCompanyPieRef" class="chart-surface chart-surface--pie"></div>
+          <div class="rank-card">
+            <div class="rank-card__title">上游公司分类</div>
+            <div ref="upstreamCompanyRankRef" class="chart-surface chart-surface--rank"></div>
           </div>
-          <div class="pie-card">
-            <div class="pie-card__title">支出构成</div>
-            <div ref="expenseStructPieRef" class="chart-surface chart-surface--pie"></div>
+          <div class="rank-card">
+            <div class="rank-card__title">支出构成</div>
+            <div ref="expenseStructChartRef" class="chart-surface chart-surface--rank"></div>
           </div>
-          <div class="pie-card">
-            <div class="pie-card__title">无合同费用分类</div>
-            <div ref="expenseCatPieRef" class="chart-surface chart-surface--pie"></div>
+          <div class="rank-card">
+            <div class="rank-card__title">无合同费用分类</div>
+            <div ref="expenseCatRankRef" class="chart-surface chart-surface--rank"></div>
           </div>
         </div>
       </AppSectionCard>
@@ -150,7 +150,6 @@ import {
   onBeforeUnmount,
   nextTick,
   reactive,
-  watch,
 } from "vue";
 import echarts from "@/utils/echarts";
 import {
@@ -162,9 +161,7 @@ import {
 import { ElMessage } from "element-plus";
 import AppFilterBar from "@/components/ui/AppFilterBar.vue";
 import AppMetricCard from '@/components/ui/AppMetricCard.vue';
-
-const getThemeColor = (name, fallback = "") =>
-  getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+import { createHorizontalRankOption, createStackedCategoryOption } from '@/utils/dashboardRanking';
 
 // State
 const loading = ref(false);
@@ -226,16 +223,16 @@ const businessMetricCards = computed(() => [
 
 // Chart Refs
 const trendChartRef = ref(null);
-const upstreamPieRef = ref(null);
-const upstreamCompanyPieRef = ref(null);
-const expenseStructPieRef = ref(null);
-const expenseCatPieRef = ref(null);
+const upstreamRankRef = ref(null);
+const upstreamCompanyRankRef = ref(null);
+const expenseStructChartRef = ref(null);
+const expenseCatRankRef = ref(null);
 
 let trendChart = null;
-let upstreamPieChart = null;
-let upstreamCompanyPieChart = null;
+let upstreamRankChart = null;
+let upstreamCompanyRankChart = null;
 let expenseStructChart = null;
-let expenseCatChart = null;
+let expenseCatRankChart = null;
 
 const formatSummaryTotal = (items, valueKey = "amount", unit = "单") => {
   const count = items.reduce((acc, cur) => acc + (cur.count || 0), 0);
@@ -380,10 +377,10 @@ const fetchData = async () => {
 
     // 4. Update Charts
     initTrendChart(trendRes);
-    initUpstreamPie(summaryRes.upstream_by_category);
-    initUpstreamCompanyPie(summaryRes.upstream_by_company_category || []);
-    initExpenseStructPie(expenseRes.overall_breakdown);
-    initExpenseCatPie(expenseRes.non_contract_breakdown);
+    initUpstreamRank(summaryRes.upstream_by_category);
+    initUpstreamCompanyRank(summaryRes.upstream_by_company_category || []);
+    initExpenseStructureChart(expenseRes);
+    initExpenseCategoryRank(expenseRes.non_contract_breakdown);
   } catch (error) {
     console.error(error);
     ElMessage.error("获取报表数据失败");
@@ -510,176 +507,91 @@ const initTrendChart = (data) => {
   trendChart.resize();
 };
 
-const initUpstreamPie = (data) => {
-  if (!upstreamPieRef.value) return;
-  if (upstreamPieChart) upstreamPieChart.dispose();
+const initUpstreamRank = (data) => {
+  if (!upstreamRankRef.value) return;
+  if (upstreamRankChart) upstreamRankChart.dispose();
 
-  // Format for pie: { value, name }
-  const pieData = data.map((item) => ({ value: item.amount, name: item.name }));
-
-  upstreamPieChart = echarts.init(upstreamPieRef.value);
-  upstreamPieChart.setOption({
-    tooltip: {
-      confine: true,
-      trigger: "item",
-      formatter: function (params) {
-        const wanValue = Math.round(params.value / 10000);
-        return `${params.name}: ${wanValue}万元 (${params.percent}%)`;
-      },
-    },
-    legend: { type: "scroll", bottom: 0, pageButtonGap: 5 },
-    series: [
-      {
-        name: "上游合同分类",
-        type: "pie",
-        radius: ["35%", "60%"], // Smaller radius
-        center: ["50%", "42%"], // Move up slightly
-        avoidLabelOverlap: false,
-        itemStyle: {
-          borderRadius: 5,
-          borderColor: getThemeColor("--surface-panel"),
-          borderWidth: 2,
-        },
-        label: {
-          show: false,
-          position: "center",
-        },
-        emphasis: {
-          label: {
-            show: true,
-            fontSize: "12",
-            fontWeight: "bold",
-          },
-        },
-        labelLine: { show: false },
-        data: pieData.length > 0 ? pieData : [{ value: 0, name: "暂无数据" }],
-      },
-    ],
-  });
+  upstreamRankChart = echarts.init(upstreamRankRef.value);
+  upstreamRankChart.setOption(
+    createHorizontalRankOption({
+      title: "上游合同分类",
+      items: data,
+    })
+  );
 };
 
-const initUpstreamCompanyPie = (data) => {
-  if (!upstreamCompanyPieRef.value) return;
-  if (upstreamCompanyPieChart) upstreamCompanyPieChart.dispose();
+const initUpstreamCompanyRank = (data) => {
+  if (!upstreamCompanyRankRef.value) return;
+  if (upstreamCompanyRankChart) upstreamCompanyRankChart.dispose();
 
-  // Format for pie: { value, name }
-  const pieData = data.map((item) => ({ value: item.amount, name: item.name }));
-
-  upstreamCompanyPieChart = echarts.init(upstreamCompanyPieRef.value);
-  upstreamCompanyPieChart.setOption({
-    tooltip: {
-      confine: true,
-      trigger: "item",
-      formatter: function (params) {
-        const wanValue = Math.round(params.value / 10000);
-        return `${params.name}: ${wanValue}万元 (${params.percent}%)`;
-      },
-    },
-    legend: { type: "scroll", bottom: 0, pageButtonGap: 5 },
-    series: [
-      {
-        name: "上游合同公司分类",
-        type: "pie",
-        radius: ["35%", "60%"], // Smaller radius
-        center: ["50%", "42%"], // Move up slightly
-        avoidLabelOverlap: false,
-        itemStyle: {
-          borderRadius: 5,
-          borderColor: getThemeColor("--surface-panel"),
-          borderWidth: 2,
-        },
-        label: {
-          show: false,
-          position: "center",
-        },
-        emphasis: {
-          label: {
-            show: true,
-            fontSize: "12",
-            fontWeight: "bold",
-          },
-        },
-        labelLine: { show: false },
-        data: pieData.length > 0 ? pieData : [{ value: 0, name: "暂无数据" }],
-      },
-    ],
-  });
+  upstreamCompanyRankChart = echarts.init(upstreamCompanyRankRef.value);
+  upstreamCompanyRankChart.setOption(
+    createHorizontalRankOption({
+      title: "上游公司分类",
+      items: data,
+    })
+  );
 };
 
-const initExpenseStructPie = (data) => {
-  if (!expenseStructPieRef.value) return;
+const initExpenseStructureChart = (expenseRes) => {
+  if (!expenseStructChartRef.value) return;
   if (expenseStructChart) expenseStructChart.dispose();
 
-  // Check empty
-  const hasData = data.some((d) => d.value > 0);
-
-  expenseStructChart = echarts.init(expenseStructPieRef.value);
-  expenseStructChart.setOption({
-    tooltip: {
-      confine: true,
-      trigger: "item",
-      formatter: function (params) {
-        const wanValue = Math.round(params.value / 10000);
-        return `${params.name}: ${wanValue}万元 (${params.percent}%)`;
-      },
-    },
-    legend: { bottom: "0%" },
-    series: [
-      {
-        name: "支出构成",
-        type: "pie",
-        radius: "60%",
-        center: ["50%", "45%"],
-        data: hasData ? data : [{ value: 0, name: "暂无数据" }],
-        emphasis: {
-          itemStyle: {
-            shadowBlur: 10,
-            shadowOffsetX: 0,
-            shadowColor: "rgba(0, 0, 0, 0.5)",
-          },
+  expenseStructChart = echarts.init(expenseStructChartRef.value);
+  expenseStructChart.setOption(
+    createStackedCategoryOption({
+      title: "支出构成",
+      categories: ["本期支出"],
+      series: [
+        {
+          name: "下游合同",
+          data: [
+            expenseRes.overall_breakdown?.find((item) => item.name === "下游合同")
+              ?.value || 0,
+          ],
         },
-      },
-    ],
-  });
+        {
+          name: "管理合同",
+          data: [
+            expenseRes.overall_breakdown?.find((item) => item.name === "管理合同")
+              ?.value || 0,
+          ],
+        },
+        {
+          name: "无合同费用",
+          data: [
+            expenseRes.overall_breakdown?.find((item) => item.name === "无合同费用")
+              ?.value || 0,
+          ],
+        },
+        {
+          name: "零星用工",
+          data: [expenseRes.zero_hour_labor?.total || 0],
+        },
+      ],
+    })
+  );
 };
 
-const initExpenseCatPie = (data) => {
-  if (!expenseCatPieRef.value) return;
-  if (expenseCatChart) expenseCatChart.dispose();
+const initExpenseCategoryRank = (data) => {
+  if (!expenseCatRankRef.value) return;
+  if (expenseCatRankChart) expenseCatRankChart.dispose();
 
-  const hasData = data.some((d) => d.value > 0);
-
-  expenseCatChart = echarts.init(expenseCatPieRef.value);
-  expenseCatChart.setOption({
-    tooltip: {
-      confine: true,
-      trigger: "item",
-      formatter: function (params) {
-        const wanValue = Math.round(params.value / 10000);
-        return `${params.name}: ${wanValue}万元 (${params.percent}%)`;
-      },
-    },
-    legend: { type: "scroll", bottom: "0%" },
-    series: [
-      {
-        name: "无合同费用分类",
-        type: "pie",
-        radius: ["30%", "60%"],
-        center: ["50%", "45%"],
-        roseType: "area", // Rose chart for variety
-        data: hasData ? data : [{ value: 0, name: "暂无数据" }],
-        itemStyle: { borderRadius: 5 },
-      },
-    ],
-  });
+  expenseCatRankChart = echarts.init(expenseCatRankRef.value);
+  expenseCatRankChart.setOption(
+    createHorizontalRankOption({
+      title: "无合同费用分类",
+      items: data,
+    })
+  );
 };
 
 const handleResize = () => {
   trendChart && trendChart.resize();
-  upstreamPieChart && upstreamPieChart.resize();
-  upstreamCompanyPieChart && upstreamCompanyPieChart.resize();
+  upstreamRankChart && upstreamRankChart.resize();
+  upstreamCompanyRankChart && upstreamCompanyRankChart.resize();
   expenseStructChart && expenseStructChart.resize();
-  expenseCatChart && expenseCatChart.resize();
+  expenseCatRankChart && expenseCatRankChart.resize();
 };
 
 onMounted(() => {
@@ -692,10 +604,10 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener("resize", handleResize);
   trendChart && trendChart.dispose();
-  upstreamPieChart && upstreamPieChart.dispose();
-  upstreamCompanyPieChart && upstreamCompanyPieChart.dispose();
+  upstreamRankChart && upstreamRankChart.dispose();
+  upstreamCompanyRankChart && upstreamCompanyRankChart.dispose();
   expenseStructChart && expenseStructChart.dispose();
-  expenseCatChart && expenseCatChart.dispose();
+  expenseCatRankChart && expenseCatRankChart.dispose();
 });
 </script>
 
@@ -825,8 +737,8 @@ onBeforeUnmount(() => {
   height: 360px;
 }
 
-.chart-surface--pie {
-  height: 240px;
+.chart-surface--rank {
+  min-height: 240px;
 }
 
 .arap-panel {
@@ -929,13 +841,13 @@ onBeforeUnmount(() => {
   font-weight: 600;
 }
 
-.pie-grid {
+.business-chart-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
-.pie-card {
+.rank-card {
   min-width: 0;
   padding: 14px;
   border: 1px solid var(--border-subtle);
@@ -943,7 +855,7 @@ onBeforeUnmount(() => {
   background: color-mix(in srgb, var(--surface-panel) 84%, var(--surface-panel-muted) 16%);
 }
 
-.pie-card__title {
+.rank-card__title {
   margin-bottom: 12px;
   color: var(--text-secondary);
   font-size: 13px;
@@ -953,7 +865,7 @@ onBeforeUnmount(() => {
 @media (max-width: 1279px) {
   .metric-grid,
   .summary-columns,
-  .pie-grid {
+  .business-chart-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -984,7 +896,7 @@ onBeforeUnmount(() => {
 
   .metric-grid,
   .summary-columns,
-  .pie-grid {
+  .business-chart-grid {
     grid-template-columns: 1fr;
   }
 
@@ -992,8 +904,7 @@ onBeforeUnmount(() => {
     min-height: 156px;
   }
 
-  .chart-surface--trend,
-  .chart-surface--pie {
+  .chart-surface--trend {
     height: 280px;
   }
 

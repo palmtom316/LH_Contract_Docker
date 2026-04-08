@@ -15,3 +15,13 @@ describe('Business metric cards', () => {
     expect(businessSource).not.toContain('<article class="metric-card')
   })
 })
+
+describe('Business chart composition', () => {
+  it('drops pie and rose chart rendering in favor of ranking and stacked bars', () => {
+    expect(businessSource).toContain("from '@/utils/dashboardRanking'")
+    expect(businessSource).toContain('createHorizontalRankOption')
+    expect(businessSource).toContain('createStackedCategoryOption')
+    expect(businessSource).not.toContain("type: \"pie\"")
+    expect(businessSource).not.toContain('roseType')
+  })
+})

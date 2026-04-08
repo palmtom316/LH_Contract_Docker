@@ -227,14 +227,14 @@
     <section class="overview-chart-grid">
       <AppSectionCard>
         <template #header>合同分类</template>
-        <div class="pie-grid">
-          <div class="pie-panel">
-            <div class="pie-panel__title">合同类别</div>
-            <div ref="pieCategoryChartRef" class="chart-surface chart-surface--pie" />
+        <div class="rank-grid">
+          <div class="rank-panel">
+            <div class="rank-panel__title">合同类别</div>
+            <div ref="categoryRankChartRef" class="chart-surface chart-surface--rank" />
           </div>
-          <div class="pie-panel">
-            <div class="pie-panel__title">自定类别</div>
-            <div ref="pieCompanyChartRef" class="chart-surface chart-surface--pie" />
+          <div class="rank-panel">
+            <div class="rank-panel__title">自定类别</div>
+            <div ref="companyRankChartRef" class="chart-surface chart-surface--rank" />
           </div>
         </div>
       </AppSectionCard>
@@ -251,23 +251,24 @@ import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import { useDevice } from '@/composables/useDevice'
 import { getStats, getPeriodStats, getPeriodTrend } from '@/api/dashboard'
 import { getFinanceTrend } from '@/api/reports'
-import { createBarChartOption, createPieChartOption, readChartTheme } from '@/utils/echarts'
+import { createBarChartOption, readChartTheme } from '@/utils/echarts'
+import { createHorizontalRankOption } from '@/utils/dashboardRanking'
 
 const { isMobile } = useDevice()
 const mobileActiveTab = ref('monthly')
 const currentYear = new Date().getFullYear().toString()
 
 const barChartRef = ref(null)
-const pieCategoryChartRef = ref(null)
-const pieCompanyChartRef = ref(null)
+const categoryRankChartRef = ref(null)
+const companyRankChartRef = ref(null)
 const monthChartRef = ref(null)
 const quarterChartRef = ref(null)
 const mobileMonthChartRef = ref(null)
 const mobileQuarterChartRef = ref(null)
 
 let barChart = null
-let pieCategoryChart = null
-let pieCompanyChart = null
+let categoryRankChart = null
+let companyRankChart = null
 let monthChart = null
 let quarterChart = null
 let mobileMonthChart = null
@@ -453,34 +454,6 @@ function createTrendBarOption({ categories, series, labelSliceStart = 5, mobile 
   return option
 }
 
-function createContractPieOption(title, data) {
-  const theme = readChartTheme()
-  const option = createPieChartOption({ title, data })
-
-  option.tooltip = {
-    trigger: 'item',
-    confine: true,
-    formatter: (params) => `${params.name}: ${formatWan(params.value)} 万元 (${params.percent}%)`
-  }
-  option.legend.left = 'center'
-  option.legend.width = '92%'
-  option.legend.itemWidth = 10
-  option.legend.itemHeight = 10
-  option.legend.itemGap = 12
-  option.legend.textStyle = { color: theme.text, fontSize: 11, lineHeight: 14 }
-  option.title.textStyle.fontSize = 13
-  option.series[0].name = title
-  option.series[0].radius = ['36%', '62%']
-  option.series[0].center = ['50%', '40%']
-  option.series[0].itemStyle = {
-    borderRadius: 6,
-    borderColor: theme.panel,
-    borderWidth: 2
-  }
-
-  return option
-}
-
 async function fetchData() {
   try {
     const [statsRes, trendRes, periodRes, monthTrendRes, quarterTrendRes] = await Promise.all([
@@ -505,8 +478,8 @@ async function fetchData() {
     quarterTrendData = quarterTrendRes
 
     initAnnualChart(trendRes)
-    if (charts.pie_category) initCategoryPie(charts.pie_category)
-    if (charts.pie_company) initCompanyPie(charts.pie_company)
+    if (charts.pie_category) initCategoryRank(charts.pie_category)
+    if (charts.pie_company) initCompanyRank(charts.pie_company)
     initMonthChart(monthTrendData)
     initQuarterChart(quarterTrendData)
   } catch (error) {
@@ -579,20 +552,26 @@ function initQuarterChart(data) {
   }
 }
 
-function initCategoryPie(data) {
-  if (!pieCategoryChartRef.value) return
-  if (pieCategoryChart) pieCategoryChart.dispose()
+function initCategoryRank(data) {
+  if (!categoryRankChartRef.value) return
+  if (categoryRankChart) categoryRankChart.dispose()
 
-  pieCategoryChart = echarts.init(pieCategoryChartRef.value)
-  pieCategoryChart.setOption(createContractPieOption('合同类别', data))
+  categoryRankChart = echarts.init(categoryRankChartRef.value)
+  categoryRankChart.setOption(createHorizontalRankOption({
+    title: '合同类别',
+    items: data
+  }))
 }
 
-function initCompanyPie(data) {
-  if (!pieCompanyChartRef.value) return
-  if (pieCompanyChart) pieCompanyChart.dispose()
+function initCompanyRank(data) {
+  if (!companyRankChartRef.value) return
+  if (companyRankChart) companyRankChart.dispose()
 
-  pieCompanyChart = echarts.init(pieCompanyChartRef.value)
-  pieCompanyChart.setOption(createContractPieOption('自定类别', data))
+  companyRankChart = echarts.init(companyRankChartRef.value)
+  companyRankChart.setOption(createHorizontalRankOption({
+    title: '自定类别',
+    items: data
+  }))
 }
 
 function disposeChartInstance(instance) {
@@ -611,8 +590,8 @@ function disposePeriodCharts() {
 
 function handleResize() {
   barChart && barChart.resize()
-  pieCategoryChart && pieCategoryChart.resize()
-  pieCompanyChart && pieCompanyChart.resize()
+  categoryRankChart && categoryRankChart.resize()
+  companyRankChart && companyRankChart.resize()
   monthChart && monthChart.resize()
   quarterChart && quarterChart.resize()
   mobileMonthChart && mobileMonthChart.resize()
@@ -629,8 +608,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
   barChart = disposeChartInstance(barChart)
-  pieCategoryChart = disposeChartInstance(pieCategoryChart)
-  pieCompanyChart = disposeChartInstance(pieCompanyChart)
+  categoryRankChart = disposeChartInstance(categoryRankChart)
+  companyRankChart = disposeChartInstance(companyRankChart)
   disposePeriodCharts()
 })
 </script>
@@ -800,22 +779,22 @@ onBeforeUnmount(() => {
   height: 280px;
 }
 
-.chart-surface--pie {
-  height: 320px;
+.chart-surface--rank {
+  min-height: 280px;
 }
 
-.pie-grid {
+.rank-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
 }
 
-.pie-panel {
+.rank-panel {
   min-width: 0;
   overflow: hidden;
 }
 
-.pie-panel__title {
+.rank-panel__title {
   margin-bottom: 10px;
   text-align: left;
   font-size: 13px;
@@ -831,7 +810,7 @@ onBeforeUnmount(() => {
   .period-grid,
   .overview-summary-grid,
   .overview-chart-grid,
-  .pie-grid {
+  .rank-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -867,7 +846,6 @@ onBeforeUnmount(() => {
 
   .chart-surface--annual,
   .chart-surface--period,
-  .chart-surface--pie,
   .chart-surface--mobile {
     height: 280px;
   }

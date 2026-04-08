@@ -14,3 +14,13 @@ describe('Overview metric cards', () => {
     expect(overviewSource).toContain(":eyebrow=\"item.eyebrow\"")
   })
 })
+
+describe('Overview chart composition', () => {
+  it('uses dashboard ranking helpers instead of pie chart initialization for category summaries', () => {
+    expect(overviewSource).toContain("from '@/utils/dashboardRanking'")
+    expect(overviewSource).toContain('createHorizontalRankOption')
+    expect(overviewSource).not.toContain('createPieChartOption')
+    expect(overviewSource).not.toContain('initCategoryPie')
+    expect(overviewSource).not.toContain('initCompanyPie')
+  })
+})
