@@ -26,3 +26,8 @@
 - docker-compose*.yml 中 `lh_contract_*`
 - .env*.example 中 `lh_contract_db`
 - 仓库名 `LH_Contract_Docker`
+
+## 保留项
+- `lh_contract_db`: 与现网数据库、备份脚本、升级文档兼容，暂不修改
+- `lh_contract_backend`: 与现网容器名称兼容，暂不修改
+- `LH_Contract_Docker`: 仓库名与远端地址相关，需单独迁移评估
