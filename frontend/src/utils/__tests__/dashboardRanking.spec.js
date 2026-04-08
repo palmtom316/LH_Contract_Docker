@@ -43,7 +43,7 @@ describe('createHorizontalRankOption', () => {
     document.documentElement.style.setProperty('--surface-panel', '#ffffff')
   })
 
-  it('creates a horizontal bar chart with category labels on the y-axis', () => {
+  it('creates a horizontal bar chart with category labels on the y-axis and compact amount ticks', () => {
     const option = createHorizontalRankOption({
       title: '上游合同分类',
       items: [
@@ -57,6 +57,12 @@ describe('createHorizontalRankOption', () => {
     expect(option.yAxis.data).toEqual(['市政', '安装'])
     expect(option.series[0].type).toBe('bar')
     expect(option.series[0].data).toEqual([100000, 80000])
+    expect(option.title).toBeUndefined()
+    expect(option.grid.left).toBe('18%')
+    expect(option.grid.bottom).toBe('12%')
+    expect(option.xAxis.name).toBe('金额（万元）')
+    expect(option.xAxis.splitNumber).toBe(4)
+    expect(option.xAxis.axisLabel.formatter(200000)).toBe('20万')
   })
 
   it('falls back to a stabilized empty state when ranked data is missing', () => {
@@ -74,7 +80,7 @@ describe('createHorizontalRankOption', () => {
 })
 
 describe('createStackedCategoryOption', () => {
-  it('creates one stacked bar row for expense comparison', () => {
+  it('creates one stacked bar row for expense comparison without duplicating the card title', () => {
     const option = createStackedCategoryOption({
       title: '支出构成',
       categories: ['本期支出'],
@@ -86,5 +92,8 @@ describe('createStackedCategoryOption', () => {
 
     expect(option.yAxis.data).toEqual(['本期支出'])
     expect(option.series.every(item => item.stack === 'total')).toBe(true)
+    expect(option.title).toBeUndefined()
+    expect(option.xAxis.name).toBe('金额（万元）')
+    expect(option.xAxis.axisLabel.formatter(300000)).toBe('30万')
   })
 })

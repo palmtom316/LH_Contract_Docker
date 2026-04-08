@@ -22,7 +22,21 @@ const { chartInstances, initChart } = vi.hoisted(() => {
 vi.mock('@/utils/echarts', () => ({
   default: {
     init: initChart
-  }
+  },
+  createPieChartOption: vi.fn(({ data = [] }) => ({
+    series: [{ data }]
+  })),
+  readChartTheme: vi.fn(() => ({
+    text: '#475569',
+    textStrong: '#0f172a',
+    border: '#d7dfeb',
+    panel: '#ffffff',
+    primary: '#2563eb',
+    success: '#0f766e',
+    warning: '#b45309',
+    danger: '#b83280',
+    info: '#475569'
+  }))
 }))
 
 vi.mock('@/api/reports', () => ({
@@ -64,6 +78,15 @@ describe('Business chart composition', () => {
     expect(businessSource).toContain('createStackedCategoryOption')
     expect(businessSource).not.toContain("type: \"pie\"")
     expect(businessSource).not.toContain('roseType')
+  })
+
+  it('adds the four high-value business dashboard charts and removes duplicate chart titles from the card body', () => {
+    expect(businessSource).toContain('经营结果')
+    expect(businessSource).toContain('公司合同分类')
+    expect(businessSource).toContain('无合同费用分类')
+    expect(businessSource).toContain('月度经营趋势')
+    expect(businessSource).not.toContain('rank-card__title">支出构成')
+    expect(businessSource).not.toContain('rank-card__title">上游合同分类')
   })
 })
 
@@ -126,24 +149,49 @@ describe('Business expense structure chart mapping', () => {
     })
   })
 
-  it('maps backend expense labels into the stacked category chart series', async () => {
+  it('maps backend expense labels into the expense structure chart data', async () => {
     mountPage()
     await flushPromises()
     await flushPromises()
 
     const expenseChartInstance = chartInstances.find((instance) =>
-      instance.setOption.mock.calls.some(([option]) => option?.title?.text === '支出构成')
+      instance.setOption.mock.calls.some(([option]) => option?.series?.[0]?.data?.some((item) => item.name === '下游合同'))
     )
 
     expect(expenseChartInstance).toBeTruthy()
 
     const expenseOption = expenseChartInstance.setOption.mock.calls.find(
-      ([option]) => option?.title?.text === '支出构成'
+      ([option]) => option?.series?.[0]?.data?.some((item) => item.name === '下游合同')
     )[0]
-    const downstreamSeries = expenseOption.series.find((item) => item.name === '下游合同')
-    const managementSeries = expenseOption.series.find((item) => item.name === '管理合同')
+    const expenseData = expenseOption.series[0].data
+    const downstreamSeries = expenseData.find((item) => item.name === '下游合同')
+    const managementSeries = expenseData.find((item) => item.name === '管理合同')
 
-    expect(downstreamSeries.data[0]).toBe(120000)
-    expect(managementSeries.data[0]).toBe(340000)
+    expect(downstreamSeries.value).toBe(120000)
+    expect(managementSeries.value).toBe(340000)
+  })
+
+  it('renders the operating result chart as a waterfall-style comparison', async () => {
+    mountPage()
+    await flushPromises()
+    await flushPromises()
+
+    const resultChartInstance = chartInstances.find((instance) =>
+      instance.setOption.mock.calls.some(([option]) => option?.xAxis?.data?.includes('净结果'))
+    )
+
+    expect(resultChartInstance).toBeTruthy()
+
+    const resultOption = resultChartInstance.setOption.mock.calls.find(
+      ([option]) => option?.xAxis?.data?.includes('净结果')
+    )[0]
+
+    expect(resultOption.xAxis.data).toEqual(['上游回款', '下游合同', '管理合同', '无合同费用', '零星用工', '净结果'])
+    expect(resultOption.series).toHaveLength(2)
+    expect(resultOption.series[0].stack).toBe('result')
+    expect(resultOption.series[0].itemStyle.opacity).toBe(0)
+    expect(resultOption.series[1].stack).toBe('result')
+    expect(resultOption.series[1].data[0].value).toBe(80000)
+    expect(resultOption.series[1].data[5].value).toBe(-514000)
   })
 })

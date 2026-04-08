@@ -4,6 +4,12 @@ function ensureArray(value) {
   return Array.isArray(value) ? value : []
 }
 
+function formatAmountTick(value) {
+  const numeric = Number(value || 0)
+  if (!Number.isFinite(numeric)) return '0'
+  return `${Math.round(numeric / 10000)}万`
+}
+
 export function buildTopRankedItems(items, limit = 6) {
   const ranked = ensureArray(items)
     .map(item => ({
@@ -31,31 +37,46 @@ export function createHorizontalRankOption({ title, items, color = '#2563eb' }) 
 
   return {
     aria: { enabled: true },
-    title: {
-      text: title,
-      left: 'left',
-      textStyle: { color: theme.textStrong, fontSize: 14, fontWeight: 600 }
-    },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      confine: true
+      confine: true,
+      formatter(params) {
+        const first = Array.isArray(params) ? params[0] : params
+        if (!first) return ''
+        const value = Number(first.value || 0)
+        return `${first.name}<br/>${value.toLocaleString('zh-CN')} 元`
+      }
     },
     grid: {
-      left: '8%',
+      left: '18%',
       right: '4%',
-      top: '16%',
-      bottom: '10%',
+      top: '8%',
+      bottom: '12%',
       containLabel: true
     },
     xAxis: {
       type: 'value',
-      axisLabel: { color: theme.text }
+      name: '金额（万元）',
+      nameTextStyle: { color: theme.text, padding: [0, 0, 0, 4] },
+      splitNumber: 4,
+      axisLabel: {
+        color: theme.text,
+        fontSize: 11,
+        formatter: formatAmountTick
+      },
+      splitLine: {
+        lineStyle: { color: theme.border }
+      }
     },
     yAxis: {
       type: 'category',
       data: yAxisData,
-      axisLabel: { color: theme.text }
+      axisLabel: {
+        color: theme.text,
+        width: 84,
+        overflow: 'truncate'
+      }
     },
     series: [
       {
@@ -73,35 +94,52 @@ export function createStackedCategoryOption({ title, categories, series }) {
 
   return {
     aria: { enabled: true },
-    title: {
-      text: title,
-      left: 'left',
-      textStyle: { color: theme.textStrong, fontSize: 14, fontWeight: 600 }
-    },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      confine: true
+      confine: true,
+      formatter(params) {
+        if (!Array.isArray(params) || !params.length) return ''
+        const lines = [params[0].name]
+        params.forEach((item) => {
+          lines.push(`${item.marker}${item.seriesName}: ${Number(item.value || 0).toLocaleString('zh-CN')} 元`)
+        })
+        return lines.join('<br/>')
+      }
     },
     legend: {
       bottom: 0,
       textStyle: { color: theme.text, fontSize: 11 }
     },
     grid: {
-      left: '8%',
+      left: '18%',
       right: '4%',
-      top: '16%',
+      top: '8%',
       bottom: '56px',
       containLabel: true
     },
     xAxis: {
       type: 'value',
-      axisLabel: { color: theme.text }
+      name: '金额（万元）',
+      nameTextStyle: { color: theme.text, padding: [0, 0, 0, 4] },
+      splitNumber: 4,
+      axisLabel: {
+        color: theme.text,
+        fontSize: 11,
+        formatter: formatAmountTick
+      },
+      splitLine: {
+        lineStyle: { color: theme.border }
+      }
     },
     yAxis: {
       type: 'category',
       data: ensureArray(categories),
-      axisLabel: { color: theme.text }
+      axisLabel: {
+        color: theme.text,
+        width: 84,
+        overflow: 'truncate'
+      }
     },
     series: ensureArray(series).map(item => ({
       ...item,

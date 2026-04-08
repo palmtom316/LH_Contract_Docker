@@ -23,4 +23,16 @@ describe('Overview chart composition', () => {
     expect(overviewSource).not.toContain('initCategoryPie')
     expect(overviewSource).not.toContain('initCompanyPie')
   })
+
+  it('places the 30 day and 90 day business sections in separate full-width cards before the category rankings', () => {
+    const monthlyIndex = overviewSource.indexOf('近30天经营表现')
+    const quarterlyIndex = overviewSource.indexOf('近90天经营表现')
+    const categoryIndex = overviewSource.indexOf('合同分类')
+
+    expect(monthlyIndex).toBeGreaterThan(-1)
+    expect(quarterlyIndex).toBeGreaterThan(monthlyIndex)
+    expect(categoryIndex).toBeGreaterThan(quarterlyIndex)
+    expect(overviewSource).not.toContain('class="period-grid"')
+    expect(overviewSource).toContain('class="period-stack"')
+  })
 })

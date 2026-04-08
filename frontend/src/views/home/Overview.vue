@@ -32,7 +32,7 @@
       </AppSectionCard>
     </section>
 
-    <section v-if="!isMobile" class="period-grid">
+    <section v-if="!isMobile" class="period-stack">
       <AppSectionCard>
         <template #header>近30天经营表现</template>
         <div class="period-panel">
@@ -664,16 +664,20 @@ onBeforeUnmount(() => {
   color: var(--status-danger);
 }
 
-.period-grid,
+.period-stack,
 .overview-summary-grid,
 .overview-chart-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
 }
 
+.overview-summary-grid,
+.overview-chart-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .overview-summary-grid :deep(.app-section-card),
-.period-grid :deep(.app-section-card),
+.period-stack :deep(.app-section-card),
 .overview-chart-grid :deep(.app-section-card) {
   border-radius: 24px;
 }
@@ -807,7 +811,7 @@ onBeforeUnmount(() => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .period-grid,
+  .period-stack,
   .overview-summary-grid,
   .overview-chart-grid,
   .rank-grid {
