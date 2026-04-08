@@ -267,9 +267,9 @@
                 <span class="contract-cell--amount">¥ {{ formatMoney(scope.row.contract_amount) }}</span>
               </template>
             </el-table-column>
-             <el-table-column prop="total_settlement" label="结算金额" width="140" align="right">
+            <el-table-column prop="total_settlement" label="结算金额" width="140" align="right">
               <template #default="scope">
-                <span v-if="scope.row.total_settlement">¥ {{ formatMoney(scope.row.total_settlement) }}</span>
+                <span v-if="scope.row.total_settlement" class="contract-cell--amount">¥ {{ formatMoney(scope.row.total_settlement) }}</span>
                 <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
@@ -1308,19 +1308,18 @@ onBeforeUnmount(() => {
 </style>
 
 <style>
-/* Global override for table footer */
-.custom-footer-table .el-table__footer-wrapper tbody td,
-.custom-footer-table .el-table__fixed-footer-wrapper tbody td,
-.custom-footer-table .el-table__footer-wrapper tbody tr,
-.custom-footer-table .el-table__fixed-footer-wrapper tbody tr {
+.custom-footer-table.contract-table--dense .el-table__footer-wrapper tbody td,
+.custom-footer-table.contract-table--dense .el-table__fixed-footer-wrapper tbody td,
+.custom-footer-table.contract-table--dense .el-table__footer-wrapper tbody tr,
+.custom-footer-table.contract-table--dense .el-table__fixed-footer-wrapper tbody tr {
   background-color: color-mix(in srgb, var(--surface-panel-muted) 76%, var(--surface-panel) 24%) !important;
   color: var(--text-primary) !important;
   font-weight: 700 !important;
   font-size: 14px !important;
   --el-table-row-hover-bg-color: color-mix(in srgb, var(--surface-panel-muted) 76%, var(--surface-panel) 24%) !important;
 }
-.custom-footer-table .el-table__footer-wrapper tbody td .cell,
-.custom-footer-table .el-table__fixed-footer-wrapper tbody td .cell {
+.custom-footer-table.contract-table--dense .el-table__footer-wrapper tbody td .cell,
+.custom-footer-table.contract-table--dense .el-table__fixed-footer-wrapper tbody td .cell {
   background-color: transparent !important;
   color: var(--text-primary) !important;
   font-weight: 700 !important;
@@ -1328,17 +1327,17 @@ onBeforeUnmount(() => {
 }
 
 /* Keep default table cells single-line; allow specific cells to override */
-.custom-footer-table td .cell {
+.custom-footer-table.contract-table--dense td .cell {
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
 }
 
-.custom-footer-table .el-table__row {
+.custom-footer-table.contract-table--dense .el-table__row {
   height: auto !important;
 }
 
-.custom-footer-table td.el-table__cell {
+.custom-footer-table.contract-table--dense td.el-table__cell {
   height: auto !important;
   vertical-align: top !important;
 }
