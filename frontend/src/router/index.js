@@ -152,7 +152,7 @@ const isMobileDevice = () => window.innerWidth < 768
 // Navigation guards
 router.beforeEach((to, from, next) => {
     // Set page title
-    document.title = to.meta.title ? `${to.meta.title} - 蓝海合同管理` : '蓝海合同管理系统'
+    document.title = to.meta.title ? `${to.meta.title} - 合同管理系统` : '合同管理系统'
     const token = localStorage.getItem('token')
     const whiteList = ['/login']
 

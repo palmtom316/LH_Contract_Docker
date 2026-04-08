@@ -10,7 +10,7 @@
             <template #header>基础设置</template>
             <el-form :model="configForm" label-width="120px">
                 <el-form-item label="系统名称(第一行)">
-                    <el-input v-model="configForm.system_name" placeholder="例如：蓝海" />
+                    <el-input v-model="configForm.system_name" placeholder="例如：合同管理系统" />
                 </el-form-item>
                 <el-form-item label="系统名称(第二行)">
                     <el-input v-model="configForm.system_name_line_2" placeholder="例如：合同管理系统" />

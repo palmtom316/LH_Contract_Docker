@@ -261,7 +261,7 @@ async def get_system_config(
     configs = result.scalars().all()
     
     config_dict = {
-        "system_name": "蓝海合同管理系统",
+        "system_name": "合同管理系统",
         "system_name_line_2": "",
         "system_logo": None 
     }

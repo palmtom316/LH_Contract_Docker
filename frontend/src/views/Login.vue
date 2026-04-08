@@ -2,7 +2,7 @@
   <div class="login-shell">
     <div class="login-shell__panel">
       <section class="login-shell__brand">
-        <h1 class="login-shell__title">蓝海合同管理系统</h1>
+        <h1 class="login-shell__title">合同管理系统</h1>
         <p class="login-shell__subtitle">登录到企业工作台</p>
       </section>
 
