@@ -1,18 +1,22 @@
 
 import asyncio
+import os
 import urllib.request
 import urllib.error
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import text
 
 # DB Config
-DATABASE_URL = "postgresql+asyncpg://lh_admin:LanHai2024Secure!@localhost:5432/lh_contract_db"
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+asyncpg://lh_admin:<replace-me>@localhost:5432/lh_contract_db",
+)
 
 # API Config
 API_URL = "http://localhost:8000/health"
 
 async def check_db_connection():
-    print(f"Checking DB connection string: {DATABASE_URL}")
+    print("Checking DB connection string from DATABASE_URL")
     try:
         engine = create_async_engine(DATABASE_URL)
         async with engine.connect() as conn:

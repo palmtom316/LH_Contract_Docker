@@ -151,7 +151,7 @@ CREATE TABLE IF NOT EXISTS sys_config (
 );
 
 -- 插入默认配置
-INSERT INTO sys_config (key, value) VALUES ('system_name', 'Lanhai Contract System')
+INSERT INTO sys_config (key, value) VALUES ('system_name', '合同管理系统')
 ON CONFLICT (key) DO NOTHING;
 
 INSERT INTO sys_config (key, value) VALUES ('system_logo', '')

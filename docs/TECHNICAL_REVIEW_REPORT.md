@@ -1,4 +1,4 @@
-# 技术审核报告 - LH Contract Management System
+# 技术审核报告 - Contract Management System
 
 **审核日期**: 2025-12-23  
 **项目版本**: V1.2  
@@ -53,7 +53,7 @@
 ```python
 DATABASE_URL: str = os.getenv(
     "DATABASE_URL",
-    "postgresql+asyncpg://lh_admin:LanHai2024Secure!@db:5432/lh_contract_db"  # 硬编码密码
+    "postgresql+asyncpg://lh_admin:<strong-password>@db:5432/lh_contract_db"  # 占位示例，禁止硬编码真实密码
 )
 ```
 
