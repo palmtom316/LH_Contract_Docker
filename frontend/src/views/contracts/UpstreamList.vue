@@ -1145,8 +1145,6 @@ onBeforeUnmount(() => {
   white-space: normal !important;
   word-break: break-word;
   line-height: 1.45;
-  max-height: 4.5em;
-  overflow: hidden;
   display: block;
 }
 
@@ -1295,11 +1293,7 @@ onBeforeUnmount(() => {
   white-space: normal;
   word-break: break-word;
   line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 3; /* Max 3 lines */
-  line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  display: block;
 }
 
 .cell-placeholder {
@@ -1347,8 +1341,6 @@ onBeforeUnmount(() => {
   word-break: break-word !important;
   word-wrap: break-word !important;
   line-height: 1.5 !important;
-  max-height: 4.5em !important; /* Approx 3 lines */
-  overflow: hidden !important;
   display: block !important;
 }
 </style>

@@ -797,8 +797,6 @@ onBeforeUnmount(() => {
   white-space: normal !important;
   word-break: break-word;
   line-height: 1.45;
-  max-height: 4.5em;
-  overflow: hidden;
   display: block;
 }
 
