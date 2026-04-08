@@ -71,49 +71,49 @@
         highlight-current-row
         show-summary
         :summary-method="getSummaries"
-        class="custom-footer-table"
+        class="custom-footer-table contract-table--dense"
         :footer-cell-style="footerCellStyle"
       >
         <el-table-column prop="serial_number" label="合同序号" width="100" fixed />
         <el-table-column prop="contract_code" label="合同编号" min-width="100" fixed />
         <el-table-column prop="contract_name" label="合同名称" min-width="220">
           <template #default="scope">
-            <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.contract_name }}</div>
+            <div class="contract-cell--wrap">{{ scope.row.contract_name }}</div>
           </template>
         </el-table-column>
         <el-table-column prop="party_b_name" label="乙方(供应商)" min-width="180">
           <template #default="scope">
-            <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.party_b_name }}</div>
+            <div class="contract-cell--wrap">{{ scope.row.party_b_name }}</div>
           </template>
         </el-table-column>
         <el-table-column prop="category" label="合同类别" width="140" show-overflow-tooltip />
         <el-table-column prop="pricing_mode" label="计价模式" width="120" show-overflow-tooltip />
         <el-table-column prop="contract_amount" label="合同金额" width="150" align="right">
           <template #default="scope">
-            <span style="white-space: nowrap;">¥ {{ Number(scope.row.contract_amount).toLocaleString() }}</span>
+            <span class="contract-cell--amount">¥ {{ Number(scope.row.contract_amount).toLocaleString() }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="total_payable" label="应付款" width="140" align="right">
           <template #default="scope">
-            <span v-if="scope.row.total_payable" style="white-space: nowrap;">¥ {{ Number(scope.row.total_payable).toLocaleString() }}</span>
+            <span v-if="scope.row.total_payable" class="contract-cell--amount">¥ {{ Number(scope.row.total_payable).toLocaleString() }}</span>
             <span v-else class="cell-placeholder">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="total_invoiced" label="挂账" width="140" align="right">
           <template #default="scope">
-            <span v-if="scope.row.total_invoiced" style="white-space: nowrap;">¥ {{ Number(scope.row.total_invoiced).toLocaleString() }}</span>
+            <span v-if="scope.row.total_invoiced" class="contract-cell--amount">¥ {{ Number(scope.row.total_invoiced).toLocaleString() }}</span>
             <span v-else class="cell-placeholder">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="total_paid" label="已付款" width="140" align="right">
           <template #default="scope">
-            <span v-if="scope.row.total_paid" style="white-space: nowrap;">¥ {{ Number(scope.row.total_paid).toLocaleString() }}</span>
+            <span v-if="scope.row.total_paid" class="contract-cell--amount">¥ {{ Number(scope.row.total_paid).toLocaleString() }}</span>
             <span v-else class="cell-placeholder">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="total_settlement" label="结算" width="140" align="right">
           <template #default="scope">
-            <span v-if="scope.row.total_settlement" style="white-space: nowrap;">¥ {{ Number(scope.row.total_settlement).toLocaleString() }}</span>
+            <span v-if="scope.row.total_settlement" class="contract-cell--amount">¥ {{ Number(scope.row.total_settlement).toLocaleString() }}</span>
             <span v-else class="cell-placeholder">-</span>
           </template>
         </el-table-column>
@@ -783,6 +783,27 @@ onBeforeUnmount(() => {
 .downstream-page-panel :deep(.el-table th.el-table__cell) {
   padding-top: 14px;
   padding-bottom: 14px;
+}
+
+:deep(.contract-table--dense .el-table__cell) {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  vertical-align: top;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.contract-cell--wrap {
+  white-space: normal !important;
+  word-break: break-word;
+  line-height: 1.45;
+  max-height: 4.5em;
+  overflow: hidden;
+  display: block;
+}
+
+.contract-cell--amount {
+  white-space: nowrap;
 }
 
 .filter-actions {

@@ -64,52 +64,52 @@
             highlight-current-row
             show-summary
             :summary-method="getSummaries"
-            class="custom-footer-table"
+            class="custom-footer-table contract-table--dense"
             :footer-cell-style="footerCellStyle"
           >
             <el-table-column prop="serial_number" label="合同序号" width="100" align="center" fixed="left" />
             <el-table-column prop="contract_code" label="合同编号" min-width="100" show-overflow-tooltip />
             <el-table-column prop="contract_name" label="合同名称" min-width="220" show-overflow-tooltip>
               <template #default="scope">
-                <div class="contract-name-cell">{{ scope.row.contract_name }}</div>
+                <div class="contract-name-cell contract-cell--wrap">{{ scope.row.contract_name }}</div>
               </template>
             </el-table-column>
             <el-table-column prop="party_a_name" label="甲方" min-width="120" show-overflow-tooltip>
               <template #default="scope">
-                <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.4', maxHeight: '3em', overflow: 'hidden' }">{{ scope.row.party_a_name }}</div>
+                <div class="contract-cell--wrap">{{ scope.row.party_a_name }}</div>
               </template>
             </el-table-column>
             <el-table-column prop="party_b_name" label="乙方" min-width="120" show-overflow-tooltip>
               <template #default="scope">
-                <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.4', maxHeight: '3em', overflow: 'hidden' }">{{ scope.row.party_b_name }}</div>
+                <div class="contract-cell--wrap">{{ scope.row.party_b_name }}</div>
               </template>
             </el-table-column>
             <el-table-column prop="contract_amount" label="签约金额" width="150" align="right">
               <template #default="scope">
-                <span style="white-space: nowrap;">¥ {{ formatMoney(scope.row.contract_amount) }}</span>
+                <span class="contract-cell--amount">¥ {{ formatMoney(scope.row.contract_amount) }}</span>
               </template>
             </el-table-column>
             <el-table-column prop="total_receivable" label="应收" width="140" align="right">
               <template #default="scope">
-                <span v-if="scope.row.total_receivable" style="white-space: nowrap;">¥ {{ formatMoney(scope.row.total_receivable) }}</span>
+                <span v-if="scope.row.total_receivable" class="contract-cell--amount">¥ {{ formatMoney(scope.row.total_receivable) }}</span>
                 <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
             <el-table-column prop="total_invoiced" label="挂账" width="140" align="right">
               <template #default="scope">
-                <span v-if="scope.row.total_invoiced" style="white-space: nowrap;">¥ {{ formatMoney(scope.row.total_invoiced) }}</span>
+                <span v-if="scope.row.total_invoiced" class="contract-cell--amount">¥ {{ formatMoney(scope.row.total_invoiced) }}</span>
                 <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
             <el-table-column prop="total_received" label="回款" width="140" align="right">
               <template #default="scope">
-                <span v-if="scope.row.total_received" style="white-space: nowrap;">¥ {{ formatMoney(scope.row.total_received) }}</span>
+                <span v-if="scope.row.total_received" class="contract-cell--amount">¥ {{ formatMoney(scope.row.total_received) }}</span>
                 <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
             <el-table-column prop="total_settlement" label="结算" width="140" align="right">
               <template #default="scope">
-                <span v-if="scope.row.total_settlement" style="white-space: nowrap;">¥ {{ formatMoney(scope.row.total_settlement) }}</span>
+                <span v-if="scope.row.total_settlement" class="contract-cell--amount">¥ {{ formatMoney(scope.row.total_settlement) }}</span>
                 <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
@@ -248,23 +248,23 @@
             style="width: 100%" 
             border
             highlight-current-row
-            class="custom-footer-table"
+            class="custom-footer-table contract-table--dense"
           >
             <el-table-column prop="serial_number" label="合同序号" width="100" align="center" fixed="left" />
             <el-table-column prop="contract_code" label="合同编号" min-width="140" show-overflow-tooltip />
             <el-table-column prop="contract_name" label="合同名称" min-width="220" show-overflow-tooltip>
               <template #default="scope">
-                <div class="contract-name-cell">{{ scope.row.contract_name }}</div>
+                <div class="contract-name-cell contract-cell--wrap">{{ scope.row.contract_name }}</div>
               </template>
             </el-table-column>
             <el-table-column prop="party_a_name" label="合同甲方单位" min-width="200" show-overflow-tooltip>
               <template #default="scope">
-                <div :style="{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.5', maxHeight: '4.5em', overflow: 'hidden' }">{{ scope.row.party_a_name }}</div>
+                <div class="contract-cell--wrap">{{ scope.row.party_a_name }}</div>
               </template>
             </el-table-column>
             <el-table-column prop="contract_amount" label="签约金额" width="140" align="right">
               <template #default="scope">
-                ¥ {{ formatMoney(scope.row.contract_amount) }}
+                <span class="contract-cell--amount">¥ {{ formatMoney(scope.row.contract_amount) }}</span>
               </template>
             </el-table-column>
              <el-table-column prop="total_settlement" label="结算金额" width="140" align="right">
@@ -1131,6 +1131,27 @@ onBeforeUnmount(() => {
   --el-table-header-text-color: var(--text-secondary);
   --el-table-text-color: var(--text-primary);
   --el-table-row-hover-bg-color: color-mix(in srgb, var(--surface-panel-muted) 58%, var(--surface-panel) 42%);
+}
+
+:deep(.contract-table--dense .el-table__cell) {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  vertical-align: top;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.contract-cell--wrap {
+  white-space: normal !important;
+  word-break: break-word;
+  line-height: 1.45;
+  max-height: 4.5em;
+  overflow: hidden;
+  display: block;
+}
+
+.contract-cell--amount {
+  white-space: nowrap;
 }
 
 .upstream-filter-section,
