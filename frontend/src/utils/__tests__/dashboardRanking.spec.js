@@ -2,28 +2,36 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { buildTopRankedItems, createHorizontalRankOption, createStackedCategoryOption } from '../dashboardRanking'
 
 describe('buildTopRankedItems', () => {
-  it('sorts by value desc and folds the tail into 其他 after the top six', () => {
+  it('sorts by value desc, folds the tail into 其他 after the top six, and sanitizes inputs', () => {
     const items = [
       { name: 'A', value: 5 },
       { name: 'B', value: 60 },
-      { name: 'C', value: 25 },
+      { name: 'C', amount: 25 },
       { name: 'D', value: 40 },
+      { amount: 15 },
       { name: 'E', value: 50 },
       { name: 'F', value: 20 },
-      { name: 'G', value: 15 },
-      { name: 'H', value: 10 },
-      { name: 'I', value: 8 }
+      { name: 'G', value: 12 },
+      { name: 'H', value: 4 },
+      { name: 'I', value: 0 },
+      { name: 'J', value: -10 }
     ]
 
-    expect(buildTopRankedItems(items)).toEqual([
+    const ranked = buildTopRankedItems(items)
+
+    expect(ranked).toEqual([
       { name: 'B', value: 60 },
       { name: 'E', value: 50 },
       { name: 'D', value: 40 },
       { name: 'C', value: 25 },
       { name: 'F', value: 20 },
-      { name: 'G', value: 15 },
-      { name: '其他', value: 23 }
+      { name: '未分类', value: 15 },
+      { name: '其他', value: 21 }
     ])
+    expect(ranked.every(item => item.value > 0)).toBe(true)
+    expect(ranked.some(item => item.name === '未分类')).toBe(true)
+    expect(ranked.some(item => item.name === 'I')).toBe(false)
+    expect(ranked.some(item => item.name === 'J')).toBe(false)
   })
 })
 
@@ -39,8 +47,8 @@ describe('createHorizontalRankOption', () => {
     const option = createHorizontalRankOption({
       title: '上游合同分类',
       items: [
-        { name: '市政', value: 100000 },
-        { name: '安装', value: 80000 }
+        { name: '安装', value: 80000 },
+        { name: '市政', value: 100000 }
       ]
     })
 
