@@ -1,6 +1,6 @@
 {
     "name": "lh-contract-frontend",
-    "version": "1.6",
+    "version": "1.6.1",
     "private": true,
     "type": "module",
     "scripts": {
