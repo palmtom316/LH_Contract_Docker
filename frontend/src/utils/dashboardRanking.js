@@ -7,10 +7,9 @@ function ensureArray(value) {
 export function buildTopRankedItems(items, limit = 6) {
   const ranked = ensureArray(items)
     .map(item => ({
-      name: item?.name || '未分类',
-      value: Number(item?.value ?? item?.amount ?? 0)
+      name: item?.name,
+      value: Number(item?.value ?? 0)
     }))
-    .filter(item => item.value > 0)
     .sort((a, b) => b.value - a.value)
 
   if (ranked.length <= limit) {

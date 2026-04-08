@@ -4,23 +4,25 @@ import { buildTopRankedItems, createHorizontalRankOption, createStackedCategoryO
 describe('buildTopRankedItems', () => {
   it('sorts by value desc and folds the tail into 其他 after the top six', () => {
     const items = [
-      { name: 'A', value: 10 },
+      { name: 'A', value: 5 },
       { name: 'B', value: 60 },
-      { name: 'C', value: 30 },
+      { name: 'C', value: 25 },
       { name: 'D', value: 40 },
       { name: 'E', value: 50 },
       { name: 'F', value: 20 },
-      { name: 'G', value: 15 }
+      { name: 'G', value: 15 },
+      { name: 'H', value: 10 },
+      { name: 'I', value: 8 }
     ]
 
     expect(buildTopRankedItems(items)).toEqual([
       { name: 'B', value: 60 },
       { name: 'E', value: 50 },
       { name: 'D', value: 40 },
-      { name: 'C', value: 30 },
+      { name: 'C', value: 25 },
       { name: 'F', value: 20 },
       { name: 'G', value: 15 },
-      { name: '其他', value: 10 }
+      { name: '其他', value: 23 }
     ])
   })
 })
@@ -44,6 +46,7 @@ describe('createHorizontalRankOption', () => {
 
     expect(option.xAxis.type).toBe('value')
     expect(option.yAxis.type).toBe('category')
+    expect(option.yAxis.data).toEqual(['市政', '安装'])
     expect(option.series[0].type).toBe('bar')
     expect(option.series[0].data).toEqual([100000, 80000])
   })
