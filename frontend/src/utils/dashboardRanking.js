@@ -25,6 +25,9 @@ export function buildTopRankedItems(items, limit = 6) {
 export function createHorizontalRankOption({ title, items, color = '#2563eb' }) {
   const theme = readChartTheme()
   const ranked = buildTopRankedItems(items)
+  const hasRankedData = ranked.length > 0
+  const yAxisData = hasRankedData ? ranked.map(item => item.name) : ['暂无数据']
+  const seriesData = hasRankedData ? ranked.map(item => item.value) : [0]
 
   return {
     aria: { enabled: true },
@@ -51,13 +54,13 @@ export function createHorizontalRankOption({ title, items, color = '#2563eb' }) 
     },
     yAxis: {
       type: 'category',
-      data: ranked.map(item => item.name),
+      data: yAxisData,
       axisLabel: { color: theme.text }
     },
     series: [
       {
         type: 'bar',
-        data: ranked.map(item => item.value),
+        data: seriesData,
         barMaxWidth: 18,
         itemStyle: { color, borderRadius: [0, 8, 8, 0] }
       }

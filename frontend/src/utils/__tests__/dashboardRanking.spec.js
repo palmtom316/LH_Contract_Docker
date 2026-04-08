@@ -58,6 +58,19 @@ describe('createHorizontalRankOption', () => {
     expect(option.series[0].type).toBe('bar')
     expect(option.series[0].data).toEqual([100000, 80000])
   })
+
+  it('falls back to a stabilized empty state when ranked data is missing', () => {
+    const option = createHorizontalRankOption({
+      title: '无排名数据',
+      items: [
+        { name: '零值', value: 0 },
+        { name: '负值', value: -5 }
+      ]
+    })
+
+    expect(option.yAxis.data).toEqual(['暂无数据'])
+    expect(option.series[0].data).toEqual([0])
+  })
 })
 
 describe('createStackedCategoryOption', () => {
