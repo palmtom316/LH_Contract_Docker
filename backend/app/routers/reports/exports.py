@@ -133,6 +133,57 @@ def _build_cost_export_df(rows: list[dict], total: dict) -> pd.DataFrame:
     return pd.DataFrame(result_rows)
 
 
+def _build_comprehensive_row(
+    contract: ContractUpstream,
+    settlement,
+    downstream_totals: dict[str, float],
+    management_totals: dict[str, float],
+    expense_total: float,
+    zero_hour_total: float,
+) -> dict:
+    return {
+        "合同序号": contract.serial_number,
+        "合同编号": contract.contract_code,
+        "合同名称": contract.contract_name,
+        "公司合同分类": contract.company_category or "",
+        "合同甲方单位": contract.party_a_name,
+        "合同乙方单位": contract.party_b_name,
+        "签约时间": contract.sign_date,
+        "签约金额": float(contract.contract_amount or 0),
+        "完工时间": settlement.completion_date if settlement else None,
+        "结算办结时间": settlement.settlement_date if settlement else None,
+        "结算金额": float(settlement.settlement_amount or 0) if settlement else 0,
+        "累计应收款": sum(float(item.amount or 0) for item in contract.receivables),
+        "累计挂账金额": sum(float(item.amount or 0) for item in contract.invoices),
+        "累计付款金额": sum(float(item.amount or 0) for item in contract.receipts),
+        "关联下游合同结算金额合计": downstream_totals["settlement"],
+        "关联下游合同应付款合计": downstream_totals["payable"],
+        "关联下游合同已付款合计": downstream_totals["paid"],
+        "关联管理合同结算金额合计": management_totals["settlement"],
+        "关联管理合同应付款合计": management_totals["payable"],
+        "关联管理合同已付款合计": management_totals["paid"],
+        "关联无合同费用付款合计": expense_total,
+        "关联零星用工费用合计": zero_hour_total,
+    }
+
+
+def _build_association_base_info(
+    upstream: ContractUpstream,
+    up_completion_date,
+    up_settle_amount: float,
+    up_received: float,
+) -> dict:
+    return {
+        "上游合同序号": upstream.serial_number,
+        "上游合同名称": upstream.contract_name,
+        "公司合同分类": upstream.company_category or "",
+        "上游签约金额": float(upstream.contract_amount or 0),
+        "上游完工时间": up_completion_date,
+        "上游结算金额": up_settle_amount,
+        "上游已收款金额": up_received,
+    }
+
+
 @router.get("/export/cost/monthly-quarterly")
 async def export_cost_monthly_quarterly_report(
     year: int = None,
@@ -257,30 +308,24 @@ async def export_comprehensive_report(
     data_list = []
     for c in contracts:
         settlement = c.settlements[0] if c.settlements else None
-        
-        row = {
-            "合同序号": c.serial_number,
-            "合同编号": c.contract_code,
-            "合同名称": c.contract_name,
-            "合同甲方单位": c.party_a_name,
-            "合同乙方单位": c.party_b_name,
-            "签约时间": c.sign_date,
-            "签约金额": float(c.contract_amount or 0),
-            "完工时间": settlement.completion_date if settlement else None,
-            "结算办结时间": settlement.settlement_date if settlement else None,
-            "结算金额": float(settlement.settlement_amount or 0) if settlement else 0,
-            "累计应收款": sum([float(r.amount or 0) for r in c.receivables]),
-            "累计挂账金额": sum([float(i.amount or 0) for i in c.invoices]),
-            "累计付款金额": sum([float(r.amount or 0) for r in c.receipts]),
-            "关联下游合同结算金额合计": map_down_set.get(c.id, 0),
-            "关联下游合同应付款合计": map_down_pay.get(c.id, 0),
-            "关联下游合同已付款合计": map_down_paid.get(c.id, 0),
-            "关联管理合同结算金额合计": map_mgmt_set.get(c.id, 0),
-            "关联管理合同应付款合计": map_mgmt_pay.get(c.id, 0),
-            "关联管理合同已付款合计": map_mgmt_paid.get(c.id, 0),
-            "关联无合同费用付款合计": map_exp.get(c.id, 0),
-            "关联零星用工费用合计": map_zhl.get(c.id, 0),
+        downstream_totals = {
+            "settlement": map_down_set.get(c.id, 0),
+            "payable": map_down_pay.get(c.id, 0),
+            "paid": map_down_paid.get(c.id, 0),
         }
+        management_totals = {
+            "settlement": map_mgmt_set.get(c.id, 0),
+            "payable": map_mgmt_pay.get(c.id, 0),
+            "paid": map_mgmt_paid.get(c.id, 0),
+        }
+        row = _build_comprehensive_row(
+            c,
+            settlement,
+            downstream_totals=downstream_totals,
+            management_totals=management_totals,
+            expense_total=map_exp.get(c.id, 0),
+            zero_hour_total=map_zhl.get(c.id, 0),
+        )
         data_list.append(row)
         
     df = pd.DataFrame(data_list)
@@ -801,15 +846,12 @@ async def export_association_report(
             up_completion_date = latest.completion_date
              
         up_received = sum(float(r.amount or 0) for r in up.receipts)
-        
-        base_info = {
-            "上游合同序号": up.serial_number,
-            "上游合同名称": up.contract_name,
-            "上游签约金额": float(up.contract_amount or 0),
-            "上游完工时间": up_completion_date,
-            "上游结算金额": up_settle_amount,
-            "上游已收款金额": up_received
-        }
+        base_info = _build_association_base_info(
+            up,
+            up_completion_date=up_completion_date,
+            up_settle_amount=up_settle_amount,
+            up_received=up_received,
+        )
         
         # Associated Contracts
         stmt_down = select(ContractDownstream).options(
