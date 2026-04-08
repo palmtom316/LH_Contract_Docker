@@ -84,7 +84,7 @@ const fetchNotificationsMock = vi.fn()
 vi.mock('@/stores/system', () => ({
   useSystemStore: () => ({
     config: {
-      system_name: '蓝海合同管理',
+      system_name: '合同管理系统',
       system_name_line_2: 'Platform'
     },
     notifications: [],
