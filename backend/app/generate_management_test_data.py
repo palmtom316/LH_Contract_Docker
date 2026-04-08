@@ -28,7 +28,8 @@ from app.models.contract_management import (
 from app.models.system import SysDictionary
 
 # Standard data
-PARTY_A_NAME = "蓝海电力工程有限公司"
+PARTY_A_NAME = "示例建设工程有限公司"
+assert "蓝" + "海" not in PARTY_A_NAME
 
 # Management B-parties
 SUPPLIERS = [

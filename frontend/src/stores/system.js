@@ -56,7 +56,7 @@ function sortNotifications(items) {
 export const useSystemStore = defineStore('system', () => {
     // State
     const config = ref({
-        system_name: 'Lanhai Contract System',
+        system_name: '合同管理系统',
         system_logo: null
     })
 

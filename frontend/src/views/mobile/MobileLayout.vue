@@ -103,7 +103,7 @@ const pwdForm = reactive({
   confirm_password: ''
 })
 
-const pageTitle = computed(() => route.meta.title || '蓝海合同')
+const pageTitle = computed(() => route.meta.title || '合同管理')
 const drawerWidth = computed(() => {
   if (screenWidth.value <= 480) return '100%'
   if (isTablet.value && isLandscape.value) return '360px'

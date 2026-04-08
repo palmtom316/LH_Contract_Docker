@@ -166,7 +166,7 @@ class ChangePasswordRequest(BaseModel):
 class InitAdminRequest(BaseModel):
     username: str = Field(default="admin", min_length=3, max_length=50)
     password: str = Field(..., min_length=8, max_length=72)
-    email: EmailStr = "admin@lanhai.com"
+    email: EmailStr = "admin@example.com"
     full_name: str = Field(default="系统管理员", min_length=2, max_length=100)
 
 

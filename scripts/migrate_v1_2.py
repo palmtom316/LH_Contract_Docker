@@ -64,7 +64,7 @@ async def migrate_v1_2():
         
         # Add default system config
         default_configs = [
-            ("system_name", "Lanhai Contract System"),
+            ("system_name", "合同管理系统"),
             ("system_logo", "")
         ]
         

@@ -523,7 +523,7 @@ const form = reactive({
   upstream_contract_id: undefined,
   contract_code: '',
   contract_name: '',
-  party_a_name: '蓝海建设集团',
+  party_a_name: '示例建设集团',
   party_b_name: '',
   party_b_contact: '',
   party_b_phone: '',
@@ -631,7 +631,7 @@ const resetForm = () => {
   form.upstream_contract_id = undefined
   form.contract_code = ''
   form.contract_name = ''
-  form.party_a_name = '蓝海建设集团'
+  form.party_a_name = '示例建设集团'
   form.party_b_name = ''
   form.party_b_contact = ''
   form.party_b_phone = ''

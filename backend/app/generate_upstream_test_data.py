@@ -38,7 +38,8 @@ PARTY_A_NAMES = [
     "国网山东省电力公司"
 ]
 
-PARTY_B_NAME = "蓝海电力工程有限公司"
+PARTY_B_NAME = "示例机电工程有限公司"
+assert "蓝" + "海" not in PARTY_B_NAME
 
 PROJECT_NAMES = [
     "220kV变电站新建工程",
@@ -97,7 +98,7 @@ async def generate_upstream_contracts():
             if not categories:
                 categories = ["工程总包", "专业分包", "设备采购", "技术服务"]
             if not project_categories:
-                project_categories = ["蓝海公司", "子公司一", "子公司二"]
+                project_categories = ["示例总公司", "示例子公司一", "示例子公司二"]
             if not pricing_modes:
                 pricing_modes = ["固定总价", "单价合同", "成本加酬金"]
             if not management_modes:

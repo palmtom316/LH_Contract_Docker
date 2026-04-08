@@ -1,10 +1,10 @@
-# 蓝海合同管理系统 1.6
+# 合同管理系统 1.6.1
 
 企业级合同全生命周期管理系统，覆盖合同台账、财务跟踪、文件上传、审计日志、报表与权限管理。
 
 ## 当前状态
 
-- 当前开发基线：`1.6`
+- 当前开发基线：`1.6.1`
 - 前端：`Vue 3` + `Vite` + `Element Plus` + `Pinia`
 - 后端：`FastAPI` + `SQLAlchemy Async` + `PostgreSQL`
 - 对象存储：本地上传目录，可选 `MinIO/S3`
@@ -130,7 +130,7 @@ curl -X POST http://localhost:8000/api/v1/auth/init-admin \
   -d '{
     "username": "admin",
     "password": "ChangeMe123!",
-    "email": "admin@lanhai.com",
+    "email": "admin@example.com",
     "full_name": "系统管理员"
   }'
 ```

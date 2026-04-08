@@ -1,4 +1,4 @@
-# 蓝海合同管理系统 - 技术审查与优化建议
+# 合同管理系统 - 技术审查与优化建议
 
 **审查日期**: 2025-12-13
 **系统版本**: 1.6
@@ -37,7 +37,7 @@
 # config.py 第22行
 SECRET_KEY: str = "your-super-secret-key-change-in-production-2024"
 # docker-compose.yml 第11行
-POSTGRES_PASSWORD: LanHai2024Secure!
+POSTGRES_PASSWORD: <strong-password>
 ```
 
 **建议**:

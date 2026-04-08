@@ -175,7 +175,7 @@ const displayLogo = computed(() => {
   }
   return logoNew
 })
-const displayName = computed(() => systemStore.config.system_name || '蓝海合同管理')
+const displayName = computed(() => systemStore.config.system_name || '合同管理系统')
 const displayNameLine2 = computed(() => systemStore.config.system_name_line_2 || '')
 
 const allSidebarItems = computed(() => [
