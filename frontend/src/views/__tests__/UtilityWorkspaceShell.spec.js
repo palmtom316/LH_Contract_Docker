@@ -78,7 +78,6 @@ const globalMountOptions = {
     loading: {}
   },
   stubs: {
-    AppPageHeader: { template: '<header class="app-page-header-stub"><slot name="actions" /></header>' },
     AppWorkspacePanel: {
       props: ['panelClass'],
       template: '<section class="app-workspace-panel-stub" :class="panelClass"><slot /></section>'
@@ -118,6 +117,7 @@ describe('Utility workspace shells', () => {
     const wrapper = shallowMount(NotificationCenter, { global: globalMountOptions })
 
     expect(wrapper.find('.notification-center-shell').exists()).toBe(true)
+    expect(wrapper.find('.notification-center-header').exists()).toBe(false)
     expect(wrapper.find('.notification-center-panel').exists()).toBe(true)
   })
 
@@ -141,6 +141,7 @@ describe('Utility workspace shells', () => {
     const wrapper = shallowMount(AuditLog, { global: globalMountOptions })
 
     expect(wrapper.find('.audit-log-shell').exists()).toBe(true)
+    expect(wrapper.find('.audit-log-header').exists()).toBe(false)
     expect(wrapper.find('.audit-log-panel--filters').exists()).toBe(true)
     expect(wrapper.find('.audit-log-panel--records').exists()).toBe(true)
   })

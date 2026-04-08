@@ -1,8 +1,6 @@
 
 <template>
   <div class="system-settings-page">
-    <AppPageHeader title="系统设置" />
-
     <AppWorkspacePanel panel-class="system-settings-panel">
     <el-tabs v-model="activeTab" class="system-settings-tabs app-tabs--line">
       <el-tab-pane label="系统配置" name="config">
@@ -117,7 +115,6 @@ import { useSystemStore } from '@/stores/system'
 import { Plus, Download, Upload } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
-import AppPageHeader from '@/components/ui/AppPageHeader.vue'
 import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 

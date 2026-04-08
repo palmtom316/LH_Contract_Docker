@@ -1,10 +1,5 @@
 <template>
   <div class="audit-log-shell">
-    <AppPageHeader
-      class="audit-log-header"
-      title="审计日志"
-    />
-
     <AppWorkspacePanel panel-class="audit-log-panel audit-log-panel--filters">
       <AppFilterBar inline-actions>
         <el-select v-model="queryParams.action" placeholder="操作类型" clearable>
@@ -173,7 +168,6 @@ import AppFilterBar from '@/components/ui/AppFilterBar.vue'
 import AppDataTable from '@/components/ui/AppDataTable.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import AppRangeField from '@/components/ui/AppRangeField.vue'
-import AppPageHeader from '@/components/ui/AppPageHeader.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 import request from '@/utils/request'
 import { useDevice } from '@/composables/useDevice'
@@ -323,10 +317,6 @@ onMounted(() => {
 .audit-log-shell {
   display: grid;
   gap: var(--space-5);
-}
-
-.audit-log-header {
-  margin-bottom: 0;
 }
 
 .audit-log-panel {

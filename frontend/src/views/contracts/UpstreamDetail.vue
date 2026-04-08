@@ -1,21 +1,20 @@
 <template>
 <div class="app-container detail-workspace">
-    <div class="detail-workspace__hero">
-      <AppPageHeader
-        :title="detailTitle"
-      >
-        <template #actions>
+    <div class="detail-workspace__sections">
+    <AppWorkspacePanel panel-class="detail-region detail-region--summary">
+      <div class="detail-context">
+        <div class="detail-context__copy">
+          <h1 class="detail-context__title">{{ detailTitle }}</h1>
+          <p class="detail-context__description">{{ detailDescription }}</p>
+        </div>
+        <div class="detail-context__actions">
           <el-tag v-if="contract.status" :type="getStatusType(contract.status)">{{ contract.status }}</el-tag>
           <el-button plain @click="handleBack">
             <el-icon><ArrowLeft /></el-icon>
             返回列表
           </el-button>
-        </template>
-      </AppPageHeader>
-    </div>
-
-    <div class="detail-workspace__sections">
-    <AppWorkspacePanel panel-class="detail-region detail-region--summary">
+        </div>
+      </div>
     <el-row :gutter="20" class="summary-cards">
       <el-col :span="4" :xs="12">
         <StatCard
@@ -444,7 +443,6 @@
 import { defineAsyncComponent, ref, reactive, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import DictSelect from '@/components/DictSelect.vue'
 import SmartDateInput from '@/components/SmartDateInput.vue'
-import AppPageHeader from '@/components/ui/AppPageHeader.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Document, ArrowLeft, Wallet, Money, Tickets, CircleCheck } from '@element-plus/icons-vue'
@@ -948,10 +946,6 @@ onBeforeUnmount(() => {
   gap: 24px;
 }
 
-.detail-workspace__hero {
-  display: grid;
-}
-
 .detail-workspace__sections {
   display: grid;
   gap: 24px;
@@ -959,6 +953,43 @@ onBeforeUnmount(() => {
 
 .detail-region {
   gap: 20px;
+}
+
+.detail-context {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.detail-context__copy {
+  display: grid;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.detail-context__title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.detail-context__description {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.detail-context__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 .detail-region--tabs {
@@ -995,6 +1026,14 @@ onBeforeUnmount(() => {
   .detail-workspace,
   .detail-workspace__sections {
     gap: 20px;
+  }
+
+  .detail-context {
+    flex-direction: column;
+  }
+
+  .detail-context__actions {
+    justify-content: flex-start;
   }
 }
 </style>

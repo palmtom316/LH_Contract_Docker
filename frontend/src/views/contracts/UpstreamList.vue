@@ -1,10 +1,5 @@
 <template>
   <div class="upstream-page-shell">
-    <AppPageHeader
-      class="upstream-page-header"
-      title="上游合同"
-    />
-
     <AppWorkspacePanel panel-class="upstream-page-tabs">
       <div class="contract-surface">
         <el-tabs v-model="activeTab" class="contract-tabs app-tabs--line" @tab-change="handleTabChange">
@@ -626,7 +621,6 @@ import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import AppFilterBar from '@/components/ui/AppFilterBar.vue'
 import AppDataTable from '@/components/ui/AppDataTable.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
-import AppPageHeader from '@/components/ui/AppPageHeader.vue'
 import AppRangeField from '@/components/ui/AppRangeField.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 

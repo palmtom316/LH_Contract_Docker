@@ -91,6 +91,10 @@ const mountPage = (component) =>
   shallowMount(component, {
     global: {
       stubs: {
+        AppWorkspacePanel: {
+          props: ['panelClass'],
+          template: '<section class="app-workspace-panel-stub" :class="panelClass"><slot /></section>'
+        },
         ...elementStubs,
         ElTable: { template: '<div class="el-table-stub" />' },
         ElTableColumn: { template: '<div class="el-table-column-stub" />' }
@@ -107,7 +111,9 @@ describe('Contract detail workspace shell', () => {
     const wrapper = mountPage(component)
 
     expect(wrapper.find('.detail-workspace').exists()).toBe(true)
-    expect(wrapper.find('.detail-workspace__hero').exists()).toBe(true)
+    expect(wrapper.find('.detail-workspace__hero').exists()).toBe(false)
     expect(wrapper.find('.detail-workspace__sections').exists()).toBe(true)
+    expect(wrapper.find('.detail-context').exists()).toBe(true)
+    expect(wrapper.find('.detail-context__actions').exists()).toBe(true)
   })
 })

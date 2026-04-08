@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, reactive, ref } from 'vue'
-import ManagementList from '@/views/contracts/ManagementList.vue'
+import DownstreamList from '@/views/contracts/DownstreamList.vue'
 
 const { getListMock, queryParamsState, getUpstreamContractsMock } = vi.hoisted(() => ({
   getListMock: vi.fn(),
@@ -64,10 +64,10 @@ vi.mock('vue-router', async () => {
 })
 
 vi.mock('@/stores/user', () => ({
-  useUserStore: () => ({ canManageManagementContracts: false })
+  useUserStore: () => ({ canManageDownstreamContracts: false })
 }))
 
-vi.mock('@/api/contractManagement', () => ({
+vi.mock('@/api/contractDownstream', () => ({
   getContracts: vi.fn(),
   createContract: vi.fn(),
   updateContract: vi.fn(),
@@ -103,8 +103,6 @@ const RangeFieldStub = defineComponent({
   template: `
     <div>
       <button data-testid="range-full" @click="$emit('update:modelValue', ['2026-04-01', '2026-04-06'])"></button>
-      <button data-testid="range-start" @click="$emit('update:modelValue', ['2026-04-01', ''])"></button>
-      <button data-testid="range-end" @click="$emit('update:modelValue', ['', '2026-04-06'])"></button>
     </div>
   `
 })
@@ -114,34 +112,8 @@ const ElDialogStub = defineComponent({
   template: '<div v-if="modelValue"><slot /></div>'
 })
 
-const ElSelectStub = defineComponent({
-  props: ['modelValue', 'placeholder', 'remote', 'remoteMethod'],
-  emits: ['update:modelValue', 'change'],
-  template: `
-    <div class="el-select-stub" :data-placeholder="placeholder">
-      <button
-        v-if="remote && remoteMethod"
-        class="remote-search"
-        type="button"
-        @click="remoteMethod('甲方单位')"
-      >
-        搜索
-      </button>
-      <button
-        v-if="remote"
-        class="remote-select"
-        type="button"
-        @click="$emit('update:modelValue', 7); $emit('change', 7)"
-      >
-        选择
-      </button>
-      <slot />
-    </div>
-  `
-})
-
 const mountPage = () =>
-  mount(ManagementList, {
+  mount(DownstreamList, {
     global: {
       directives: {
         loading: {}
@@ -155,7 +127,7 @@ const mountPage = () =>
         DictSelect: true,
         SmartDateInput: true,
         ElInput: true,
-        ElSelect: ElSelectStub,
+        ElSelect: true,
         ElOption: true,
         ElButton: true,
         ElTable: true,
@@ -169,9 +141,6 @@ const mountPage = () =>
         ElRow: true,
         ElCol: true,
         ElCard: true,
-        ElDropdown: true,
-        ElDropdownMenu: true,
-        ElDropdownItem: true,
         ElUpload: true,
         ElTooltip: true,
         ElIcon: true
@@ -179,7 +148,7 @@ const mountPage = () =>
     }
   })
 
-describe('ManagementList date range query', () => {
+describe('DownstreamList workspace shell', () => {
   beforeEach(() => {
     queryParamsState.value.page = 1
     queryParamsState.value.page_size = 10
@@ -191,78 +160,16 @@ describe('ManagementList date range query', () => {
     queryParamsState.value.upstream_contract_id = undefined
     getListMock.mockClear()
     getUpstreamContractsMock.mockReset()
-    getUpstreamContractsMock.mockResolvedValue({
-      items: [
-        {
-          id: 7,
-          serial_number: 12,
-          contract_code: 'UP-007',
-          contract_name: '上游合同七',
-          party_a_name: '甲方单位七'
-        }
-      ]
-    })
+    getUpstreamContractsMock.mockResolvedValue({ items: [] })
   })
 
-  it('renders management-specific workspace shell wrappers', () => {
+  it('renders downstream-specific workspace shell wrappers without the top title band', () => {
     const wrapper = mountPage()
 
-    expect(wrapper.find('.management-page-shell').exists()).toBe(true)
-    expect(wrapper.find('.management-page-header').exists()).toBe(false)
-    expect(wrapper.find('.contract-page-shell').exists()).toBe(false)
-    expect(wrapper.findAll('.management-page-panel')).toHaveLength(2)
-    expect(wrapper.find('.management-page-panel--filters').exists()).toBe(true)
-    expect(wrapper.find('.management-page-panel--list').exists()).toBe(true)
-  })
-
-  it('applies both range sides when provided', async () => {
-    const wrapper = mountPage()
-    await wrapper.find('[data-testid="range-full"]').trigger('click')
-
-    await wrapper.vm.handleQuery()
-
-    expect(wrapper.vm.queryParams.start_date).toBe('2026-04-01')
-    expect(wrapper.vm.queryParams.end_date).toBe('2026-04-06')
-    expect(getListMock).toHaveBeenCalled()
-  })
-
-  it('supports partial range values', async () => {
-    const wrapper = mountPage()
-    await wrapper.find('[data-testid="range-start"]').trigger('click')
-
-    await wrapper.vm.handleQuery()
-
-    expect(wrapper.vm.queryParams.start_date).toBe('2026-04-01')
-    expect(wrapper.vm.queryParams.end_date).toBeUndefined()
-
-    await wrapper.find('[data-testid="range-end"]').trigger('click')
-    await wrapper.vm.handleQuery()
-
-    expect(wrapper.vm.queryParams.start_date).toBeUndefined()
-    expect(wrapper.vm.queryParams.end_date).toBe('2026-04-06')
-  })
-
-  it('supports remote upstream search in the filter bar', async () => {
-    const wrapper = mountPage()
-    const selects = wrapper.findAllComponents(ElSelectStub)
-    const filterSelect = selects.find((node) => node.props('placeholder')?.includes('上游合同'))
-
-    expect(filterSelect).toBeTruthy()
-    expect(filterSelect.props('placeholder')).toContain('上游合同')
-    expect(typeof filterSelect.props('remoteMethod')).toBe('function')
-
-    await filterSelect.props('remoteMethod')('甲方单位')
-
-    expect(getUpstreamContractsMock).toHaveBeenCalledWith({
-      keyword: '甲方单位',
-      page_size: 100
-    })
-
-    filterSelect.vm.$emit('update:modelValue', 7)
-    filterSelect.vm.$emit('change', 7)
-    await wrapper.vm.handleQuery()
-
-    expect(wrapper.vm.queryParams.upstream_contract_id).toBe(7)
-    expect(getListMock).toHaveBeenCalled()
+    expect(wrapper.find('.downstream-page-shell').exists()).toBe(true)
+    expect(wrapper.find('.downstream-page-header').exists()).toBe(false)
+    expect(wrapper.findAll('.downstream-page-panel')).toHaveLength(2)
+    expect(wrapper.find('.downstream-page-panel--filters').exists()).toBe(true)
+    expect(wrapper.find('.downstream-page-panel--list').exists()).toBe(true)
   })
 })

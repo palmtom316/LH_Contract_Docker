@@ -1,7 +1,5 @@
 <template>
   <div class="report-dashboard-shell">
-    <AppPageHeader class="report-dashboard-header" title="报表统计" />
-
     <div class="report-dashboard-panels">
     <AppWorkspacePanel panel-class="report-dashboard-panel report-dashboard-panel--cost">
     <AppSectionCard>
@@ -227,7 +225,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import AppPageHeader from '@/components/ui/AppPageHeader.vue'
 import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import AppFilterBar from '@/components/ui/AppFilterBar.vue'
 import AppDataTable from '@/components/ui/AppDataTable.vue'
@@ -728,8 +725,6 @@ const exportCards = computed(() => [
   }
 ])
 
-const reportHeaderMeta = computed(() => `${costMonth.value || currentMonthValue} · ${exportCards.value.length} 类导出`)
-
 function downloadFile(response, filename) {
   const url = window.URL.createObjectURL(new Blob([response]))
   const link = document.createElement('a')
@@ -750,10 +745,6 @@ onMounted(() => {
 .report-dashboard-shell {
   display: grid;
   gap: var(--space-6);
-}
-
-.report-dashboard-header {
-  margin-bottom: 0;
 }
 
 .report-dashboard-panels {

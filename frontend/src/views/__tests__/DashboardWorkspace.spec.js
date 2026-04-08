@@ -8,7 +8,6 @@ const mountPage = () =>
       stubs: {
         Overview: { template: '<div class="overview-stub" />' },
         Business: { template: '<div class="business-stub" />' },
-        AppPageHeader: { template: '<div class="app-page-header-stub"><slot name="actions" /></div>' },
         AppWorkspacePanel: {
           props: ['panelClass'],
           template: '<section class="app-workspace-panel-stub" :class="panelClass"><slot /></section>'
@@ -20,10 +19,10 @@ const mountPage = () =>
   })
 
 describe('Dashboard workspace shell', () => {
-  it('renders the shared dashboard header and frame wrappers', () => {
+  it('renders the shared dashboard frame wrappers without the page header', () => {
     const wrapper = mountPage()
 
-    expect(wrapper.find('.dashboard-page-header').exists()).toBe(true)
+    expect(wrapper.find('.dashboard-page-header').exists()).toBe(false)
     expect(wrapper.find('.dashboard-shell').exists()).toBe(true)
     expect(wrapper.find('.dashboard-tabs-panel').exists()).toBe(true)
     expect(wrapper.find('.dashboard-tab-panel').exists()).toBe(true)

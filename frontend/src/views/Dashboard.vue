@@ -1,7 +1,5 @@
 <template>
   <div class="dashboard-shell">
-    <AppPageHeader class="dashboard-page-header" title="首页概览" />
-
     <AppWorkspacePanel panel-class="dashboard-tabs-panel">
       <el-tabs v-model="activeTab" class="home-tabs app-tabs--line">
         <el-tab-pane label="概览" name="overview" lazy>
@@ -21,7 +19,6 @@
 
 <script setup>
 import { defineAsyncComponent, ref } from 'vue'
-import AppPageHeader from '@/components/ui/AppPageHeader.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 
 const Overview = defineAsyncComponent(() => import('./home/Overview.vue'))
@@ -35,10 +32,6 @@ const activeTab = ref('overview')
   display: grid;
   gap: var(--space-6);
   min-height: calc(100vh - 64px);
-}
-
-.dashboard-page-header {
-  margin-bottom: 0;
 }
 
 .dashboard-tabs-panel {

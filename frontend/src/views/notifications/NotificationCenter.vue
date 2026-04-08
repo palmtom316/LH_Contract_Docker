@@ -1,10 +1,5 @@
 <template>
   <div class="notification-center-shell">
-    <AppPageHeader
-      class="notification-center-header"
-      title="系统通知"
-    />
-
     <AppWorkspacePanel panel-class="notification-center-panel">
       <section class="notification-center-toolbar">
         <el-segmented v-model="activeFilter" :options="filterOptions" />
@@ -71,7 +66,6 @@
 <script setup>
 import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
-import AppPageHeader from '@/components/ui/AppPageHeader.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 import { useSystemStore } from '@/stores/system'
 
@@ -122,10 +116,6 @@ onMounted(async () => {
 
 .notification-center-panel {
   gap: 18px;
-}
-
-.notification-center-header {
-  margin-bottom: 0;
 }
 
 .notification-center-toolbar {

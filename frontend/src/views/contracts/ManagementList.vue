@@ -1,10 +1,5 @@
 <template>
   <div class="management-page-shell">
-    <AppPageHeader
-      class="management-page-header"
-      title="管理合同"
-    />
-
     <AppWorkspacePanel panel-class="management-page-panel management-page-panel--filters">
       <AppSectionCard class="management-page-card">
       <template #header>合同筛选</template>
@@ -423,7 +418,6 @@ import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import AppFilterBar from '@/components/ui/AppFilterBar.vue'
 import AppDataTable from '@/components/ui/AppDataTable.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
-import AppPageHeader from '@/components/ui/AppPageHeader.vue'
 import AppRangeField from '@/components/ui/AppRangeField.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 

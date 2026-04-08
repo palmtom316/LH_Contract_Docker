@@ -1,7 +1,5 @@
 <template>
   <div class="expense-page-shell">
-    <AppPageHeader class="expense-page-header" title="费用管理" />
-
     <AppWorkspacePanel panel-class="expense-page-panel">
       <el-tabs v-model="activeTab" class="app-tabs--line expense-page-tabs">
         <el-tab-pane label="普通费用报销" name="valuable">
@@ -17,7 +15,6 @@
 
 <script setup>
 import { ref } from 'vue'
-import AppPageHeader from '@/components/ui/AppPageHeader.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 import OrdinaryExpenseList from './OrdinaryExpenseList.vue'
 import ZeroHourLaborList from './ZeroHourLaborList.vue'

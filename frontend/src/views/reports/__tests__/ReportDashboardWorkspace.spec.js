@@ -42,7 +42,6 @@ const mountPage = () =>
         loading: {}
       },
       stubs: {
-        AppPageHeader: { template: '<div class="app-page-header-stub"><slot name="actions" /></div>' },
         AppWorkspacePanel: {
           props: ['panelClass'],
           template: '<section class="app-workspace-panel-stub" :class="panelClass"><slot /></section>'
@@ -74,7 +73,7 @@ describe('Report dashboard workspace shell', () => {
     const wrapper = mountPage()
 
     expect(wrapper.find('.report-dashboard-shell').exists()).toBe(true)
-    expect(wrapper.find('.report-dashboard-header').exists()).toBe(true)
+    expect(wrapper.find('.report-dashboard-header').exists()).toBe(false)
     expect(wrapper.find('.report-dashboard-panels').exists()).toBe(true)
     expect(wrapper.find('.report-dashboard-panel').exists()).toBe(true)
     expect(wrapper.find('.report-export-card__filters').exists()).toBe(true)

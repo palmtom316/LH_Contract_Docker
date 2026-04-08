@@ -1,10 +1,5 @@
 <template>
   <div class="downstream-page-shell">
-    <AppPageHeader
-      class="downstream-page-header"
-      title="下游合同"
-    />
-
     <AppWorkspacePanel panel-class="downstream-page-panel downstream-page-panel--filters">
       <AppSectionCard class="downstream-page-card">
       <template #header>合同筛选</template>
@@ -423,7 +418,6 @@ import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import AppFilterBar from '@/components/ui/AppFilterBar.vue'
 import AppDataTable from '@/components/ui/AppDataTable.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
-import AppPageHeader from '@/components/ui/AppPageHeader.vue'
 import AppRangeField from '@/components/ui/AppRangeField.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 

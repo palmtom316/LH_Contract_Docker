@@ -1,7 +1,5 @@
 <template>
   <div class="system-management-shell">
-    <AppPageHeader class="system-management-header" title="系统管理" />
-
     <AppWorkspacePanel panel-class="system-management-panel">
     <AppSectionCard>
       <template #header>系统工作台</template>
@@ -120,7 +118,6 @@
 import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Upload, Download, Coin, CircleCheck, RefreshLeft, Delete } from '@element-plus/icons-vue'
-import AppPageHeader from '@/components/ui/AppPageHeader.vue'
 import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 import UserManagement from '@/views/users/UserManagement.vue'
@@ -294,10 +291,6 @@ const handleAuditDelete = async () => {
 .system-management-shell {
   display: grid;
   gap: var(--space-5);
-}
-
-.system-management-header {
-  margin-bottom: 0;
 }
 
 .system-management-panel {
