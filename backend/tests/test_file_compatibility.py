@@ -10,7 +10,9 @@ from starlette.requests import Request
 from starlette.responses import FileResponse, StreamingResponse
 
 from app.config import settings
+from app.main import app
 from app.routers import common
+from app.routers import system
 
 
 def _build_request(headers: dict[str, str] | None = None) -> Request:
@@ -106,14 +108,13 @@ async def test_minio_key_download_works_without_query_token(monkeypatch):
     assert body == expected
 
 
-@pytest.mark.asyncio
-async def test_uploads_static_mount_is_removed(client):
-    response = await client.get("/uploads/system/site_logo.png")
-    assert response.status_code == 404
+def test_uploads_static_mount_is_removed():
+    route_paths = [getattr(route, "path", None) for route in app.routes]
+    assert "/uploads" not in route_paths
 
 
 @pytest.mark.asyncio
-async def test_public_logo_endpoint_serves_only_current_logo(client, monkeypatch, tmp_path):
+async def test_public_logo_endpoint_serves_only_current_logo(monkeypatch, tmp_path):
     original_upload_dir = settings.UPLOAD_DIR
     system_dir = tmp_path / "system"
     system_dir.mkdir(parents=True, exist_ok=True)
@@ -122,9 +123,12 @@ async def test_public_logo_endpoint_serves_only_current_logo(client, monkeypatch
     monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path))
 
     try:
-        response = await client.get("/api/v1/system/logo/file")
+        response = await system.get_logo_file()
     finally:
         monkeypatch.setattr(settings, "UPLOAD_DIR", original_upload_dir)
 
+    route_paths = [getattr(route, "path", None) for route in app.routes]
+    assert "/api/v1/system/logo/file" in route_paths
+    assert isinstance(response, FileResponse)
     assert response.status_code == 200
-    assert response.content == b"logo-bytes"
+    assert response.path == str(logo_path)

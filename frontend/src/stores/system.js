@@ -125,10 +125,8 @@ export const useSystemStore = defineStore('system', () => {
         try {
             const res = await request.get('/system/config')
             config.value = res
-            if (!config.value.system_logo) {
-                const logoRes = await request.get('/system/logo')
-                config.value.system_logo = logoRes.path
-            }
+            const logoRes = await request.get('/system/logo')
+            config.value.system_logo = logoRes.path
         } catch (e) {
             console.error('Failed to fetch system config', e)
         }
