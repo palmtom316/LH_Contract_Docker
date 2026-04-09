@@ -35,11 +35,22 @@ def _safe_remove_file(path: str) -> None:
 
 def _find_system_logo_path() -> str | None:
     system_dir = os.path.join(settings.UPLOAD_DIR, "system")
+    candidates: list[tuple[int, str]] = []
     for ext in LOGO_EXTENSIONS:
         logo_path = os.path.join(system_dir, f"site_logo{ext}")
         if os.path.exists(logo_path):
-            return logo_path
-    return None
+            candidates.append((os.stat(logo_path).st_mtime_ns, logo_path))
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    return candidates[0][1]
+
+
+def _build_logo_api_path(logo_path: str | None) -> str | None:
+    if not logo_path:
+        return None
+    version = os.stat(logo_path).st_mtime_ns
+    return f"/api/v1/system/logo/file?v={version}"
 
 def find_pg_dump():
     """Find pg_dump executable in PATH or common Windows locations"""
@@ -233,8 +244,7 @@ async def upload_logo(
                 if os.path.exists(other_path):
                     os.remove(other_path)
 
-        version = int(os.path.getmtime(target_path))
-        return {"message": "Logo上传成功", "path": f"/api/v1/system/logo/file?v={version}"}
+        return {"message": "Logo上传成功", "path": _build_logo_api_path(target_path)}
     except Exception as e:
         raise DatabaseError(message="Logo上传失败", detail=str(e))
 
@@ -243,12 +253,7 @@ async def get_logo():
     """
     Get current system logo URL
     """
-    logo_path = _find_system_logo_path()
-    if logo_path:
-        version = int(os.path.getmtime(logo_path))
-        return {"path": f"/api/v1/system/logo/file?v={version}"}
-
-    return {"path": None}
+    return {"path": _build_logo_api_path(_find_system_logo_path())}
 
 
 @router.get("/logo/file")
@@ -290,9 +295,7 @@ async def get_system_config(
             config_dict[c.key] = c.value
             
     # Check logo file existence logic if needed, but simple return is fine
-    # Re-use the logic from get_logo if possible, but distinct is fine
-    if not config_dict["system_logo"]:
-        pass
+    config_dict["system_logo"] = _build_logo_api_path(_find_system_logo_path())
 
     return config_dict
 
