@@ -103,9 +103,13 @@ async def test_minio_key_download_works_without_query_token(monkeypatch):
         db=object(),
     )
 
+    body = b""
+    async for chunk in response.body_iterator:
+        body += chunk
+
     assert isinstance(response, StreamingResponse)
     assert response.status_code == 200
-    assert response.headers.get("content-length") == str(len(expected))
+    assert body == expected
 
 
 @pytest.mark.asyncio
