@@ -104,3 +104,27 @@ async def test_minio_key_download_works_without_query_token(monkeypatch):
     assert isinstance(response, StreamingResponse)
     assert response.status_code == 200
     assert body == expected
+
+
+@pytest.mark.asyncio
+async def test_uploads_static_mount_is_removed(client):
+    response = await client.get("/uploads/system/site_logo.png")
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_public_logo_endpoint_serves_only_current_logo(client, monkeypatch, tmp_path):
+    original_upload_dir = settings.UPLOAD_DIR
+    system_dir = tmp_path / "system"
+    system_dir.mkdir(parents=True, exist_ok=True)
+    logo_path = system_dir / "site_logo.png"
+    logo_path.write_bytes(b"logo-bytes")
+    monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path))
+
+    try:
+        response = await client.get("/api/v1/system/logo/file")
+    finally:
+        monkeypatch.setattr(settings, "UPLOAD_DIR", original_upload_dir)
+
+    assert response.status_code == 200
+    assert response.content == b"logo-bytes"

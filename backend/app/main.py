@@ -5,11 +5,9 @@ Disabling all complex middleware to fix 'startlette.responses.Response' error.
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from contextlib import asynccontextmanager
-import os
 import logging
 
 from app.config import settings
@@ -96,12 +94,6 @@ try:
     setup_rate_limiting(app)
 except Exception as e:
     logger.warning(f"Rate limiting setup failed: {e}")
-# Mount static files
-try:
-    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-    app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
-except Exception as e:
-    logger.error(f"Failed to mount uploads: {e}")
 
 @app.get("/", tags=["Health"])
 async def root():

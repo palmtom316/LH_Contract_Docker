@@ -168,12 +168,10 @@ const unreadCount = computed(() => {
   return items.filter(item => item.unread !== false).length
 })
 const displayLogo = computed(() => {
-  if (systemStore.config.system_logo) {
-    return systemStore.config.system_logo.startsWith('http')
-      ? systemStore.config.system_logo
-      : (import.meta.env.VITE_API_BASE_URL?.replace(/\/api\/v1\/?$/, '') || '') + systemStore.config.system_logo
-  }
-  return logoNew
+  if (!systemStore.config.system_logo) return logoNew
+  return systemStore.config.system_logo.startsWith('http')
+    ? systemStore.config.system_logo
+    : (import.meta.env.VITE_API_BASE_URL?.replace(/\/api\/v1\/?$/, '') || '') + systemStore.config.system_logo
 })
 const displayName = computed(() => systemStore.config.system_name || '合同管理系统')
 const displayNameLine2 = computed(() => systemStore.config.system_name_line_2 || '')

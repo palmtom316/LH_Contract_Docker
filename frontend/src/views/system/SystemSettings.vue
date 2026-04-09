@@ -134,7 +134,7 @@ const headers = computed(() => {
 })
 
 function handleLogoSuccess(res) {
-    configForm.value.system_logo = res.path
+    configForm.value.system_logo = res?.path || ''
     ElMessage.success('Logo uploaded')
 }
 

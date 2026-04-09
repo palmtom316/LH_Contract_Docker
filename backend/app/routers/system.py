@@ -22,6 +22,7 @@ from app.models.system import SysDictionary, SystemConfig
 from app.services.dictionary_usage_service import DictionaryUsageService
 
 router = APIRouter()
+LOGO_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".svg")
 
 def _safe_remove_file(path: str) -> None:
     """Best-effort file removal to avoid backup accumulation."""
@@ -30,6 +31,15 @@ def _safe_remove_file(path: str) -> None:
             os.remove(path)
     except Exception:
         pass
+
+
+def _find_system_logo_path() -> str | None:
+    system_dir = os.path.join(settings.UPLOAD_DIR, "system")
+    for ext in LOGO_EXTENSIONS:
+        logo_path = os.path.join(system_dir, f"site_logo{ext}")
+        if os.path.exists(logo_path):
+            return logo_path
+    return None
 
 def find_pg_dump():
     """Find pg_dump executable in PATH or common Windows locations"""
@@ -206,7 +216,7 @@ async def upload_logo(
     # Let's save as specific name 'site_logo.png' (or match extension)
     
     ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in ['.png', '.jpg', '.jpeg', '.gif', '.svg']:
+    if ext not in LOGO_EXTENSIONS:
         ext = '.png' # Default fallback
         
     filename = f"site_logo{ext}"
@@ -217,13 +227,14 @@ async def upload_logo(
             shutil.copyfileobj(file.file, buffer)
             
         # Also clean up other logo files to avoid confusion if we change extension
-        for other_ext in ['.png', '.jpg', '.jpeg', '.gif', '.svg']:
+        for other_ext in LOGO_EXTENSIONS:
             if other_ext != ext:
                 other_path = os.path.join(system_dir, f"site_logo{other_ext}")
                 if os.path.exists(other_path):
                     os.remove(other_path)
-                    
-        return {"message": "Logo上传成功", "path": f"/uploads/system/{filename}"}
+
+        version = int(os.path.getmtime(target_path))
+        return {"message": "Logo上传成功", "path": f"/api/v1/system/logo/file?v={version}"}
     except Exception as e:
         raise DatabaseError(message="Logo上传失败", detail=str(e))
 
@@ -232,17 +243,24 @@ async def get_logo():
     """
     Get current system logo URL
     """
-    system_dir = os.path.join(settings.UPLOAD_DIR, "system")
-    if not os.path.exists(system_dir):
-        return {"path": None}
-        
-    # Find existing logo
-    for ext in ['.png', '.jpg', '.jpeg', '.gif', '.svg']:
-        filename = f"site_logo{ext}"
-        if os.path.exists(os.path.join(system_dir, filename)):
-            return {"path": f"/uploads/system/{filename}"}
-            
+    logo_path = _find_system_logo_path()
+    if logo_path:
+        version = int(os.path.getmtime(logo_path))
+        return {"path": f"/api/v1/system/logo/file?v={version}"}
+
     return {"path": None}
+
+
+@router.get("/logo/file")
+async def get_logo_file():
+    logo_path = _find_system_logo_path()
+    if not logo_path:
+        raise ResourceNotFoundError(resource_type="系统Logo")
+
+    return FileResponse(
+        logo_path,
+        headers={"Cache-Control": "public, max-age=300"}
+    )
 
 # --- System Configuration & Dictionary Endpoints ---
 
