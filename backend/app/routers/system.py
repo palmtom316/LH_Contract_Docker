@@ -177,11 +177,19 @@ async def backup_system(
         # 2. Copy Uploads
         uploads_src = settings.UPLOAD_DIR
         uploads_dst = os.path.join(temp_dir, "uploads")
+        backup_tmp_real = os.path.realpath(settings.BACKUP_TMP_DIR)
+        uploads_root_real = os.path.realpath(settings.UPLOAD_DIR)
         
         def ignore_patterns(path, names):
-            if path == settings.UPLOAD_DIR:
-                return {'temp'}
-            return set()
+            ignored = set()
+            if os.path.realpath(path) == uploads_root_real:
+                if "temp" in names:
+                    ignored.add("temp")
+                for name in names:
+                    child_real = os.path.realpath(os.path.join(path, name))
+                    if child_real == backup_tmp_real or child_real.startswith(backup_tmp_real + os.sep):
+                        ignored.add(name)
+            return ignored
 
         if os.path.exists(uploads_src):
              shutil.copytree(uploads_src, uploads_dst, ignore=ignore_patterns)

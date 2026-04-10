@@ -47,6 +47,11 @@ class Settings(BaseSettings):
                     "⚠️ 使用开发模式默认 SECRET_KEY，请勿在生产环境使用！"
                 )
                 self.SECRET_KEY = "DEV_ONLY_KEY_DO_NOT_USE_IN_PRODUCTION_abc123xyz789"
+
+        upload_dir = os.path.realpath(self.UPLOAD_DIR)
+        backup_tmp_dir = os.path.realpath(self.BACKUP_TMP_DIR)
+        if backup_tmp_dir == upload_dir or backup_tmp_dir.startswith(upload_dir + os.sep):
+            raise ValueError("BACKUP_TMP_DIR 不能位于 UPLOAD_DIR 之内")
         return self
     
     ALGORITHM: str = "HS256"

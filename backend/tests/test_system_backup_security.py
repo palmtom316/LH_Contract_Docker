@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from app.config import settings
+from app.config import Settings, settings
 
 
 @pytest.mark.asyncio
@@ -31,6 +31,19 @@ async def test_database_backup_uses_non_public_temp_dir(client, admin_token, mon
     assert response.status_code == 200
     assert captured["output_file"].startswith(str(backup_root))
     assert not captured["output_file"].startswith(str(upload_root))
+
+
+def test_backup_tmp_dir_cannot_be_nested_under_upload_dir(tmp_path):
+    upload_root = tmp_path / "uploads"
+    backup_root = upload_root / "backup_tmp"
+
+    with pytest.raises(ValueError, match="BACKUP_TMP_DIR"):
+        Settings(
+            DEBUG=True,
+            SECRET_KEY="test-secret",
+            UPLOAD_DIR=str(upload_root),
+            BACKUP_TMP_DIR=str(backup_root),
+        )
 
 
 @pytest.mark.asyncio
