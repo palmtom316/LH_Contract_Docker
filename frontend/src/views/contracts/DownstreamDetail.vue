@@ -81,10 +81,10 @@
           <el-descriptions-item label="合同文件" :span="2">
             <el-link 
               v-if="contract.contract_file_path" 
+              class="detail-contract-file-link"
               type="primary" 
-              :href="getFileUrl(contract.contract_file_path)" 
-              target="_blank" 
               :underline="false"
+              @click.prevent="openAttachment(contract.contract_file_path)"
             >
               <el-icon class="el-icon--left"><Document /></el-icon> 查看合同文件
             </el-link>
@@ -115,7 +115,7 @@
                 type="primary" 
                 size="small"
                 icon="Document"
-                @click="openFile(row.file_path)"
+                @click="openAttachment(row.file_path)"
               >查看</el-button>
               <span v-else class="detail-placeholder">-</span>
             </template>
@@ -154,7 +154,7 @@
                 type="primary" 
                 size="small"
                 icon="Document"
-                @click="openFile(row.file_path)"
+                @click="openAttachment(row.file_path)"
               >查看</el-button>
               <span v-else class="detail-placeholder">-</span>
             </template>
@@ -188,7 +188,7 @@
                 type="primary" 
                 size="small"
                 icon="Document"
-                @click="openFile(row.file_path)"
+                @click="openAttachment(row.file_path)"
               >查看</el-button>
                <span v-else class="detail-placeholder">-</span>
             </template>
@@ -223,7 +223,7 @@
                 type="primary" 
                 size="small"
                 icon="Document"
-                @click="openFile(row.file_path)"
+                @click="openAttachment(row.file_path)"
               >查看</el-button>
                <span v-else class="detail-placeholder">-</span>
             </template>
@@ -405,7 +405,8 @@ import {
   getSettlements, createSettlement, updateSettlement, deleteSettlement
 } from '@/api/contractDownstream'
 import { uploadFile } from '@/api/common'
-import { getFileUrl, formatMoney, getStatusType } from '@/utils/common'
+import { formatMoney, getStatusType } from '@/utils/common'
+import { openProtectedFile } from '@/utils/protectedFiles'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 
@@ -707,9 +708,9 @@ const formatApprovalStatus = (status) => {
   return map[status] || status
 }
 
-const openFile = (path) => {
+const openAttachment = async (path) => {
   if (!path) return
-  window.open(getFileUrl(path), '_blank')
+  await openProtectedFile(path)
 }
 
 const handleDelete = (type, row) => {

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { login, getInfo, logout, refreshToken as refreshTokenApi } from '@/api/auth'
-import { persistSession, syncAccessTokenCookie, clearSessionStorage } from '@/utils/authSession'
+import { persistSession, clearSessionStorage } from '@/utils/authSession'
 import { useSystemStore } from '@/stores/system'
 
 export const useUserStore = defineStore('user', {
@@ -115,10 +115,6 @@ export const useUserStore = defineStore('user', {
     },
 
     actions: {
-        syncAccessTokenCookie(token) {
-            syncAccessTokenCookie(token)
-        },
-
         async login(userInfo) {
             try {
                 const res = await login(userInfo)

@@ -15,7 +15,6 @@ import App from './App.vue'
 import router from './router'
 import { useUserStore } from '@/stores/user'
 import { useUiStore } from '@/stores/ui'
-import { syncAccessTokenCookie } from '@/utils/authSession'
 import './assets/main.scss'
 
 // Configure Vant Chinese locale
@@ -36,8 +35,6 @@ app.use(ElementPlus, { locale: zhCn })
 const uiStore = useUiStore(pinia)
 uiStore.initTheme()
 
-// Rehydrate the file-access cookie from the persisted session on first load.
-syncAccessTokenCookie(localStorage.getItem('token') || '')
 useUserStore(pinia)
 
 // Global error handler for uncaught exceptions

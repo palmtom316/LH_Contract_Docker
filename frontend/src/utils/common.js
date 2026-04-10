@@ -10,7 +10,7 @@
  */
 export const getFileUrl = (path) => {
     if (!path) return ''
-    if (path.startsWith('http') || path.startsWith('blob:')) return path
+    if (path.startsWith('http') || path.startsWith('blob:') || path.startsWith('data:') || path.startsWith('/api/')) return path
 
     // Use VITE_API_BASE_URL if available
     const apiUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1'
@@ -23,16 +23,7 @@ export const getFileUrl = (path) => {
         return `${baseUrl}${cleanPath}`
     }
 
-    // New MinIO files (served via API)
-    // If path is a key like 'contracts/2026/...', use API endpoint
-    // Endpoint: /api/v1/common/files/{path}
-    // API URL is already included in axios base, but here we need full URL for href/window.open
-
-    // Remove leading slash if present for cleaner join
-    const cleanKey = path.startsWith('/') ? path.substring(1) : path
-
-    // Construct API URL: http://host:8000/api/v1/common/files/contracts/...
-    return `${apiUrl}/common/files/${cleanKey}`
+    return path.startsWith('/') ? path : `/${path}`
 }
 
 /**

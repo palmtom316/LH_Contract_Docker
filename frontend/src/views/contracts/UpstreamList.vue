@@ -608,7 +608,7 @@ import { defineAsyncComponent, ref, reactive, onMounted, onBeforeUnmount } from 
 import { useRouter, useRoute } from 'vue-router'
 import { getContracts, createContract, updateContract, deleteContract, exportContracts, downloadImportTemplate, importContracts, getNextSerialNumber } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
-import { getFileUrl } from '@/utils/common'
+import { openProtectedFile } from '@/utils/protectedFiles'
 import { downloadExcel } from '@/utils/download'
 import { useContractList, useTableSummary, useMobileDetection } from '@/composables/useContractList'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -886,16 +886,15 @@ const handleRemoveFile = () => {
 // PDF Preview
 const handlePreview = (path) => {
   if (!path) return
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
   pdfDialog.url = path 
   pdfDialog.visible = true
 }
 
 // Open PDF in new tab
 // Open PDF in new tab
-const openPdfInNewTab = (path) => {
+const openPdfInNewTab = async (path) => {
   if (!path) return
-  window.open(getFileUrl(path), '_blank')
+  await openProtectedFile(path)
 }
 
 // Form handling

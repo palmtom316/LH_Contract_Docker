@@ -97,7 +97,8 @@ import dayjs from 'dayjs';
 import { showToast, showImagePreview } from 'vant';
 import * as expenseApi from '@/api/expense';
 import * as laborApi from '@/api/zeroHourLabor';
-import { formatMoney, getFileUrl } from '@/utils/common';
+import { formatMoney } from '@/utils/common';
+import { createProtectedObjectUrl } from '@/utils/protectedFiles';
 
 import {
   Tabs as VanTabs,
@@ -131,21 +132,29 @@ const formatDate = (date: string) => {
     return date ? dayjs(date).format('YYYY-MM-DD') : '-';
 };
 
-const viewAttachments = (attachments: string) => {
+const viewAttachments = async (attachments: string) => {
     if (!attachments) return;
     try {
         // Assume attachments is custom comma separated string or JSON? 
         // Backend usually returns comma separated paths or array. 
         // Let's assume array or string.
-        let urls: string[] = [];
+        let paths: string[] = [];
         if (Array.isArray(attachments)) {
-             urls = attachments.map(path => getFileUrl(path));
+             paths = attachments;
         } else if (typeof attachments === 'string') {
-             urls = attachments.split(',').map(path => getFileUrl(path));
+             paths = attachments.split(',').map(path => path.trim()).filter(Boolean);
         }
-        
+
+        const urls = await Promise.all(paths.map(path => createProtectedObjectUrl(path)))
         if (urls.length > 0) {
             showImagePreview(urls);
+            window.setTimeout(() => {
+                urls.forEach(url => {
+                    if (url.startsWith('blob:')) {
+                        URL.revokeObjectURL(url)
+                    }
+                })
+            }, 60_000)
         }
     } catch (e) {
         console.error(e);

@@ -1,22 +1,9 @@
 import axios from 'axios'
 
-const ACCESS_TOKEN_COOKIE_NAME = 'lh_access_token'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
-
-export function syncAccessTokenCookie(token) {
-    if (typeof document === 'undefined') return
-
-    if (!token) {
-        document.cookie = `${ACCESS_TOKEN_COOKIE_NAME}=; Max-Age=0; path=/; SameSite=Lax`
-        return
-    }
-
-    document.cookie = `${ACCESS_TOKEN_COOKIE_NAME}=${encodeURIComponent(token)}; path=/; SameSite=Lax`
-}
 
 export function persistSession({ accessToken, refreshToken, expiresIn, user }) {
     localStorage.setItem('token', accessToken)
-    syncAccessTokenCookie(accessToken)
 
     if (refreshToken) {
         localStorage.setItem('refresh_token', refreshToken)
@@ -43,7 +30,6 @@ export function clearSessionStorage() {
     localStorage.removeItem('token_expires_at')
     localStorage.removeItem('user_info')
     localStorage.removeItem('user_permissions')
-    syncAccessTokenCookie('')
 }
 
 export async function refreshSessionWithStoredToken() {

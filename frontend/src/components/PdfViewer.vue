@@ -12,7 +12,7 @@
     <div class="pdf-content">
       <div class="pdf-frame-wrapper" :style="{ transform: `scale(${scale})`, transformOrigin: 'top center' }">
         <iframe
-          :src="source"
+          :src="previewUrl"
           class="pdf-frame"
           title="PDF 预览"
         />
@@ -22,7 +22,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
+import { createProtectedObjectUrl, downloadProtectedFile } from '@/utils/protectedFiles'
 
 const props = defineProps({
   source: {
@@ -32,10 +33,33 @@ const props = defineProps({
 })
 
 const scale = ref(1.0)
+const previewUrl = ref('')
 
-const download = () => {
-  window.open(props.source, '_blank')
-}
+watch(
+  () => props.source,
+  async (value, _oldValue, onCleanup) => {
+    previewUrl.value = ''
+    if (!value) return
+
+    const objectUrl = await createProtectedObjectUrl(value)
+    previewUrl.value = objectUrl
+
+    onCleanup(() => {
+      if (objectUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(objectUrl)
+      }
+    })
+  },
+  { immediate: true }
+)
+
+onBeforeUnmount(() => {
+  if (previewUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(previewUrl.value)
+  }
+})
+
+const download = () => downloadProtectedFile(props.source)
 </script>
 
 <style scoped lang="scss">

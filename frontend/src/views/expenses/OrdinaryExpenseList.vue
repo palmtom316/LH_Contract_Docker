@@ -328,7 +328,8 @@ import { defineAsyncComponent, ref, reactive, onMounted, onUnmounted } from 'vue
 import { getExpenses, createExpense, updateExpense, deleteExpense, exportExpenses } from '@/api/expense'
 import { getContracts, getContract } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
-import { getFileUrl, formatMoney } from '@/utils/common'
+import { formatMoney } from '@/utils/common'
+import { openProtectedFile } from '@/utils/protectedFiles'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Download, Document, Edit, Delete, More } from '@element-plus/icons-vue'
 import AppSectionCard from '@/components/ui/AppSectionCard.vue'
@@ -630,19 +631,17 @@ const handleRemove = () => {
   fileList.value = []
 }
 
-const handlePreview = (file) => {
+const handlePreview = async (file) => {
   if (file.url) {
-    const url = getFileUrl(file.url)
-    if (url) window.open(url, '_blank')
+    await openProtectedFile(file.url)
   } else {
     ElMessage.warning('没有可查看的文件')
   }
 }
 
-const viewExpenseFile = (filePath) => {
+const viewExpenseFile = async (filePath) => {
   if (filePath) {
-    const url = getFileUrl(filePath)
-    if (url) window.open(url, '_blank')
+    await openProtectedFile(filePath)
   } else {
     ElMessage.warning('没有可查看的文件')
   }

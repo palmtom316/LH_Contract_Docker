@@ -39,6 +39,7 @@
 import { ref } from 'vue'
 import { Document } from '@element-plus/icons-vue'
 import PdfViewer from './PdfViewer.vue'
+import { openProtectedFile } from '@/utils/protectedFiles'
 
 const props = defineProps({
   // File path to the PDF
@@ -88,21 +89,20 @@ const props = defineProps({
 const viewerVisible = ref(false)
 
 // Handle click
-const handleClick = () => {
+const handleClick = async () => {
   if (!props.filePath) return
   
   if (props.openMode === 'dialog') {
     viewerVisible.value = true
   } else {
-    // Open in new tab
-    window.open(props.filePath, '_blank')
+    await openProtectedFile(props.filePath)
   }
 }
 
 // Expose methods
 defineExpose({
   openDialog: () => { viewerVisible.value = true },
-  openInNewTab: () => { window.open(props.filePath, '_blank') }
+  openInNewTab: async () => { await openProtectedFile(props.filePath) }
 })
 </script>
 

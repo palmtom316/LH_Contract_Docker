@@ -393,7 +393,8 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { getZeroHourLaborList, createZeroHourLabor, updateZeroHourLabor, deleteZeroHourLabor, exportZeroHourLabor } from '@/api/zeroHourLabor'
 import { getContracts } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
-import { formatMoney, getFileUrl } from '@/utils/common'
+import { formatMoney } from '@/utils/common'
+import { openProtectedFile } from '@/utils/protectedFiles'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Upload, Document, Plus, Delete, Search, Refresh, Download, More } from '@element-plus/icons-vue'
 import { useMobileDetection } from '@/composables/useContractList'
@@ -828,14 +829,13 @@ const handleRemove = () => {
     fileList.value = []
 }
 
-const handlePreview = (file) => {
-     viewFile(file.url)
+const handlePreview = async (file) => {
+     await viewFile(file.url)
 }
 
-const viewFile = (path) => {
+const viewFile = async (path) => {
     if (path) {
-        const url = getFileUrl(path)
-        window.open(url, '_blank')
+        await openProtectedFile(path)
     }
 }
 

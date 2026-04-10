@@ -402,12 +402,12 @@ import { getContracts, createContract, updateContract, deleteContract, exportCon
 import { getContracts as getUpstreamContracts, getContractSummary } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
 import { useContractList, useTableSummary, useMobileDetection } from '@/composables/useContractList'
-import { getFileUrl } from '@/utils/common'
+import { openProtectedFile } from '@/utils/protectedFiles'
 
 // Open PDF in new tab
-const openPdfInNewTab = (path) => {
+const openPdfInNewTab = async (path) => {
   if (!path) return
-  window.open(getFileUrl(path), '_blank')
+  await openProtectedFile(path)
 }
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Document, Refresh, Search, Plus, Download, More } from '@element-plus/icons-vue'
@@ -600,8 +600,6 @@ const handleUpstreamSelect = async (val) => {
     upstreamSummary.value = null
   }
 }
-
-// getFileUrl imported from @/utils/common
 
 // Upload
 const handleUpload = async (option) => {

@@ -212,8 +212,6 @@ from app.core.minio import get_minio_client
 from app.services.auth import get_current_user, get_user_from_token
 import mimetypes
 
-ACCESS_TOKEN_COOKIE_NAME = "lh_access_token"
-
 @router.get("/files/{path:path}")
 async def get_file(
     path: str,
@@ -242,29 +240,14 @@ async def get_file(
                 message="不允许使用查询参数令牌",
                 field_errors={"token": "请使用 Authorization 头部"}
             )
-        try:
-            current_user = await get_user_from_token(token, db)
-        except Exception:
-            pass
+        current_user = await get_user_from_token(token, db)
             
     # If still no user, try to get from Authorization header manually
     if not current_user:
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             bearer_token = auth_header.replace("Bearer ", "")
-            try:
-                current_user = await get_user_from_token(bearer_token, db)
-            except Exception:
-                pass
-
-    # Cookie-based auth allows browser-opened file links without query tokens.
-    if not current_user:
-        cookie_token = request.cookies.get(ACCESS_TOKEN_COOKIE_NAME)
-        if cookie_token:
-            try:
-                current_user = await get_user_from_token(cookie_token, db)
-            except Exception:
-                pass
+            current_user = await get_user_from_token(bearer_token, db)
     
     if not current_user:
         raise HTTPException(

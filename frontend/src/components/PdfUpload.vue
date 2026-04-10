@@ -71,6 +71,7 @@ import { Upload } from '@element-plus/icons-vue'
 import { uploadFile } from '@/api/common'
 import { ElMessage } from 'element-plus'
 import PdfViewer from './PdfViewer.vue'
+import { openProtectedFile } from '@/utils/protectedFiles'
 
 const props = defineProps({
   // v-model binding for file path
@@ -196,6 +197,7 @@ const handleUploadRequest = async (option) => {
 // Handle file removal
 const handleRemove = () => {
   emit('update:modelValue', '')
+  emit('update:fileKey', '')
   emit('remove')
   fileList.value = []
 }
@@ -207,9 +209,9 @@ const handleView = () => {
 }
 
 // Open PDF in new tab
-const openInNewTab = () => {
+const openInNewTab = async () => {
   if (!filePath.value) return
-  window.open(filePath.value, '_blank')
+  await openProtectedFile(filePath.value)
 }
 
 // Expose methods for parent components

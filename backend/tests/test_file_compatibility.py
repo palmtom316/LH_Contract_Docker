@@ -71,7 +71,7 @@ async def test_minio_key_download_works_without_query_token(monkeypatch):
     expected = b"minio-payload"
 
     async def fake_get_user_from_token(token, db):
-        assert token == "cookie-token"
+        assert token == "header-token"
         return SimpleNamespace(username="tester", is_active=True)
 
     class FakeObjectResponse:
@@ -99,7 +99,7 @@ async def test_minio_key_download_works_without_query_token(monkeypatch):
 
     response = await common.get_file(
         path="contracts/2026/04/demo.pdf",
-        request=_build_request({"cookie": "lh_access_token=cookie-token"}),
+        request=_build_request({"authorization": "Bearer header-token"}),
         db=object(),
     )
 
@@ -110,6 +110,23 @@ async def test_minio_key_download_works_without_query_token(monkeypatch):
     assert isinstance(response, StreamingResponse)
     assert response.status_code == 200
     assert body == expected
+
+
+@pytest.mark.asyncio
+async def test_file_endpoint_rejects_cookie_only_auth(monkeypatch):
+    async def fake_get_user_from_token(token, db):
+        return SimpleNamespace(username="tester", is_active=True)
+
+    monkeypatch.setattr(common, "get_user_from_token", fake_get_user_from_token)
+
+    with pytest.raises(common.HTTPException) as exc:
+        await common.get_file(
+            path="contracts/2026/04/demo.pdf",
+            request=_build_request({"cookie": "lh_access_token=cookie-token"}),
+            db=object(),
+        )
+
+    assert exc.value.status_code == 401
 
 
 @pytest.mark.asyncio

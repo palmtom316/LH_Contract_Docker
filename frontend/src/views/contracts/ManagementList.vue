@@ -406,9 +406,9 @@ import { useRouter, useRoute } from 'vue-router'
 import { getContracts, createContract, updateContract, deleteContract, exportContracts } from '@/api/contractManagement'
 import { getContracts as getUpstreamContracts, getContractSummary } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
-import { getFileUrl } from '@/utils/common'
 import { useContractList, useTableSummary, useMobileDetection } from '@/composables/useContractList'
 import { downloadExcel, generateFilename } from '@/utils/download'
+import { openProtectedFile } from '@/utils/protectedFiles'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Download, Document, Connection, More } from '@element-plus/icons-vue'
 import SmartDateInput from '@/components/SmartDateInput.vue'
@@ -694,9 +694,9 @@ const submitForm = async () => {
 }
 
 
-const openPdfInNewTab = (path) => {
+const openPdfInNewTab = async (path) => {
   if (path) {
-    window.open(getFileUrl(path), '_blank')
+    await openProtectedFile(path)
   }
 }
 
