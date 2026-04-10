@@ -95,8 +95,6 @@ async def test_minio_key_download_works_without_query_token(monkeypatch):
 
     monkeypatch.setattr(common, "get_user_from_token", fake_get_user_from_token)
     monkeypatch.setattr(common, "get_minio_client", lambda: FakeMinioClient())
-    monkeypatch.setattr(settings, "ALLOW_QUERY_TOKEN", False)
-
     response = await common.get_file(
         path="contracts/2026/04/demo.pdf",
         request=_build_request({"authorization": "Bearer header-token"}),
@@ -110,6 +108,24 @@ async def test_minio_key_download_works_without_query_token(monkeypatch):
     assert isinstance(response, StreamingResponse)
     assert response.status_code == 200
     assert body == expected
+
+
+@pytest.mark.asyncio
+async def test_file_endpoint_rejects_query_token_even_with_valid_header(monkeypatch):
+    async def fake_get_user_from_token(token, db):
+        return SimpleNamespace(username="tester", is_active=True)
+
+    monkeypatch.setattr(common, "get_user_from_token", fake_get_user_from_token)
+
+    with pytest.raises(common.ValidationError) as exc:
+        await common.get_file(
+            path="contracts/2026/04/demo.pdf",
+            token="query-token",
+            request=_build_request({"authorization": "Bearer header-token"}),
+            db=object(),
+        )
+
+    assert exc.value.message == "不允许使用查询参数令牌"
 
 
 @pytest.mark.asyncio
@@ -127,6 +143,42 @@ async def test_file_endpoint_rejects_cookie_only_auth(monkeypatch):
         )
 
     assert exc.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_local_file_fallback_rejects_symlink_escape(monkeypatch, tmp_path):
+    original_upload_dir = settings.UPLOAD_DIR
+    uploads_dir = tmp_path / "uploads"
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+    contracts_dir = uploads_dir / "contracts"
+    contracts_dir.mkdir(parents=True, exist_ok=True)
+    outside_secret = tmp_path / "outside-secret.txt"
+    outside_secret.write_text("secret")
+    symlink_path = contracts_dir / "jump.txt"
+    symlink_path.symlink_to(outside_secret)
+
+    async def fake_get_user_from_token(token, db):
+        return SimpleNamespace(username="tester", is_active=True)
+
+    class MissingMinioClient:
+        def stat_object(self, bucket, path):
+            raise RuntimeError("not found")
+
+    monkeypatch.setattr(common, "get_user_from_token", fake_get_user_from_token)
+    monkeypatch.setattr(common, "get_minio_client", lambda: MissingMinioClient())
+    settings.UPLOAD_DIR = str(uploads_dir)
+
+    try:
+        with pytest.raises(common.ValidationError) as exc:
+            await common.get_file(
+                path="contracts/jump.txt",
+                request=_build_request({"authorization": "Bearer token-123"}),
+                db=object(),
+            )
+    finally:
+        settings.UPLOAD_DIR = original_upload_dir
+
+    assert exc.value.message == "非法的文件路径"
 
 
 @pytest.mark.asyncio

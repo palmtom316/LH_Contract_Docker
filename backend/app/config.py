@@ -84,7 +84,6 @@ class Settings(BaseSettings):
     )
     MAX_FILE_SIZE: int = 50 * 1024 * 1024  # 50MB
     ALLOWED_EXTENSIONS: List[str] = ["pdf", "xlsx", "xls", "doc", "docx", "jpg", "jpeg", "png"]
-    ALLOW_QUERY_TOKEN: bool = os.getenv("ALLOW_QUERY_TOKEN", "false").lower() == "true"
     
     # MinIO / S3 Storage
     MINIO_ENDPOINT: str = os.getenv("MINIO_ENDPOINT", "minio:9000")

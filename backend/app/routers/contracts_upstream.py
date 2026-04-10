@@ -43,6 +43,25 @@ def get_contract_service(db: AsyncSession = Depends(get_db)) -> ContractUpstream
     return ContractUpstreamService(db)
 
 
+can_view_upstream_basic = require_permission(Permission.VIEW_UPSTREAM_BASIC_INFO)
+can_view_receivables = require_permission(Permission.VIEW_RECEIVABLES)
+can_create_receivables = require_permission(Permission.CREATE_RECEIVABLES)
+can_edit_receivables = require_permission(Permission.EDIT_RECEIVABLES)
+can_delete_receivables = require_permission(Permission.DELETE_RECEIVABLES)
+can_view_invoices = require_permission(Permission.VIEW_INVOICES)
+can_create_invoices = require_permission(Permission.CREATE_INVOICES)
+can_edit_invoices = require_permission(Permission.EDIT_INVOICES)
+can_delete_invoices = require_permission(Permission.DELETE_INVOICES)
+can_view_payments = require_permission(Permission.VIEW_PAYMENTS)
+can_create_payments = require_permission(Permission.CREATE_PAYMENTS)
+can_edit_payments = require_permission(Permission.EDIT_PAYMENTS)
+can_delete_payments = require_permission(Permission.DELETE_PAYMENTS)
+can_view_settlements = require_permission(Permission.VIEW_SETTLEMENTS)
+can_create_settlements = require_permission(Permission.CREATE_SETTLEMENTS)
+can_edit_settlements = require_permission(Permission.EDIT_SETTLEMENTS)
+can_delete_settlements = require_permission(Permission.DELETE_SETTLEMENTS)
+
+
 # ===== Contract Operations =====
 
 @router.get("/", response_model=ContractUpstreamListResponse)
@@ -217,7 +236,7 @@ async def get_contract(
 @router.get("/{contract_id}/summary")
 async def get_contract_summary(
     contract_id: int,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(can_view_upstream_basic),
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
     """Get read-only summary for downstream linking"""
@@ -276,7 +295,7 @@ async def delete_contract(
 async def create_receivable(
     contract_id: int,
     receivable_in: ReceivableCreate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(can_create_receivables),
     db: AsyncSession = Depends(get_db),
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
@@ -307,6 +326,7 @@ async def create_receivable(
 @router.get("/{contract_id}/receivables", response_model=List[ReceivableResponse])
 async def list_receivables(
     contract_id: int,
+    current_user: User = Depends(can_view_receivables),
     db: AsyncSession = Depends(get_db)
 ):
     query = select(FinanceUpstreamReceivable).where(FinanceUpstreamReceivable.contract_id == contract_id)
@@ -319,7 +339,7 @@ async def update_receivable(
     contract_id: int,
     receivable_id: int,
     receivable_in: ReceivableCreate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(can_edit_receivables),
     db: AsyncSession = Depends(get_db),
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
@@ -351,7 +371,7 @@ async def update_receivable(
 async def delete_receivable(
     contract_id: int,
     receivable_id: int,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(can_delete_receivables),
     db: AsyncSession = Depends(get_db),
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
@@ -378,7 +398,7 @@ async def delete_receivable(
 async def create_invoice(
     contract_id: int,
     invoice_in: InvoiceUpstreamCreate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(can_create_invoices),
     db: AsyncSession = Depends(get_db)
 ):
     if contract_id != invoice_in.contract_id:
@@ -394,6 +414,7 @@ async def create_invoice(
 @router.get("/{contract_id}/invoices", response_model=List[InvoiceUpstreamResponse])
 async def list_invoices(
     contract_id: int,
+    current_user: User = Depends(can_view_invoices),
     db: AsyncSession = Depends(get_db)
 ):
     query = select(FinanceUpstreamInvoice).where(FinanceUpstreamInvoice.contract_id == contract_id)
@@ -406,7 +427,7 @@ async def update_invoice(
     contract_id: int,
     invoice_id: int,
     invoice_in: InvoiceUpstreamCreate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(can_edit_invoices),
     db: AsyncSession = Depends(get_db)
 ):
     query = select(FinanceUpstreamInvoice).where(
@@ -430,7 +451,7 @@ async def update_invoice(
 async def delete_invoice(
     contract_id: int,
     invoice_id: int,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(can_delete_invoices),
     db: AsyncSession = Depends(get_db)
 ):
     query = select(FinanceUpstreamInvoice).where(
@@ -452,7 +473,7 @@ async def delete_invoice(
 async def create_receipt(
     contract_id: int,
     receipt_in: ReceiptCreate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(can_create_payments),
     db: AsyncSession = Depends(get_db),
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
@@ -473,6 +494,7 @@ async def create_receipt(
 @router.get("/{contract_id}/receipts", response_model=List[ReceiptResponse])
 async def list_receipts(
     contract_id: int,
+    current_user: User = Depends(can_view_payments),
     db: AsyncSession = Depends(get_db)
 ):
     query = select(FinanceUpstreamReceipt).where(FinanceUpstreamReceipt.contract_id == contract_id)
@@ -485,7 +507,7 @@ async def update_receipt(
     contract_id: int,
     receipt_id: int,
     receipt_in: ReceiptCreate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(can_edit_payments),
     db: AsyncSession = Depends(get_db),
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
@@ -514,7 +536,7 @@ async def update_receipt(
 async def delete_receipt(
     contract_id: int,
     receipt_id: int,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(can_delete_payments),
     db: AsyncSession = Depends(get_db),
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
@@ -541,7 +563,7 @@ async def delete_receipt(
 async def create_settlement(
     contract_id: int,
     settlement_in: SettlementCreate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(can_create_settlements),
     db: AsyncSession = Depends(get_db),
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
@@ -562,6 +584,7 @@ async def create_settlement(
 @router.get("/{contract_id}/settlements", response_model=List[SettlementResponse])
 async def list_settlements(
     contract_id: int,
+    current_user: User = Depends(can_view_settlements),
     db: AsyncSession = Depends(get_db)
 ):
     query = select(ProjectSettlement).where(ProjectSettlement.contract_id == contract_id)
@@ -574,7 +597,7 @@ async def update_settlement(
     contract_id: int,
     settlement_id: int,
     settlement_in: SettlementCreate,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(can_edit_settlements),
     db: AsyncSession = Depends(get_db),
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
@@ -603,7 +626,7 @@ async def update_settlement(
 async def delete_settlement(
     contract_id: int,
     settlement_id: int,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(can_delete_settlements),
     db: AsyncSession = Depends(get_db),
     service: ContractUpstreamService = Depends(get_contract_service)
 ):

@@ -254,12 +254,43 @@ def general_affairs_user(event_loop, test_db: AsyncSession) -> User:
 
 
 @pytest.fixture
+def finance_user(event_loop, test_db: AsyncSession) -> User:
+    """Create a finance user"""
+    async def _create():
+        user = User(
+            username="finance_user",
+            email="finance@example.com",
+            hashed_password=get_password_hash("testpass123"),
+            full_name="Finance User",
+            role=UserRole.FINANCE,
+            is_active=True
+        )
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+        return user
+
+    return _run(event_loop, _create())
+
+
+@pytest.fixture
 def general_affairs_token(general_affairs_user: User) -> str:
     """Get general affairs authentication token"""
     token_data = {
         "sub": str(general_affairs_user.id),
         "username": general_affairs_user.username,
         "role": general_affairs_user.role.value
+    }
+    return create_access_token(token_data)
+
+
+@pytest.fixture
+def finance_token(finance_user: User) -> str:
+    """Get finance authentication token"""
+    token_data = {
+        "sub": str(finance_user.id),
+        "username": finance_user.username,
+        "role": finance_user.role.value
     }
     return create_access_token(token_data)
 

@@ -38,58 +38,24 @@ async def get_companies(
     - ContractUpstream.party_a_name (甲方)
     - ContractDownstream.supplier_name (乙方/供应商)
     """
-    # Create queries for all relevant tables
-    # 1. Upstream Party A (Client) & Party B (If editable)
-    stmt_up_a = select(ContractUpstream.party_a_name).where(
-        ContractUpstream.party_a_name.ilike(f"%{query}%")
+    fuzzy = f"%{query}%"
+    companies_subquery = union(
+        select(ContractUpstream.party_a_name.label("name")).where(ContractUpstream.party_a_name.ilike(fuzzy)),
+        select(ContractUpstream.party_b_name.label("name")).where(ContractUpstream.party_b_name.ilike(fuzzy)),
+        select(ContractDownstream.party_a_name.label("name")).where(ContractDownstream.party_a_name.ilike(fuzzy)),
+        select(ContractDownstream.party_b_name.label("name")).where(ContractDownstream.party_b_name.ilike(fuzzy)),
+        select(ContractManagement.party_a_name.label("name")).where(ContractManagement.party_a_name.ilike(fuzzy)),
+        select(ContractManagement.party_b_name.label("name")).where(ContractManagement.party_b_name.ilike(fuzzy)),
+    ).subquery()
+
+    stmt = (
+        select(distinct(companies_subquery.c.name))
+        .where(companies_subquery.c.name.is_not(None), companies_subquery.c.name != "")
+        .order_by(companies_subquery.c.name)
+        .limit(50)
     )
-    stmt_up_b = select(ContractUpstream.party_b_name).where(
-        ContractUpstream.party_b_name.ilike(f"%{query}%")
-    )
-    
-    # 2. Downstream Party A (Usually us, but maybe editable) & Party B (Supplier)
-    stmt_down_a = select(ContractDownstream.party_a_name).where(
-        ContractDownstream.party_a_name.ilike(f"%{query}%")
-    )
-    stmt_down_b = select(ContractDownstream.party_b_name).where(
-        ContractDownstream.party_b_name.ilike(f"%{query}%")
-    )
-    
-    # 3. Management Party A & B
-    stmt_mgmt_a = select(ContractManagement.party_a_name).where(
-        ContractManagement.party_a_name.ilike(f"%{query}%")
-    )
-    stmt_mgmt_b = select(ContractManagement.party_b_name).where(
-        ContractManagement.party_b_name.ilike(f"%{query}%")
-    )
-    
-    # Execute queries
-    res_up_a = await db.execute(stmt_up_a)
-    res_up_b = await db.execute(stmt_up_b)
-    res_down_a = await db.execute(stmt_down_a)
-    res_down_b = await db.execute(stmt_down_b)
-    res_mgmt_a = await db.execute(stmt_mgmt_a)
-    res_mgmt_b = await db.execute(stmt_mgmt_b)
-    
-    names = set()
-    for r in res_up_a.scalars().all():
-        if r: names.add(r)
-    for r in res_up_b.scalars().all():
-        if r: names.add(r)
-    for r in res_down_a.scalars().all():
-        if r: names.add(r)
-    for r in res_down_b.scalars().all():
-        if r: names.add(r)
-    for r in res_mgmt_a.scalars().all():
-        if r: names.add(r)
-    for r in res_mgmt_b.scalars().all():
-        if r: names.add(r)
-    
-    # Combine and de-duplicate
-    all_names = sorted(list(names))
-    
-    # Limit results for performance
-    return all_names[:50]
+    result = await db.execute(stmt)
+    return result.scalars().all()
 
 
 logger = logging.getLogger(__name__)
@@ -233,14 +199,12 @@ async def get_file(
             field_errors={"path": "文件路径非法"}
         )
 
-    # Try to get user from token if provided in query (only if enabled)
-    if not current_user and token:
-        if not settings.ALLOW_QUERY_TOKEN:
-            raise ValidationError(
-                message="不允许使用查询参数令牌",
-                field_errors={"token": "请使用 Authorization 头部"}
-            )
-        current_user = await get_user_from_token(token, db)
+    # Query token transport is intentionally forbidden to avoid token leakage
+    if token:
+        raise ValidationError(
+            message="不允许使用查询参数令牌",
+            field_errors={"token": "请使用 Authorization 头部"}
+        )
             
     # If still no user, try to get from Authorization header manually
     if not current_user:
@@ -305,14 +269,15 @@ async def get_file(
     
     # 2. Local fallback
     local_path = os.path.normpath(os.path.join(settings.UPLOAD_DIR, safe_path))
-    uploads_root = os.path.abspath(settings.UPLOAD_DIR)
-    if not local_path.startswith(uploads_root + os.sep):
+    local_real_path = os.path.realpath(local_path)
+    uploads_root_real = os.path.realpath(settings.UPLOAD_DIR)
+    if local_real_path != uploads_root_real and not local_real_path.startswith(uploads_root_real + os.sep):
         raise ValidationError(
             message="非法的文件路径",
             field_errors={"path": "文件路径非法"}
         )
-    if os.path.exists(local_path) and os.path.isfile(local_path):
-        return FileResponse(local_path)
+    if os.path.exists(local_real_path) and os.path.isfile(local_real_path):
+        return FileResponse(local_real_path)
     
     # 3. Not found anywhere
     logger.warning(f"[FILE_GET] Not Found: {safe_path}")
