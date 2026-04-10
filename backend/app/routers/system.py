@@ -11,6 +11,7 @@ from app.core.errors import (
 import shutil
 import subprocess
 import os
+import tempfile
 from datetime import datetime
 from typing import List, Optional, Union
 from urllib.parse import urlparse, unquote
@@ -31,6 +32,11 @@ def _safe_remove_file(path: str) -> None:
             os.remove(path)
     except Exception:
         pass
+
+
+def _ensure_backup_tmp_dir() -> str:
+    os.makedirs(settings.BACKUP_TMP_DIR, exist_ok=True)
+    return settings.BACKUP_TMP_DIR
 
 
 def _find_system_logo_path() -> str | None:
@@ -126,10 +132,8 @@ async def backup_database(
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"lh_contract_db_{timestamp}.sql"
-    filepath = os.path.join(settings.UPLOAD_DIR, "temp", filename)
-    
-    # Ensure temp dir exists
-    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    tmp_root = _ensure_backup_tmp_dir()
+    filepath = os.path.join(tmp_root, filename)
     
     try:
         run_db_dump(filepath)
@@ -160,11 +164,10 @@ async def backup_system(
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     base_filename = f"lh_system_backup_{timestamp}"
-    temp_dir = os.path.join(settings.UPLOAD_DIR, "temp", base_filename)
+    tmp_root = _ensure_backup_tmp_dir()
+    temp_dir = tempfile.mkdtemp(prefix="full_backup_", dir=tmp_root)
     zip_filename = f"{base_filename}.zip"
-    zip_filepath = os.path.join(settings.UPLOAD_DIR, "temp", zip_filename)
-    
-    os.makedirs(temp_dir, exist_ok=True)
+    zip_filepath = os.path.join(tmp_root, zip_filename)
     
     try:
         # 1. Dump Database
@@ -184,7 +187,7 @@ async def backup_system(
              shutil.copytree(uploads_src, uploads_dst, ignore=ignore_patterns)
 
         # 3. Create ZIP
-        shutil.make_archive(os.path.join(settings.UPLOAD_DIR, "temp", base_filename), 'zip', temp_dir)
+        shutil.make_archive(zip_filepath.removesuffix(".zip"), "zip", temp_dir)
         
         # 4. Cleanup temp folder (keep zip)
         shutil.rmtree(temp_dir)

@@ -9,6 +9,7 @@ from pydantic_settings import BaseSettings
 from typing import List
 import os
 import secrets
+import tempfile
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -65,6 +66,10 @@ class Settings(BaseSettings):
     
     # File Upload
     UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", os.path.join(BASE_DIR, "uploads"))
+    BACKUP_TMP_DIR: str = os.getenv(
+        "BACKUP_TMP_DIR",
+        os.path.join(tempfile.gettempdir(), "lh_contract_backups")
+    )
     MAX_FILE_SIZE: int = 50 * 1024 * 1024  # 50MB
     ALLOWED_EXTENSIONS: List[str] = ["pdf", "xlsx", "xls", "doc", "docx", "jpg", "jpeg", "png"]
     ALLOW_QUERY_TOKEN: bool = os.getenv("ALLOW_QUERY_TOKEN", "false").lower() == "true"
@@ -107,3 +112,4 @@ os.makedirs(os.path.join(settings.UPLOAD_DIR, "invoices"), exist_ok=True)
 os.makedirs(os.path.join(settings.UPLOAD_DIR, "receipts"), exist_ok=True)
 os.makedirs(os.path.join(settings.UPLOAD_DIR, "settlements"), exist_ok=True)
 os.makedirs(os.path.join(settings.UPLOAD_DIR, "expenses"), exist_ok=True)
+os.makedirs(settings.BACKUP_TMP_DIR, exist_ok=True)
