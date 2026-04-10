@@ -48,9 +48,16 @@ class Settings(BaseSettings):
                 )
                 self.SECRET_KEY = "DEV_ONLY_KEY_DO_NOT_USE_IN_PRODUCTION_abc123xyz789"
 
-        upload_dir = os.path.realpath(self.UPLOAD_DIR)
-        backup_tmp_dir = os.path.realpath(self.BACKUP_TMP_DIR)
-        if backup_tmp_dir == upload_dir or backup_tmp_dir.startswith(upload_dir + os.sep):
+        upload_dir_abs = os.path.abspath(self.UPLOAD_DIR)
+        backup_tmp_dir_abs = os.path.abspath(self.BACKUP_TMP_DIR)
+        upload_dir_real = os.path.realpath(self.UPLOAD_DIR)
+        backup_tmp_dir_real = os.path.realpath(self.BACKUP_TMP_DIR)
+        if (
+            backup_tmp_dir_abs == upload_dir_abs
+            or backup_tmp_dir_abs.startswith(upload_dir_abs + os.sep)
+            or backup_tmp_dir_real == upload_dir_real
+            or backup_tmp_dir_real.startswith(upload_dir_real + os.sep)
+        ):
             raise ValueError("BACKUP_TMP_DIR 不能位于 UPLOAD_DIR 之内")
         return self
     

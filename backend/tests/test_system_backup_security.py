@@ -46,6 +46,23 @@ def test_backup_tmp_dir_cannot_be_nested_under_upload_dir(tmp_path):
         )
 
 
+def test_backup_tmp_dir_cannot_use_alias_path_inside_upload_dir(tmp_path):
+    upload_root = tmp_path / "uploads"
+    upload_root.mkdir(parents=True, exist_ok=True)
+    outside_root = tmp_path / "outside_backup_tmp"
+    outside_root.mkdir(parents=True, exist_ok=True)
+    alias_root = upload_root / "backup_tmp_link"
+    os.symlink(outside_root, alias_root, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="BACKUP_TMP_DIR"):
+        Settings(
+            DEBUG=True,
+            SECRET_KEY="test-secret",
+            UPLOAD_DIR=str(upload_root),
+            BACKUP_TMP_DIR=str(alias_root),
+        )
+
+
 @pytest.mark.asyncio
 async def test_full_backup_does_not_create_upload_temp_subdir(client, admin_token, monkeypatch, tmp_path):
     import app.routers.system as system_router
