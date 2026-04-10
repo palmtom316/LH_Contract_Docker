@@ -234,6 +234,37 @@ def user_token(test_user: User) -> str:
 
 
 @pytest.fixture
+def general_affairs_user(event_loop, test_db: AsyncSession) -> User:
+    """Create a general affairs user"""
+    async def _create():
+        user = User(
+            username="general_affairs",
+            email="general@example.com",
+            hashed_password=get_password_hash("testpass123"),
+            full_name="General Affairs",
+            role=UserRole.GENERAL_AFFAIRS,
+            is_active=True
+        )
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+        return user
+
+    return _run(event_loop, _create())
+
+
+@pytest.fixture
+def general_affairs_token(general_affairs_user: User) -> str:
+    """Get general affairs authentication token"""
+    token_data = {
+        "sub": str(general_affairs_user.id),
+        "username": general_affairs_user.username,
+        "role": general_affairs_user.role.value
+    }
+    return create_access_token(token_data)
+
+
+@pytest.fixture
 def auth_headers(admin_token: str) -> dict:
     """Get authorization headers"""
     return {"Authorization": f"Bearer {admin_token}"}
