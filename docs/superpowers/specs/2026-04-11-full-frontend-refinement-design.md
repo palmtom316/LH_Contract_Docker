@@ -1,129 +1,129 @@
-# Full Frontend Refinement Design
+# 全站前端精修设计说明
 
-## Summary
+## 摘要
 
-Apply a flagship-level `distill + delight + polish` refinement pass across the entire frontend so the product feels like one calm, modern, high-trust workspace for finance and operations staff.
+对整个前端执行一轮旗舰级 `distill + delight + polish` 精修，使产品成为一个统一、克制、现代、可信的财务与运营工作台。
 
-This is not a feature expansion and not a dramatic brand reinvention. The goal is to simplify the visual system, remove drift between pages, improve interaction quality, and introduce subtle delight that supports confidence without distracting from work.
+这次工作不是功能扩张，也不是激进改版。目标是简化视觉系统、消除页面之间的版本漂移、提升交互质感，并加入少量不会打扰工作的细节优化。
 
-## Goals
+## 目标
 
-- Unify the frontend under one restrained, professional visual system
-- Remove visual noise and redundant styling from shared surfaces
-- Replace heavy gray enterprise drift with warmer neutrals and clearer hierarchy
-- Improve density, readability, and tactile quality across desktop and mobile
-- Add subtle, professional micro-interactions and state feedback
-- Keep the current information architecture and business workflows intact
+- 将整个前端统一到一套克制、专业的视觉系统下
+- 移除共享界面中的视觉噪声和冗余样式
+- 用更温和的中性色和更清晰的层级，替代“沉重的企业灰”
+- 提升桌面端和移动端的密度、可读性与操作质感
+- 增加克制、专业的微交互和状态反馈
+- 保持现有信息架构与业务流程不变
 
-## Non-Goals
+## 非目标
 
-- Replacing the frontend stack or route structure
-- Rewriting business workflows or changing permissions
-- Introducing playful branding, novelty animations, or marketing-style visuals
-- Turning the product into an ultra-minimal interface that hides necessary information
-- Making every page visually unique at the expense of system consistency
+- 不替换前端技术栈或路由结构
+- 不重写业务流程或权限逻辑
+- 不引入偏玩乐、偏营销或过度表现型的视觉风格
+- 不为了极简而隐藏用户完成任务所必需的信息
+- 不让每个页面都做成独立风格，牺牲系统一致性
 
-## Design Context
+## 设计背景
 
-### Users
+### 用户
 
-Primary users are finance and operations staff performing repeatable, detail-heavy workflows around contracts, finance records, attachments, reports, and audit history.
+主要用户是内部财务与运营人员，他们长期处理合同、财务记录、附件、报表与审计信息，工作内容重复、细节多、节奏稳定。
 
-### Tone
+### 气质
 
-The interface should feel strictly professional and calm. It should project trust, precision, and operational control.
+界面应当严格专业、冷静、可信，传达出可控、精确、稳定的工作感受。
 
-### Anti-Reference
+### 反向约束
 
-The product must not look like heavy enterprise gray. It should avoid flat, lifeless neutral treatment, muddy contrast, and visually stale chrome.
+产品不能看起来像“沉重的企业灰”。要避免呆板、浑浊、缺乏层次的中性配色，以及陈旧的系统外壳质感。
 
-### Quality Bar
+### 质量标准
 
-This is a flagship-level refinement pass. It is allowed to touch most shared surfaces to improve consistency and micro-interactions.
+本轮为旗舰级精修，允许调整大部分共享界面，以实现一致性和微交互质量提升。
 
-## Recommended Approach
+## 方案比较
 
-### Option A: Shared-System Refinement
+### 方案 A：以共享系统为核心的分层精修
 
-Refine tokens, shell, shared primitives, and page families in layers.
+先优化设计令牌、应用外壳、共享基础组件，再统一各类页面。
 
-- Best overall consistency
-- Lowest long-term maintenance cost
-- Allows simplification and delight to be applied systematically
-- Recommended
+- 整体一致性最好
+- 长期维护成本最低
+- 能系统化落实简化、细节优化和微交互
+- 推荐采用
 
-### Option B: Page-by-Page Cosmetic Sweep
+### 方案 B：逐页视觉打磨
 
-Polish screens individually while preserving most current primitives.
+逐个页面做美化，但保留大部分当前的共享基础组件不动。
 
-- Lower initial coordination cost
-- Higher risk of visual drift and duplicated styling logic
-- Not recommended
+- 初期组织成本较低
+- 容易留下视觉漂移和重复样式逻辑
+- 不推荐
 
-### Option C: Strong Visual Reset
+### 方案 C：强视觉重置
 
-Push a more dramatic restyle across the whole frontend.
+对整个前端做更明显、更强烈的风格翻新。
 
-- More visually obvious
-- Higher risk of losing domain fit for finance and operations users
-- Not recommended
+- 视觉变化更显著
+- 更容易偏离财务和运营场景所需的可信感
+- 不推荐
 
-## Final Recommendation
+## 最终建议
 
-Adopt Option A. Treat this as a system-led refinement pass rather than a cosmetic repaint. Shared decisions should flow into pages, not the reverse.
+采用方案 A。把这轮工作视为一次“系统驱动的全站精修”，而不是单纯的页面换皮。共享决策应当先成立，再反映到页面层，而不是反过来。
 
-## Design Direction
+## 设计方向
 
-### Visual Tone
+### 视觉基调
 
-Use a restrained workspace style with calm surfaces, crisp typography, low-noise containers, and disciplined accent usage. The result should feel current and meticulous, not trendy or expressive.
+整体采用克制的工作台风格，使用安静的界面表面、清晰的字体层级、低噪声容器和有纪律的强调色。最终效果应当显得现代、准确、讲究，但不追求潮流感，也不刻意表达个性。
 
-### Distill Strategy
+### Distill 策略
 
-Simplification should target:
+简化重点包括：
 
-- redundant panel decoration
-- excessive border or shadow variation
-- repeated explanatory copy
-- inconsistent spacing and density
-- page-specific visual one-offs that bypass shared primitives
+- 冗余的面板装饰
+- 过多的边框、阴影和层级变化
+- 重复解释性文案
+- 不一致的间距和信息密度
+- 绕开共享组件体系的页面级临时样式
 
-The frontend should preserve necessary business detail while reducing the number of competing visual signals on screen.
+前端需要保留业务页面中必要的信息密度，但减少同一屏幕上的竞争性视觉信号。
 
-### Delight Strategy
+### Delight 策略
 
-Delight should be subtle and professional:
+细节优化应保持专业和克制：
 
-- smoother hover, focus, and press states
-- clearer loading and empty states
-- refined success and confirmation feedback
-- small improvements to motion continuity during view changes
-- tactile button, table, and filter interactions
+- 更顺滑的 hover、focus、press 状态
+- 更清楚的加载态与空状态
+- 更精致的成功反馈与确认反馈
+- 页面切换时更自然的动效衔接
+- 按钮、表格、筛选控件更扎实的触感反馈
 
-Delight must never block the user, delay data visibility, or introduce playful tone that undermines trust.
+任何“delight”都不能阻塞用户、延迟数据可见性，也不能引入削弱信任感的玩乐语气。
 
-### Polish Strategy
+### Polish 策略
 
-Polish should focus on:
+打磨重点包括：
 
-- optical alignment
-- spacing rhythm
-- typography hierarchy
-- consistent state treatment
-- chart readability
-- mobile and desktop parity
-- removal of local style drift
+- 光学对齐
+- 间距节奏
+- 字体层级
+- 状态一致性
+- 图表可读性
+- 桌面端与移动端的一致设计意图
+- 移除页面局部风格漂移
 
-## Scope
+## 范围
 
-### Shared Foundations
+### 共享基础层
 
 - `frontend/src/styles/tokens.scss`
 - `frontend/src/styles/index.scss`
 - `frontend/src/styles/variables.scss`
 - `frontend/src/assets/main.scss`
 
-### Shell and Layout
+### 外壳与布局
 
 - `frontend/src/views/Layout.vue`
 - `frontend/src/views/mobile/MobileLayout.vue`
@@ -131,7 +131,7 @@ Polish should focus on:
 - `frontend/src/components/layout/SidebarUserCard.vue`
 - `frontend/src/components/layout/AppNotificationBell.vue`
 
-### Shared UI Primitives
+### 共享 UI 基础组件
 
 - `frontend/src/components/ui/AppMetricCard.vue`
 - `frontend/src/components/ui/AppSectionCard.vue`
@@ -142,166 +142,166 @@ Polish should focus on:
 - `frontend/src/components/ui/AppChartPanel.vue`
 - `frontend/src/components/ui/AppEmptyState.vue`
 - `frontend/src/components/ui/AppRangeField.vue`
-- any additional small shared surface primitives needed to remove repeated styling
+- 任何为了减少重复样式而新增的小型共享表面组件
 
-### High-Traffic Pages
+### 高频页面
 
 - `frontend/src/views/Dashboard.vue`
 - `frontend/src/views/home/Overview.vue`
 - `frontend/src/views/home/Business.vue`
 - `frontend/src/views/reports/ReportDashboard.vue`
-- contract list and detail pages
-- expense pages
-- system, audit, notification, and login pages
-- mobile list and shell pages
+- 合同列表页和详情页
+- 费用页面
+- 系统、审计、通知、登录页面
+- 移动端列表页和外壳页面
 
-## Implementation Shape
+## 实施形态
 
-### 1. Shared Design System
+### 1. 共享设计系统
 
-Refine the token contract first so the rest of the work is compositional instead of page-local.
+先收紧设计令牌，使后续页面改造建立在共享规则之上，而不是依赖页面局部修补。
 
-Changes should include:
+应包括：
 
-- warmer neutral surfaces
-- consistent border hierarchy
-- smaller set of surface treatments
-- disciplined radius scale
-- stronger type contrast for headings, labels, and dense data
-- unified shadow ladder
-- consistent focus ring and selection semantics
-- one motion timing and easing language
+- 更温和的中性色表面
+- 一致的边框层级
+- 更少、更明确的表面类型
+- 更有纪律的圆角尺度
+- 标题、标签和密集数据场景下更强的文字对比
+- 统一的阴影层级
+- 一致的 focus ring 和选中语义
+- 一套统一的动效时长和缓动语言
 
-Acceptance criteria:
+验收标准：
 
-- the interface no longer reads as gray-heavy or visually stale
-- light and dark themes preserve the same semantic hierarchy
-- components stop relying on ad hoc visual values
+- 界面不再显得灰重或陈旧
+- 明暗主题保留一致的语义层级
+- 组件不再依赖零散的临时视觉数值
 
-### 2. Shell and Navigation
+### 2. 外壳与导航
 
-Make the app shell feel lighter, steadier, and more precise.
+让应用外壳更轻、更稳、更准确。
 
-Changes should include:
+应包括：
 
-- calmer sidebar and topbar surfaces
-- better navigation hover and active treatment
-- improved collapsed-state clarity
-- more refined mobile shell framing
-- tighter overlay and drawer presentation
+- 更安静的侧边栏和顶栏表面
+- 更清晰的导航 hover 和 active 状态
+- 更明确的折叠态表现
+- 更精致的移动端外壳结构
+- 更收敛的遮罩层与抽屉视觉处理
 
-Acceptance criteria:
+验收标准：
 
-- navigation feels consistent across desktop and mobile
-- chrome is quieter than content, but still clearly structured
-- shell interactions feel responsive and deliberate
+- 桌面端和移动端导航体验一致
+- 外壳弱于内容但结构清楚
+- 外壳交互反馈快速且明确
 
-### 3. Shared Component Refinement
+### 3. 共享组件精修
 
-Use shared primitives to simplify page composition.
+通过共享组件简化页面搭建方式。
 
-Changes should include:
+应包括：
 
-- removing decorative excess from metric and section surfaces
-- reducing filter bar clutter
-- tightening table header, density, and empty-state treatment
-- standardizing page headers and subheaders
-- improving chart container readability and hierarchy
-- introducing missing shared patterns only where they reduce duplication
+- 去掉指标卡、分区容器等组件上的多余装饰
+- 减少筛选栏杂乱感
+- 收紧表头、密度和空状态处理
+- 统一页面标题和区块标题
+- 提升图表容器的可读性与层级清晰度
+- 仅在确实能减少重复时补充缺失的共享模式
 
-Acceptance criteria:
+验收标准：
 
-- pages can compose from a small set of visually coherent primitives
-- repeated local styling decreases
-- tables, panels, filters, and metrics feel like one family
+- 页面可以由少量一致的共享组件拼装完成
+- 页面局部样式重复减少
+- 表格、面板、筛选区和指标区属于同一视觉家族
 
-### 4. Page Family Sweep
+### 4. 页面族统一扫平
 
-Align major page groups to the refined system without changing business behavior.
+在不改变业务行为的前提下，让主要页面族都落到同一系统中。
 
-Changes should include:
+应包括：
 
-- dashboard and reports alignment
-- contract list/detail consistency
-- expense page cleanup
-- system and audit page modernization
-- login participation in the same visual language
-- mobile adaptation of the same calm hierarchy
+- 仪表盘和报表页面统一
+- 合同列表页和详情页统一
+- 费用页面清理
+- 系统页和审计页现代化
+- 登录页纳入同一视觉语言
+- 移动端按同样的冷静层级进行适配
 
-Acceptance criteria:
+验收标准：
 
-- the app no longer feels mixed-version
-- desktop and mobile share the same design intent
-- no major page family feels visually orphaned
+- 整个应用不再有“混合版本感”
+- 桌面端和移动端具有同样的设计意图
+- 不再存在明显游离的页面族
 
-### 5. Professional Micro-Interactions
+### 5. 专业型微交互
 
-Add subtle delight where it improves confidence and perceived quality.
+只在能提升信心和质感时加入细节交互。
 
-Allowed interaction improvements:
+允许的改进：
 
-- hover lift or tonal shift on actionable surfaces
-- crisp active states for buttons and controls
-- refined focus visibility
-- smoother route transition staging
-- polished loading, empty, success, and inline status feedback
+- 可操作表面的轻微抬升或色调变化
+- 按钮和控件更明确的 active 状态
+- 更清晰的 focus 可见性
+- 更顺滑的页面切换过渡
+- 更精致的加载态、空状态、成功反馈和行内状态反馈
 
-Prohibited interaction patterns:
+禁止的做法：
 
-- celebratory or whimsical animation
-- attention-seeking ambient motion
-- anything that delays work completion
+- 庆祝式或玩乐式动画
+- 吸引注意力的持续性环境动效
+- 任何拖慢任务完成速度的效果
 
-Acceptance criteria:
+验收标准：
 
-- motion is noticeable mainly through improved smoothness
-- interaction feedback increases confidence without becoming theatrical
+- 动效主要通过“更顺滑”被感知，而不是“更显眼”
+- 交互反馈提升信心，而不是变成表演性效果
 
-## Visual Rules
+## 视觉规则
 
-### Color
+### 颜色
 
-- Use restrained accent color against warmer neutrals
-- Avoid pure gray dominance
-- Avoid loud gradients and decorative color flourishes
-- Preserve strong contrast in data-heavy contexts
+- 用克制的强调色搭配更温和的中性色
+- 避免纯灰主导整体界面
+- 避免夸张渐变和装饰性配色
+- 在数据密集场景中保持充足对比
 
-### Layout
+### 布局
 
-- Favor cleaner vertical flow and disciplined grouping
-- Use space to create hierarchy instead of stacking containers
-- Remove unnecessary nested cards and layered framing
+- 优先更干净的纵向流程和更有纪律的分组
+- 用留白制造层级，而不是不断叠加容器
+- 去掉不必要的嵌套卡片和层层包裹
 
-### Typography
+### 字体
 
-- Strengthen title and section hierarchy
-- Keep labels and helper text legible in dense workflows
-- Standardize copy rhythm across headers, empty states, filters, and tables
+- 强化页面标题和区块标题的层级
+- 保持标签、辅助文案在密集工作流中的可读性
+- 统一标题、空状态、筛选区和表格中的文案节奏
 
-### Motion
+### 动效
 
-- Keep motion quick, subtle, and transform/opacity-based
-- Respect reduced motion
-- Use one easing family across the app
+- 动效要快、克制，并尽量基于 transform 和 opacity
+- 尊重 reduced motion
+- 全站使用同一套缓动语言
 
-## Verification
+## 验证标准
 
-The refinement is successful when:
+当满足以下条件时，可认为这轮精修达标：
 
-- the full app feels visually unified
-- users can scan dense finance and contract screens more easily
-- interaction states are complete and consistent
-- the interface feels more current without becoming showy
-- charts, tables, and filters remain readable at realistic widths
-- mobile and desktop both feel intentional
+- 整个应用的视觉语言统一
+- 用户能更快扫描密集的合同和财务页面
+- 交互状态完整且一致
+- 界面更现代，但不过分张扬
+- 图表、表格和筛选区在真实宽度下依然易读
+- 桌面端和移动端都显得经过设计，而不是简单适配
 
-## Risks to Watch
+## 风险点
 
-- over-simplifying data-dense pages and hiding necessary context
-- introducing too much motion under the banner of delight
-- leaving page-level style drift after shared primitives change
-- improving flagship surfaces while utility pages lag behind
+- 为了简化而误删密集业务页面中的必要信息
+- 以“delight”为名加入过多动效
+- 共享组件更新后仍留下页面级风格漂移
+- 只把重点页面做精，而让工具型页面继续落后
 
-## Implementation Guidance
+## 实施指导
 
-Execute the work as a layered frontend refactor. Shared system updates come first, followed by shell, primitives, page families, and final polish passes. When tradeoffs appear, prefer clarity, trust, and consistency over novelty.
+按照“共享系统 -> 外壳 -> 共享组件 -> 页面族 -> 最终打磨”的顺序推进。遇到取舍时，优先保证清晰、可信和一致，而不是追求新奇。
