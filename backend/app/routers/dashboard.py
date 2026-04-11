@@ -28,8 +28,7 @@ async def get_dashboard_stats(
     """
     Get dashboard statistics with caching (5 minute TTL):
     1. Cards Data (Total Contracts, Total Received, Total Paid, Expenses)
-    2. Bar Chart Data (Monthly Income vs Expense)
-    3. Pie Chart Data (Contract Categories)
+    2. Category summary chart data
     """
     current_year = datetime.now().year
     
@@ -116,7 +115,7 @@ async def get_dashboard_stats(
     annual_down_mgmt_count = annual_down_count + annual_mgmt_count
     annual_down_mgmt_amount = float(annual_down_amount or 0) + float(annual_mgmt_amount or 0)
     
-    # --- 2. Charts Data (Simplified for MVP) ---
+    # --- 2. Charts Data ---
     
     # Pie Chart 1: Upstream Contract Categories
     # Note: Group by Category
@@ -135,61 +134,6 @@ async def get_dashboard_stats(
     comp_cat_result = await db.execute(stmt_comp_cat)
     pie_company_data = [{"name": r[0] or "未分类", "value": float(r[1] or 0)} for r in comp_cat_result.all()]
     
-    # Bar Chart: Monthly Receipt vs Payment (Current Year)
-    # This involves complex grouping by month. 
-    # For MVP, we will return a mockup structure filled with some real aggregations if possible, 
-    # but strictly SQL grouping by month can be verbose in SQLAlchemy async.
-    # We'll calculate current month stats at least.
-    
-    current_month = datetime.now().month
-    
-    stmt_month_in = select(func.sum(FinanceUpstreamReceipt.amount)).where(
-        cast(extract('month', FinanceUpstreamReceipt.receipt_date), Integer) == current_month,
-        cast(extract('year', FinanceUpstreamReceipt.receipt_date), Integer) == current_year
-    )
-    month_in = (await db.execute(stmt_month_in)).scalar() or 0
-    
-    # Monthly Expense (Downstream Payments + Management Payments + Non-Contract Expenses)
-    stmt_month_out_down = select(func.sum(FinanceDownstreamPayment.amount)).where(
-        cast(extract('month', FinanceDownstreamPayment.payment_date), Integer) == current_month,
-        cast(extract('year', FinanceDownstreamPayment.payment_date), Integer) == current_year
-    )
-    month_out_down = (await db.execute(stmt_month_out_down)).scalar() or 0
-    
-    # Management contract payments
-    stmt_month_out_mgmt = select(func.sum(FinanceManagementPayment.amount)).where(
-        cast(extract('month', FinanceManagementPayment.payment_date), Integer) == current_month,
-        cast(extract('year', FinanceManagementPayment.payment_date), Integer) == current_year
-    )
-    month_out_mgmt = (await db.execute(stmt_month_out_mgmt)).scalar() or 0
-    
-    stmt_month_out_exp = select(func.sum(ExpenseNonContract.amount)).where(
-        cast(extract('month', ExpenseNonContract.expense_date), Integer) == current_month,
-        cast(extract('year', ExpenseNonContract.expense_date), Integer) == current_year
-    )
-    month_out_exp = (await db.execute(stmt_month_out_exp)).scalar() or 0
-    
-    # Monthly Zero Hour Labor
-    stmt_month_out_zhl = select(func.sum(ZeroHourLabor.total_amount)).where(
-        cast(extract('month', ZeroHourLabor.labor_date), Integer) == current_month,
-        cast(extract('year', ZeroHourLabor.labor_date), Integer) == current_year
-    )
-    month_out_zhl = (await db.execute(stmt_month_out_zhl)).scalar() or 0
-    
-    month_out = float(month_out_down or 0) + float(month_out_mgmt or 0) + float(month_out_exp or 0) + float(month_out_zhl or 0)
-    
-    # Constructing a simple mock-ish historical data for frontend demo
-    # In production, this should be a full query group by month
-    bar_data = {
-        "categories": ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
-        "income": [0] * 12,
-        "expense": [0] * 12
-    }
-    # Fill current month (index starts at 0)
-    bar_data["income"][current_month - 1] = float(month_in)
-    bar_data["expense"][current_month - 1] = month_out
-    
-    
     result = {
         "cards": {
             "annual_upstream_count": annual_upstream_count,
@@ -201,8 +145,7 @@ async def get_dashboard_stats(
         },
         "charts": {
             "pie_category": pie_category_data,
-            "pie_company": pie_company_data,
-            "bar": bar_data
+            "pie_company": pie_company_data
         }
     }
 

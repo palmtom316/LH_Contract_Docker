@@ -1,28 +1,28 @@
 <template>
   <div class="business-dashboard" v-loading="loading">
-    <AppFilterBar class="dashboard-filter-bar" inline-actions>
+    <AppFilterBar class="dashboard-filter-bar">
       <span class="dashboard-filter-bar__label">统计周期</span>
-      <el-date-picker
-        v-model="currentYear"
-        class="dashboard-filter-bar__control dashboard-filter-bar__control--year"
-        type="year"
-        placeholder="选择年份"
-        value-format="YYYY"
-        @change="handleFilterChange"
-      />
-      <el-select
-        v-model="currentMonth"
-        class="dashboard-filter-bar__control dashboard-filter-bar__control--month"
-        placeholder="选择月份"
-        clearable
-        @change="handleFilterChange"
-      >
-        <el-option label="全年数据" :value="null" />
-        <el-option v-for="m in 12" :key="m" :label="`${m}月`" :value="m" />
-      </el-select>
-      <template #actions>
+      <div class="dashboard-filter-bar__controls">
+        <el-date-picker
+          v-model="currentYear"
+          class="dashboard-filter-bar__control dashboard-filter-bar__control--year"
+          type="year"
+          placeholder="选择年份"
+          value-format="YYYY"
+          @change="handleFilterChange"
+        />
+        <el-select
+          v-model="currentMonth"
+          class="dashboard-filter-bar__control dashboard-filter-bar__control--month"
+          placeholder="选择月份"
+          clearable
+          @change="handleFilterChange"
+        >
+          <el-option label="全年数据" :value="null" />
+          <el-option v-for="m in 12" :key="m" :label="`${m}月`" :value="m" />
+        </el-select>
         <el-button type="primary" icon="Refresh" @click="fetchData">刷新看板</el-button>
-      </template>
+      </div>
     </AppFilterBar>
 
     <section class="metric-grid">
@@ -563,20 +563,13 @@ onBeforeUnmount(() => {
 }
 
 :deep(.app-filter-bar.dashboard-filter-bar .app-filter-bar__main) {
-  grid-template-columns: max-content 184px 184px max-content;
   align-items: center;
-}
-
-:deep(.app-filter-bar.dashboard-filter-bar .app-filter-bar__actions--inline) {
-  grid-column: auto;
-  align-self: center;
-  justify-content: flex-start;
 }
 
 .dashboard-filter-bar__label {
   display: inline-flex;
   align-items: center;
-  grid-column: auto;
+  grid-column: span 2;
   min-height: var(--workspace-control-height);
   font-size: 13px;
   font-weight: 700;
@@ -584,19 +577,27 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-.dashboard-filter-bar__control {
-  width: 100%;
+.dashboard-filter-bar__controls {
+  grid-column: span 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
   min-width: 0;
 }
 
-.dashboard-filter-bar__control--year {
-  grid-column: auto;
-  max-width: 184px;
+.dashboard-filter-bar__controls > * {
+  flex: 0 0 184px;
+  min-width: 0;
 }
 
-.dashboard-filter-bar__control--month {
-  grid-column: auto;
-  max-width: 184px;
+.dashboard-filter-bar__controls :deep(.el-button) {
+  flex: 0 0 auto;
+}
+
+.dashboard-filter-bar__control {
+  width: 100%;
+  min-width: 0;
 }
 
 .metric-grid {
@@ -853,18 +854,18 @@ onBeforeUnmount(() => {
     padding: 16px;
   }
 
-  :deep(.app-filter-bar.dashboard-filter-bar .app-filter-bar__main),
-  :deep(.app-filter-bar.dashboard-filter-bar .app-filter-bar__actions) {
-    width: 100%;
-  }
-
   :deep(.app-filter-bar.dashboard-filter-bar .app-filter-bar__main) {
     grid-template-columns: 1fr;
   }
 
-  .dashboard-filter-bar__control,
-  :deep(.app-filter-bar.dashboard-filter-bar .app-filter-bar__actions .el-button) {
+  .dashboard-filter-bar__label,
+  .dashboard-filter-bar__controls {
+    grid-column: 1 / -1;
+  }
+
+  .dashboard-filter-bar__controls > * {
     width: 100%;
+    flex-basis: 100%;
   }
 
   .metric-grid,

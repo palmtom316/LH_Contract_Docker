@@ -35,6 +35,7 @@ from app.models.contract_management import (
 )
 from app.models.expense import ExpenseNonContract
 from app.models.zero_hour_labor import ZeroHourLabor
+from app.services.report_cache import invalidate_dashboard_cache
 
 
 @pytest.fixture
@@ -193,6 +194,50 @@ class TestContractSearchEndpoint:
         assert data["total"] == 1
         assert len(data["results"]) == 1
         assert data["results"][0]["contract_code"] == "SEARCH-DATE-001"
+
+
+@pytest.mark.asyncio
+class TestDashboardEndpoints:
+    async def test_dashboard_stats_uses_real_summary_data_without_demo_bar_series(
+        self,
+        client: AsyncClient,
+        admin_token: str,
+        test_db: AsyncSession,
+        test_admin: User,
+    ):
+        """Dashboard stats should return real summary aggregates and omit the old demo bar payload."""
+        current_year = datetime.now().year
+
+        upstream = ContractUpstream(
+            serial_number=9501,
+            contract_code="DASHBOARD-REAL-001",
+            contract_name="经营总览真实聚合合同",
+            party_a_name="甲方总览",
+            party_b_name="乙方总览",
+            category="安装",
+            company_category="测试公司分类",
+            contract_amount=Decimal("320000.00"),
+            sign_date=date(current_year, 3, 12),
+            status="执行中",
+            created_by=test_admin.id,
+        )
+        test_db.add(upstream)
+        await test_db.commit()
+
+        await invalidate_dashboard_cache(current_year)
+
+        response = await client.get(
+            "/api/v1/dashboard/stats",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["cards"]["annual_upstream_count"] == 1
+        assert data["cards"]["annual_upstream_amount"] == pytest.approx(320000.0)
+        assert data["charts"]["pie_category"] == [{"name": "安装", "value": 320000.0}]
+        assert data["charts"]["pie_company"] == [{"name": "测试公司分类", "value": 320000.0}]
+        assert "bar" not in data["charts"]
 
     async def test_search_party_b_with_sign_date_range(
         self,
