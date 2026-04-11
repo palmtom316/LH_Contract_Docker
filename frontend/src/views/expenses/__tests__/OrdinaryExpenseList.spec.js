@@ -1,8 +1,10 @@
 import { mount } from '@vue/test-utils'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { defineComponent } from 'vue'
 import ExpenseList from '@/views/expenses/ExpenseList.vue'
 import OrdinaryExpenseList from '@/views/expenses/OrdinaryExpenseList.vue'
+
+const flushPromises = () => new Promise(resolve => setTimeout(resolve, 0))
 
 const apiMocks = vi.hoisted(() => ({
   getExpenses: vi.fn(),
@@ -95,7 +97,10 @@ const mountPage = () =>
         AppSectionCard: { template: '<section><slot name="header" /><slot /><slot name="actions" /></section>' },
         AppFilterBar: { template: '<div><slot /><slot name="actions" /></div>' },
         AppDataTable: { template: '<div><slot /><slot name="footer" /></div>' },
-        AppEmptyState: true,
+        AppEmptyState: {
+          props: ['title', 'description'],
+          template: '<div class="app-empty-state-stub">{{ title }} {{ description }}</div>'
+        },
         AppRangeField: true,
         DictSelect: true,
         SmartDateInput: true,
@@ -153,6 +158,7 @@ describe('ExpenseList workspace shell', () => {
 
 describe('OrdinaryExpenseList upstream filter', () => {
   beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     apiMocks.getExpenses.mockReset()
     apiMocks.getContracts.mockReset()
     apiMocks.getContract.mockReset()
@@ -168,6 +174,10 @@ describe('OrdinaryExpenseList upstream filter', () => {
         }
       ]
     })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('renders ordinary expense page-specific workspace panels', () => {
@@ -214,5 +224,16 @@ describe('OrdinaryExpenseList upstream filter', () => {
         upstream_contract_id: 9
       })
     )
+  })
+
+  it('keeps the page mounted when expense loading fails', async () => {
+    apiMocks.getExpenses.mockRejectedValueOnce(new Error('boom'))
+
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(wrapper.find('.expense-list-page').exists()).toBe(true)
+    expect(wrapper.find('.expense-list-panel--filters').exists()).toBe(true)
+    expect(wrapper.find('.app-empty-state-stub').text()).toContain('费用列表加载失败')
   })
 })

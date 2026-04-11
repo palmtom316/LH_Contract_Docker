@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import date, datetime
 from decimal import Decimal
@@ -100,6 +100,27 @@ class ZeroHourLaborResponse(ZeroHourLaborBase):
     approval_pdf_path: Optional[str] = None
     approval_pdf_key: Optional[str] = None
     approval_pdf_storage: Optional[str] = "local"
+
+    @field_validator(
+        "skilled_unit_price",
+        "skilled_quantity",
+        "skilled_price_total",
+        "general_unit_price",
+        "general_quantity",
+        "general_price_total",
+        "labor_unit_price",
+        "labor_quantity",
+        "labor_price_total",
+        "vehicle_quantity",
+        "vehicle_unit_price",
+        "vehicle_price_total",
+        "total_amount",
+        "material_price_total",
+        mode="before",
+    )
+    @classmethod
+    def coerce_null_decimals_to_zero(cls, value):
+        return Decimal("0") if value is None else value
     
     class Config:
         from_attributes = True

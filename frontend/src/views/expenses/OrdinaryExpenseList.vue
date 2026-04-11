@@ -66,7 +66,12 @@
       <AppSectionCard v-if="isMobile" class="expense-list-card">
       <template #header>费用列表</template>
       <AppEmptyState
-        v-if="!loading && !expenseList.length"
+        v-if="loadError"
+        title="费用列表加载失败"
+        :description="loadError"
+      />
+      <AppEmptyState
+        v-else-if="!loading && !expenseList.length"
         title="暂无费用记录"
       />
       <div v-else class="mobile-list-container">
@@ -124,7 +129,12 @@
 
       <AppSectionCard v-else class="expense-list-card">
       <template #header>费用列表</template>
-      <AppDataTable>
+      <AppEmptyState
+        v-if="loadError"
+        title="费用列表加载失败"
+        :description="loadError"
+      />
+      <AppDataTable v-else>
       <el-table 
         v-loading="loading" 
         :data="expenseList" 
@@ -348,6 +358,7 @@ const filterUpstreamContracts = ref([])
 const loadingContracts = ref(false)
 const isMobile = ref(false)
 const dateRange = ref([])
+const loadError = ref('')
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth < 768
@@ -411,6 +422,7 @@ const buildUpstreamOptionMeta = (item) => {
 
 const getList = async () => {
   loading.value = true
+  loadError.value = ''
   try {
     // Build query params
     const params = {
@@ -425,8 +437,16 @@ const getList = async () => {
     if (startDate) params.start_date = startDate
     if (endDate) params.end_date = endDate
     const res = await getExpenses(params)
-    expenseList.value = res.items
-    total.value = res.total
+    expenseList.value = res.items || []
+    total.value = res.total || 0
+  } catch (error) {
+    console.error('Failed to load expense list:', error)
+    expenseList.value = []
+    total.value = 0
+    const detail = error?.response?.data?.detail
+    loadError.value = typeof detail === 'string' && detail.trim()
+      ? detail
+      : '请检查网络或稍后重试'
   } finally {
     loading.value = false
   }
@@ -443,6 +463,7 @@ const resetQuery = () => {
   dateRange.value = []
   queryParams.upstream_contract_id = null
   filterUpstreamContracts.value = []
+  loadError.value = ''
   handleQuery()
 }
 

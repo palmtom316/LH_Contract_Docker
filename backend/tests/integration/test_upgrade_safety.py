@@ -20,6 +20,7 @@ from app.models.expense import ExpenseNonContract
 from app.models.refresh_token import RefreshToken
 from app.models.system import SysDictionary
 from app.models.user import User
+from app.models.zero_hour_labor import ZeroHourLabor
 
 
 async def _count_rows(db: AsyncSession, model) -> int:
@@ -102,6 +103,49 @@ async def test_existing_dictionary_values_remain_renderable_after_upgrade(
     payload = response.json()
     assert payload["expense_type"] == legacy_value
     assert payload["description"] == "历史字典值兼容验证"
+
+
+@pytest.mark.asyncio
+async def test_existing_zero_hour_labor_records_with_null_legacy_fields_remain_queryable_after_upgrade(
+    client: AsyncClient,
+    test_db: AsyncSession,
+    test_admin: User,
+    admin_token: str,
+):
+    labor = ZeroHourLabor(
+        labor_date=date(2026, 4, 10),
+        attribution="PROJECT",
+        dispatch_unit="历史派工班组",
+        skilled_unit_price=Decimal("0.00"),
+        skilled_quantity=Decimal("0.00"),
+        skilled_price_total=Decimal("0.00"),
+        general_unit_price=Decimal("260.00"),
+        general_quantity=Decimal("12.00"),
+        general_price_total=Decimal("3120.00"),
+        labor_unit_price=None,
+        labor_quantity=None,
+        labor_price_total=None,
+        vehicle_quantity=Decimal("0.00"),
+        vehicle_unit_price=Decimal("0.00"),
+        vehicle_price_total=Decimal("0.00"),
+        total_amount=Decimal("3120.00"),
+        created_by=test_admin.id,
+    )
+    test_db.add(labor)
+    await test_db.commit()
+
+    response = await client.get(
+        "/api/v1/zero-hour-labor",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 1
+    assert payload["items"][0]["dispatch_unit"] == "历史派工班组"
+    assert payload["items"][0]["labor_unit_price"] == "0"
+    assert payload["items"][0]["labor_quantity"] == "0"
+    assert payload["items"][0]["labor_price_total"] == "0"
 
 
 @pytest.mark.asyncio
