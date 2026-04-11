@@ -94,6 +94,7 @@ a:focus-visible,
 .el-select__wrapper,
 .el-textarea__inner,
 .el-card {
+    border-radius: var(--radius);
     transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, color 160ms ease;
 }
 
@@ -104,7 +105,7 @@ a:focus-visible,
 .el-button {
     min-height: 36px;
     height: 36px;
-    border-radius: 10px;
+    border-radius: var(--radius);
     font-weight: 600;
     padding-inline: 14px;
     letter-spacing: 0.01em;
@@ -189,8 +190,8 @@ a:focus-visible,
 .el-card {
     border: 1px solid var(--workspace-panel-border);
     border-radius: var(--radius);
-    background: var(--surface-panel-elevated);
-    box-shadow: var(--workspace-panel-shadow);
+    background: var(--surface-panel);
+    box-shadow: var(--shadow-card);
 }
 
 .el-card__header {
@@ -207,62 +208,34 @@ a:focus-visible,
     height: 36px;
     padding: 0;
     border: 1px solid var(--workspace-panel-border);
-    border-radius: 12px;
-    background: var(--surface-panel-elevated);
+    border-radius: var(--radius);
+    background: var(--surface-panel);
     color: hsl(var(--muted-foreground));
     display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    position: relative;
-    overflow: hidden;
     box-shadow: var(--shadow-soft);
     transition:
         background-color 160ms ease,
         border-color 160ms ease,
         box-shadow 160ms ease,
-        color 160ms ease,
-        transform 160ms ease;
-}
-
-.app-chrome-icon-button::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: linear-gradient(110deg, transparent 0%, hsl(var(--card) / 0.58) 48%, transparent 100%);
-    opacity: 0;
-    transform: translateX(-18%);
-    transition: opacity 180ms ease, transform 220ms ease;
-    pointer-events: none;
+        color 160ms ease;
 }
 
 .app-chrome-icon-button:hover {
     background: var(--surface-sidebar-hover);
     border-color: hsl(var(--border));
     color: hsl(var(--foreground));
-    transform: translateY(-1px);
-}
-
-.app-chrome-icon-button:hover::after {
-    opacity: 0.72;
-    transform: translateX(0);
 }
 
 .app-chrome-icon-button .el-icon {
     font-size: 18px;
-    position: relative;
-    z-index: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .app-chrome-icon-button,
-    .app-chrome-icon-button::after {
+    .app-chrome-icon-button {
         transition: none;
-    }
-
-    .app-chrome-icon-button:hover {
-        transform: none;
     }
 }
 
@@ -271,7 +244,7 @@ a:focus-visible,
 .el-textarea__inner,
 .el-date-editor.el-input__wrapper {
     min-height: 36px;
-    border-radius: 10px;
+    border-radius: var(--radius);
     background: var(--workspace-control-background);
     border: 1px solid hsl(var(--input));
     box-shadow: none;
@@ -338,7 +311,7 @@ a:focus-visible,
     min-width: 0 !important;
     gap: 8px;
     padding-inline: 12px;
-    border-radius: 10px;
+    border-radius: var(--radius);
     overflow: hidden;
 }
 
@@ -357,21 +330,21 @@ a:focus-visible,
 }
 
 .el-popper {
-    border-radius: 14px !important;
+    border-radius: var(--radius-lg) !important;
 }
 
 .el-select__popper.el-popper,
 .el-picker__popper.el-popper,
 .el-dropdown__popper.el-popper {
     border: 1px solid hsl(var(--border)) !important;
-    background: var(--surface-panel-elevated) !important;
+    background: var(--surface-panel) !important;
     box-shadow: var(--shadow-frame) !important;
 }
 
 .el-select-dropdown,
 .el-picker-panel,
 .el-dropdown-menu {
-    background: var(--surface-panel-elevated) !important;
+    background: var(--surface-panel) !important;
     color: hsl(var(--popover-foreground)) !important;
 }
 
@@ -396,7 +369,7 @@ a:focus-visible,
 .el-table {
     border-radius: 0;
     overflow: hidden;
-    background: var(--surface-panel-elevated);
+    background: var(--surface-panel);
 }
 
 .el-table th.el-table__cell {
