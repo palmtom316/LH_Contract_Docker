@@ -40,27 +40,16 @@ defineProps({
   gap: 12px;
   min-height: 100%;
   min-width: 0;
-  padding: 22px;
+  padding: 16px;
   border: 1px solid var(--workspace-panel-border);
-  border-radius: 22px;
-  background: var(--surface-panel-elevated);
+  border-radius: var(--radius);
+  background: var(--surface-panel);
   box-shadow: var(--workspace-panel-shadow);
-  position: relative;
-  overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.app-metric-card::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 2px;
-  background: var(--workspace-panel-highlight);
-  opacity: 0.9;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .app-metric-card:hover {
-  transform: translateY(-1px);
+  border-color: hsl(var(--border));
   box-shadow: var(--shadow-card);
 }
 

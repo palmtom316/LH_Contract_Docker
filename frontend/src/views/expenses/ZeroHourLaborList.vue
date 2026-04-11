@@ -942,9 +942,9 @@ onMounted(() => {
 .labor-card {
   display: grid;
   gap: 14px;
-  padding: 18px;
+  padding: 16px;
   border: 1px solid var(--border-subtle);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   background: var(--surface-panel);
   box-shadow: none;
 }

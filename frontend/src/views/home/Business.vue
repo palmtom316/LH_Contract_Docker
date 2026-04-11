@@ -43,7 +43,7 @@
     </section>
 
     <section class="dashboard-main-grid">
-      <AppSectionCard class="result-panel">
+      <AppChartPanel class="result-panel">
         <template #header>
           <div class="section-heading">
             <div>
@@ -53,9 +53,9 @@
           </div>
         </template>
         <div ref="resultChartRef" class="chart-surface chart-surface--result"></div>
-      </AppSectionCard>
+      </AppChartPanel>
 
-      <AppSectionCard class="trend-panel">
+      <AppChartPanel class="trend-panel">
         <template #header>
           <div class="section-heading">
             <div>
@@ -65,7 +65,7 @@
           </div>
         </template>
         <div ref="trendChartRef" class="chart-surface chart-surface--trend"></div>
-      </AppSectionCard>
+      </AppChartPanel>
 
       <div class="dashboard-side-stack">
         <AppSectionCard>
@@ -125,7 +125,7 @@
         </div>
       </AppSectionCard>
 
-      <AppSectionCard>
+      <AppChartPanel>
         <template #header>
           <div class="section-heading">
             <div class="section-heading__title">经营结构图</div>
@@ -145,7 +145,7 @@
             <div ref="expenseCatRankRef" class="chart-surface chart-surface--rank"></div>
           </div>
         </div>
-      </AppSectionCard>
+      </AppChartPanel>
     </section>
   </div>
 </template>
@@ -167,9 +167,11 @@ import {
   getArApStats,
 } from "@/api/reports";
 import { ElMessage } from "element-plus";
+import AppChartPanel from '@/components/ui/AppChartPanel.vue';
 import AppFilterBar from "@/components/ui/AppFilterBar.vue";
 import AppMetricCard from '@/components/ui/AppMetricCard.vue';
-import { createPieChartOption, readChartTheme } from '@/utils/echarts';
+import AppSectionCard from '@/components/ui/AppSectionCard.vue';
+import { createPieChartOption, createResultWaterfallOption, createStackedTrendOption } from '@/utils/echarts';
 import { createHorizontalRankOption, createStackedCategoryOption } from '@/utils/dashboardRanking';
 
 // State
@@ -411,8 +413,6 @@ const handleFilterChange = () => {
   fetchData();
 };
 
-const formatCompactWan = (value) => `${Math.round(Number(value || 0) / 10000)}万`;
-
 // Chart Initializers
 const initResultChart = (expenseRes, arApRes) => {
   if (!resultChartRef.value) return;
@@ -425,94 +425,15 @@ const initResultChart = (expenseRes, arApRes) => {
   const nonContractExpense = findValue("无合同费用");
   const laborExpense = findValue("零星用工") || expenseRes.zero_hour_labor?.total || 0;
   const received = Number(arApRes?.ar?.total_received || 0);
-  const netResult = received - downstreamExpense - managementExpense - nonContractExpense - laborExpense;
-  const theme = readChartTheme();
-  const deltas = [
-    received,
-    -downstreamExpense,
-    -managementExpense,
-    -nonContractExpense,
-    -laborExpense,
-    netResult
-  ];
-
-  let runningTotal = 0;
-  const offsetSeries = deltas.map((delta, index) => {
-    if (index === deltas.length - 1) {
-      return 0;
-    }
-
-    const offset = delta >= 0 ? runningTotal : runningTotal + delta;
-    runningTotal += delta;
-    return offset;
-  });
-
-  const resultSeries = [
-    { value: received, itemStyle: { color: theme.success } },
-    { value: downstreamExpense, itemStyle: { color: theme.danger } },
-    { value: managementExpense, itemStyle: { color: theme.warning } },
-    { value: nonContractExpense, itemStyle: { color: theme.info } },
-    { value: laborExpense, itemStyle: { color: theme.primary } },
-    { value: netResult, itemStyle: { color: netResult >= 0 ? theme.success : theme.danger } }
-  ];
 
   resultChart = echarts.init(resultChartRef.value);
-  resultChart.setOption({
-    aria: { enabled: true },
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'shadow' },
-      confine: true,
-      formatter(params) {
-        const first = Array.isArray(params) ? params[0] : params;
-        if (!first) return '';
-        return `${first.name}<br/>${Number(first.value || 0).toLocaleString('zh-CN')} 元`;
-      }
-    },
-    grid: {
-      left: '10%',
-      right: '4%',
-      top: '10%',
-      bottom: '14%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: ['上游回款', '下游合同', '管理合同', '无合同费用', '零星用工', '净结果'],
-      axisLabel: {
-        color: theme.text,
-        fontSize: 11,
-        interval: 0
-      }
-    },
-    yAxis: {
-      type: 'value',
-      name: '金额（万元）',
-      axisLabel: {
-        color: theme.text,
-        formatter: formatCompactWan
-      },
-      splitLine: {
-        lineStyle: { color: theme.border }
-      }
-    },
-    series: [
-      {
-        type: 'bar',
-        stack: 'result',
-        itemStyle: { opacity: 0 },
-        emphasis: { disabled: true },
-        barMaxWidth: 26,
-        data: offsetSeries
-      },
-      {
-        type: 'bar',
-        stack: 'result',
-        barMaxWidth: 26,
-        data: resultSeries
-      }
-    ]
-  });
+  resultChart.setOption(createResultWaterfallOption({
+    received,
+    downstreamExpense,
+    managementExpense,
+    nonContractExpense,
+    laborExpense
+  }));
   resultChart.resize();
 };
 
@@ -521,111 +442,16 @@ const initTrendChart = (data) => {
   if (trendChart) trendChart.dispose();
 
   trendChart = echarts.init(trendChartRef.value);
-  trendChart.setOption({
-    baseOption: {
-      tooltip: {
-        confine: true,
-        trigger: "axis",
-        formatter: function (params) {
-          let res = params[0].name + "<br/>";
-          params.forEach((item) => {
-            res +=
-              item.marker +
-              item.seriesName +
-              ": " +
-              Number(item.value).toFixed(2) +
-              " 万元<br/>";
-          });
-          return res;
-        },
-      },
-      legend: {
-        data: ["月度收入", "下游合同", "管理合同", "无合同费用"],
-        bottom: 0,
-        itemWidth: 15,
-        itemHeight: 10,
-        textStyle: { fontSize: 10 },
-      },
-      grid: {
-        left: "3%",
-        right: "4%",
-        top: "15%",
-        bottom: "30px",
-        containLabel: true,
-      },
-      xAxis: {
-        type: "category",
-        data: data.months,
-        axisLabel: { interval: 0, fontSize: 10 },
-      },
-      yAxis: {
-        type: "value",
-        name: "金额 (万元)",
-        splitLine: { show: false },
-      },
-      series: [
-        {
-          name: "月度收入",
-          type: "bar",
-          data: data.income.map((v) => (v / 10000).toFixed(2)),
-          itemStyle: { color: "#67C23A" },
-          barMaxWidth: 15,
-        },
-        // Stacked Expense Series
-        {
-          name: "下游合同",
-          type: "bar",
-          stack: "expense",
-          data: data.expense_breakdown.downstream.map((v) =>
-            (v / 10000).toFixed(2)
-          ),
-          itemStyle: { color: "#F56C6C" },
-          barMaxWidth: 15,
-        },
-        {
-          name: "管理合同",
-          type: "bar",
-          stack: "expense",
-          data: data.expense_breakdown.management.map((v) =>
-            (v / 10000).toFixed(2)
-          ),
-          itemStyle: { color: "#E6A23C" },
-          barMaxWidth: 15,
-        },
-        {
-          name: "无合同费用",
-          type: "bar",
-          stack: "expense",
-          data: data.expense_breakdown.non_contract.map((v) =>
-            (v / 10000).toFixed(2)
-          ),
-          itemStyle: { color: "#909399" },
-          barMaxWidth: 15,
-        },
-      ],
-    },
-    media: [
-      {
-        query: { maxWidth: 767 },
-        option: {
-          legend: {
-            itemWidth: 10,
-            textStyle: { fontSize: 9 },
-            bottom: 0,
-          },
-          grid: {
-            bottom: "80px",
-          },
-          xAxis: {
-            axisLabel: {
-              fontSize: 9,
-              rotate: 45,
-            },
-          },
-        },
-      },
-    ],
-  });
+  trendChart.setOption(createStackedTrendOption({
+    categories: data.months || [],
+    income: data.income || [],
+    expenseBreakdown: data.expense_breakdown || {},
+    incomeName: '月度收入',
+    laborKey: '__unused__',
+    mobile: false,
+    labelSliceStart: 0,
+    legendNames: ['月度收入', '下游合同', '管理合同', '无合同费用']
+  }));
   trendChart.resize();
 };
 
@@ -732,10 +558,6 @@ onBeforeUnmount(() => {
   gap: var(--space-5);
 }
 
-.business-dashboard :deep(.app-section-card) {
-  border-radius: 24px;
-}
-
 :deep(.app-filter-bar.dashboard-filter-bar) {
   padding: 14px 16px;
 }
@@ -766,7 +588,6 @@ onBeforeUnmount(() => {
 
 .metric-grid :deep(.app-metric-card) {
   min-height: 196px;
-  border-radius: 22px;
 }
 
 .metric-badge {
@@ -808,26 +629,6 @@ onBeforeUnmount(() => {
   max-width: 18ch;
 }
 
-.result-panel,
-.trend-panel,
-.dashboard-side-stack :deep(.app-section-card) {
-  position: relative;
-  overflow: hidden;
-}
-
-.result-panel::before,
-.trend-panel::before,
-.dashboard-side-stack :deep(.app-section-card)::before,
-.rank-card::before,
-.summary-block::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 1px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--brand-primary) 24%, transparent), transparent 72%);
-  pointer-events: none;
-}
-
 .arap-panel__value small {
   font-size: 14px;
   font-weight: 600;
@@ -844,11 +645,6 @@ onBeforeUnmount(() => {
   display: grid;
   gap: var(--space-4);
   align-content: start;
-}
-
-.result-panel :deep(.el-card__body),
-.trend-panel :deep(.el-card__body) {
-  padding-top: 18px;
 }
 
 .section-heading {
@@ -946,10 +742,8 @@ onBeforeUnmount(() => {
   gap: 10px;
   padding: 16px;
   border: 1px solid var(--border-subtle);
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--surface-panel) 82%, var(--surface-panel-muted) 18%);
-  position: relative;
-  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface-panel) 88%, var(--surface-panel-muted) 12%);
 }
 
 .summary-block__header {
@@ -1002,10 +796,8 @@ onBeforeUnmount(() => {
   min-width: 0;
   padding: 16px;
   border: 1px solid var(--border-subtle);
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--surface-panel) 84%, var(--surface-panel-muted) 16%);
-  position: relative;
-  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface-panel) 88%, var(--surface-panel-muted) 12%);
   display: grid;
   align-content: stretch;
 }
@@ -1013,30 +805,6 @@ onBeforeUnmount(() => {
 .rank-card :deep(.echarts-for-react),
 .rank-card :deep(canvas) {
   border-radius: 14px;
-}
-
-.rank-card--contract {
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--brand-primary) 5%, transparent), transparent 24%),
-    color-mix(in srgb, var(--surface-panel) 84%, var(--surface-panel-muted) 16%);
-}
-
-.rank-card--company {
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--status-success) 7%, transparent), transparent 24%),
-    color-mix(in srgb, var(--surface-panel) 84%, var(--surface-panel-muted) 16%);
-}
-
-.rank-card--expense-structure {
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--status-warning) 7%, transparent), transparent 24%),
-    color-mix(in srgb, var(--surface-panel) 84%, var(--surface-panel-muted) 16%);
-}
-
-.rank-card--expense-category {
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--status-danger) 7%, transparent), transparent 24%),
-    color-mix(in srgb, var(--surface-panel) 84%, var(--surface-panel-muted) 16%);
 }
 
 .rank-card--company .chart-surface--rank,

@@ -26,6 +26,39 @@ vi.mock('@/utils/echarts', () => ({
   createPieChartOption: vi.fn(({ data = [] }) => ({
     series: [{ data }]
   })),
+  createResultWaterfallOption: vi.fn(({
+    received = 0,
+    downstreamExpense = 0,
+    managementExpense = 0,
+    nonContractExpense = 0,
+    laborExpense = 0
+  }) => ({
+    xAxis: {
+      data: ['上游回款', '下游合同', '管理合同', '无合同费用', '零星用工', '净结果']
+    },
+    series: [
+      {
+        stack: 'result',
+        itemStyle: { opacity: 0 },
+        data: [0, 0, 0, 0, 0, 0]
+      },
+      {
+        stack: 'result',
+        data: [
+          { value: received },
+          { value: downstreamExpense },
+          { value: managementExpense },
+          { value: nonContractExpense },
+          { value: laborExpense },
+          { value: received - downstreamExpense - managementExpense - nonContractExpense - laborExpense }
+        ]
+      }
+    ]
+  })),
+  createStackedTrendOption: vi.fn(({ categories = [] }) => ({
+    xAxis: { data: categories },
+    series: [{ data: [] }]
+  })),
   readChartTheme: vi.fn(() => ({
     text: '#475569',
     textStrong: '#0f172a',
@@ -101,6 +134,7 @@ describe('Business expense structure chart mapping', () => {
         },
         stubs: {
           AppFilterBar: { template: '<div class="app-filter-bar-stub"><slot /><slot name="actions" /></div>' },
+          AppChartPanel: { template: '<section class="app-chart-panel-stub"><slot name="header" /><slot /></section>' },
           AppMetricCard: { template: '<div class="app-metric-card-stub"><slot /><slot name="badge" /><slot name="footer" /></div>' },
           AppSectionCard: { template: '<section class="app-section-card-stub"><slot name="header" /><slot /></section>' },
           ElDatePicker: { template: '<div class="el-date-picker-stub" />' },

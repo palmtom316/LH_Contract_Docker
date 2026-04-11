@@ -25,13 +25,12 @@ defineProps({
 
 <style scoped lang="scss">
 .app-filter-bar {
-  position: relative;
   min-width: 0;
-  padding: 14px;
-  border: 1px solid hsl(var(--border));
+  padding: 16px;
+  border: 1px solid var(--workspace-panel-border);
   border-radius: var(--workspace-panel-radius);
-  background: hsl(var(--background));
-  box-shadow: none;
+  background: var(--surface-panel);
+  box-shadow: var(--workspace-panel-shadow);
 }
 
 .app-filter-bar__content {
@@ -149,8 +148,8 @@ defineProps({
   padding-inline: 14px;
   border-radius: var(--workspace-control-radius);
   border-color: hsl(var(--border));
-  background: hsl(var(--background));
-  color: hsl(var(--muted-foreground));
+  background: var(--surface-panel);
+  color: hsl(var(--foreground));
   box-shadow: none;
   white-space: nowrap;
 }

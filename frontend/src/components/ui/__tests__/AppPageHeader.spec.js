@@ -48,11 +48,11 @@ describe('AppPageHeader', () => {
     expect(wrapper.find('.app-page-header__side').text()).not.toContain('12 active contracts')
   })
 
-  it('keeps the page header flat while workspace panels remain elevated containers', () => {
+  it('keeps the page header flat while workspace panels remain shared surface containers', () => {
     expect(appPageHeaderSource).toContain('border-b border-border pb-3')
     expect(appPageHeaderSource).not.toContain('padding: var(--panel-padding);')
     expect(appWorkspacePanelSource).toContain('gap: 16px;')
     expect(appWorkspacePanelSource).toContain('border-radius: var(--workspace-panel-radius);')
-    expect(appWorkspacePanelSource).toContain('background: var(--surface-panel-elevated);')
+    expect(appWorkspacePanelSource).toContain('background: var(--workspace-panel-background);')
   })
 })

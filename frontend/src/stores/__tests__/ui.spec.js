@@ -120,7 +120,7 @@ describe('ui store', () => {
     expect(rangeField).not.toContain('height: 1px;')
   })
 
-  it('defines elevated workspace surfaces for the premium light theme', () => {
+  it('defines shared workspace surface tokens for the refined light theme', () => {
     const tokens = readFileSync(tokensPath, 'utf8')
     const styles = readFileSync(stylesPath, 'utf8')
     const sectionCard = readFileSync(sectionCardPath, 'utf8')
@@ -131,9 +131,9 @@ describe('ui store', () => {
     expect(tokens).toContain('--workspace-panel-shadow:')
 
     expect(styles).toContain('background: var(--surface-page-gradient);')
-    expect(sectionCard).toContain('var(--surface-panel-elevated)')
+    expect(sectionCard).toContain('var(--surface-panel)')
     expect(sectionCard).toContain('var(--workspace-panel-shadow)')
-    expect(metricCard).toContain('var(--surface-panel-elevated)')
+    expect(metricCard).toContain('var(--surface-panel)')
     expect(metricCard).toContain('var(--workspace-panel-shadow)')
   })
 

@@ -33,9 +33,9 @@
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  border-radius: 12px;
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--card));
+  border-radius: var(--radius);
+  border: 1px solid var(--workspace-panel-border);
+  background: var(--surface-panel);
   box-shadow: none;
 }
 

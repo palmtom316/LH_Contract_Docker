@@ -322,8 +322,8 @@ onMounted(() => {
 .mobile-contract-list__filters,
 .mobile-contract-list__cards {
   border: 1px solid var(--border-subtle);
-  border-radius: 20px;
-  background: color-mix(in srgb, var(--surface-panel) 92%, transparent);
+  border-radius: var(--radius-lg);
+  background: var(--surface-panel);
   box-shadow: var(--shadow-soft);
 }
 

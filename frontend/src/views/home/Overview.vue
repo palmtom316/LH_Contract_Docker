@@ -15,10 +15,10 @@
     </section>
 
     <section class="overview-summary-grid">
-      <AppSectionCard>
+      <AppChartPanel>
         <template #header>年度收支趋势</template>
         <div ref="barChartRef" class="chart-surface chart-surface--annual" />
-      </AppSectionCard>
+      </AppChartPanel>
 
       <AppSectionCard>
         <template #header>结构摘要</template>
@@ -33,7 +33,7 @@
     </section>
 
     <section v-if="!isMobile" class="period-stack">
-      <AppSectionCard>
+      <AppChartPanel>
         <template #header>近30天经营表现</template>
         <div class="period-panel">
           <div class="period-stats-grid">
@@ -82,9 +82,9 @@
           </div>
           <div ref="monthChartRef" class="chart-surface chart-surface--period" />
         </div>
-      </AppSectionCard>
+      </AppChartPanel>
 
-      <AppSectionCard>
+      <AppChartPanel>
         <template #header>近90天经营表现</template>
         <div class="period-panel">
           <div class="period-stats-grid">
@@ -133,10 +133,10 @@
           </div>
           <div ref="quarterChartRef" class="chart-surface chart-surface--period" />
         </div>
-      </AppSectionCard>
+      </AppChartPanel>
     </section>
 
-    <AppSectionCard v-else>
+    <AppChartPanel v-else>
       <template #header>阶段经营表现</template>
       <el-tabs v-model="mobileActiveTab" class="overview-mobile-tabs app-tabs--line">
         <el-tab-pane label="近30天" name="monthly">
@@ -222,10 +222,10 @@
           </div>
         </el-tab-pane>
       </el-tabs>
-    </AppSectionCard>
+    </AppChartPanel>
 
     <section class="overview-chart-grid">
-      <AppSectionCard>
+      <AppChartPanel>
         <template #header>合同分类</template>
         <div class="rank-grid">
           <div class="rank-panel">
@@ -237,7 +237,7 @@
             <div ref="companyRankChartRef" class="chart-surface chart-surface--rank" />
           </div>
         </div>
-      </AppSectionCard>
+      </AppChartPanel>
     </section>
   </div>
 </template>
@@ -246,12 +246,13 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import echarts from '@/utils/echarts'
+import AppChartPanel from '@/components/ui/AppChartPanel.vue'
 import AppMetricCard from '@/components/ui/AppMetricCard.vue'
 import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import { useDevice } from '@/composables/useDevice'
 import { getStats, getPeriodStats, getPeriodTrend } from '@/api/dashboard'
 import { getFinanceTrend } from '@/api/reports'
-import { createBarChartOption, readChartTheme } from '@/utils/echarts'
+import { createStackedTrendOption } from '@/utils/echarts'
 import { createHorizontalRankOption } from '@/utils/dashboardRanking'
 
 const { isMobile } = useDevice()
@@ -381,79 +382,6 @@ function formatAmount(value) {
   return `¥ ${formatWan(value)} 万`
 }
 
-function formatTrendLabel(value, sliceStart = 5) {
-  if (!value || typeof value !== 'string') return value
-  return value.length > sliceStart ? value.substring(sliceStart) : value
-}
-
-function buildExpenseSeries(data, useLaborKey = 'labor', incomeName = '收入') {
-  const theme = readChartTheme()
-  const expenseBreakdown = data?.expense_breakdown || {}
-
-  return [
-    {
-      name: incomeName,
-      data: (data?.income || []).map((value) => Number((value / 10000).toFixed(2))),
-      color: theme.success
-    },
-    {
-      name: '下游合同',
-      stack: 'expense',
-      data: (expenseBreakdown.downstream || []).map((value) => Number((value / 10000).toFixed(2))),
-      color: theme.danger
-    },
-    {
-      name: '管理合同',
-      stack: 'expense',
-      data: (expenseBreakdown.management || []).map((value) => Number((value / 10000).toFixed(2))),
-      color: theme.warning
-    },
-    {
-      name: '无合同费用',
-      stack: 'expense',
-      data: (expenseBreakdown.non_contract || []).map((value) => Number((value / 10000).toFixed(2))),
-      color: theme.info
-    },
-    {
-      name: '零星用工',
-      stack: 'expense',
-      data: (expenseBreakdown[useLaborKey] || []).map((value) => Number((value / 10000).toFixed(2))),
-      color: theme.primary
-    }
-  ]
-}
-
-function createTrendBarOption({ categories, series, labelSliceStart = 5, mobile = false, legendNames = [] }) {
-  const theme = readChartTheme()
-  const option = createBarChartOption({ categories, series })
-
-  option.tooltip.formatter = (params) => {
-    if (!Array.isArray(params) || !params.length) return ''
-    const lines = [`${params[0].axisValueLabel || params[0].name}`]
-    params.forEach((item) => {
-      const value = Number(item.value)
-      if (!Number.isNaN(value) && value > 0) {
-        lines.push(`${item.marker}${item.seriesName}: ${value.toFixed(2)} 万元`)
-      }
-    })
-    return lines.length > 1 ? lines.join('<br/>') : ''
-  }
-  option.legend.data = legendNames.length ? legendNames : series.map((item) => item.name)
-  option.legend.type = mobile ? 'scroll' : 'plain'
-  option.legend.textStyle = { color: theme.text, fontSize: mobile ? 10 : 12 }
-  option.grid.top = mobile ? '14%' : '12%'
-  option.grid.bottom = mobile ? '88px' : '72px'
-  option.grid.left = mobile ? '11%' : '8%'
-  option.grid.right = '4%'
-  option.xAxis.axisLabel.interval = 'auto'
-  option.xAxis.axisLabel.rotate = mobile ? 36 : 0
-  option.xAxis.axisLabel.formatter = (value) => formatTrendLabel(value, labelSliceStart)
-  option.yAxis.name = '金额 (万元)'
-  option.yAxis.nameTextStyle = { color: theme.text, padding: [0, 0, 6, 0] }
-
-  return option
-}
-
 async function fetchData() {
   try {
     const [statsRes, trendRes, periodRes, monthTrendRes, quarterTrendRes] = await Promise.all([
@@ -492,10 +420,13 @@ function initAnnualChart(data) {
   if (!barChartRef.value) return
   if (barChart) barChart.dispose()
 
-    barChart = echarts.init(barChartRef.value)
-  barChart.setOption(createTrendBarOption({
+  barChart = echarts.init(barChartRef.value)
+  barChart.setOption(createStackedTrendOption({
     categories: data?.months || [],
-    series: buildExpenseSeries(data, 'zero_hour_labor', '月度收入'),
+    income: data?.income || [],
+    expenseBreakdown: data?.expense_breakdown || {},
+    laborKey: 'zero_hour_labor',
+    incomeName: '月度收入',
     labelSliceStart: 5,
     mobile: isMobile.value,
     legendNames: ['月度收入', '下游合同', '管理合同', '无合同费用', '零星用工']
@@ -506,9 +437,11 @@ function initMonthChart(data) {
   if (monthChartRef.value) {
     if (monthChart) monthChart.dispose()
     monthChart = echarts.init(monthChartRef.value)
-    monthChart.setOption(createTrendBarOption({
+    monthChart.setOption(createStackedTrendOption({
       categories: data?.dates || [],
-      series: buildExpenseSeries(data, 'labor'),
+      income: data?.income || [],
+      expenseBreakdown: data?.expense_breakdown || {},
+      laborKey: 'labor',
       labelSliceStart: 5,
       legendNames: ['收入', '下游合同', '管理合同', '无合同费用', '零星用工']
     }))
@@ -517,9 +450,11 @@ function initMonthChart(data) {
   if (mobileMonthChartRef.value) {
     if (mobileMonthChart) mobileMonthChart.dispose()
     mobileMonthChart = echarts.init(mobileMonthChartRef.value)
-    mobileMonthChart.setOption(createTrendBarOption({
+    mobileMonthChart.setOption(createStackedTrendOption({
       categories: data?.dates || [],
-      series: buildExpenseSeries(data, 'labor'),
+      income: data?.income || [],
+      expenseBreakdown: data?.expense_breakdown || {},
+      laborKey: 'labor',
       labelSliceStart: 5,
       mobile: true,
       legendNames: ['收入', '下游合同', '管理合同', '无合同费用', '零星用工']
@@ -531,9 +466,11 @@ function initQuarterChart(data) {
   if (quarterChartRef.value) {
     if (quarterChart) quarterChart.dispose()
     quarterChart = echarts.init(quarterChartRef.value)
-    quarterChart.setOption(createTrendBarOption({
+    quarterChart.setOption(createStackedTrendOption({
       categories: data?.dates || [],
-      series: buildExpenseSeries(data, 'labor'),
+      income: data?.income || [],
+      expenseBreakdown: data?.expense_breakdown || {},
+      laborKey: 'labor',
       labelSliceStart: 5,
       legendNames: ['收入', '下游合同', '管理合同', '无合同费用', '零星用工']
     }))
@@ -542,9 +479,11 @@ function initQuarterChart(data) {
   if (mobileQuarterChartRef.value) {
     if (mobileQuarterChart) mobileQuarterChart.dispose()
     mobileQuarterChart = echarts.init(mobileQuarterChartRef.value)
-    mobileQuarterChart.setOption(createTrendBarOption({
+    mobileQuarterChart.setOption(createStackedTrendOption({
       categories: data?.dates || [],
-      series: buildExpenseSeries(data, 'labor'),
+      income: data?.income || [],
+      expenseBreakdown: data?.expense_breakdown || {},
+      laborKey: 'labor',
       labelSliceStart: 5,
       mobile: true,
       legendNames: ['收入', '下游合同', '管理合同', '无合同费用', '零星用工']
@@ -629,7 +568,6 @@ onBeforeUnmount(() => {
 
 .dashboard-metric-grid :deep(.app-metric-card) {
   min-height: 208px;
-  border-radius: 22px;
 }
 
 .metric-badge {
@@ -676,12 +614,6 @@ onBeforeUnmount(() => {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.overview-summary-grid :deep(.app-section-card),
-.period-stack :deep(.app-section-card),
-.overview-chart-grid :deep(.app-section-card) {
-  border-radius: 24px;
-}
-
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -693,7 +625,7 @@ onBeforeUnmount(() => {
   gap: 10px;
   padding: var(--space-5);
   border: 1px solid var(--border-subtle);
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--surface-panel) 80%, var(--surface-panel-muted) 20%);
 }
 
@@ -736,7 +668,7 @@ onBeforeUnmount(() => {
 .period-stat-group {
   padding: var(--space-5);
   border: 1px solid var(--border-subtle);
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--surface-panel) 78%, var(--surface-panel-muted) 22%);
 }
 

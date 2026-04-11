@@ -768,7 +768,7 @@ onUnmounted(() => {
 }
 
 .mobile-card {
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   box-shadow: none;
 }
 

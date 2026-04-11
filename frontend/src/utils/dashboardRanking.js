@@ -49,7 +49,7 @@ export function createHorizontalRankOption({ title, items, color = '#2563eb' }) 
       }
     },
     grid: {
-      left: '18%',
+      left: '24%',
       right: '4%',
       top: '8%',
       bottom: '12%',
@@ -65,8 +65,14 @@ export function createHorizontalRankOption({ title, items, color = '#2563eb' }) 
         fontSize: 11,
         formatter: formatAmountTick
       },
+      axisLine: {
+        show: false
+      },
+      axisTick: {
+        show: false
+      },
       splitLine: {
-        lineStyle: { color: theme.border }
+        lineStyle: { color: theme.gridLine || theme.border }
       }
     },
     yAxis: {
@@ -74,8 +80,14 @@ export function createHorizontalRankOption({ title, items, color = '#2563eb' }) 
       data: yAxisData,
       axisLabel: {
         color: theme.text,
-        width: 84,
+        width: 120,
         overflow: 'truncate'
+      },
+      axisLine: {
+        show: false
+      },
+      axisTick: {
+        show: false
       }
     },
     series: [
@@ -112,7 +124,7 @@ export function createStackedCategoryOption({ title, categories, series }) {
       textStyle: { color: theme.text, fontSize: 11 }
     },
     grid: {
-      left: '18%',
+      left: '24%',
       right: '4%',
       top: '8%',
       bottom: '56px',
@@ -128,8 +140,14 @@ export function createStackedCategoryOption({ title, categories, series }) {
         fontSize: 11,
         formatter: formatAmountTick
       },
+      axisLine: {
+        show: false
+      },
+      axisTick: {
+        show: false
+      },
       splitLine: {
-        lineStyle: { color: theme.border }
+        lineStyle: { color: theme.gridLine || theme.border }
       }
     },
     yAxis: {
@@ -137,8 +155,14 @@ export function createStackedCategoryOption({ title, categories, series }) {
       data: ensureArray(categories),
       axisLabel: {
         color: theme.text,
-        width: 84,
+        width: 120,
         overflow: 'truncate'
+      },
+      axisLine: {
+        show: false
+      },
+      axisTick: {
+        show: false
       }
     },
     series: ensureArray(series).map(item => ({
