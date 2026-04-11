@@ -214,17 +214,17 @@ function confirmLogout() {
   min-height: 0;
   display: grid;
   grid-template-rows: auto 1fr;
-  border: 1px solid var(--border-subtle);
-  border-radius: 24px;
-  background: color-mix(in srgb, var(--surface-panel) 92%, transparent);
-  box-shadow: var(--shadow-frame);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  background: hsl(var(--card));
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 
 .mobile-topbar {
   min-height: 62px;
-  border-bottom: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--surface-panel) 92%, transparent);
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr) auto;
   align-items: start;
@@ -233,15 +233,14 @@ function confirmLogout() {
   position: sticky;
   top: 0;
   z-index: 20;
-  backdrop-filter: blur(18px);
 }
 
 .menu-trigger {
   width: 40px;
   height: 40px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  background: var(--surface-panel);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background: hsl(var(--card));
   color: var(--text-secondary);
 }
 
@@ -280,15 +279,15 @@ function confirmLogout() {
 .mobile-tabbar {
   z-index: 1000;
   margin-bottom: env(safe-area-inset-bottom);
-  border: 1px solid var(--border-subtle);
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--surface-panel) 94%, transparent);
-  box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  background: hsl(var(--card));
+  box-shadow: var(--shadow-soft);
   overflow: hidden;
 }
 
 .menu-drawer {
-  background: var(--surface-sidebar);
+  background: hsl(var(--card));
   display: flex;
   flex-direction: column;
 }
@@ -301,11 +300,11 @@ function confirmLogout() {
 }
 
 .drawer-link {
-  border-radius: 10px;
+  border-radius: var(--radius);
   padding: 10px 12px;
-  color: rgba(248, 250, 252, 0.82);
+  color: hsl(var(--foreground));
   text-decoration: none;
-  background: rgba(148, 163, 184, 0.12);
+  background: hsl(var(--muted));
 }
 
 .drawer-user {
@@ -323,7 +322,7 @@ function confirmLogout() {
 .mobile-topbar :deep(.app-chrome-icon-button) {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: var(--radius);
 }
 
 @media (min-width: 768px) {
@@ -370,7 +369,7 @@ function confirmLogout() {
     border-right: 0;
     border-bottom: 0;
     border-left: 0;
-    border-radius: 18px 18px 0 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     margin-bottom: 0;
   }
 }
