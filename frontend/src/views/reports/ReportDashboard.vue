@@ -744,7 +744,7 @@ onMounted(() => {
 <style scoped lang="scss">
 .report-dashboard-shell {
   display: grid;
-  gap: var(--space-6);
+  gap: var(--space-5);
 }
 
 .report-dashboard-panels {
@@ -757,7 +757,7 @@ onMounted(() => {
 }
 
 .report-dashboard-panel :deep(.app-section-card) {
-  border-radius: 22px;
+  border-radius: calc(var(--radius) + 2px);
 }
 
 .cost-title {
@@ -784,17 +784,18 @@ onMounted(() => {
 .report-export-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-4);
+  gap: var(--space-5);
 }
 
 .report-export-card {
   display: grid;
+  grid-template-rows: auto 1fr;
   gap: var(--space-4);
   padding: var(--space-5);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: linear-gradient(180deg, var(--surface-panel), var(--surface-panel-muted));
-  box-shadow: var(--shadow-soft);
+  border-radius: calc(var(--radius) + 2px);
+  background: color-mix(in srgb, var(--surface-panel) 90%, var(--surface-panel-muted) 10%);
+  box-shadow: var(--shadow-card);
 }
 
 .report-export-card__header h3 {
@@ -812,13 +813,19 @@ onMounted(() => {
 
 .report-export-card__filters {
   margin: 0;
+  height: 100%;
 }
 
 :deep(.app-filter-bar.report-export-card__filters) {
+  height: 100%;
   padding: 0;
   border: 0;
   background: transparent;
   box-shadow: none;
+}
+
+:deep(.app-filter-bar.report-export-card__filters .app-filter-bar__content) {
+  height: 100%;
 }
 
 :deep(.app-filter-bar.report-export-card__filters .app-filter-bar__main) {
@@ -831,6 +838,8 @@ onMounted(() => {
   width: 100%;
   padding-top: 0;
   margin-left: 0;
+  margin-top: auto;
+  align-self: end;
 }
 
 :deep(.app-filter-bar.report-export-card__filters .el-date-editor),

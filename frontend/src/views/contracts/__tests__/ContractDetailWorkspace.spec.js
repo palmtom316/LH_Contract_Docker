@@ -1,5 +1,7 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import UpstreamDetail from '@/views/contracts/UpstreamDetail.vue'
 import ManagementDetail from '@/views/contracts/ManagementDetail.vue'
 import DownstreamDetail from '@/views/contracts/DownstreamDetail.vue'
@@ -7,6 +9,12 @@ import DownstreamDetail from '@/views/contracts/DownstreamDetail.vue'
 const { openProtectedFileMock } = vi.hoisted(() => ({
   openProtectedFileMock: vi.fn().mockResolvedValue('blob:demo')
 }))
+
+const detailSources = [
+  readFileSync(path.resolve(process.cwd(), 'src/views/contracts/UpstreamDetail.vue'), 'utf-8'),
+  readFileSync(path.resolve(process.cwd(), 'src/views/contracts/ManagementDetail.vue'), 'utf-8'),
+  readFileSync(path.resolve(process.cwd(), 'src/views/contracts/DownstreamDetail.vue'), 'utf-8')
+]
 
 vi.mock('@/utils/protectedFiles', () => ({
   openProtectedFile: openProtectedFileMock
@@ -148,5 +156,14 @@ describe('Contract detail workspace shell', () => {
     await wrapper.vm.openAttachment(expectedPath)
 
     expect(openProtectedFileMock).toHaveBeenCalledWith(expectedPath)
+  })
+
+  it('applies the refined detail spacing and section chrome across all contract detail pages', () => {
+    detailSources.forEach((source) => {
+      expect(source).toContain('gap: var(--space-6);')
+      expect(source).toContain('padding-top: 16px;')
+      expect(source).toContain('border-top: 1px solid var(--border-subtle);')
+      expect(source).toContain('background: color-mix(in srgb, var(--surface-panel-elevated) 90%, var(--brand-primary-soft) 10%);')
+    })
   })
 })

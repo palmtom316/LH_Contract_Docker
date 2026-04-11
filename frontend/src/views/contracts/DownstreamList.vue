@@ -745,18 +745,18 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .downstream-page-shell {
   display: grid;
-  gap: var(--workspace-shell-gap);
+  gap: var(--space-5);
 }
 
 .downstream-page-panel {
-  gap: 0;
+  gap: var(--space-4);
 }
 
 .downstream-page-card {
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  border-radius: 0;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 86%, var(--brand-primary-soft) 14%);
+  background: var(--surface-panel-elevated);
+  box-shadow: var(--shadow-soft);
+  border-radius: calc(var(--radius) + 2px);
 }
 
 .downstream-page-card :deep(.el-card__header) {
@@ -775,6 +775,17 @@ onBeforeUnmount(() => {
 .downstream-page-panel :deep(.el-table th.el-table__cell) {
   padding-top: 14px;
   padding-bottom: 14px;
+}
+
+.downstream-page-panel :deep(.el-table__header th.el-table__cell) {
+  background: color-mix(in srgb, var(--surface-panel-muted) 72%, var(--surface-panel) 28%);
+}
+
+.downstream-page-panel :deep(.el-table) {
+  --el-table-border-color: var(--border-subtle);
+  --el-table-header-text-color: var(--text-secondary);
+  --el-table-text-color: var(--text-primary);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--surface-panel-muted) 58%, var(--surface-panel) 42%);
 }
 
 :deep(.contract-table--dense .el-table__cell) {
@@ -818,7 +829,9 @@ onBeforeUnmount(() => {
 }
 
 .pagination-container {
-  margin-top: 18px;
+  margin-top: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
   display: flex;
   justify-content: flex-end;
 }
@@ -839,8 +852,8 @@ onBeforeUnmount(() => {
   margin-bottom: 20px;
   padding: 12px 14px;
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--surface-panel-muted) 76%, var(--surface-panel) 24%);
+  border-radius: calc(var(--radius) + 2px);
+  background: color-mix(in srgb, var(--surface-panel-elevated) 82%, var(--surface-panel-muted) 18%);
 }
 
 .summary-strip__item {
@@ -864,13 +877,13 @@ onBeforeUnmount(() => {
 /* Mobile Card View */
 .card-list {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 
   .contract-card {
     border: 1px solid var(--border-subtle);
-    border-radius: 16px;
-    background: var(--surface-panel);
-    box-shadow: none;
+    border-radius: calc(var(--radius) + 2px);
+    background: var(--surface-panel-elevated);
+    box-shadow: var(--shadow-soft);
     
     .card-header {
       display: flex;
@@ -908,7 +921,7 @@ onBeforeUnmount(() => {
           flex: 1;
           
           &.amount {
-            color: var(--text-primary);
+            color: var(--brand-primary-strong);
             font-weight: bold;
           }
         }

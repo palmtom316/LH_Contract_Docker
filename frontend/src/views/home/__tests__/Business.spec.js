@@ -121,6 +121,20 @@ describe('Business chart composition', () => {
     expect(businessSource).not.toContain('rank-card__title">支出构成')
     expect(businessSource).not.toContain('rank-card__title">上游合同分类')
   })
+
+  it('keeps the year/month filter controls and refresh action aligned on one shared control axis', () => {
+    expect(businessSource).toContain('.dashboard-filter-bar__label {')
+    expect(businessSource).toContain('.app-filter-bar.dashboard-filter-bar .app-filter-bar__main) {')
+    expect(businessSource).toContain('grid-template-columns: max-content 184px 184px max-content;')
+    expect(businessSource).toContain('.dashboard-filter-bar__control--year {')
+    expect(businessSource).toContain('.dashboard-filter-bar__control--year {\n  grid-column: auto;')
+    expect(businessSource).toContain('max-width: 184px;')
+    expect(businessSource).toContain('.dashboard-filter-bar__control--month {')
+    expect(businessSource).toContain('.dashboard-filter-bar__control--month {\n  grid-column: auto;')
+    expect(businessSource).toContain('.app-filter-bar.dashboard-filter-bar .app-filter-bar__actions--inline) {\n  grid-column: auto;')
+    expect(businessSource).toContain('justify-content: flex-start;')
+    expect(businessSource).toContain('align-items: center;')
+  })
 })
 
 describe('Business expense structure chart mapping', () => {

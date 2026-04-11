@@ -113,21 +113,25 @@ describe('AppFilterBar', () => {
     expect(mediaBlock).not.toBe('')
 
     const mainGrid = getSelectorDeclarations(mediaBlock, '.app-filter-bar__main')
-    expect(mainGrid['grid-template-columns']).toBe('repeat(8, minmax(0, 1fr))')
+    const defaultRule = getSelectorDeclarations(mediaBlock, '.app-filter-bar__main > *')
+    expect(mainGrid['grid-template-columns']).toBe('repeat(12, minmax(0, 1fr))')
+    expect(defaultRule['grid-column']).toBe('span 2')
 
     const searchRule = getSelectorDeclarations(mediaBlock, '.app-filter-bar__main :deep(.filter-control--search)')
     const timeRule = getSelectorDeclarations(mediaBlock, '.app-filter-bar__main :deep(.filter-control--time)')
+    const wideRule = getSelectorDeclarations(mediaBlock, '.app-filter-bar__main :deep(.filter-control--wide)')
     const rangeRule = getSelectorDeclarations(
       mediaBlock,
       '.app-filter-bar__main :deep(.filter-control--range-wide)'
     )
     const actionsRule = getSelectorDeclarations(mediaBlock, '.app-filter-bar__actions--inline')
 
-    expect(searchRule['grid-column']).toBe('span 3')
-    expect(timeRule['grid-column']).toBe('span 3')
+    expect(searchRule['grid-column']).toBe('span 4')
+    expect(timeRule['grid-column']).toBe('span 2')
+    expect(wideRule['grid-column']).toBe('span 4')
     expect(rangeRule['grid-column']).toBe('span 4')
     expect(rangeRule['grid-row']).toBeUndefined()
-    expect(actionsRule['grid-column']).toBe('span 3')
+    expect(actionsRule['grid-column']).toBe('span 6')
     expect(actionsRule['grid-row']).toBeUndefined()
   })
 
@@ -152,13 +156,29 @@ describe('AppFilterBar', () => {
     expect(mainGrid['align-items']).toBe('end')
   })
 
+  it('packs desktop filter layouts tightly enough to resolve common two-row shells without creating a third action row', () => {
+    const styleSource = styleMatch[1]
+    const searchRule = getSelectorDeclarations(styleSource, '.app-filter-bar__main :deep(.filter-control--search)')
+    const timeRule = getSelectorDeclarations(styleSource, '.app-filter-bar__main :deep(.filter-control--time)')
+    const wideRule = getSelectorDeclarations(styleSource, '.app-filter-bar__main :deep(.filter-control--wide)')
+    const actionsRule = getSelectorDeclarations(styleSource, '.app-filter-bar__actions--inline')
+
+    expect(searchRule['grid-column']).toBe('span 4')
+    expect(timeRule['grid-column']).toBe('span 2')
+    expect(wideRule['grid-column']).toBe('span 4')
+    expect(actionsRule['grid-column']).toBe('span 6')
+  })
+
   it('uses theme-aware surface tokens instead of hardcoded light colors in shared chrome', () => {
     expect(appFilterBarSource).toContain('background: var(--surface-panel);')
     expect(appFilterBarSource).toContain('box-shadow: var(--workspace-panel-shadow);')
+    expect(appFilterBarSource).toContain('min-height: var(--workspace-control-height);')
+    expect(appFilterBarSource).toContain('padding: 18px;')
     expect(appFilterBarSource).not.toContain('background: #fff;')
     expect(appDataTableSource).toContain('--el-table-header-bg-color: hsl(var(--muted));')
     expect(appDataTableSource).toContain('--el-table-row-hover-bg-color: hsl(var(--muted) / 0.65);')
     expect(appDataTableSource).toContain('background: var(--surface-panel);')
+    expect(appDataTableSource).toContain('border-radius: calc(var(--radius) + 2px);')
     expect(appDataTableSource).not.toContain('#f8fafc')
     expect(appDataTableSource).not.toContain('#ffffff')
   })

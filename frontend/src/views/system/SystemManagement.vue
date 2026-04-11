@@ -294,17 +294,17 @@ const handleAuditDelete = async () => {
 }
 
 .system-management-panel {
-  gap: var(--space-4);
+  gap: var(--space-5);
 }
 
 .operation-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: var(--space-5);
 }
 
 .operation-panel {
-  height: 100%;
+  min-height: 100%;
 }
 
 .operation-panel :deep(.el-card__body) {
@@ -314,10 +314,12 @@ const handleAuditDelete = async () => {
 
 .operation-panel--warning {
   border-color: color-mix(in srgb, var(--border-subtle) 60%, var(--status-warning) 40%);
+  background: color-mix(in srgb, var(--surface-panel) 84%, var(--status-warning) 16%);
 }
 
 .operation-panel--danger {
   border-color: color-mix(in srgb, var(--border-subtle) 55%, var(--status-danger) 45%);
+  background: color-mix(in srgb, var(--surface-panel) 84%, var(--status-danger) 16%);
 }
 
 .operation-panel__title {

@@ -562,9 +562,21 @@ onBeforeUnmount(() => {
   padding: 14px 16px;
 }
 
+:deep(.app-filter-bar.dashboard-filter-bar .app-filter-bar__main) {
+  grid-template-columns: max-content 184px 184px max-content;
+  align-items: center;
+}
+
+:deep(.app-filter-bar.dashboard-filter-bar .app-filter-bar__actions--inline) {
+  grid-column: auto;
+  align-self: center;
+  justify-content: flex-start;
+}
+
 .dashboard-filter-bar__label {
   display: inline-flex;
   align-items: center;
+  grid-column: auto;
   min-height: var(--workspace-control-height);
   font-size: 13px;
   font-weight: 700;
@@ -573,11 +585,18 @@ onBeforeUnmount(() => {
 }
 
 .dashboard-filter-bar__control {
-  width: 172px;
+  width: 100%;
+  min-width: 0;
 }
 
 .dashboard-filter-bar__control--year {
-  width: 124px;
+  grid-column: auto;
+  max-width: 184px;
+}
+
+.dashboard-filter-bar__control--month {
+  grid-column: auto;
+  max-width: 184px;
 }
 
 .metric-grid {
@@ -837,6 +856,10 @@ onBeforeUnmount(() => {
   :deep(.app-filter-bar.dashboard-filter-bar .app-filter-bar__main),
   :deep(.app-filter-bar.dashboard-filter-bar .app-filter-bar__actions) {
     width: 100%;
+  }
+
+  :deep(.app-filter-bar.dashboard-filter-bar .app-filter-bar__main) {
+    grid-template-columns: 1fr;
   }
 
   .dashboard-filter-bar__control,

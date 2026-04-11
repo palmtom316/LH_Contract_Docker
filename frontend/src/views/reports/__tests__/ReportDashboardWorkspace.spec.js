@@ -1,6 +1,13 @@
 import { shallowMount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import ReportDashboard from '@/views/reports/ReportDashboard.vue'
+
+const reportDashboardSource = readFileSync(
+  path.resolve(process.cwd(), 'src/views/reports/ReportDashboard.vue'),
+  'utf-8'
+)
 
 vi.mock('@/api/reports', () => ({
   getCostMonthlyQuarterlyReport: vi.fn().mockResolvedValue({
@@ -77,5 +84,20 @@ describe('Report dashboard workspace shell', () => {
     expect(wrapper.find('.report-dashboard-panels').exists()).toBe(true)
     expect(wrapper.find('.report-dashboard-panel').exists()).toBe(true)
     expect(wrapper.find('.report-export-card__filters').exists()).toBe(true)
+  })
+
+  it('uses restrained export cards instead of oversized radii and gradients', () => {
+    expect(reportDashboardSource).toContain('border-radius: calc(var(--radius) + 2px);')
+    expect(reportDashboardSource).toContain('background: color-mix(in srgb, var(--surface-panel) 90%, var(--surface-panel-muted) 10%);')
+    expect(reportDashboardSource).toContain('gap: var(--space-5);')
+    expect(reportDashboardSource).not.toContain('border-radius: 22px;')
+    expect(reportDashboardSource).not.toContain('background: linear-gradient(180deg, var(--surface-panel), var(--surface-panel-muted));')
+  })
+
+  it('pins each export button to a consistent bottom edge even when report card headings wrap differently', () => {
+    expect(reportDashboardSource).toContain('grid-template-rows: auto 1fr;')
+    expect(reportDashboardSource).toContain('height: 100%;')
+    expect(reportDashboardSource).toContain('margin-top: auto;')
+    expect(reportDashboardSource).toContain('align-self: end;')
   })
 })

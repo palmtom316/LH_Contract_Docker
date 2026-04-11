@@ -30,13 +30,13 @@ const activeTab = ref('overview')
 <style scoped lang="scss">
 .dashboard-shell {
   display: grid;
-  gap: var(--space-6);
+  gap: var(--space-5);
   min-height: calc(100vh - 64px);
 }
 
 .dashboard-tabs-panel {
   gap: var(--space-4);
-  padding: var(--space-4);
+  padding: var(--space-5);
 }
 
 .home-tabs {

@@ -1,7 +1,14 @@
 import { mount } from '@vue/test-utils'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { defineComponent, reactive, ref } from 'vue'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import ManagementList from '@/views/contracts/ManagementList.vue'
+
+const managementListSource = readFileSync(
+  path.resolve(process.cwd(), 'src/views/contracts/ManagementList.vue'),
+  'utf-8'
+)
 
 const { getListMock, queryParamsState, getUpstreamContractsMock } = vi.hoisted(() => ({
   getListMock: vi.fn(),
@@ -213,6 +220,13 @@ describe('ManagementList date range query', () => {
     expect(wrapper.findAll('.management-page-panel')).toHaveLength(2)
     expect(wrapper.find('.management-page-panel--filters').exists()).toBe(true)
     expect(wrapper.find('.management-page-panel--list').exists()).toBe(true)
+  })
+
+  it('keeps the management list surfaces elevated instead of flattening them into transparent cards', () => {
+    expect(managementListSource).toContain('background: var(--surface-panel-elevated);')
+    expect(managementListSource).toContain('padding-top: 16px;')
+    expect(managementListSource).toContain('border-top: 1px solid var(--border-subtle);')
+    expect(managementListSource).not.toContain('background: transparent;')
   })
 
   it('applies both range sides when provided', async () => {

@@ -1,7 +1,14 @@
 import { mount } from '@vue/test-utils'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { defineComponent, reactive, ref } from 'vue'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import UpstreamList from '@/views/contracts/UpstreamList.vue'
+
+const upstreamSource = readFileSync(
+  path.resolve(process.cwd(), 'src/views/contracts/UpstreamList.vue'),
+  'utf-8'
+)
 
 const { getListMock, queryParamsState } = vi.hoisted(() => ({
   getListMock: vi.fn(),
@@ -267,6 +274,22 @@ describe('UpstreamList filters', () => {
     expect(wrapper.text()).toContain('重置')
     expect(searchButton.text()).toBe('搜索')
     expect(resetButton.text()).toBe('重置')
+  })
+
+  it('keeps the contract workspace on shared rounded surfaces instead of flattening section cards', () => {
+    expect(upstreamSource).toContain('gap: var(--space-6);')
+    expect(upstreamSource).toContain('border-radius: calc(var(--radius) + 2px);')
+    expect(upstreamSource).toContain('border-top: 1px solid var(--border-subtle);')
+    expect(upstreamSource).toContain('background: var(--surface-panel-elevated);')
+    expect(upstreamSource).not.toContain('border-radius: 0;')
+  })
+
+  it('marks the three taxonomy filters as compact controls so the management filter bar can stay within two rows', () => {
+    expect(upstreamSource).toContain('class="filter-control--compact" category="project_category"')
+    expect(upstreamSource).toContain('class="filter-control--compact" category="contract_category"')
+    expect(upstreamSource).toContain('class="filter-control--compact" category="management_mode"')
+    expect(upstreamSource).toContain('.upstream-filter-section :deep(.filter-control--compact) {')
+    expect(upstreamSource).toContain('grid-column: span 2;')
   })
 })
 

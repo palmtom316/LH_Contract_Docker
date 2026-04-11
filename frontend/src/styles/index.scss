@@ -95,7 +95,12 @@ a:focus-visible,
 .el-textarea__inner,
 .el-card {
     border-radius: var(--radius);
-    transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, color 160ms ease;
+    transition:
+        background-color 180ms ease,
+        border-color 180ms ease,
+        box-shadow 180ms ease,
+        color 180ms ease,
+        transform 180ms ease;
 }
 
 .app-container {
@@ -103,8 +108,8 @@ a:focus-visible,
 }
 
 .el-button {
-    min-height: 36px;
-    height: 36px;
+    min-height: var(--workspace-control-height);
+    height: var(--workspace-control-height);
     border-radius: var(--radius);
     font-weight: 600;
     padding-inline: 14px;
@@ -189,7 +194,7 @@ a:focus-visible,
 
 .el-card {
     border: 1px solid var(--workspace-panel-border);
-    border-radius: var(--radius);
+    border-radius: calc(var(--radius) + 2px);
     background: var(--surface-panel);
     box-shadow: var(--shadow-card);
 }
@@ -217,16 +222,18 @@ a:focus-visible,
     cursor: pointer;
     box-shadow: var(--shadow-soft);
     transition:
-        background-color 160ms ease,
-        border-color 160ms ease,
-        box-shadow 160ms ease,
-        color 160ms ease;
+        background-color 180ms ease,
+        border-color 180ms ease,
+        box-shadow 180ms ease,
+        color 180ms ease,
+        transform 180ms ease;
 }
 
 .app-chrome-icon-button:hover {
     background: var(--surface-sidebar-hover);
     border-color: hsl(var(--border));
     color: hsl(var(--foreground));
+    transform: translateY(-1px);
 }
 
 .app-chrome-icon-button .el-icon {
@@ -243,7 +250,7 @@ a:focus-visible,
 .el-select__wrapper,
 .el-textarea__inner,
 .el-date-editor.el-input__wrapper {
-    min-height: 36px;
+    min-height: var(--workspace-control-height);
     border-radius: var(--radius);
     background: var(--workspace-control-background);
     border: 1px solid hsl(var(--input));

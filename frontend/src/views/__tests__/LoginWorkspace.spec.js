@@ -1,6 +1,8 @@
 import { shallowMount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent } from 'vue'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import Login from '@/views/Login.vue'
 
 vi.mock('vue-router', () => ({
@@ -34,6 +36,11 @@ const mountPage = () =>
     }
   })
 
+const loginSource = readFileSync(
+  path.resolve(process.cwd(), 'src/views/Login.vue'),
+  'utf-8'
+)
+
 describe('Login workspace shell', () => {
   it('wraps login in the shared login shell panels', () => {
     const wrapper = mountPage()
@@ -42,5 +49,11 @@ describe('Login workspace shell', () => {
     expect(wrapper.find('.login-shell__panel').exists()).toBe(true)
     expect(wrapper.find('.login-shell__brand').exists()).toBe(true)
     expect(wrapper.find('.login-shell__form').exists()).toBe(true)
+  })
+
+  it('keeps the login surface aligned with the refined workspace tokens', () => {
+    expect(loginSource).toContain('background: var(--surface-page-gradient);')
+    expect(loginSource).toContain('background: color-mix(in srgb, hsl(var(--card)) 94%, hsl(var(--muted)) 6%);')
+    expect(loginSource).toContain('min-height: 40px;')
   })
 })

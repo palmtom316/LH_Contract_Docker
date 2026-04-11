@@ -784,24 +784,26 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .detail-workspace {
   display: grid;
-  gap: 24px;
+  gap: var(--space-6);
 }
 
 .detail-workspace__sections {
   display: grid;
-  gap: 24px;
+  gap: var(--space-6);
 }
 
 .detail-region {
-  gap: 20px;
+  gap: var(--space-5);
 }
 
 .detail-context {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 18px;
+  margin-bottom: 0;
+  padding-bottom: 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 88%, var(--brand-primary-soft) 12%);
 }
 
 .detail-context__copy {
@@ -833,6 +835,10 @@ onBeforeUnmount(() => {
   gap: 12px;
 }
 
+.detail-region--summary {
+  background: color-mix(in srgb, var(--surface-panel-elevated) 90%, var(--brand-primary-soft) 10%);
+}
+
 .detail-region--tabs {
   padding-bottom: 8px;
 }
@@ -850,13 +856,31 @@ onBeforeUnmount(() => {
 }
 
 .main-tabs {
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+
   :deep(.el-tabs__content) {
     padding: 20px 0 0;
+  }
+
+  :deep(.el-tabs__nav-wrap::after) {
+    background-color: var(--border-subtle);
   }
 }
 
 .detail-placeholder {
   color: var(--text-muted);
+}
+
+.detail-region :deep(.el-table__header th.el-table__cell) {
+  background: color-mix(in srgb, var(--surface-panel-muted) 72%, var(--surface-panel) 28%);
+}
+
+.detail-region :deep(.el-table) {
+  --el-table-border-color: var(--border-subtle);
+  --el-table-header-text-color: var(--text-secondary);
+  --el-table-text-color: var(--text-primary);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--surface-panel-muted) 56%, var(--surface-panel) 44%);
 }
 
 @media (max-width: 768px) {

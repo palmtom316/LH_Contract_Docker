@@ -11,6 +11,8 @@ describe('workspace shell visual contract', () => {
   it('removes glossy transform-based hover chrome from the desktop shell', () => {
     expect(desktopShell).not.toContain('translateX(-18%)')
     expect(desktopShell).not.toContain('.sidebar-nav-item::after')
+    expect(desktopShell).toContain('background: var(--surface-page-gradient);')
+    expect(desktopShell).toContain('box-shadow: var(--shadow-frame);')
     expect(desktopShell).toContain('border-radius: var(--radius);')
   })
 })

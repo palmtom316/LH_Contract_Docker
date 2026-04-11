@@ -31,9 +31,9 @@
               <el-option label="合同终止" value="合同终止" />
               <el-option label="合同中止" value="合同中止" />
             </el-select>
-            <DictSelect v-model="queryParams.company_category" category="project_category" placeholder="公司合同分类" clearable />
-            <DictSelect v-model="queryParams.category" category="contract_category" placeholder="合同类别" clearable />
-            <DictSelect v-model="queryParams.management_mode" category="management_mode" placeholder="管理模式" clearable />
+            <DictSelect v-model="queryParams.company_category" class="filter-control--compact" category="project_category" placeholder="公司合同分类" clearable />
+            <DictSelect v-model="queryParams.category" class="filter-control--compact" category="contract_category" placeholder="合同类别" clearable />
+            <DictSelect v-model="queryParams.management_mode" class="filter-control--compact" category="management_mode" placeholder="管理模式" clearable />
             <AppRangeField
               v-model="monthRange"
               class="filter-control--time"
@@ -1089,20 +1089,20 @@ onBeforeUnmount(() => {
 
 .upstream-page-shell {
   display: grid;
-  gap: var(--workspace-shell-gap);
+  gap: var(--space-5);
 }
 
 .contract-surface {
   display: grid;
-  gap: var(--space-5);
+  gap: var(--space-6);
 }
 
 .contract-tabs :deep(.el-tabs__header) {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-5);
 }
 
 .contract-surface :deep(.app-section-card) {
-  border-radius: 0;
+  border-radius: calc(var(--radius) + 2px);
 }
 
 .contract-surface :deep(.el-table__inner-wrapper::before) {
@@ -1147,28 +1147,19 @@ onBeforeUnmount(() => {
 
 .upstream-filter-section,
 .upstream-table-section {
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  border-radius: 0;
+  gap: var(--space-4);
 }
 
-.upstream-filter-section :deep(.el-card__header),
-.upstream-table-section :deep(.el-card__header) {
-  padding: 0 0 16px;
+.upstream-filter-section :deep(.app-filter-bar) {
+  margin-top: 2px;
 }
 
-.upstream-filter-section :deep(.el-card__body),
-.upstream-table-section :deep(.el-card__body) {
-  padding: 0;
+.upstream-filter-section :deep(.filter-control--compact) {
+  grid-column: span 2;
 }
 
-.upstream-filter-section :deep(.el-card__body) {
-  padding-top: 16px;
-}
-
-.upstream-table-section :deep(.el-card__body) {
-  padding-top: 16px;
+.upstream-table-section :deep(.app-data-table) {
+  gap: var(--space-4);
 }
 
 .filter-actions {
@@ -1193,25 +1184,29 @@ onBeforeUnmount(() => {
 }
 
 .pagination-container {
-  margin-top: 18px;
+  margin-top: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
   display: flex;
   justify-content: flex-end;
 }
 
 .card-list .contract-card {
-  border-radius: var(--radius-lg);
+  border-radius: calc(var(--radius) + 2px);
+  background: var(--surface-panel-elevated);
+  box-shadow: var(--shadow-soft);
 }
 
 /* Mobile Card View */
 .card-list {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 
   .contract-card {
     border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    background: var(--surface-panel);
-    box-shadow: none;
+    border-radius: calc(var(--radius) + 2px);
+    background: var(--surface-panel-elevated);
+    box-shadow: var(--shadow-soft);
     
     .card-header {
       display: flex;

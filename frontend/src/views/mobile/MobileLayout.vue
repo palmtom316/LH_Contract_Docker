@@ -202,7 +202,7 @@ function confirmLogout() {
 <style scoped lang="scss">
 .mobile-shell {
   min-height: 100vh;
-  background: var(--surface-page);
+  background: var(--surface-page-gradient);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -217,7 +217,7 @@ function confirmLogout() {
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius-lg);
   background: hsl(var(--card));
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-frame);
   overflow: hidden;
 }
 

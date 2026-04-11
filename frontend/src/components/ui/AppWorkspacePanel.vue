@@ -16,7 +16,7 @@ defineProps({
 <style scoped lang="scss">
 .app-workspace-panel {
   display: grid;
-  gap: 16px;
+  gap: 18px;
   min-width: 0;
   padding: var(--workspace-panel-padding);
   border: 1px solid var(--workspace-panel-border);

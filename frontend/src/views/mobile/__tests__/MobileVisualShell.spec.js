@@ -12,5 +12,7 @@ describe('mobile shell visual contract', () => {
     expect(mobileShell).not.toContain('border-radius: 24px')
     expect(mobileShell).toContain('border-radius: var(--radius-lg);')
     expect(mobileShell).toContain('background: hsl(var(--card));')
+    expect(mobileShell).toContain('box-shadow: var(--shadow-frame);')
+    expect(mobileShell).toContain('background: var(--surface-page-gradient);')
   })
 })

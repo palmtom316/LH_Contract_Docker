@@ -1,7 +1,14 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, reactive, ref } from 'vue'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import DownstreamList from '@/views/contracts/DownstreamList.vue'
+
+const downstreamListSource = readFileSync(
+  path.resolve(process.cwd(), 'src/views/contracts/DownstreamList.vue'),
+  'utf-8'
+)
 
 const { getListMock, queryParamsState, getUpstreamContractsMock } = vi.hoisted(() => ({
   getListMock: vi.fn(),
@@ -171,5 +178,12 @@ describe('DownstreamList workspace shell', () => {
     expect(wrapper.findAll('.downstream-page-panel')).toHaveLength(2)
     expect(wrapper.find('.downstream-page-panel--filters').exists()).toBe(true)
     expect(wrapper.find('.downstream-page-panel--list').exists()).toBe(true)
+  })
+
+  it('keeps the downstream list surfaces elevated instead of flattening them into transparent cards', () => {
+    expect(downstreamListSource).toContain('background: var(--surface-panel-elevated);')
+    expect(downstreamListSource).toContain('padding-top: 16px;')
+    expect(downstreamListSource).toContain('border-top: 1px solid var(--border-subtle);')
+    expect(downstreamListSource).not.toContain('background: transparent;')
   })
 })

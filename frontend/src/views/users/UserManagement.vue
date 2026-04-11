@@ -1,144 +1,135 @@
 <template>
-  <div class="app-container">
-    <!-- Mobile Card View -->
-    <div v-if="isMobile" class="mobile-list">
-       <el-card shadow="never" class="mb-2">
-         <el-button type="success" icon="Plus" @click="handleAdd" style="width: 100%">新建用户</el-button>
-         <div style="margin-top: 10px;">
-            <el-input
-                v-model="searchKeyword"
-                placeholder="搜索用户..."
-                clearable
-                @keyup.enter="fetchUsers"
+  <div class="user-management-shell">
+    <section class="user-management-toolbar">
+      <AppFilterBar inline-actions>
+        <el-input
+          v-model="searchKeyword"
+          class="filter-control--search"
+          placeholder="搜索用户名 / 姓名 / 邮箱"
+          clearable
+          @keyup.enter="fetchUsers"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+        <template #actions>
+          <el-button type="primary" @click="fetchUsers">搜索</el-button>
+          <el-button type="primary" plain @click="handleAdd">新建用户</el-button>
+        </template>
+      </AppFilterBar>
+    </section>
+
+    <AppEmptyState
+      v-if="!loading && !userList.length"
+      title="暂无用户"
+      description="可通过上方搜索与新建操作维护系统账号。"
+    />
+
+    <template v-else-if="isMobile">
+      <div v-loading="loading" class="mobile-list">
+        <article v-for="user in userList" :key="user.id" class="mobile-card">
+          <div class="card-header">
+            <span class="username">{{ user.username }}</span>
+            <el-tag :type="getRoleTagType(user.role)" size="small">{{ user.role_display || user.role }}</el-tag>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <span class="label">姓名</span>
+              <span class="value">{{ user.full_name || '-' }}</span>
+            </div>
+            <div class="row">
+              <span class="label">邮箱</span>
+              <span class="value">{{ user.email || '-' }}</span>
+            </div>
+            <div class="row">
+              <span class="label">状态</span>
+              <span class="value">
+                <el-tag :type="user.is_active ? 'success' : 'danger'" size="small">
+                  {{ user.is_active ? '启用' : '禁用' }}
+                </el-tag>
+              </span>
+            </div>
+            <div class="row">
+              <span class="label">最后登录</span>
+              <span class="value">{{ formatDateTime(user.last_login) }}</span>
+            </div>
+          </div>
+          <div class="card-footer">
+            <el-button link type="primary" size="small" @click="handleEdit(user)">编辑</el-button>
+            <el-button link type="warning" size="small" @click="handleResetPassword(user)">重置密码</el-button>
+            <el-button
+              link
+              :type="user.is_active ? 'danger' : 'success'"
+              size="small"
+              @click="handleToggleStatus(user)"
             >
-                <template #append>
-                <el-button @click="fetchUsers"><el-icon><Search /></el-icon></el-button>
-                </template>
-            </el-input>
-         </div>
-       </el-card>
-
-       <div v-loading="loading">
-         <el-card v-for="user in userList" :key="user.id" class="mobile-card" shadow="sm">
-            <div class="card-header">
-                <span class="username">{{ user.username }}</span>
-                <el-tag :type="getRoleTagType(user.role)" size="small">{{ user.role_display || user.role }}</el-tag>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <span class="label">姓名:</span>
-                    <span class="value">{{ user.full_name || '-' }}</span>
-                </div>
-                <div class="row">
-                    <span class="label">邮箱:</span>
-                    <span class="value">{{ user.email || '-' }}</span>
-                </div>
-                 <div class="row">
-                    <span class="label">状态:</span>
-                    <span class="value">
-                        <el-tag :type="user.is_active ? 'success' : 'danger'" size="small">
-                            {{ user.is_active ? '启用' : '禁用' }}
-                        </el-tag>
-                    </span>
-                </div>
-                <div class="row">
-                    <span class="label">最后登录:</span>
-                    <span class="value">{{ formatDateTime(user.last_login) }}</span>
-                </div>
-            </div>
-            <div class="card-footer">
-                <el-button link type="primary" size="small" @click="handleEdit(user)">编辑</el-button>
-                <el-button link type="warning" size="small" @click="handleResetPassword(user)">重置密码</el-button>
-                 <el-button 
-                    link 
-                    :type="user.is_active ? 'danger' : 'success'" 
-                    size="small" 
-                    @click="handleToggleStatus(user)"
-                    >
-                    {{ user.is_active ? '禁用' : '启用' }}
-                </el-button>
-                <el-button 
-                    link 
-                    type="danger" 
-                    size="small" 
-                    @click="handleDelete(user)"
-                    :disabled="user.is_superuser"
-                >删除</el-button>
-            </div>
-         </el-card>
-       </div>
-    </div>
-
-    <!-- PC Table View -->
-    <div v-else class="pc-view">
-    <el-card class="filter-container" shadow="never">
-      <el-row :gutter="20" justify="space-between">
-        <el-col :span="16">
-          <el-input
-            v-model="searchKeyword"
-            placeholder="搜索用户名/姓名/邮箱"
-            clearable
-            style="width: 300px"
-            @keyup.enter="fetchUsers"
-          >
-            <template #prefix>
-              <el-icon><Search /></el-icon>
-            </template>
-          </el-input>
-          <el-button type="primary" @click="fetchUsers" style="margin-left: 10px">搜索</el-button>
-        </el-col>
-        <el-col :span="8" style="text-align: right">
-          <el-button type="success" icon="Plus" @click="handleAdd">新建用户</el-button>
-        </el-col>
-      </el-row>
-    </el-card>
-
-    <el-card shadow="always">
-      <el-table v-loading="loading" :data="userList" border style="width: 100%">
-        <el-table-column prop="id" label="ID" width="80" align="center" />
-        <el-table-column prop="username" label="用户名" width="120" />
-        <el-table-column prop="full_name" label="姓名" width="120" />
-        <el-table-column prop="email" label="邮箱" min-width="180" />
-        <el-table-column prop="role_display" label="角色" width="120" align="center">
-          <template #default="scope">
-            <el-tag :type="getRoleTagType(scope.row.role)">{{ scope.row.role_display || scope.row.role }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="is_active" label="状态" width="100" align="center">
-          <template #default="scope">
-            <el-tag :type="scope.row.is_active ? 'success' : 'danger'">
-              {{ scope.row.is_active ? '启用' : '禁用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="last_login" label="最后登录" width="180" align="center">
-          <template #default="scope">
-            {{ formatDateTime(scope.row.last_login) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right">
-          <template #default="scope">
-            <el-button link type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button link type="warning" size="small" @click="handleResetPassword(scope.row)">重置密码</el-button>
-            <el-button 
-              link 
-              :type="scope.row.is_active ? 'danger' : 'success'" 
-              size="small" 
-              @click="handleToggleStatus(scope.row)"
-            >
-              {{ scope.row.is_active ? '禁用' : '启用' }}
+              {{ user.is_active ? '禁用' : '启用' }}
             </el-button>
-            <el-button 
-              link 
-              type="danger" 
-              size="small" 
-              @click="handleDelete(scope.row)"
-              :disabled="scope.row.is_superuser"
-            >删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+            <el-button
+              link
+              type="danger"
+              size="small"
+              :disabled="user.is_superuser"
+              @click="handleDelete(user)"
+            >
+              删除
+            </el-button>
+          </div>
+        </article>
+      </div>
+    </template>
+
+    <template v-else>
+      <AppDataTable>
+        <el-table v-loading="loading" :data="userList" border>
+          <el-table-column prop="id" label="ID" width="80" align="center" />
+          <el-table-column prop="username" label="用户名" width="120" />
+          <el-table-column prop="full_name" label="姓名" width="120" />
+          <el-table-column prop="email" label="邮箱" min-width="180" />
+          <el-table-column prop="role_display" label="角色" width="120" align="center">
+            <template #default="scope">
+              <el-tag :type="getRoleTagType(scope.row.role)">{{ scope.row.role_display || scope.row.role }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="is_active" label="状态" width="100" align="center">
+            <template #default="scope">
+              <el-tag :type="scope.row.is_active ? 'success' : 'danger'">
+                {{ scope.row.is_active ? '启用' : '禁用' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="last_login" label="最后登录" width="180" align="center">
+            <template #default="scope">
+              {{ formatDateTime(scope.row.last_login) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="280" fixed="right">
+            <template #default="scope">
+              <el-button link type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
+              <el-button link type="warning" size="small" @click="handleResetPassword(scope.row)">重置密码</el-button>
+              <el-button
+                link
+                :type="scope.row.is_active ? 'danger' : 'success'"
+                size="small"
+                @click="handleToggleStatus(scope.row)"
+              >
+                {{ scope.row.is_active ? '禁用' : '启用' }}
+              </el-button>
+              <el-button
+                link
+                type="danger"
+                size="small"
+                :disabled="scope.row.is_superuser"
+                @click="handleDelete(scope.row)"
+              >
+                删除
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </AppDataTable>
+    </template>
 
     <!-- Create/Edit User Dialog -->
     <el-dialog 
@@ -203,57 +194,109 @@
         <el-button type="primary" @click="handleResetSubmit" :loading="resetting">确定</el-button>
       </template>
     </el-dialog>
-    </div>
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
+.user-management-shell {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.user-management-toolbar {
+  display: grid;
+  gap: var(--space-4);
+}
+
 .mobile-list {
-  padding-bottom: 20px;
+  display: grid;
+  gap: 16px;
 }
+
 .mobile-card {
-  margin-bottom: 10px;
-  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--border-subtle);
+  border-radius: calc(var(--radius) + 2px);
+  background: var(--surface-panel-elevated);
+  box-shadow: var(--shadow-soft);
 }
+
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
   border-bottom: 1px solid var(--border-subtle);
-  padding-bottom: 8px;
+  padding-bottom: 12px;
 }
+
 .username {
   font-weight: 600;
   font-size: 15px;
   color: var(--text-primary);
 }
+
 .card-body {
+  display: grid;
+  gap: 8px;
   font-size: 14px;
 }
+
 .row {
   display: flex;
-  margin-bottom: 6px;
+  justify-content: space-between;
+  gap: 12px;
   line-height: 1.4;
 }
+
 .label {
   color: var(--text-muted);
   width: 70px;
   flex-shrink: 0;
 }
+
 .value {
   color: var(--text-secondary);
   flex: 1;
   word-break: break-all;
-}
-.card-footer {
-  margin-top: 8px;
   text-align: right;
-  border-top: 1px solid var(--border-subtle);
-  padding-top: 8px;
 }
-.pc-view {
-  /* PC specific styles if any */
+
+.card-footer {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.user-management-shell :deep(.el-table__header th.el-table__cell) {
+  background: color-mix(in srgb, var(--surface-panel-muted) 72%, var(--surface-panel) 28%);
+}
+
+.user-management-shell :deep(.el-table) {
+  --el-table-border-color: var(--border-subtle);
+  --el-table-header-text-color: var(--text-secondary);
+  --el-table-text-color: var(--text-primary);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--surface-panel-muted) 56%, var(--surface-panel) 44%);
+}
+
+@media (max-width: 768px) {
+  .user-management-shell {
+    gap: var(--space-4);
+  }
+
+  .row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .value {
+    text-align: left;
+  }
 }
 </style>
 
@@ -263,6 +306,9 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import { useDevice } from '@/composables/useDevice'
+import AppFilterBar from '@/components/ui/AppFilterBar.vue'
+import AppDataTable from '@/components/ui/AppDataTable.vue'
+import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 
 const { isMobile } = useDevice()
 

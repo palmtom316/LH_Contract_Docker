@@ -296,7 +296,7 @@ onMounted(() => {
 .shell {
   min-height: 100vh;
   width: 100%;
-  background: hsl(var(--background));
+  background: var(--surface-page-gradient);
   position: relative;
 }
 
@@ -489,6 +489,7 @@ onMounted(() => {
   flex: 1;
   display: flex;
   min-width: 0;
+  background: transparent;
 }
 
 .content {
@@ -540,8 +541,13 @@ onMounted(() => {
 
 .app-main__frame {
   min-height: 100%;
-  background: transparent;
+  max-width: var(--workspace-max-width);
+  margin: 0 auto;
   padding: 20px;
+  background: color-mix(in srgb, hsl(var(--card)) 94%, hsl(var(--muted)) 6%);
+  border: 1px solid var(--workspace-panel-border);
+  border-radius: calc(var(--radius-lg) + 2px);
+  box-shadow: var(--shadow-frame);
 }
 
 @media (max-width: 1100px) {

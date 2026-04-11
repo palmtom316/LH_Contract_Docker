@@ -59,9 +59,10 @@ describe('createHorizontalRankOption', () => {
     expect(option.series[0].data).toEqual([100000, 80000])
     expect(option.title).toBeUndefined()
     expect(option.grid.left).toBe('24%')
-    expect(option.grid.bottom).toBe('12%')
+    expect(option.grid.bottom).toBe('20%')
     expect(option.xAxis.name).toBe('金额（万元）')
-    expect(option.xAxis.splitNumber).toBe(4)
+    expect(option.xAxis.splitNumber).toBe(3)
+    expect(option.xAxis.axisLabel.hideOverlap).toBe(true)
     expect(option.yAxis.axisLabel.width).toBeGreaterThanOrEqual(112)
     expect(option.xAxis.axisLabel.formatter(200000)).toBe('20万')
   })
@@ -75,8 +76,11 @@ describe('createHorizontalRankOption', () => {
       ]
     })
 
-    expect(option.yAxis.data).toEqual(['暂无数据'])
-    expect(option.series[0].data).toEqual([0])
+    expect(option.xAxis.show).toBe(false)
+    expect(option.yAxis.show).toBe(false)
+    expect(option.yAxis.data).toEqual([])
+    expect(option.series[0].data).toEqual([])
+    expect(option.graphic.elements[0].style.text).toBe('暂无数据')
   })
 })
 
@@ -96,5 +100,25 @@ describe('createStackedCategoryOption', () => {
     expect(option.title).toBeUndefined()
     expect(option.xAxis.name).toBe('金额（万元）')
     expect(option.xAxis.axisLabel.formatter(300000)).toBe('30万')
+    expect(option.xAxis.axisLabel.hideOverlap).toBe(true)
+    expect(option.grid.bottom).toBe('72px')
+    expect(option.legend.type).toBe('scroll')
+  })
+
+  it('uses a chart-level empty state when every stacked series value is zero', () => {
+    const option = createStackedCategoryOption({
+      title: '支出构成',
+      categories: ['本期支出'],
+      series: [
+        { name: '下游合同', data: [0] },
+        { name: '管理合同', data: [0] }
+      ]
+    })
+
+    expect(option.legend.show).toBe(false)
+    expect(option.xAxis.show).toBe(false)
+    expect(option.yAxis.show).toBe(false)
+    expect(option.series).toEqual([])
+    expect(option.graphic.elements[0].style.text).toBe('暂无数据')
   })
 })

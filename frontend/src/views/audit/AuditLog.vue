@@ -325,7 +325,7 @@ onMounted(() => {
 
 .audit-card-list {
   display: grid;
-  gap: 12px;
+  gap: 16px;
 }
 
 .audit-card {
@@ -333,8 +333,8 @@ onMounted(() => {
   gap: 14px;
   padding: 18px;
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--surface-panel);
+  border-radius: calc(var(--radius) + 2px);
+  background: var(--surface-panel-elevated);
   box-shadow: var(--shadow-soft);
 }
 
@@ -400,11 +400,26 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   width: 100%;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
 }
 
 .pagination-container--mobile {
   justify-content: center;
   margin-top: 8px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.audit-log-panel :deep(.el-table__header th.el-table__cell) {
+  background: color-mix(in srgb, var(--surface-panel-muted) 72%, var(--surface-panel) 28%);
+}
+
+.audit-log-panel :deep(.el-table) {
+  --el-table-border-color: var(--border-subtle);
+  --el-table-header-text-color: var(--text-secondary);
+  --el-table-text-color: var(--text-primary);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--surface-panel-muted) 56%, var(--surface-panel) 44%);
 }
 
 @media (max-width: 767px) {

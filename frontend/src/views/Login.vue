@@ -106,7 +106,7 @@ const handleLogin = async () => {
   display: grid;
   place-items: center;
   padding: 24px;
-  background: hsl(var(--background));
+  background: var(--surface-page-gradient);
 }
 
 .login-shell__panel {
@@ -115,7 +115,7 @@ const handleLogin = async () => {
   grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius-lg);
-  background: hsl(var(--card));
+  background: color-mix(in srgb, hsl(var(--card)) 94%, hsl(var(--muted)) 6%);
   box-shadow: var(--shadow-frame);
   overflow: hidden;
 }
@@ -170,7 +170,7 @@ const handleLogin = async () => {
 }
 
 .login-form :deep(.el-input__wrapper) {
-  min-height: 36px;
+  min-height: 40px;
   border-radius: 10px;
   box-shadow: 0 0 0 1px hsl(var(--border)) inset;
   background: hsl(var(--background));
@@ -182,7 +182,7 @@ const handleLogin = async () => {
 
 .login-form .login-button {
   width: 100%;
-  min-height: 36px;
+  min-height: 40px;
   background-color: hsl(var(--primary));
   border-color: hsl(var(--primary));
   font-weight: 700;

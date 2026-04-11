@@ -26,7 +26,7 @@ defineProps({
 <style scoped lang="scss">
 .app-filter-bar {
   min-width: 0;
-  padding: 16px;
+  padding: 18px;
   border: 1px solid var(--workspace-panel-border);
   border-radius: var(--workspace-panel-radius);
   background: var(--surface-panel);
@@ -75,8 +75,8 @@ defineProps({
 .app-filter-bar__main :deep(.el-input__wrapper),
 .app-filter-bar__main :deep(.el-select__wrapper),
 .app-filter-bar__main :deep(.app-range-field) {
-  min-height: 36px;
-  height: 36px;
+  min-height: var(--workspace-control-height);
+  height: var(--workspace-control-height);
   border-radius: var(--workspace-control-radius);
   border: 1px solid hsl(var(--input));
   box-shadow: none;
@@ -95,7 +95,7 @@ defineProps({
 }
 
 .app-filter-bar__main :deep(.filter-control--time) {
-  grid-column: span 4;
+  grid-column: span 2;
   width: 100%;
   justify-self: stretch;
 }
@@ -105,11 +105,11 @@ defineProps({
 }
 
 .app-filter-bar__main :deep(.app-range-field) {
-  min-height: 36px;
+  min-height: var(--workspace-control-height);
 }
 
 .app-filter-bar__main :deep(.filter-control--search) {
-  grid-column: span 5;
+  grid-column: span 4;
 }
 
 .app-filter-bar__main :deep(.filter-control--search .el-input__wrapper),
@@ -133,7 +133,7 @@ defineProps({
 }
 
 .app-filter-bar__actions--inline {
-  grid-column: span 4;
+  grid-column: span 6;
   padding-top: 0;
   justify-content: flex-start;
 }
@@ -144,8 +144,8 @@ defineProps({
 
 .app-filter-bar__actions :deep(.el-button) {
   min-width: 0;
-  height: 36px;
-  padding-inline: 14px;
+  height: var(--workspace-control-height);
+  padding-inline: 12px;
   border-radius: var(--workspace-control-radius);
   border-color: hsl(var(--border));
   background: var(--surface-panel);
@@ -162,16 +162,27 @@ defineProps({
 
 @media (max-width: 1280px) {
   .app-filter-bar__main {
-    grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-template-columns: repeat(12, minmax(0, 1fr));
   }
 
-  .app-filter-bar__main :deep(.filter-control--search),
+  .app-filter-bar__main > * {
+    grid-column: span 2;
+  }
+
+  .app-filter-bar__main :deep(.filter-control--search) {
+    grid-column: span 4;
+  }
+
+  .app-filter-bar__main :deep(.filter-control--wide) {
+    grid-column: span 4;
+  }
+
   .app-filter-bar__main :deep(.filter-control--time) {
-    grid-column: span 3;
+    grid-column: span 2;
   }
 
   .app-filter-bar__actions--inline {
-    grid-column: span 3;
+    grid-column: span 6;
   }
 
   .app-filter-bar__main :deep(.filter-control--range-wide) {

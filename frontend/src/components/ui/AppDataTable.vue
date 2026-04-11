@@ -33,7 +33,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  border-radius: var(--radius);
+  border-radius: calc(var(--radius) + 2px);
   border: 1px solid var(--workspace-panel-border);
   background: var(--surface-panel);
   box-shadow: none;

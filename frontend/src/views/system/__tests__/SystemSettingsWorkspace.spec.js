@@ -1,6 +1,13 @@
 import { flushPromises, shallowMount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import SystemSettings from '@/views/system/SystemSettings.vue'
+
+const systemSettingsSource = readFileSync(
+  path.resolve(process.cwd(), 'src/views/system/SystemSettings.vue'),
+  'utf-8'
+)
 
 const fetchConfigMock = vi.fn().mockResolvedValue(undefined)
 const fetchOptionsMock = vi.fn().mockResolvedValue([])
@@ -80,5 +87,12 @@ describe('SystemSettings workspace shell', () => {
     expect(wrapper.find('.app-page-header-stub').exists()).toBe(false)
     expect(wrapper.find('.system-settings-panel').exists()).toBe(true)
     expect(wrapper.find('.system-settings-tabs').exists()).toBe(true)
+  })
+
+  it('keeps dictionary management inside the same workspace surface rhythm', () => {
+    expect(systemSettingsSource).toContain('border-radius: calc(var(--radius-lg) + 2px);')
+    expect(systemSettingsSource).toContain('padding: 18px;')
+    expect(systemSettingsSource).toContain('justify-content: space-between;')
+    expect(systemSettingsSource).not.toContain('border-radius: 14px;')
   })
 })

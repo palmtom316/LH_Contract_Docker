@@ -16,13 +16,18 @@
 .app-section-card {
   display: grid;
   gap: 16px;
-  padding: 16px;
+  padding: 18px;
   min-width: 0;
   border: 1px solid var(--workspace-panel-border);
-  border-radius: var(--radius);
+  border-radius: calc(var(--radius) + 2px);
   background: var(--surface-panel);
   box-shadow: var(--workspace-panel-shadow);
-  transition: box-shadow 180ms ease, border-color 180ms ease;
+  transition: box-shadow 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+
+.app-section-card:hover {
+  border-color: hsl(var(--border));
+  transform: translateY(-1px);
 }
 
 .app-section-card__header {

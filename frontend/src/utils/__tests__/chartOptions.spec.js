@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { createBarChartOption, createPieChartOption } from '../chartOptions'
+import { createBarChartOption, createPieChartOption, createResultWaterfallOption } from '../chartOptions'
 import { readChartTheme } from '../chartTheme'
 
 describe('createBarChartOption', () => {
@@ -65,6 +65,57 @@ describe('createPieChartOption', () => {
     })
 
     expect(option.series[0].data).toEqual([])
+  })
+})
+
+describe('createResultWaterfallOption', () => {
+  beforeEach(() => {
+    document.documentElement.style.setProperty('--text-secondary', '#475569')
+    document.documentElement.style.setProperty('--text-primary', '#0f172a')
+    document.documentElement.style.setProperty('--border-subtle', '#d7dfeb')
+    document.documentElement.style.setProperty('--surface-panel', '#ffffff')
+    document.documentElement.style.setProperty('--brand-primary', '#2563eb')
+    document.documentElement.style.setProperty('--status-success', '#0f766e')
+    document.documentElement.style.setProperty('--status-warning', '#b45309')
+    document.documentElement.style.setProperty('--status-danger', '#b83280')
+    document.documentElement.style.setProperty('--status-info', '#475569')
+  })
+
+  it('switches to a dedicated empty state instead of rendering overlapping category labels when all values are zero', () => {
+    const option = createResultWaterfallOption({
+      received: 0,
+      downstreamExpense: 0,
+      managementExpense: 0,
+      nonContractExpense: 0,
+      laborExpense: 0
+    })
+
+    expect(option.xAxis.show).toBe(false)
+    expect(option.yAxis.show).toBe(false)
+    expect(option.series[0].data).toEqual([])
+    expect(option.series[1].data).toEqual([])
+    expect(option.graphic.elements[0].style.text).toBe('暂无数据')
+  })
+
+  it('wraps long category labels and reads the visible result series value in tooltips', () => {
+    const option = createResultWaterfallOption({
+      received: 1900000,
+      downstreamExpense: 510000,
+      managementExpense: 235000,
+      nonContractExpense: 74400,
+      laborExpense: 68160
+    })
+
+    expect(option.grid.bottom).toBe('22%')
+    expect(option.xAxis.axisLabel.hideOverlap).toBe(true)
+    expect(option.xAxis.axisLabel.formatter('无合同费用')).toBe('无合同\n费用')
+
+    const tooltipHtml = option.tooltip.formatter([
+      { seriesName: '辅助', name: '上游回款', value: 0 },
+      { seriesName: '结果', name: '上游回款', value: 1900000 }
+    ])
+
+    expect(tooltipHtml).toBe('上游回款<br/>1,900,000 元')
   })
 })
 

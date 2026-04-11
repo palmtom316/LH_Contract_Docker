@@ -1,8 +1,30 @@
 import { shallowMount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import NotificationCenter from '@/views/notifications/NotificationCenter.vue'
 import SystemManagement from '@/views/system/SystemManagement.vue'
 import AuditLog from '@/views/audit/AuditLog.vue'
+
+const systemManagementSource = readFileSync(
+  path.resolve(process.cwd(), 'src/views/system/SystemManagement.vue'),
+  'utf-8'
+)
+
+const notificationCenterSource = readFileSync(
+  path.resolve(process.cwd(), 'src/views/notifications/NotificationCenter.vue'),
+  'utf-8'
+)
+
+const auditLogSource = readFileSync(
+  path.resolve(process.cwd(), 'src/views/audit/AuditLog.vue'),
+  'utf-8'
+)
+
+const userManagementSource = readFileSync(
+  path.resolve(process.cwd(), 'src/views/users/UserManagement.vue'),
+  'utf-8'
+)
 
 const { notificationsState, markNotificationReadMock, removeNotificationMock } = vi.hoisted(() => ({
   notificationsState: [
@@ -130,11 +152,24 @@ describe('Utility workspace shells', () => {
     expect(wrapper.text()).toContain('DOWN-001 关联下游合同')
   })
 
+  it('keeps the notification feed on elevated list surfaces with restrained unread emphasis', () => {
+    expect(notificationCenterSource).toContain('box-shadow: var(--shadow-soft);')
+    expect(notificationCenterSource).toContain('background: var(--surface-panel-elevated);')
+    expect(notificationCenterSource).toContain('notification-item--unread')
+  })
+
   it('renders the system workspace wrappers', () => {
     const wrapper = shallowMount(SystemManagement, { global: globalMountOptions })
 
     expect(wrapper.find('.system-management-shell').exists()).toBe(true)
     expect(wrapper.find('.system-management-panel').exists()).toBe(true)
+  })
+
+  it('keeps operations panels aligned to the shared workspace spacing scale', () => {
+    expect(systemManagementSource).toContain('gap: var(--space-5);')
+    expect(systemManagementSource).toContain('min-height: 100%;')
+    expect(systemManagementSource).toContain('background: color-mix(in srgb, var(--surface-panel) 84%, var(--status-warning) 16%);')
+    expect(systemManagementSource).not.toContain('.operation-panel {\n  height: 100%;')
   })
 
   it('renders the audit workspace wrappers', () => {
@@ -144,5 +179,14 @@ describe('Utility workspace shells', () => {
     expect(wrapper.find('.audit-log-header').exists()).toBe(false)
     expect(wrapper.find('.audit-log-panel--filters').exists()).toBe(true)
     expect(wrapper.find('.audit-log-panel--records').exists()).toBe(true)
+  })
+
+  it('brings audit records and user management onto the shared workspace shell rhythm', () => {
+    expect(auditLogSource).toContain('box-shadow: var(--shadow-soft);')
+    expect(auditLogSource).toContain('background: var(--surface-panel-elevated);')
+    expect(userManagementSource).toContain('user-management-shell')
+    expect(userManagementSource).toContain("import AppFilterBar from '@/components/ui/AppFilterBar.vue'")
+    expect(userManagementSource).toContain("import AppDataTable from '@/components/ui/AppDataTable.vue'")
+    expect(userManagementSource).toContain('gap: var(--space-5);')
   })
 })

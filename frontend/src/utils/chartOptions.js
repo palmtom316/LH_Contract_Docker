@@ -15,6 +15,90 @@ function formatCompactWan(value) {
   return `${Math.round(numeric / 10000)}万`
 }
 
+function formatWaterfallCategoryLabel(value) {
+  const text = typeof value === 'string' ? value : String(value || '')
+  if (!text) return ''
+  const wrapped = {
+    上游回款: '上游\n回款',
+    下游合同: '下游\n合同',
+    管理合同: '管理\n合同',
+    无合同费用: '无合同\n费用',
+    零星用工: '零星\n用工',
+    净结果: '净结果'
+  }
+  return wrapped[text] || text
+}
+
+function hasMeaningfulValues(values = []) {
+  return ensureArray(values).some((value) => Number(value || 0) !== 0)
+}
+
+function createCartesianEmptyState(theme, { seriesCount = 1, barMaxWidth = 24 } = {}) {
+  return {
+    aria: { enabled: true },
+    tooltip: { show: false },
+    grid: {
+      left: '8%',
+      right: '4%',
+      top: '10%',
+      bottom: '14%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: [],
+      show: false
+    },
+    yAxis: {
+      type: 'value',
+      show: false
+    },
+    graphic: {
+      elements: [
+        {
+          type: 'text',
+          left: 'center',
+          top: 'middle',
+          style: {
+            text: '暂无数据',
+            textAlign: 'center',
+            fill: theme.text,
+            fontSize: 13,
+            fontWeight: 600
+          }
+        },
+        {
+          type: 'circle',
+          left: 'center',
+          top: 'middle',
+          shape: { cx: 0, cy: -30, r: 16 },
+          style: {
+            fill: 'transparent',
+            stroke: theme.border,
+            lineWidth: 1.5
+          }
+        },
+        {
+          type: 'line',
+          left: 'center',
+          top: 'middle',
+          shape: { x1: -8, y1: -20, x2: 8, y2: -20 },
+          style: {
+            stroke: theme.border,
+            lineWidth: 1.5,
+            lineCap: 'round'
+          }
+        }
+      ]
+    },
+    series: Array.from({ length: seriesCount }, () => ({
+      type: 'bar',
+      barMaxWidth,
+      data: []
+    }))
+  }
+}
+
 export function createBarChartOption({ categories = [], series = [] }) {
   const theme = readChartTheme()
   const safeCategories = ensureArray(categories)
@@ -241,6 +325,10 @@ export function createResultWaterfallOption({
     netResult
   ]
 
+  if (!hasMeaningfulValues(deltas)) {
+    return createCartesianEmptyState(theme, { seriesCount: 2, barMaxWidth: 24 })
+  }
+
   let runningTotal = 0
   const offsetSeries = deltas.map((delta, index) => {
     if (index === deltas.length - 1) {
@@ -271,16 +359,17 @@ export function createResultWaterfallOption({
       borderColor: theme.tooltipBorder,
       textStyle: { color: theme.textStrong, fontSize: 12 },
       formatter(params) {
-        const first = Array.isArray(params) ? params[0] : params
-        if (!first) return ''
-        return `${first.name}<br/>${Number(first.value || 0).toLocaleString('zh-CN')} 元`
+        const safeParams = Array.isArray(params) ? params : [params]
+        const visiblePoint = safeParams.find((item) => Number(item?.value || 0) !== 0) || safeParams[safeParams.length - 1]
+        if (!visiblePoint) return ''
+        return `${visiblePoint.name}<br/>${Number(visiblePoint.value || 0).toLocaleString('zh-CN')} 元`
       }
     },
     grid: {
       left: '8%',
       right: '4%',
       top: '10%',
-      bottom: '14%',
+      bottom: '22%',
       containLabel: true
     },
     xAxis: {
@@ -289,7 +378,10 @@ export function createResultWaterfallOption({
       axisLabel: {
         color: theme.text,
         fontSize: 11,
-        interval: 0
+        interval: 0,
+        hideOverlap: true,
+        lineHeight: 14,
+        formatter: formatWaterfallCategoryLabel
       },
       axisLine: {
         show: false

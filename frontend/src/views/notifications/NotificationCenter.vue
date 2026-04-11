@@ -17,7 +17,10 @@
           v-for="item in filteredNotifications"
           :key="item.id"
           class="notification-item"
-          :class="{ 'notification-item--read': item.unread === false }"
+          :class="{
+            'notification-item--read': item.unread === false,
+            'notification-item--unread': item.unread !== false
+          }"
         >
           <div class="notification-item__top">
             <div class="notification-item__title">{{ item.title }}</div>
@@ -115,35 +118,42 @@ onMounted(async () => {
 }
 
 .notification-center-panel {
-  gap: 18px;
+  gap: var(--space-4);
 }
 
 .notification-center-toolbar {
   display: flex;
   justify-content: flex-start;
+  padding-bottom: 2px;
 }
 
 .notification-list {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
 .notification-item {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 14px 16px;
-  background: var(--surface-panel);
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  border-radius: calc(var(--radius) + 2px);
+  padding: 16px 18px;
+  background: var(--surface-panel-elevated);
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.notification-item--unread {
+  border-color: color-mix(in srgb, var(--border-subtle) 74%, var(--brand-primary-soft) 26%);
 }
 
 .notification-item--read {
-  opacity: 0.72;
+  opacity: 0.78;
 }
 
 .notification-item:hover {
-  background: color-mix(in srgb, var(--surface-panel-muted) 72%, var(--surface-panel) 28%);
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--surface-panel-muted) 62%, var(--surface-panel-elevated) 38%);
 }
 
 .notification-item__top {
@@ -181,8 +191,8 @@ onMounted(async () => {
   gap: 10px;
   padding: 12px;
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--surface-panel-muted) 76%, var(--surface-panel) 24%);
+  border-radius: calc(var(--radius) - 2px);
+  background: color-mix(in srgb, var(--surface-panel-muted) 74%, var(--surface-panel-elevated) 26%);
 }
 
 .notification-related-group {

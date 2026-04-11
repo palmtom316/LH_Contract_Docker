@@ -281,30 +281,19 @@ onMounted(async () => {
 <style scoped>
 .system-settings-page {
   display: grid;
-  gap: var(--workspace-shell-gap);
+  gap: var(--space-5);
 }
 
 .system-settings-panel {
-  gap: 0;
+  gap: var(--space-4);
 }
 
 .system-settings-card {
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  border-radius: 0;
-}
-
-.system-settings-card :deep(.el-card__header) {
-  padding: 0 0 16px;
-}
-
-.system-settings-card :deep(.el-card__body) {
-  padding: 0;
+  gap: var(--space-4);
 }
 
 .system-settings-tabs :deep(.el-tabs__header) {
-  margin-bottom: 20px;
+  margin-bottom: var(--space-5);
 }
 
 .upload-inline {
@@ -316,9 +305,10 @@ onMounted(async () => {
   grid-template-columns: 220px minmax(0, 1fr);
   min-height: 560px;
   border: 1px solid var(--border-subtle);
-  border-radius: 14px;
+  border-radius: calc(var(--radius-lg) + 2px);
   overflow: hidden;
   background: var(--surface-panel);
+  box-shadow: var(--shadow-soft);
 }
 
 .dict-layout__aside {
@@ -329,8 +319,8 @@ onMounted(async () => {
 .dict-layout__main {
   display: grid;
   align-content: start;
-  gap: 12px;
-  padding: 16px;
+  gap: 16px;
+  padding: 18px;
   min-width: 0;
 }
 
@@ -342,6 +332,8 @@ onMounted(async () => {
 .dict-toolbar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
