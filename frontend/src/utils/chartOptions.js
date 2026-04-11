@@ -13,9 +13,16 @@ export function createBarChartOption({ categories = [], series = [] }) {
     aria: {
       enabled: true
     },
-    tooltip: { trigger: 'axis', confine: true },
+    tooltip: {
+      trigger: 'axis',
+      confine: true,
+      backgroundColor: theme.tooltipBg,
+      borderColor: theme.tooltipBorder,
+      textStyle: { color: theme.textStrong, fontSize: 12 }
+    },
     legend: {
       bottom: 0,
+      type: 'scroll',
       textStyle: { color: theme.text, fontSize: 12 }
     },
     grid: {
@@ -34,7 +41,10 @@ export function createBarChartOption({ categories = [], series = [] }) {
         fontSize: 11
       },
       axisLine: {
-        lineStyle: { color: theme.border }
+        show: false
+      },
+      axisTick: {
+        show: false
       }
     },
     yAxis: {
@@ -42,14 +52,21 @@ export function createBarChartOption({ categories = [], series = [] }) {
       axisLabel: {
         color: theme.text
       },
+      axisLine: {
+        show: false
+      },
       splitLine: {
-        lineStyle: { color: theme.border }
+        lineStyle: { color: theme.gridLine }
       }
     },
     series: safeSeries.map(item => ({
       ...item,
       type: 'bar',
-      barMaxWidth: 18
+      barMaxWidth: 18,
+      itemStyle: {
+        borderRadius: [6, 6, 0, 0],
+        ...(item.itemStyle || {})
+      }
     }))
   }
 }
@@ -73,31 +90,44 @@ export function createPieChartOption({ title = '', data = [] }) {
     },
     tooltip: {
       trigger: 'item',
-      confine: true
+      confine: true,
+      backgroundColor: theme.tooltipBg,
+      borderColor: theme.tooltipBorder,
+      textStyle: {
+        color: theme.textStrong,
+        fontSize: 12
+      }
     },
     legend: {
       bottom: 0,
       type: 'scroll',
       textStyle: {
         color: theme.text,
-        fontSize: 11
+        fontSize: 12
       }
     },
     series: [
       {
         type: 'pie',
-        radius: ['42%', '68%'],
+        radius: ['56%', '74%'],
         center: ['50%', '42%'],
         avoidLabelOverlap: true,
         label: {
-          position: 'outside',
-          color: theme.text,
-          formatter: '{b}: {d}%'
+          show: false
         },
         labelLine: {
-          show: true,
-          length: 10,
-          length2: 8
+          show: false
+        },
+        emphasis: {
+          scale: true,
+          label: {
+            show: true,
+            position: 'center',
+            formatter: '{b}\n{d}%',
+            color: theme.textStrong,
+            fontSize: 14,
+            fontWeight: 600
+          }
         },
         data: safeData
       }

@@ -39,13 +39,21 @@ describe('createBarChartOption', () => {
 })
 
 describe('createPieChartOption', () => {
-  it('moves pie labels outside the plot area', () => {
+  it('uses center emphasis and legend-led reading instead of risky outside labels', () => {
     const option = createPieChartOption({
-      title: '合同分类',
-      data: [{ name: '工程', value: 30 }]
+      title: '费用结构',
+      data: [
+        { name: '管理费', value: 30 },
+        { name: '人工费', value: 20 },
+        { name: '材料费', value: 10 }
+      ]
     })
 
-    expect(option.series[0].label.position).toBe('outside')
+    expect(option.series[0].label.show).toBe(false)
+    expect(option.series[0].labelLine.show).toBe(false)
+    expect(option.series[0].emphasis.label.show).toBe(true)
+    expect(option.series[0].emphasis.label.position).toBe('center')
+    expect(option.legend.type).toBe('scroll')
     expect(option.series[0].avoidLabelOverlap).toBe(true)
     expect(option.aria.enabled).toBe(true)
   })

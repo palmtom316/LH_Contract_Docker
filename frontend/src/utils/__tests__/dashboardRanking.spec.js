@@ -58,10 +58,11 @@ describe('createHorizontalRankOption', () => {
     expect(option.series[0].type).toBe('bar')
     expect(option.series[0].data).toEqual([100000, 80000])
     expect(option.title).toBeUndefined()
-    expect(option.grid.left).toBe('18%')
+    expect(option.grid.left).toBe('24%')
     expect(option.grid.bottom).toBe('12%')
     expect(option.xAxis.name).toBe('金额（万元）')
     expect(option.xAxis.splitNumber).toBe(4)
+    expect(option.yAxis.axisLabel.width).toBeGreaterThanOrEqual(112)
     expect(option.xAxis.axisLabel.formatter(200000)).toBe('20万')
   })
 
