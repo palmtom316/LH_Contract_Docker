@@ -21,7 +21,12 @@ echarts.use([
     CanvasRenderer
 ])
 
-export { createBarChartOption, createPieChartOption } from './chartOptions'
+export {
+    createBarChartOption,
+    createPieChartOption,
+    createResultWaterfallOption,
+    createStackedTrendOption
+} from './chartOptions'
 export { readChartTheme } from './chartTheme'
 
 export default echarts

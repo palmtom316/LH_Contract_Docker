@@ -106,8 +106,7 @@ const handleLogin = async () => {
   display: grid;
   place-items: center;
   padding: 24px;
-  background:
-    linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background)) 100%);
+  background: hsl(var(--background));
 }
 
 .login-shell__panel {
@@ -115,7 +114,7 @@ const handleLogin = async () => {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
   border: 1px solid hsl(var(--border));
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   background: hsl(var(--card));
   box-shadow: var(--shadow-frame);
   overflow: hidden;
@@ -132,8 +131,7 @@ const handleLogin = async () => {
   gap: 12px;
   padding: 36px;
   border-right: 1px solid hsl(var(--border));
-  background:
-    linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--muted) / 0.48) 100%);
+  background: hsl(var(--muted));
 }
 
 .login-shell__title {

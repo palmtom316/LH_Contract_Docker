@@ -1199,7 +1199,7 @@ onBeforeUnmount(() => {
 }
 
 .card-list .contract-card {
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
 }
 
 /* Mobile Card View */
