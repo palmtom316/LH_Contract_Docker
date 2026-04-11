@@ -1,38 +1,39 @@
 <template>
-  <section class="app-section-card">
-    <div v-if="$slots.header || $slots.actions" class="app-section-card__header">
-      <div class="app-section-card__title">
+  <section class="app-chart-panel">
+    <header v-if="$slots.header || $slots.actions" class="app-chart-panel__header">
+      <div class="app-chart-panel__title">
         <slot name="header" />
       </div>
-      <div v-if="$slots.actions" class="app-section-card__actions">
+      <div v-if="$slots.actions" class="app-chart-panel__actions">
         <slot name="actions" />
       </div>
+    </header>
+    <div class="app-chart-panel__body">
+      <slot />
     </div>
-    <slot />
   </section>
 </template>
 
 <style scoped lang="scss">
-.app-section-card {
+.app-chart-panel {
   display: grid;
   gap: 16px;
-  padding: 16px;
   min-width: 0;
+  padding: 16px;
   border: 1px solid var(--workspace-panel-border);
   border-radius: var(--radius);
   background: var(--surface-panel);
   box-shadow: var(--workspace-panel-shadow);
-  transition: box-shadow 180ms ease, border-color 180ms ease;
 }
 
-.app-section-card__header {
+.app-chart-panel__header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
 }
 
-.app-section-card__title {
+.app-chart-panel__title {
   min-width: 0;
   color: hsl(var(--foreground));
   font-size: 16px;
@@ -40,21 +41,25 @@
   letter-spacing: -0.02em;
 }
 
-.app-section-card__actions {
+.app-chart-panel__actions {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
   justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.app-chart-panel__body {
+  min-width: 0;
 }
 
 @media (max-width: 768px) {
-  .app-section-card__header {
+  .app-chart-panel__header {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .app-section-card__actions {
+  .app-chart-panel__actions {
     justify-content: flex-start;
   }
 }

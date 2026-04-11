@@ -153,10 +153,12 @@ describe('AppFilterBar', () => {
   })
 
   it('uses theme-aware surface tokens instead of hardcoded light colors in shared chrome', () => {
-    expect(appFilterBarSource).toContain('background: hsl(var(--background));')
+    expect(appFilterBarSource).toContain('background: var(--surface-panel);')
+    expect(appFilterBarSource).toContain('box-shadow: var(--workspace-panel-shadow);')
     expect(appFilterBarSource).not.toContain('background: #fff;')
     expect(appDataTableSource).toContain('--el-table-header-bg-color: hsl(var(--muted));')
     expect(appDataTableSource).toContain('--el-table-row-hover-bg-color: hsl(var(--muted) / 0.65);')
+    expect(appDataTableSource).toContain('background: var(--surface-panel);')
     expect(appDataTableSource).not.toContain('#f8fafc')
     expect(appDataTableSource).not.toContain('#ffffff')
   })

@@ -21,7 +21,7 @@ defineProps({
   padding: var(--workspace-panel-padding);
   border: 1px solid var(--workspace-panel-border);
   border-radius: var(--workspace-panel-radius);
-  background: var(--surface-panel-elevated);
+  background: var(--workspace-panel-background);
   box-shadow: var(--workspace-panel-shadow);
 }
 </style>
