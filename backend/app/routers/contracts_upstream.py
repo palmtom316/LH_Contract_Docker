@@ -712,7 +712,7 @@ async def download_import_template():
 @router.post("/import/excel")
 async def import_contracts_from_excel(
     file: UploadFile,
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission(Permission.CREATE_UPSTREAM_CONTRACTS)),
     service: ContractUpstreamService = Depends(get_contract_service)
 ):
     """Batch import upstream contracts from Excel file"""

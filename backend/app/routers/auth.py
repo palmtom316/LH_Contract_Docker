@@ -185,6 +185,7 @@ async def change_password(
         )
     
     current_user.hashed_password = get_password_hash(password_data.new_password)
+    await revoke_all_user_tokens(current_user.id, db)
     
     # Audit log
     await create_audit_log(

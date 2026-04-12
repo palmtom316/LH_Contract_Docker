@@ -6,7 +6,7 @@ import { useSystemStore } from '@/stores/system'
 export const useUserStore = defineStore('user', {
     state: () => ({
         token: localStorage.getItem('token') || '',
-        refreshToken: localStorage.getItem('refresh_token') || '',
+        refreshToken: '',
         tokenExpiresAt: localStorage.getItem('token_expires_at') || null,
         user: JSON.parse(localStorage.getItem('user_info') || '{}'),
         permissions: JSON.parse(localStorage.getItem('user_permissions') || '[]')

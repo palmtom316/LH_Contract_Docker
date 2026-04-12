@@ -48,7 +48,11 @@ async def test_legacy_uploads_path_still_downloads_with_auth_header(monkeypatch,
         def stat_object(self, bucket, path):
             raise RuntimeError("not found")
 
+    async def fake_user_can_access_file_path(path, db, current_user):
+        return True
+
     monkeypatch.setattr(common, "get_user_from_token", fake_get_user_from_token)
+    monkeypatch.setattr(common, "user_can_access_file_path", fake_user_can_access_file_path)
     monkeypatch.setattr(common, "get_minio_client", lambda: MissingMinioClient())
     settings.UPLOAD_DIR = str(tmp_path)
 
@@ -93,7 +97,11 @@ async def test_minio_key_download_works_without_query_token(monkeypatch):
             assert path == "contracts/2026/04/demo.pdf"
             return FakeObjectResponse()
 
+    async def fake_user_can_access_file_path(path, db, current_user):
+        return True
+
     monkeypatch.setattr(common, "get_user_from_token", fake_get_user_from_token)
+    monkeypatch.setattr(common, "user_can_access_file_path", fake_user_can_access_file_path)
     monkeypatch.setattr(common, "get_minio_client", lambda: FakeMinioClient())
     response = await common.get_file(
         path="contracts/2026/04/demo.pdf",
@@ -164,7 +172,11 @@ async def test_local_file_fallback_rejects_symlink_escape(monkeypatch, tmp_path)
         def stat_object(self, bucket, path):
             raise RuntimeError("not found")
 
+    async def fake_user_can_access_file_path(path, db, current_user):
+        return True
+
     monkeypatch.setattr(common, "get_user_from_token", fake_get_user_from_token)
+    monkeypatch.setattr(common, "user_can_access_file_path", fake_user_can_access_file_path)
     monkeypatch.setattr(common, "get_minio_client", lambda: MissingMinioClient())
     settings.UPLOAD_DIR = str(uploads_dir)
 
@@ -179,6 +191,27 @@ async def test_local_file_fallback_rejects_symlink_escape(monkeypatch, tmp_path)
         settings.UPLOAD_DIR = original_upload_dir
 
     assert exc.value.message == "非法的文件路径"
+
+
+@pytest.mark.asyncio
+async def test_file_endpoint_rejects_authenticated_user_without_resource_access(monkeypatch):
+    async def fake_get_user_from_token(token, db):
+        return SimpleNamespace(id=2002, username="outsider", is_active=True)
+
+    async def fake_user_can_access_file_path(path, db, current_user):
+        return False
+
+    monkeypatch.setattr(common, "get_user_from_token", fake_get_user_from_token)
+    monkeypatch.setattr(common, "user_can_access_file_path", fake_user_can_access_file_path)
+
+    with pytest.raises(common.PermissionDeniedError) as exc:
+        await common.get_file(
+            path="contracts/2026/04/private.pdf",
+            request=_build_request({"authorization": "Bearer token-123"}),
+            db=object(),
+        )
+
+    assert exc.value.message == "无权访问该文件"
 
 
 @pytest.mark.asyncio

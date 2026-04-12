@@ -48,14 +48,6 @@ async def lifespan(app: FastAPI):
     
     await init_data()
     
-    # 数据库结构检查 - 检测缺失的表和列
-    try:
-        from app.core.db_check import run_startup_check
-        from app.database import engine
-        await run_startup_check(engine)
-    except Exception as e:
-        logger.warning(f"Database schema check failed: {e}")
-    
     yield
     
     try:
@@ -111,7 +103,7 @@ async def app_exception_handler(request: Request, exc: AppException):
     )
 
 # Routers
-from app.routers import auth, users, contracts_upstream, contracts_downstream, contract_management, expenses, common, dashboard, reports, audit, system
+from app.routers import auth, users, contracts_upstream, contracts_downstream, contract_management, expenses, common, dashboard, reports, audit, system, health
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
@@ -124,6 +116,7 @@ app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboar
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
 app.include_router(audit.router, prefix="/api/v1/audit", tags=["Audit Logs"])
 app.include_router(system.router, prefix="/api/v1/system", tags=["System Management"])
+app.include_router(health.router, tags=["Health"])
 
 # New Router
 from app.routers import zero_hour_labor

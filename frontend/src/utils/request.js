@@ -72,8 +72,7 @@ service.interceptors.response.use(
                         emitError(errorMsg || '用户名或密码错误')
                     } else {
                         // Try to refresh the token
-                        const refreshToken = localStorage.getItem('refresh_token')
-                        if (refreshToken && !response.config._retry) {
+                        if (!response.config._retry) {
                             response.config._retry = true
                             try {
                                 await refreshSessionWithStoredToken()

@@ -4,6 +4,7 @@ Database Configuration - Async SQLAlchemy with Connection Pooling
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.pool import AsyncAdaptedQueuePool
+from sqlalchemy import text
 
 from app.config import settings
 
@@ -51,9 +52,9 @@ async def get_db():
 
 
 async def init_db():
-    """Initialize database tables"""
+    """Verify database connectivity without mutating schema."""
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.execute(text("SELECT 1"))
 
 
 async def close_db():

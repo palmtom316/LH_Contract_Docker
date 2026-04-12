@@ -211,7 +211,7 @@ async def add_missing_column(conn: AsyncConnection, table_name: str,
 
 async def auto_fix_schema(conn: AsyncConnection) -> dict:
     """
-    自动修复数据库结构
+    数据库结构自动修复已从应用正常启动路径移除。
     返回: {
         "fixed_count": int,
         "skipped_count": int,
@@ -219,42 +219,11 @@ async def auto_fix_schema(conn: AsyncConnection) -> dict:
         "details": {...}
     }
     """
-    fixed_count = 0
-    skipped_count = 0
-    failed_count = 0
-    details = {}
-    
-    for table_name, columns in V1_5_REQUIRED_COLUMNS.items():
-        # 检查表是否存在
-        table_exists = await check_table_exists(conn, table_name)
-        if not table_exists:
-            skipped_count += len(columns)
-            details[table_name] = "table_not_exists"
-            continue
-        
-        # 获取现有列
-        existing_cols = await get_existing_columns(conn, table_name)
-        
-        table_fixed = 0
-        for col_name, col_type, default_val in columns:
-            if col_name not in existing_cols:
-                success = await add_missing_column(conn, table_name, col_name, col_type, default_val)
-                if success:
-                    fixed_count += 1
-                    table_fixed += 1
-                else:
-                    failed_count += 1
-            else:
-                skipped_count += 1
-        
-        if table_fixed > 0:
-            details[table_name] = f"fixed_{table_fixed}_columns"
-    
     return {
-        "fixed_count": fixed_count,
-        "skipped_count": skipped_count,
-        "failed_count": failed_count,
-        "details": details
+        "fixed_count": 0,
+        "skipped_count": 0,
+        "failed_count": 0,
+        "details": {"mode": "disabled_in_app_startup"},
     }
 
 

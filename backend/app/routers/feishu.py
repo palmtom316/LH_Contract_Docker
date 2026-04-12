@@ -38,6 +38,16 @@ class WebhookResponse(BaseModel):
     msg: str = "success"
 
 
+def _verify_feishu_event(body: dict) -> None:
+    """Require the configured Feishu verification token on every callback."""
+    if not FEISHU_WEBHOOK_VERIFICATION_TOKEN:
+        return
+
+    if body.get("token") != FEISHU_WEBHOOK_VERIFICATION_TOKEN:
+        logger.warning("Webhook token verification failed")
+        raise HTTPException(status_code=403, detail="Invalid token")
+
+
 async def download_approval_pdf(instance_code: str, contract_id: int, contract_type: str):
     """
     Background task to download approval PDF from Feishu
@@ -105,16 +115,13 @@ async def feishu_webhook(request: Request, background_tasks: BackgroundTasks):
             challenge = body.get("challenge")
             if not challenge:
                 raise HTTPException(status_code=400, detail="Missing challenge")
-            
-            # Verify token if configured
-            if FEISHU_WEBHOOK_VERIFICATION_TOKEN:
-                if body.get("token") != FEISHU_WEBHOOK_VERIFICATION_TOKEN:
-                    logger.warning("Webhook token verification failed")
-                    raise HTTPException(status_code=403, detail="Invalid token")
-            
+
+            _verify_feishu_event(body)
             logger.info("URL verification successful")
             return {"challenge": challenge}
-        
+
+        _verify_feishu_event(body)
+
         # Handle event callbacks
         header = body.get("header", {})
         event_type = header.get("event_type", "")
