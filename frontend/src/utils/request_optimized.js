@@ -5,6 +5,7 @@ Prevents multiple simultaneous refresh requests
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
+import { clearSessionStorage } from '@/utils/authSession'
 
 const service = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
@@ -95,20 +96,21 @@ service.interceptors.response.use(
             if (response.config.url.includes('/login') || response.config.url.includes('/refresh')) {
                 ElMessage.error(errorMsg || '用户名或密码错误')
             } else {
-                const refreshTokenValue = localStorage.getItem('refresh_token')
-                if (refreshTokenValue && !response.config._retry) {
+                const { useUserStore } = await import('@/stores/user')
+                const userStore = useUserStore()
+                if (userStore.refreshToken && !response.config._retry) {
                     response.config._retry = true
                     try {
                         const newToken = await refreshToken()
                         response.config.headers['Authorization'] = `Bearer ${newToken}`
                         return service(response.config)
                     } catch (refreshError) {
-                        localStorage.clear()
+                        clearSessionStorage()
                         router.push('/login')
                         ElMessage.error('登录已过期，请重新登录')
                     }
                 } else {
-                    localStorage.clear()
+                    clearSessionStorage()
                     router.push('/login')
                     ElMessage.error('登录已过期，请重新登录')
                 }

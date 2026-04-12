@@ -285,7 +285,7 @@ async def get_period_stats(
 async def get_period_trend(
     period: str = "monthly",
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(require_permission(Permission.VIEW_DASHBOARD))
 ):
     """
     Get trend data (Income vs Expense) for a specific period (monthly=30days, quarterly=90days).

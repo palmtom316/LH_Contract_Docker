@@ -60,9 +60,11 @@ Default safety scan targets:
 ## 4. Upgrade Execution
 1. Pull/release target image and code.
 2. Apply migrations in controlled window.
-3. Restart services.
+3. Restart services only after explicit migration execution succeeds.
 
 Do not proceed if Step 1/2/3 above is incomplete.
+
+Schema changes are applied by explicit migration execution, not by normal application startup. A backend restart must be treated as a connectivity check, not a schema-management step.
 
 ## 5. Post-Upgrade Validation
 Run verification checks:

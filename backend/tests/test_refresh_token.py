@@ -143,6 +143,25 @@ class TestRefreshTokenEndpoint:
         )
         
         assert response.status_code == 401
+
+    async def test_refresh_token_cannot_authenticate_business_routes(
+        self,
+        client: AsyncClient,
+        test_user: User,
+    ):
+        login_response = await client.post(
+            "/api/v1/auth/login/json",
+            json={"username": "testuser", "password": "testpass123"},
+        )
+        assert login_response.status_code == 200
+
+        refresh_token = login_response.json()["refresh_token"]
+        response = await client.get(
+            "/api/v1/auth/me",
+            headers={"Authorization": f"Bearer {refresh_token}"},
+        )
+
+        assert response.status_code == 401
     
     async def test_login_returns_refresh_token(
         self,

@@ -28,6 +28,12 @@ logger = logging.getLogger(__name__)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
+def _require_access_token_type(payload: dict, credentials_exception: HTTPException) -> None:
+    """Reject non-access JWTs for request authentication flows."""
+    if payload.get("type") != "access":
+        raise credentials_exception
+
+
 def validate_password_strength(password: str) -> bool:
     """
     Validate password strength
@@ -287,6 +293,7 @@ async def get_current_user(
     )
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        _require_access_token_type(payload, credentials_exception)
         sub = payload.get("sub")
         username: str = payload.get("username")
         
@@ -348,6 +355,7 @@ async def get_user_from_token(
     )
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        _require_access_token_type(payload, credentials_exception)
         sub = payload.get("sub")
         
         if sub is None:

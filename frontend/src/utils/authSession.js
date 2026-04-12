@@ -1,15 +1,16 @@
 import axios from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
+let sessionRefreshToken = ''
+
+if (typeof window !== 'undefined') {
+    localStorage.removeItem('refresh_token')
+}
 
 export function persistSession({ accessToken, refreshToken, expiresIn, user }) {
     localStorage.setItem('token', accessToken)
-
-    if (refreshToken) {
-        localStorage.setItem('refresh_token', refreshToken)
-    } else {
-        localStorage.removeItem('refresh_token')
-    }
+    sessionRefreshToken = refreshToken || ''
+    localStorage.removeItem('refresh_token')
 
     if (typeof expiresIn === 'number' && !Number.isNaN(expiresIn)) {
         const expiresAt = Date.now() + (expiresIn * 1000)
@@ -18,13 +19,12 @@ export function persistSession({ accessToken, refreshToken, expiresIn, user }) {
         localStorage.removeItem('token_expires_at')
     }
 
-    if (user) {
-        localStorage.setItem('user_info', JSON.stringify(user))
-        localStorage.setItem('user_permissions', JSON.stringify(user.permissions || []))
-    }
+    localStorage.setItem('user_info', JSON.stringify(user || {}))
+    localStorage.setItem('user_permissions', JSON.stringify((user && user.permissions) || []))
 }
 
 export function clearSessionStorage() {
+    sessionRefreshToken = ''
     localStorage.removeItem('token')
     localStorage.removeItem('refresh_token')
     localStorage.removeItem('token_expires_at')
@@ -33,7 +33,7 @@ export function clearSessionStorage() {
 }
 
 export async function refreshSessionWithStoredToken() {
-    const refreshToken = localStorage.getItem('refresh_token')
+    const refreshToken = sessionRefreshToken
     if (!refreshToken) {
         throw new Error('No refresh token available')
     }

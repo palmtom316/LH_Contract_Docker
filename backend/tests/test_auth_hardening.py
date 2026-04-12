@@ -120,6 +120,39 @@ class TestRefreshTokenHardening:
         assert len(tokens) == 2
         assert all(token.revoked is True for token in tokens)
 
+    async def test_change_password_revokes_existing_refresh_tokens(
+        self,
+        client: AsyncClient,
+        test_db: AsyncSession,
+        test_user: User,
+    ):
+        login_response = await client.post(
+            "/api/v1/auth/login/json",
+            json={"username": "testuser", "password": "testpass123"},
+        )
+        assert login_response.status_code == 200
+        payload = login_response.json()
+
+        change_response = await client.post(
+            "/api/v1/auth/change-password",
+            headers={"Authorization": f"Bearer {payload['access_token']}"},
+            json={"old_password": "testpass123", "new_password": "ValidPass456"},
+        )
+        assert change_response.status_code == 200
+
+        refresh_response = await client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": payload["refresh_token"]},
+        )
+        assert refresh_response.status_code == 401
+
+        tokens = (
+            await test_db.execute(select(RefreshToken).where(RefreshToken.user_id == test_user.id))
+        ).scalars().all()
+
+        assert tokens
+        assert all(token.revoked is True for token in tokens)
+
 
 @pytest.mark.asyncio
 async def test_global_exception_handler_hides_internal_error_details():

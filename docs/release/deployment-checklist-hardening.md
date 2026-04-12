@@ -33,12 +33,13 @@ python3 scripts/verify_migration.py --safety-only
 ### 2. 部署后端
 ```bash
 docker-compose -f docker-compose.production.yml --env-file .env.production build backend
+# 仅在备份完成且迁移门禁通过后重启后端
 docker-compose -f docker-compose.production.yml --env-file .env.production up -d backend
 ```
 
 ### 3. 执行迁移
 ```bash
-# 示例，按实际迁移方式执行
+# 阻塞门禁：迁移未验证前不得继续前端或后端切换
 docker-compose -f docker-compose.production.yml --env-file .env.production exec backend \
   python3 scripts/verify_migration.py --safety-only
 ```
@@ -48,13 +49,14 @@ docker-compose -f docker-compose.production.yml --env-file .env.production exec 
 npm --prefix frontend install
 npm --prefix frontend run build
 docker-compose -f docker-compose.production.yml --env-file .env.production build frontend
-docker-compose -f docker-compose.production.yml --env-file .env.production up -d frontend nginx
+docker-compose -f docker-compose.production.yml --env-file .env.production up -d frontend
 ```
 
 ## 上线后冒烟验证
 ### 必做检查
 - [ ] 老用户可以正常登录。
-- [ ] `/health` 与 `/health/detailed` 返回正常。
+- [ ] `curl -fsS http://localhost/health` 返回正常。
+- [ ] `curl -fsS http://localhost/health/detailed` 返回正常。
 - [ ] 历史上游、下游、管理合同列表可打开。
 - [ ] 历史无合同费用列表和详情可打开。
 - [ ] 历史附件可下载或预览。
@@ -65,6 +67,7 @@ docker-compose -f docker-compose.production.yml --env-file .env.production up -d
 ### 推荐命令
 ```bash
 curl -fsS http://localhost/health
+curl -fsS http://localhost/health/detailed
 curl -fsS http://localhost/api/v1/system/options?category=expense_type
 ```
 

@@ -21,8 +21,9 @@ from app.models.contract_upstream import ContractUpstream
 from app.models.contract_downstream import ContractDownstream
 from app.models.contract_management import ContractManagement
 from app.services.auth import get_current_active_user
-from app.core.errors import ValidationError, DatabaseError
+from app.core.errors import ValidationError, DatabaseError, PermissionDeniedError
 from app.core.validators import FileValidators
+from app.services.file_authorization import user_can_access_file_path
 
 router = APIRouter()
 
@@ -218,6 +219,12 @@ async def get_file(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="无法验证凭据",
             headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not await user_can_access_file_path(safe_path, db, current_user):
+        raise PermissionDeniedError(
+            message="无权访问该文件",
+            detail="该文件未授权给当前用户"
         )
 
     logger.info(f"[FILE_GET] Request: path={safe_path}, user={current_user.username}")
