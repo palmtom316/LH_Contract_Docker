@@ -2,7 +2,8 @@
 Enhanced Health Check Endpoints
 Provides detailed system health status for monitoring
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from typing import Dict, Any
@@ -100,11 +101,14 @@ async def health_check_detailed(db: AsyncSession = Depends(get_db)):
         overall_status = "degraded"
         status_code = 200
 
-    return {
+    return JSONResponse(
+        status_code=status_code,
+        content={
         "status": overall_status,
         "checks": checks,
         "version": settings.APP_VERSION
-    }
+        },
+    )
 
 
 @router.get("/health/ready")
@@ -114,8 +118,11 @@ async def readiness_check(db: AsyncSession = Depends(get_db)):
 
     if db_check["status"] == "healthy":
         return {"status": "ready"}
-    else:
-        return {"status": "not_ready"}, 503
+
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={"status": "not_ready"},
+    )
 
 
 @router.get("/health/live")

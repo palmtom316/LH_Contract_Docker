@@ -79,6 +79,9 @@ python3 scripts/verify_migration.py --db-only
 ```
 
 Verify:
+- `/health/live` responds for process liveness
+- `/health/ready` returns success only when database readiness is available
+- `/health/detailed` returns non-200 on unhealthy dependencies
 - row counts and major sums are queryable
 - dictionary snapshots can be diffed against baseline
 - uploads and object storage spot checks succeed

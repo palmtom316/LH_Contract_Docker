@@ -55,7 +55,8 @@ docker-compose -f docker-compose.production.yml --env-file .env.production up -d
 ## 上线后冒烟验证
 ### 必做检查
 - [ ] 老用户可以正常登录。
-- [ ] `curl -fsS http://localhost/health` 返回正常。
+- [ ] `curl -fsS http://localhost/health/live` 返回正常。
+- [ ] `curl -fsS http://localhost/health/ready` 返回正常。
 - [ ] `curl -fsS http://localhost/health/detailed` 返回正常。
 - [ ] 历史上游、下游、管理合同列表可打开。
 - [ ] 历史无合同费用列表和详情可打开。
@@ -66,7 +67,8 @@ docker-compose -f docker-compose.production.yml --env-file .env.production up -d
 
 ### 推荐命令
 ```bash
-curl -fsS http://localhost/health
+curl -fsS http://localhost/health/live
+curl -fsS http://localhost/health/ready
 curl -fsS http://localhost/health/detailed
 curl -fsS http://localhost/api/v1/system/options?category=expense_type
 ```
