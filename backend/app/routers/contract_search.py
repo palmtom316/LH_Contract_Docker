@@ -41,6 +41,7 @@ from app.models.contract_management import (
 )
 from app.models.expense import ExpenseNonContract
 from app.models.zero_hour_labor import ZeroHourLabor
+from app.models.system import SysDictionary
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -70,6 +71,52 @@ def _sum_related_amount(items, field: str = "amount") -> Decimal:
 
 def _normalize_text(value: Optional[str]) -> str:
     return (value or "").strip()
+
+
+def _build_multi_value_ilike_condition(column, values: list[str]):
+    normalized_values: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        normalized = _normalize_text(value)
+        if not normalized:
+            continue
+        lowered = normalized.lower()
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        normalized_values.append(normalized)
+
+    if not normalized_values:
+        return None
+    if len(normalized_values) == 1:
+        return column.ilike(f"%{normalized_values[0]}%")
+    return or_(*[column.ilike(f"%{value}%") for value in normalized_values])
+
+
+async def _expand_dictionary_filter_values(
+    db: AsyncSession,
+    *,
+    dictionary_category: str,
+    raw_value: str,
+) -> list[str]:
+    normalized = _normalize_text(raw_value)
+    if not normalized:
+        return []
+
+    stmt = select(SysDictionary).where(
+        SysDictionary.category == dictionary_category,
+        or_(
+            SysDictionary.value == normalized,
+            SysDictionary.label == normalized,
+        ),
+    )
+    rows = (await db.execute(stmt)).scalars().all()
+
+    values = [normalized]
+    for row in rows:
+        values.append(row.value or "")
+        values.append(row.label or "")
+    return values
 
 
 def _to_associated_contract(contract, contract_type: str):
@@ -119,8 +166,8 @@ def _apply_upstream_query_filters(
     *,
     keyword: str,
     party_a_name: str,
-    contract_category: str,
-    company_category: str,
+    contract_category_values: list[str],
+    company_category_values: list[str],
     sign_date_start: Optional[date],
     sign_date_end: Optional[date],
 ):
@@ -134,10 +181,18 @@ def _apply_upstream_query_filters(
         )
     if party_a_name:
         stmt = stmt.where(ContractUpstream.party_a_name.ilike(f"%{party_a_name}%"))
-    if contract_category:
-        stmt = stmt.where(ContractUpstream.category.ilike(f"%{contract_category}%"))
-    if company_category:
-        stmt = stmt.where(ContractUpstream.company_category.ilike(f"%{company_category}%"))
+    contract_category_condition = _build_multi_value_ilike_condition(
+        ContractUpstream.category,
+        contract_category_values,
+    )
+    if contract_category_condition is not None:
+        stmt = stmt.where(contract_category_condition)
+    company_category_condition = _build_multi_value_ilike_condition(
+        ContractUpstream.company_category,
+        company_category_values,
+    )
+    if company_category_condition is not None:
+        stmt = stmt.where(company_category_condition)
     if sign_date_start:
         stmt = stmt.where(ContractUpstream.sign_date >= sign_date_start)
     if sign_date_end:
@@ -268,12 +323,23 @@ async def _load_upstream_aggregate_page(
     if not scope["upstream"]:
         raise HTTPException(status_code=403, detail="权限不足")
 
+    contract_category_filters = await _expand_dictionary_filter_values(
+        db,
+        dictionary_category="contract_category",
+        raw_value=contract_category,
+    )
+    company_category_filters = await _expand_dictionary_filter_values(
+        db,
+        dictionary_category="project_category",
+        raw_value=company_category,
+    )
+
     count_stmt = _apply_upstream_query_filters(
         select(ContractUpstream.id),
         keyword=keyword,
         party_a_name=party_a_name,
-        contract_category=contract_category,
-        company_category=company_category,
+        contract_category_values=contract_category_filters,
+        company_category_values=company_category_filters,
         sign_date_start=sign_date_start,
         sign_date_end=sign_date_end,
     )
@@ -289,8 +355,8 @@ async def _load_upstream_aggregate_page(
         stmt,
         keyword=keyword,
         party_a_name=party_a_name,
-        contract_category=contract_category,
-        company_category=company_category,
+        contract_category_values=contract_category_filters,
+        company_category_values=company_category_filters,
         sign_date_start=sign_date_start,
         sign_date_end=sign_date_end,
     ).order_by(ContractUpstream.sign_date.desc().nulls_last(), ContractUpstream.id.desc())
