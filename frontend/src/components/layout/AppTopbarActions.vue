@@ -1,5 +1,6 @@
 <template>
   <div class="topbar-actions">
+    <ContractQueryEntry @open="$emit('open-contract-query')" />
     <AppThemeToggle />
     <AppNotificationBell :unread-count="unreadCount" />
   </div>
@@ -7,7 +8,10 @@
 
 <script setup>
 import AppNotificationBell from './AppNotificationBell.vue'
+import ContractQueryEntry from './ContractQueryEntry.vue'
 import AppThemeToggle from '@/components/ui/AppThemeToggle.vue'
+
+defineEmits(['open-contract-query'])
 
 defineProps({
   unreadCount: {

@@ -1,994 +1,646 @@
 <template>
-  <!-- Floating Robot Button -->
-  <div class="query-bot-container">
-    <el-tooltip content="合同查询助手" placement="left">
-      <button
-        type="button"
-        class="bot-button"
-        :class="{ 'pulse': showPulse }"
-        aria-label="打开合同查询助手"
-        @click="openDialog"
-      >
-        <el-icon :size="28"><Search /></el-icon>
-      </button>
-    </el-tooltip>
-
-    <!-- Query Dialog -->
-    <el-dialog
-      v-model="dialogVisible"
-      title="合同查询助手"
-      :width="dialogWidth"
-      :close-on-click-modal="false"
-      class="bot-dialog"
-      append-to-body
-      :fullscreen="isMobile"
-    >
-      <!-- Input Section -->
-      <div class="input-section">
-        <div class="input-row">
-          <el-input
-            v-model="searchQuery"
-            placeholder="合同序号/名称/编号"
-            size="large"
-            clearable
-            @keyup.enter="handleSearch"
-            :prefix-icon="Search"
-            class="search-input"
-          />
-          <DictSelect
-            v-model="companyCategory"
-            category="project_category"
-            placeholder="公司合同分类"
-            size="large"
-            class="category-input"
-          />
+  <el-dialog
+    v-model="dialogVisible"
+    class="contract-query-dialog"
+    append-to-body
+    :close-on-click-modal="false"
+    :fullscreen="isMobile"
+    :width="dialogWidth"
+  >
+    <template #header>
+      <div class="contract-query-dialog__header">
+        <div>
+          <div class="contract-query-dialog__eyebrow">合同查询</div>
+          <div class="contract-query-dialog__title">上游合同联查面板</div>
         </div>
-        <div class="input-row">
-          <el-input
-            v-model="partyAName"
-            placeholder="上游合同甲方单位"
-            size="large"
-            clearable
-            @keyup.enter="handleSearch"
-            class="party-a-input"
-          />
-          <el-input
-            v-model="partyBName"
-            placeholder="下游/管理合同乙方单位"
-            size="large"
-            clearable
-            @keyup.enter="handleSearch"
-            class="party-b-input"
-          />
-        </div>
-        <div class="input-row">
-          <AppRangeField
-            v-model="signDateRange"
-            start-placeholder="签约开始日期"
-            end-placeholder="签约结束日期"
-            class="sign-date-input"
-          />
-        </div>
-        <div class="action-row">
-          <el-button type="primary" size="large" @click="handleSearch" :loading="loading" class="search-btn">
-            <el-icon><Search /></el-icon> 查询
-          </el-button>
-          <el-button size="large" @click="handleClear" class="clear-btn">
-            清除
-          </el-button>
+        <div class="contract-query-dialog__meta">
+          <span class="contract-query-dialog__badge">仅上游合同</span>
+          <span class="contract-query-dialog__shortcut">Ctrl / Cmd + K</span>
         </div>
       </div>
+    </template>
 
-      <!-- Loading -->
-      <div class="loading-section" v-if="loading">
-        <el-skeleton :rows="5" animated />
-      </div>
+    <div class="contract-query-panel">
+      <AppWorkspacePanel panel-class="contract-query-panel__workspace">
+        <AppSectionCard class="contract-query-panel__section">
+          <template #header>动态筛选</template>
+          <template #actions>
+            <button
+              data-testid="contract-query-export"
+              type="button"
+              class="contract-query-panel__action-button"
+              :disabled="exportLoading || !total"
+              @click="handleExport"
+            >
+              {{ exportLoading ? '导出中...' : '导出 Excel' }}
+            </button>
+            <button type="button" class="contract-query-panel__action-button" @click="resetFilters">重置</button>
+          </template>
 
-      <!-- No Results -->
-      <div class="no-results" v-if="hasSearched && !loading && !hasAnyResults">
-        <el-empty description="未找到匹配合同" />
-      </div>
-
-      <!-- Results Section -->
-      <div class="results-section" v-if="!loading && hasAnyResults">
-        <div class="results-count">
-          <el-tag type="success">找到 {{ resultCount }} 个{{ resultLabel }}</el-tag>
-        </div>
-
-        <el-collapse v-if="showUpstreamResults" v-model="activeNames" accordion>
-          <el-collapse-item 
-            v-for="(contract, index) in results" 
-            :key="contract.id" 
-            :name="index"
-          >
-            <template #title>
-              <div class="contract-header">
-                <span class="contract-serial">#{{ contract.serial_number || contract.id }}</span>
-                <span class="contract-name">{{ contract.contract_name }}</span>
-                <el-tag size="small" :type="getStatusType(contract.status)">{{ contract.status || '未知' }}</el-tag>
+          <AppFilterBar inline-actions>
+            <el-input
+              v-model="keyword"
+              data-testid="contract-query-keyword"
+              class="filter-control--search contract-query-panel__keyword"
+              placeholder="合同名称 / 合同编号 / 合同序号"
+              clearable
+            />
+            <el-input
+              v-model="partyAName"
+              data-testid="contract-query-party-a"
+              class="filter-control--wide contract-query-panel__party-a"
+              placeholder="甲方单位"
+              clearable
+            />
+            <DictSelect
+              v-model="contractCategory"
+              category="contract_category"
+              placeholder="合同类别"
+              clearable
+            />
+            <DictSelect
+              v-model="companyCategory"
+              category="project_category"
+              placeholder="合同公司分类"
+              clearable
+            />
+            <AppRangeField
+              v-model="signDateRange"
+              class="filter-control--range-wide"
+              start-placeholder="签约开始日期"
+              end-placeholder="签约结束日期"
+            />
+            <template #actions>
+              <div class="contract-query-panel__filter-tip">
+                按输入与选择自动筛选，结果始终限定为上游合同。
               </div>
             </template>
+          </AppFilterBar>
+        </AppSectionCard>
 
-            <!-- Contract Details -->
-            <div class="contract-details">
-              <!-- Upstream Contract Info -->
-              <div class="section upstream-section">
-                <div class="section-header">
-                  <el-icon><Document /></el-icon>
-                  <span>上游合同信息</span>
-                </div>
-                <el-descriptions :column="isMobile ? 1 : 2" border size="small">
-                  <el-descriptions-item label="合同序号">{{ contract.serial_number || '-' }}</el-descriptions-item>
-                  <el-descriptions-item label="合同编号">{{ contract.contract_code }}</el-descriptions-item>
-                  <el-descriptions-item label="合同名称" :span="isMobile ? 1 : 2">{{ contract.contract_name }}</el-descriptions-item>
-                  <el-descriptions-item label="公司合同分类">{{ contract.company_category || '-' }}</el-descriptions-item>
-                  <el-descriptions-item label="甲方">{{ contract.party_a_name }}</el-descriptions-item>
-                  <el-descriptions-item label="乙方">{{ contract.party_b_name }}</el-descriptions-item>
-                </el-descriptions>
-                <div class="finance-cards">
-                  <div class="finance-card blue-card">
-                    <span class="label">签约金额</span>
-                    <span class="value">{{ formatMoney(contract.finance.contract_amount) }}</span>
-                  </div>
-                  <div class="finance-card orange-card">
-                    <span class="label">应收款</span>
-                    <span class="value">{{ formatMoney(contract.finance.payable_amount) }}</span>
-                  </div>
-                  <div class="finance-card purple-card">
-                    <span class="label">挂账金额</span>
-                    <span class="value">{{ formatMoney(contract.finance.invoiced_amount) }}</span>
-                  </div>
-                  <div class="finance-card green-card">
-                    <span class="label">已收款</span>
-                    <span class="value">{{ formatMoney(contract.finance.paid_amount) }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Downstream Contracts -->
-              <div class="section" v-if="contract.downstream_contracts.length">
-                <div class="section-header">
-                  <el-icon><DocumentCopy /></el-icon>
-                  <span>关联下游合同 ({{ contract.downstream_contracts.length }})</span>
-                </div>
-                <el-table :data="contract.downstream_contracts" border size="small" class="compact-table">
-                  <el-table-column prop="serial_number" label="序号" width="70" />
-                  <el-table-column prop="contract_name" label="合同名称" min-width="180" show-overflow-tooltip />
-                  <el-table-column label="签约金额" width="110" align="right">
-                    <template #default="{ row }">{{ formatMoney(row.finance.contract_amount) }}</template>
-                  </el-table-column>
-                  <el-table-column label="应付款" width="110" align="right">
-                    <template #default="{ row }">{{ formatMoney(row.finance.payable_amount) }}</template>
-                  </el-table-column>
-                  <el-table-column label="挂账金额" width="110" align="right">
-                    <template #default="{ row }">{{ formatMoney(row.finance.invoiced_amount) }}</template>
-                  </el-table-column>
-                  <el-table-column label="已付款" width="110" align="right">
-                    <template #default="{ row }">{{ formatMoney(row.finance.paid_amount) }}</template>
-                  </el-table-column>
-                </el-table>
-                <!-- Summary Row -->
-                <div class="summary-row">
-                  <span class="label">合计：</span>
-                  <span class="item">签约 <strong>{{ formatMoney(sumField(contract.downstream_contracts, 'contract_amount')) }}</strong></span>
-                  <span class="item">应付 <strong>{{ formatMoney(sumField(contract.downstream_contracts, 'payable_amount')) }}</strong></span>
-                  <span class="item">挂账 <strong>{{ formatMoney(sumField(contract.downstream_contracts, 'invoiced_amount')) }}</strong></span>
-                  <span class="item">已付 <strong>{{ formatMoney(sumField(contract.downstream_contracts, 'paid_amount')) }}</strong></span>
-                </div>
-              </div>
-
-              <!-- Management Contracts -->
-              <div class="section" v-if="contract.management_contracts.length">
-                <div class="section-header">
-                  <el-icon><FolderChecked /></el-icon>
-                  <span>关联管理合同 ({{ contract.management_contracts.length }})</span>
-                </div>
-                <el-table :data="contract.management_contracts" border size="small" class="compact-table">
-                  <el-table-column prop="serial_number" label="序号" width="70" />
-                  <el-table-column prop="contract_name" label="合同名称" min-width="180" show-overflow-tooltip />
-                  <el-table-column label="签约金额" width="110" align="right">
-                    <template #default="{ row }">{{ formatMoney(row.finance.contract_amount) }}</template>
-                  </el-table-column>
-                  <el-table-column label="应付款" width="110" align="right">
-                    <template #default="{ row }">{{ formatMoney(row.finance.payable_amount) }}</template>
-                  </el-table-column>
-                  <el-table-column label="挂账金额" width="110" align="right">
-                    <template #default="{ row }">{{ formatMoney(row.finance.invoiced_amount) }}</template>
-                  </el-table-column>
-                  <el-table-column label="已付款" width="110" align="right">
-                    <template #default="{ row }">{{ formatMoney(row.finance.paid_amount) }}</template>
-                  </el-table-column>
-                </el-table>
-                <!-- Summary Row -->
-                <div class="summary-row">
-                  <span class="label">合计：</span>
-                  <span class="item">签约 <strong>{{ formatMoney(sumField(contract.management_contracts, 'contract_amount')) }}</strong></span>
-                  <span class="item">应付 <strong>{{ formatMoney(sumField(contract.management_contracts, 'payable_amount')) }}</strong></span>
-                  <span class="item">挂账 <strong>{{ formatMoney(sumField(contract.management_contracts, 'invoiced_amount')) }}</strong></span>
-                  <span class="item">已付 <strong>{{ formatMoney(sumField(contract.management_contracts, 'paid_amount')) }}</strong></span>
-                </div>
-              </div>
-
-              <!-- Expenses by Category -->
-              <div class="section" v-if="contract.expenses_by_category.length">
-                <div class="section-header">
-                  <el-icon><Money /></el-icon>
-                  <span>无合同费用（各类别已付款）</span>
-                </div>
-                <div class="expense-grid">
-                  <div 
-                    class="expense-item" 
-                    v-for="exp in contract.expenses_by_category" 
-                    :key="exp.category"
-                  >
-                    <span class="category">{{ exp.category }}</span>
-                    <span class="amount">{{ formatMoney(exp.amount) }}</span>
-                  </div>
-                </div>
-                <div class="expense-total">
-                  <span>无合同费用合计：</span>
-                  <strong>{{ formatMoney(sumExpenses(contract.expenses_by_category)) }}</strong>
-                </div>
-              </div>
-
-              <!-- Empty States -->
-              <div class="section empty" v-if="!contract.downstream_contracts.length && !contract.management_contracts.length && !contract.expenses_by_category.length">
-                <el-empty description="暂无关联数据" :image-size="80" />
-              </div>
+        <AppSectionCard class="contract-query-panel__section">
+          <template #header>筛选结果</template>
+          <template #actions>
+            <div class="contract-query-panel__stats">
+              <span>{{ total }} 份上游合同</span>
+              <span v-if="loading">刷新中...</span>
             </div>
-          </el-collapse-item>
-        </el-collapse>
+          </template>
 
-        <!-- Downstream / Management Results -->
-        <div v-else>
-          <div class="section" v-if="downstreamResults.length">
-            <div class="section-header">
-              <el-icon><DocumentCopy /></el-icon>
-              <span>下游合同 ({{ downstreamResults.length }})</span>
-            </div>
-            <el-table :data="downstreamResults" border size="small" class="compact-table">
-              <el-table-column prop="serial_number" label="序号" width="70" />
-              <el-table-column prop="contract_name" label="合同名称" min-width="180" show-overflow-tooltip />
-              <el-table-column prop="contract_code" label="合同编号" min-width="140" show-overflow-tooltip />
-              <el-table-column prop="party_b_name" label="乙方单位" min-width="160" show-overflow-tooltip />
-              <el-table-column label="签约金额" width="110" align="right">
-                <template #default="{ row }">{{ formatMoney(row.finance.contract_amount) }}</template>
-              </el-table-column>
-              <el-table-column label="应付款" width="110" align="right">
-                <template #default="{ row }">{{ formatMoney(row.finance.payable_amount) }}</template>
-              </el-table-column>
-              <el-table-column label="挂账金额" width="110" align="right">
-                <template #default="{ row }">{{ formatMoney(row.finance.invoiced_amount) }}</template>
-              </el-table-column>
-              <el-table-column label="已付款" width="110" align="right">
-                <template #default="{ row }">{{ formatMoney(row.finance.paid_amount) }}</template>
-              </el-table-column>
-            </el-table>
-          </div>
+          <AppEmptyState
+            v-if="errorMessage"
+            title="合同查询失败"
+            :description="errorMessage"
+          />
+          <AppEmptyState
+            v-else-if="!loading && hasLoaded && rows.length === 0"
+            title="暂无符合条件的上游合同"
+            description="调整甲方单位、合同类别、公司分类或签约日期后会自动刷新。"
+          />
+          <div v-else class="contract-query-table-shell">
+            <AppDataTable>
+              <table class="contract-query-table">
+                <thead>
+                  <tr>
+                    <th>合同名称</th>
+                    <th>甲方单位</th>
+                    <th>乙方单位</th>
+                    <th class="is-number">签约金额</th>
+                    <th>签约日期</th>
+                    <th class="is-number">应收款</th>
+                    <th class="is-number">挂账金额</th>
+                    <th class="is-number">已收款</th>
+                    <th class="is-number">结算金额</th>
+                    <th class="is-number">关联下游合同个数</th>
+                    <th class="is-number">关联下游合同签约总金额</th>
+                    <th class="is-number">关联下游合同结算总金额</th>
+                    <th class="is-number">关联下游合同已付款总金额</th>
+                    <th class="is-number">关联管理合同个数</th>
+                    <th class="is-number">关联管理合同签约总金额</th>
+                    <th class="is-number">关联管理合同结算总金额</th>
+                    <th class="is-number">关联管理合同已付款总金额</th>
+                    <th class="is-number">关联无合同费用总金额</th>
+                    <th class="is-number">关联零星用工总金额</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in rows" :key="row.id">
+                    <td class="is-wide">
+                      <button type="button" class="table-link table-link--primary" @click="openUpstreamDetail(row)">
+                        {{ row.contract_name }}
+                      </button>
+                    </td>
+                    <td>{{ row.party_a_name || '-' }}</td>
+                    <td>{{ row.party_b_name || '-' }}</td>
+                    <td class="is-number">{{ formatMoney(row.contract_amount) }}</td>
+                    <td>{{ formatDate(row.sign_date) }}</td>
+                    <td class="is-number">{{ formatMoney(row.receivable_amount) }}</td>
+                    <td class="is-number">{{ formatMoney(row.invoiced_amount) }}</td>
+                    <td class="is-number">{{ formatMoney(row.received_amount) }}</td>
+                    <td class="is-number">{{ formatMoney(row.settlement_amount) }}</td>
+                    <td class="is-number">
+                      <button
+                        :data-testid="`drilldown-downstream-count-${row.id}`"
+                        type="button"
+                        class="table-link"
+                        :disabled="!row.downstream_contract_count"
+                        @click="openRelatedList('downstream', row)"
+                      >
+                        {{ row.downstream_contract_count }}
+                      </button>
+                    </td>
+                    <td class="is-number">
+                      <button type="button" class="table-link" :disabled="!row.downstream_contract_amount" @click="openRelatedList('downstream', row)">
+                        {{ formatMoney(row.downstream_contract_amount) }}
+                      </button>
+                    </td>
+                    <td class="is-number">
+                      <button type="button" class="table-link" :disabled="!row.downstream_settlement_amount" @click="openRelatedList('downstream', row)">
+                        {{ formatMoney(row.downstream_settlement_amount) }}
+                      </button>
+                    </td>
+                    <td class="is-number">
+                      <button type="button" class="table-link" :disabled="!row.downstream_paid_amount" @click="openRelatedList('downstream', row)">
+                        {{ formatMoney(row.downstream_paid_amount) }}
+                      </button>
+                    </td>
+                    <td class="is-number">
+                      <button type="button" class="table-link" :disabled="!row.management_contract_count" @click="openRelatedList('management', row)">
+                        {{ row.management_contract_count }}
+                      </button>
+                    </td>
+                    <td class="is-number">
+                      <button type="button" class="table-link" :disabled="!row.management_contract_amount" @click="openRelatedList('management', row)">
+                        {{ formatMoney(row.management_contract_amount) }}
+                      </button>
+                    </td>
+                    <td class="is-number">
+                      <button type="button" class="table-link" :disabled="!row.management_settlement_amount" @click="openRelatedList('management', row)">
+                        {{ formatMoney(row.management_settlement_amount) }}
+                      </button>
+                    </td>
+                    <td class="is-number">
+                      <button type="button" class="table-link" :disabled="!row.management_paid_amount" @click="openRelatedList('management', row)">
+                        {{ formatMoney(row.management_paid_amount) }}
+                      </button>
+                    </td>
+                    <td class="is-number">
+                      <button type="button" class="table-link" :disabled="!row.non_contract_expense_total" @click="openRelatedList('expense', row)">
+                        {{ formatMoney(row.non_contract_expense_total) }}
+                      </button>
+                    </td>
+                    <td class="is-number">
+                      <button type="button" class="table-link" :disabled="!row.zero_hour_labor_total" @click="openRelatedList('labor', row)">
+                        {{ formatMoney(row.zero_hour_labor_total) }}
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </AppDataTable>
 
-          <div class="section" v-if="managementResults.length">
-            <div class="section-header">
-              <el-icon><FolderChecked /></el-icon>
-              <span>管理合同 ({{ managementResults.length }})</span>
-            </div>
-            <el-table :data="managementResults" border size="small" class="compact-table">
-              <el-table-column prop="serial_number" label="序号" width="70" />
-              <el-table-column prop="contract_name" label="合同名称" min-width="180" show-overflow-tooltip />
-              <el-table-column prop="contract_code" label="合同编号" min-width="140" show-overflow-tooltip />
-              <el-table-column prop="party_b_name" label="乙方单位" min-width="160" show-overflow-tooltip />
-              <el-table-column label="签约金额" width="110" align="right">
-                <template #default="{ row }">{{ formatMoney(row.finance.contract_amount) }}</template>
-              </el-table-column>
-              <el-table-column label="应付款" width="110" align="right">
-                <template #default="{ row }">{{ formatMoney(row.finance.payable_amount) }}</template>
-              </el-table-column>
-              <el-table-column label="挂账金额" width="110" align="right">
-                <template #default="{ row }">{{ formatMoney(row.finance.invoiced_amount) }}</template>
-              </el-table-column>
-              <el-table-column label="已付款" width="110" align="right">
-                <template #default="{ row }">{{ formatMoney(row.finance.paid_amount) }}</template>
-              </el-table-column>
-            </el-table>
-          </div>
-        </div>
-
-        <!-- Overall Summary -->
-        <div class="summary-section" v-if="hasSummary">
-          <div class="summary-title">金额汇总</div>
-          <div class="summary-list">
-            <div class="summary-card" v-if="summary.party_a">
-              <div class="summary-header">
-                <span class="summary-label">甲方单位汇总</span>
-                <span class="summary-keyword" v-if="hasPartyAFilter">关键词：{{ summary.party_a.party_name }}</span>
-                <span class="summary-keyword" v-else>范围：{{ summary.party_a.party_name }}</span>
-                <span class="summary-count">合同数：{{ summary.party_a.contract_count }}</span>
-              </div>
-              <div class="summary-metrics">
-                <div class="summary-metric">
-                  <span class="metric-label">签约金额</span>
-                  <span class="metric-value">{{ formatMoney(summary.party_a.finance.contract_amount) }}</span>
-                </div>
-                <div class="summary-metric">
-                  <span class="metric-label">应收款</span>
-                  <span class="metric-value">{{ formatMoney(summary.party_a.finance.payable_amount) }}</span>
-                </div>
-                <div class="summary-metric">
-                  <span class="metric-label">挂账金额</span>
-                  <span class="metric-value">{{ formatMoney(summary.party_a.finance.invoiced_amount) }}</span>
-                </div>
-                <div class="summary-metric">
-                  <span class="metric-label">已收款</span>
-                  <span class="metric-value">{{ formatMoney(summary.party_a.finance.paid_amount) }}</span>
-                </div>
-              </div>
-            </div>
-            <div class="summary-card" v-if="summary.party_b">
-              <div class="summary-header">
-                <span class="summary-label">乙方单位汇总</span>
-                <span class="summary-keyword" v-if="hasPartyBFilter">关键词：{{ summary.party_b.party_name }}</span>
-                <span class="summary-keyword" v-else>范围：{{ summary.party_b.party_name }}</span>
-                <span class="summary-count">合同数：{{ summary.party_b.contract_count }}</span>
-              </div>
-              <div class="summary-metrics">
-                <div class="summary-metric">
-                  <span class="metric-label">签约金额</span>
-                  <span class="metric-value">{{ formatMoney(summary.party_b.finance.contract_amount) }}</span>
-                </div>
-                <div class="summary-metric">
-                  <span class="metric-label">应付款</span>
-                  <span class="metric-value">{{ formatMoney(summary.party_b.finance.payable_amount) }}</span>
-                </div>
-                <div class="summary-metric">
-                  <span class="metric-label">挂账金额</span>
-                  <span class="metric-value">{{ formatMoney(summary.party_b.finance.invoiced_amount) }}</span>
-                </div>
-                <div class="summary-metric">
-                  <span class="metric-label">已付款</span>
-                  <span class="metric-value">{{ formatMoney(summary.party_b.finance.paid_amount) }}</span>
-                </div>
-              </div>
+            <div class="contract-query-panel__pagination">
+              <el-pagination
+                :current-page="page"
+                :page-size="pageSize"
+                :page-sizes="[20, 50, 100]"
+                layout="total, sizes, prev, pager, next"
+                :total="total"
+                @current-change="handlePageChange"
+                @size-change="handlePageSizeChange"
+              />
             </div>
           </div>
-        </div>
-      </div>
-    </el-dialog>
-  </div>
+        </AppSectionCard>
+      </AppWorkspacePanel>
+    </div>
+  </el-dialog>
 </template>
 
 <script setup>
-import { ref, shallowRef, computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Search, Document, DocumentCopy, FolderChecked, Money } from '@element-plus/icons-vue'
-import { searchContracts } from '@/api/contractSearch'
+import { exportUpstreamContractQuery, queryUpstreamContracts } from '@/api/contractSearch'
 import DictSelect from '@/components/DictSelect.vue'
 import AppRangeField from '@/components/ui/AppRangeField.vue'
+import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
+import AppSectionCard from '@/components/ui/AppSectionCard.vue'
+import AppFilterBar from '@/components/ui/AppFilterBar.vue'
+import AppDataTable from '@/components/ui/AppDataTable.vue'
+import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 
-// State
-const dialogVisible = ref(false)
-const searchQuery = ref('')
-const companyCategory = ref('')  // 公司合同分类
-const partyAName = ref('') // 上游合同甲方单位
-const partyBName = ref('') // 下游/管理合同乙方单位
+const props = defineProps({
+  modelValue: {
+    type: Boolean,
+    default: false
+  }
+})
+
+const emit = defineEmits(['update:modelValue'])
+const router = useRouter()
+
+const keyword = ref('')
+const partyAName = ref('')
+const contractCategory = ref('')
+const companyCategory = ref('')
 const signDateRange = ref([])
+
+const rows = shallowRef([])
+const total = ref(0)
+const page = ref(1)
+const pageSize = ref(20)
 const loading = ref(false)
-const hasSearched = ref(false)
-const results = shallowRef([])
-const downstreamResults = shallowRef([])
-const managementResults = shallowRef([])
-const summary = ref(null)
-const activeNames = ref([0])
-const showPulse = ref(true)
-const windowWidth = ref(window.innerWidth)
+const exportLoading = ref(false)
+const hasLoaded = ref(false)
+const errorMessage = ref('')
+const viewportWidth = ref(typeof window === 'undefined' ? 1280 : window.innerWidth)
 
-// Computed
-const isMobile = computed(() => windowWidth.value < 768)
-const dialogWidth = computed(() => isMobile.value ? '100%' : '900px')
-const hasSummary = computed(() => summary.value && (summary.value.party_a || summary.value.party_b))
-const hasPartyAFilter = computed(() => !!partyAName.value.trim())
-const hasPartyBFilter = computed(() => !!partyBName.value.trim())
-const showUpstreamResults = computed(() => !hasPartyBFilter.value)
-const resultCount = computed(() => {
-  if (showUpstreamResults.value) return results.value.length
-  return downstreamResults.value.length + managementResults.value.length
-})
-const resultLabel = computed(() => (showUpstreamResults.value ? '上游合同' : '下游/管理合同'))
-const hasAnyResults = computed(() => {
-  return results.value.length > 0 || downstreamResults.value.length > 0 || managementResults.value.length > 0
+let refreshTimer = null
+
+const dialogVisible = computed({
+  get: () => props.modelValue,
+  set: value => emit('update:modelValue', value)
 })
 
-// Handle window resize
-const handleResize = () => {
-  windowWidth.value = window.innerWidth
+const isMobile = computed(() => viewportWidth.value < 900)
+const dialogWidth = computed(() => (isMobile.value ? '100%' : 'calc(100vw - 48px)'))
+
+function syncViewportWidth() {
+  viewportWidth.value = window.innerWidth
 }
 
-onMounted(() => {
-  window.addEventListener('resize', handleResize)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
-})
-
-// Methods
-const openDialog = () => {
-  dialogVisible.value = true
-  showPulse.value = false  // Stop pulsing after first click
+function getDateRangePayload() {
+  if (!Array.isArray(signDateRange.value)) {
+    return ['', '']
+  }
+  return [signDateRange.value[0] || '', signDateRange.value[1] || '']
 }
 
-const handleSearch = async () => {
-  const query = searchQuery.value.trim()
-  const category = companyCategory.value.trim()
-  const partyA = partyAName.value.trim()
-  const partyB = partyBName.value.trim()
-  const isDateRangeArray = Array.isArray(signDateRange.value) && signDateRange.value.length === 2
-  const hasCommittedDateRange =
-    isDateRangeArray && signDateRange.value.some((date) => (date ?? '').toString().trim().length > 0)
-  const signDateStart = isDateRangeArray ? signDateRange.value[0] : ''
-  const signDateEnd = isDateRangeArray ? signDateRange.value[1] : ''
-
-  if (!query && !category && !partyA && !partyB && !hasCommittedDateRange) {
-    ElMessage.warning('请至少输入一个搜索条件')
-    return
+function buildQueryParams(includePaging = true) {
+  const [signDateStart, signDateEnd] = getDateRangePayload()
+  const params = {
+    keyword: keyword.value.trim(),
+    partyAName: partyAName.value.trim(),
+    contractCategory: contractCategory.value || '',
+    companyCategory: companyCategory.value || '',
+    signDateStart,
+    signDateEnd
   }
 
-  loading.value = true
-  hasSearched.value = true
-  results.value = []
-  downstreamResults.value = []
-  managementResults.value = []
-  summary.value = null
+  if (includePaging) {
+    params.page = page.value
+    params.pageSize = pageSize.value
+  }
 
+  return params
+}
+
+async function loadRows() {
+  if (!dialogVisible.value) return
+
+  loading.value = true
+  errorMessage.value = ''
   try {
-    const response = await searchContracts({
-      query: query,
-      companyCategory: category,
-      partyAName: partyA,
-      partyBName: partyB,
-      signDateStart,
-      signDateEnd
-    })
-    results.value = response.results || []
-    downstreamResults.value = response.downstream_results || []
-    managementResults.value = response.management_results || []
-    summary.value = response.summary || null
-    
-    if (results.value.length === 0 && downstreamResults.value.length === 0 && managementResults.value.length === 0) {
-      ElMessage.info('未找到匹配的合同')
-    } else {
-      activeNames.value = [0]  // Expand first result
-    }
+    const response = await queryUpstreamContracts(buildQueryParams(true))
+    rows.value = response.items || []
+    total.value = response.total || 0
+    hasLoaded.value = true
   } catch (error) {
-    console.error('Search error:', error)
-    ElMessage.error('查询失败：' + (error.response?.data?.detail || error.message || '网络错误'))
+    rows.value = []
+    total.value = 0
+    errorMessage.value = error?.response?.data?.detail || '请稍后重试或联系管理员'
   } finally {
     loading.value = false
   }
 }
 
-const handleClear = () => {
-  searchQuery.value = ''
-  companyCategory.value = ''
-  partyAName.value = ''
-  partyBName.value = ''
-  signDateRange.value = []
-  results.value = []
-  downstreamResults.value = []
-  managementResults.value = []
-  summary.value = null
-  hasSearched.value = false
-  loading.value = false
-  activeNames.value = [0]
-}
-
-const formatMoney = (value) => {
-  if (value == null || isNaN(value)) return '¥0.00'
-  return '¥' + Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-const getStatusType = (status) => {
-  const map = {
-    '执行中': 'primary',
-    '已完成': 'success',
-    '已终止': 'danger',
-    '已结算': 'success'
+function clearRefreshTimer() {
+  if (refreshTimer) {
+    clearTimeout(refreshTimer)
+    refreshTimer = null
   }
-  return map[status] || 'info'
 }
 
-const sumField = (contracts, field) => {
-  return contracts.reduce((sum, c) => sum + (c.finance?.[field] || 0), 0)
+function scheduleRefresh() {
+  clearRefreshTimer()
+  refreshTimer = setTimeout(() => {
+    loadRows()
+  }, 240)
 }
 
-const sumExpenses = (expenses) => {
-  return expenses.reduce((sum, e) => sum + (e.amount || 0), 0)
+function resetFilters() {
+  keyword.value = ''
+  partyAName.value = ''
+  contractCategory.value = ''
+  companyCategory.value = ''
+  signDateRange.value = []
+  page.value = 1
 }
+
+function formatMoney(value) {
+  const amount = Number(value || 0)
+  return amount.toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })
+}
+
+function formatDate(value) {
+  return value || '-'
+}
+
+function closePanel() {
+  dialogVisible.value = false
+}
+
+function openUpstreamDetail(row) {
+  closePanel()
+  router.push({
+    name: 'UpstreamDetail',
+    params: { id: row.id }
+  })
+}
+
+function openRelatedList(type, row) {
+  const upstreamContractId = String(row.id)
+  const routeMap = {
+    downstream: {
+      path: '/contracts/downstream',
+      query: { upstream_contract_id: upstreamContractId }
+    },
+    management: {
+      path: '/contracts/management',
+      query: { upstream_contract_id: upstreamContractId }
+    },
+    expense: {
+      path: '/expenses',
+      query: { tab: 'valuable', upstream_contract_id: upstreamContractId }
+    },
+    labor: {
+      path: '/expenses',
+      query: { tab: 'zeroHourLabor', upstream_contract_id: upstreamContractId }
+    }
+  }
+
+  const target = routeMap[type]
+  if (!target) return
+
+  closePanel()
+  router.push(target)
+}
+
+async function handleExport() {
+  exportLoading.value = true
+  try {
+    const blob = await exportUpstreamContractQuery(buildQueryParams(false))
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `上游合同查询_${new Date().toISOString().slice(0, 10)}.xlsx`
+    link.click()
+    window.URL.revokeObjectURL(url)
+    ElMessage.success('导出成功')
+  } catch (error) {
+    ElMessage.error(error?.response?.data?.detail || '导出失败')
+  } finally {
+    exportLoading.value = false
+  }
+}
+
+function handlePageChange(nextPage) {
+  page.value = nextPage
+  loadRows()
+}
+
+function handlePageSizeChange(nextSize) {
+  pageSize.value = nextSize
+  page.value = 1
+  loadRows()
+}
+
+watch(
+  () => dialogVisible.value,
+  open => {
+    if (open) {
+      page.value = 1
+      clearRefreshTimer()
+      loadRows()
+      return
+    }
+    clearRefreshTimer()
+  },
+  { immediate: true }
+)
+
+watch(
+  () => [
+    keyword.value,
+    partyAName.value,
+    contractCategory.value,
+    companyCategory.value,
+    ...(Array.isArray(signDateRange.value) ? signDateRange.value : [])
+  ],
+  () => {
+    if (!dialogVisible.value) return
+    page.value = 1
+    scheduleRefresh()
+  }
+)
+
+onMounted(() => {
+  window.addEventListener('resize', syncViewportWidth)
+})
+
+onUnmounted(() => {
+  clearRefreshTimer()
+  window.removeEventListener('resize', syncViewportWidth)
+})
 </script>
 
 <style scoped lang="scss">
-.query-bot-container {
-  position: fixed;
-  right: 24px;
-  bottom: 80px;
-  z-index: 2000;
+.contract-query-panel {
+  min-width: 0;
 }
 
-.bot-button {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--brand-primary);
-  color: var(--text-inverse);
+.contract-query-panel__workspace,
+.contract-query-panel__section {
+  gap: 0;
+}
+
+.contract-query-dialog__header {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 8px 20px rgba(22, 73, 106, 0.24);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-
-  &:hover {
-    transform: translateY(-1px);
-    background: var(--brand-primary-strong);
-    box-shadow: 0 10px 24px rgba(22, 73, 106, 0.28);
-  }
-
-  &.pulse {
-    animation: pulse 2.4s infinite;
-  }
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
 }
 
-@keyframes pulse {
-  0% {
-    box-shadow: 0 8px 20px rgba(22, 73, 106, 0.22);
-  }
-  50% {
-    box-shadow: 0 8px 28px rgba(22, 73, 106, 0.34);
-  }
-  100% {
-    box-shadow: 0 8px 20px rgba(22, 73, 106, 0.22);
-  }
+.contract-query-dialog__eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
 }
 
-.input-section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 20px;
-
-  .input-row {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-
-    .search-input {
-      flex: 2;
-      min-width: 150px;
-    }
-
-    .category-input {
-      flex: 1;
-      min-width: 120px;
-    }
-
-    .party-a-input,
-    .party-b-input {
-      flex: 1;
-      min-width: 160px;
-    }
-
-    .sign-date-input {
-      flex: 1;
-      min-width: 280px;
-    }
-  }
-
-  .sign-date-tip {
-    margin: 0;
-    font-size: 12px;
-    color: var(--text-secondary);
-  }
-
-  .search-btn {
-    align-self: flex-start;
-  }
-
-  .action-row {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-  }
-
-  .clear-btn {
-    align-self: flex-start;
-  }
-
-  @media (max-width: 768px) {
-    .input-row {
-      flex-direction: column;
-
-      .search-input, .category-input, .party-a-input, .party-b-input, .sign-date-input {
-        width: 100%;
-        flex: none;
-      }
-    }
-
-    .action-row {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .search-btn,
-    .clear-btn {
-      width: 100%;
-    }
-  }
+.contract-query-dialog__title {
+  margin-top: 4px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: hsl(var(--foreground));
 }
 
-.tip-section {
-  .tip-title {
-    font-weight: 500;
-  }
-
-  ul {
-    margin: 8px 0;
-    padding-left: 20px;
-
-    li {
-      margin: 4px 0;
-    }
-  }
-}
-
-.loading-section, .no-results {
-  padding: 40px 0;
-}
-
-.results-section {
-  .results-count {
-    margin-bottom: 12px;
-  }
-}
-
-.contract-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-
-  .contract-serial {
-    font-weight: 600;
-    color: var(--brand-primary);
-    min-width: 40px;
-  }
-
-  .contract-name {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-}
-
-.contract-details {
-  .section {
-    margin-bottom: 20px;
-    padding: 12px;
-    background: var(--surface-panel-muted);
-    border: 1px solid var(--border-subtle);
-    border-radius: 10px;
-
-    &.upstream-section {
-      background: color-mix(in srgb, var(--surface-panel-muted) 72%, var(--surface-panel) 28%);
-    }
-
-    &.empty {
-      background: var(--surface-panel);
-    }
-  }
-
-  .section-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 500;
-    color: var(--text-primary);
-    margin-bottom: 12px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--border-subtle);
-  }
-}
-
-.finance-cards {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-top: 12px;
-
-  .finance-card {
-    padding: 16px 12px;
-    border-radius: 10px;
-    text-align: center;
-    border: 1px solid var(--border-subtle);
-    box-shadow: none;
-    transition: transform 0.2s, border-color 0.2s;
-
-    &:hover {
-      transform: translateY(-2px);
-      border-color: var(--border-strong);
-    }
-
-    .label {
-      display: block;
-      font-size: 13px;
-      color: var(--text-secondary);
-      margin-bottom: 8px;
-    }
-
-    .value {
-      font-size: 18px;
-      font-weight: bold;
-      color: var(--text-primary);
-    }
-    
-    &.blue-card {
-      background: color-mix(in srgb, var(--brand-primary) 8%, var(--surface-panel) 92%);
-    }
-    
-    &.orange-card {
-      background: color-mix(in srgb, var(--status-warning) 10%, var(--surface-panel) 90%);
-    }
-
-    &.purple-card {
-      background: color-mix(in srgb, var(--status-info) 10%, var(--surface-panel) 90%);
-    }
-    
-    &.green-card {
-      background: color-mix(in srgb, var(--status-success) 10%, var(--surface-panel) 90%);
-    }
-  }
-}
-
-.compact-table {
-  margin-bottom: 8px;
-}
-
-.summary-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 8px 12px;
-  background: var(--surface-panel);
-  border-radius: 4px;
-  font-size: 13px;
-
-  .label {
-    color: var(--text-muted);
-  }
-
-  .item {
-    color: var(--text-secondary);
-
-    strong {
-      color: var(--brand-primary);
-      margin-left: 4px;
-    }
-  }
-}
-
-.summary-section {
-  margin-top: 20px;
-  padding: 12px;
-  background: color-mix(in srgb, var(--surface-panel-muted) 72%, var(--surface-panel) 28%);
-  border-radius: 8px;
-
-  .summary-title {
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 10px;
-  }
-
-  .summary-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 12px;
-  }
-
-  .summary-card {
-    background: var(--surface-panel);
-    border: 1px solid var(--border-subtle);
-    border-radius: 8px;
-    padding: 12px;
-  }
-
-  .summary-header {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 8px;
-    margin-bottom: 10px;
-
-    .summary-label {
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .summary-keyword {
-      color: var(--text-muted);
-      font-size: 12px;
-    }
-
-    .summary-count {
-      color: var(--text-secondary);
-      font-size: 12px;
-    }
-  }
-
-  .summary-metrics {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .summary-metric {
-    background: color-mix(in srgb, var(--surface-panel-muted) 70%, var(--surface-panel) 30%);
-    border-radius: 6px;
-    padding: 8px 10px;
-
-    .metric-label {
-      display: block;
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    .metric-value {
-      display: block;
-      margin-top: 4px;
-      font-weight: 600;
-      color: var(--brand-primary);
-    }
-  }
-}
-
-.expense-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+.contract-query-dialog__meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
-  margin-bottom: 12px;
-
-  .expense-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 12px;
-    background: var(--surface-panel);
-    border-radius: 6px;
-    border-left: 3px solid var(--brand-primary);
-
-    .category {
-      color: var(--text-secondary);
-      font-size: 13px;
-    }
-
-    .amount {
-      font-weight: 600;
-      color: var(--brand-accent);
-    }
-  }
 }
 
-.expense-total {
-  text-align: right;
-  padding: 8px 12px;
+.contract-query-dialog__badge,
+.contract-query-dialog__shortcut {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--workspace-panel-border);
+  background: color-mix(in srgb, var(--surface-panel) 94%, var(--muted) 6%);
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.contract-query-panel__filter-tip,
+.contract-query-panel__stats {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  color: hsl(var(--muted-foreground));
+  font-size: 13px;
+}
+
+.contract-query-panel__action-button {
+  min-height: var(--workspace-control-height);
+  padding: 0 14px;
+  border: 1px solid var(--workspace-panel-border);
+  border-radius: var(--radius);
   background: var(--surface-panel);
-  border-radius: 4px;
-  font-size: 14px;
-
-  strong {
-    color: var(--brand-accent);
-    font-size: 16px;
-    margin-left: 8px;
-  }
+  color: hsl(var(--foreground));
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .query-bot-container {
-    right: 16px;
-    bottom: 60px;
-  }
-
-  .bot-button {
-    width: 48px;
-    height: 48px;
-  }
-
-  .finance-cards {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-
-    .finance-card {
-      padding: 8px;
-
-      .value {
-        font-size: 14px;
-      }
-    }
-  }
-
-  .expense-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .summary-row {
-    flex-wrap: wrap;
-    gap: 6px;
-    font-size: 12px;
-  }
-
-  .contract-header {
-    gap: 8px;
-
-    .contract-name {
-      font-size: 14px;
-    }
-  }
-
-  .compact-table {
-    font-size: 12px;
-  }
+.contract-query-panel__action-button:hover:not(:disabled) {
+  background: hsl(var(--muted));
 }
 
-/* Force HMR update 2024-12-29 */
-</style>
+.contract-query-panel__action-button:disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
+}
 
-<style lang="scss">
-/* Global styles for Dialog (append-to-body) */
-.bot-dialog {
-  .el-dialog__header {
-    background: var(--brand-primary);
-    color: var(--text-inverse);
-    padding: 16px 20px;
-    margin: 0;
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
+.contract-query-table-shell {
+  display: grid;
+  gap: 14px;
+}
 
-    .el-dialog__title {
-      color: var(--text-inverse);
-      font-size: 18px;
-      font-weight: 600;
-    }
+.contract-query-table {
+  width: 100%;
+  min-width: 1920px;
+  border-collapse: collapse;
+  background: var(--surface-panel);
+}
 
-    .el-dialog__close {
-      color: var(--text-inverse);
-      &:hover {
-        color: rgba(255,255,255,0.8);
-      }
-    }
+.contract-query-table th,
+.contract-query-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--workspace-panel-border);
+  vertical-align: middle;
+  font-size: 13px;
+  line-height: 1.5;
+  color: hsl(var(--foreground));
+}
+
+.contract-query-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.contract-query-table tbody tr:hover {
+  background: color-mix(in srgb, var(--surface-panel) 72%, var(--muted) 28%);
+}
+
+.contract-query-table .is-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.contract-query-table .is-wide {
+  min-width: 220px;
+}
+
+.table-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: hsl(var(--primary));
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.table-link:hover:not(:disabled) {
+  color: hsl(var(--foreground));
+}
+
+.table-link:disabled {
+  color: hsl(var(--muted-foreground));
+  cursor: default;
+}
+
+.table-link--primary {
+  text-align: left;
+}
+
+.contract-query-panel__pagination {
+  display: flex;
+  justify-content: flex-end;
+}
+
+:deep(.contract-query-dialog .el-dialog) {
+  max-width: 1460px;
+}
+
+:deep(.contract-query-dialog .el-dialog__body) {
+  padding-top: 0;
+}
+
+@media (max-width: 900px) {
+  .contract-query-dialog__header {
+    flex-direction: column;
   }
 
-  .el-dialog__body {
-    padding: 20px;
-    max-height: 70vh;
-    overflow-y: auto;
+  .contract-query-dialog__meta {
+    justify-content: flex-start;
   }
-  
-  @media (max-width: 768px) {
-    .el-dialog {
-      width: 100% !important;
-      max-width: 100% !important;
-      margin: 0 !important;
-      border-radius: 0;
-    }
 
-    .el-dialog__header {
-      padding: 12px 16px;
-      border-radius: 0;
-    }
+  .contract-query-dialog__title {
+    font-size: 18px;
+  }
 
-    .el-dialog__body {
-      padding: 12px;
-      max-height: calc(100vh - 60px);
-    }
+  .contract-query-table th,
+  .contract-query-table td {
+    padding: 10px 12px;
   }
 }
 </style>

@@ -1,119 +1,239 @@
-import { mount } from '@vue/test-utils'
-import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { ElMessage, ElAlert } from 'element-plus'
+import { flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ContractQueryBot from '@/components/ContractQueryBot.vue'
-import { searchContracts } from '@/api/contractSearch'
+import { exportUpstreamContractQuery, queryUpstreamContracts } from '@/api/contractSearch'
+
+const push = vi.fn()
 
 vi.mock('@/api/contractSearch', () => ({
-  searchContracts: vi.fn(() =>
+  queryUpstreamContracts: vi.fn(() =>
     Promise.resolve({
-      results: [],
-      downstream_results: [],
-      management_results: [],
-      summary: null
+      total: 1,
+      page: 1,
+      page_size: 20,
+      items: [
+        {
+          id: 11,
+          contract_name: '华东总包上游合同',
+          party_a_name: '华东甲方',
+          party_b_name: '我方公司',
+          category: '施工合同',
+          company_category: '市政工程',
+          sign_date: '2026-04-03',
+          contract_amount: 300000,
+          receivable_amount: 180000,
+          invoiced_amount: 120000,
+          received_amount: 90000,
+          settlement_amount: 150000,
+          downstream_contract_count: 2,
+          downstream_contract_amount: 80000,
+          downstream_settlement_amount: 50000,
+          downstream_paid_amount: 42000,
+          management_contract_count: 1,
+          management_contract_amount: 30000,
+          management_settlement_amount: 18000,
+          management_paid_amount: 16000,
+          non_contract_expense_total: 12000,
+          zero_hour_labor_total: 6000
+        }
+      ]
     })
-  )
+  ),
+  exportUpstreamContractQuery: vi.fn(() => Promise.resolve(new Blob(['xlsx'])))
 }))
 
+vi.mock('vue-router', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    useRouter: () => ({ push })
+  }
+})
+
 const ElDialogStub = {
+  name: 'ElDialog',
   props: ['modelValue'],
-  template: `
-    <div>
-      <slot />
-    </div>
-  `
-}
-const ElTooltipStub = {
-  template: `
-    <div>
-      <slot />
-    </div>
-  `
-}
-const AppRangeFieldStub = {
-  name: 'AppRangeField',
   emits: ['update:modelValue'],
-  template: '<div />'
+  template: `
+    <div v-if="modelValue" class="dialog-stub">
+      <slot />
+    </div>
+  `
 }
 
-const commonStubs = {
-  'el-dialog': ElDialogStub,
-  'el-tooltip': ElTooltipStub,
-  'el-icon': true,
-  'el-button': true,
-  'el-input': true,
-  'el-date-picker': true,
-  'el-skeleton': true,
-  'el-empty': true,
-  'el-tag': true,
-  'el-collapse': true,
-  'el-collapse-item': true,
-  'el-descriptions': true,
-  'el-descriptions-item': true,
-  'el-table': true,
-  'el-table-column': true,
-  AppRangeField: AppRangeFieldStub,
-  DictSelect: true
+const ElInputStub = {
+  name: 'ElInput',
+  props: ['modelValue', 'placeholder'],
+  emits: ['update:modelValue'],
+  template: `
+    <input
+      :value="modelValue"
+      :placeholder="placeholder"
+      @input="$emit('update:modelValue', $event.target.value)"
+    />
+  `
 }
-const createWrapper = () =>
+
+const ElButtonStub = {
+  name: 'ElButton',
+  emits: ['click'],
+  template: '<button type="button" @click="$emit(\'click\')"><slot /></button>'
+}
+
+const ElPaginationStub = {
+  name: 'ElPagination',
+  template: '<div class="pagination-stub"></div>'
+}
+
+const DictSelectStub = {
+  name: 'DictSelect',
+  props: ['modelValue'],
+  emits: ['update:modelValue'],
+  template: `
+    <select :value="modelValue" @change="$emit('update:modelValue', $event.target.value)">
+      <option value="">全部</option>
+      <option value="施工合同">施工合同</option>
+      <option value="市政工程">市政工程</option>
+    </select>
+  `
+}
+
+const AppRangeFieldStub = {
+  name: 'AppRangeField',
+  props: ['modelValue'],
+  emits: ['update:modelValue'],
+  template: `
+    <div>
+      <button
+        type="button"
+        data-testid="range-trigger"
+        @click="$emit('update:modelValue', ['2026-04-01', '2026-04-09'])"
+      >
+        range
+      </button>
+    </div>
+  `
+}
+
+const slotStub = name => ({
+  name,
+  template: `
+    <div class="${name}">
+      <div class="${name}__header"><slot name="header" /></div>
+      <div class="${name}__actions"><slot name="actions" /></div>
+      <slot />
+      <slot name="footer" />
+    </div>
+  `
+})
+
+const createWrapper = (props = {}) =>
   mount(ContractQueryBot, {
+    props: {
+      modelValue: true,
+      ...props
+    },
     global: {
-      stubs: commonStubs,
-      components: { ElAlert }
+      stubs: {
+        'el-dialog': ElDialogStub,
+        'el-input': ElInputStub,
+        'el-button': ElButtonStub,
+        'el-pagination': ElPaginationStub,
+        'el-icon': true,
+        'el-tooltip': true,
+        'el-tag': true,
+        AppWorkspacePanel: slotStub('AppWorkspacePanel'),
+        AppSectionCard: slotStub('AppSectionCard'),
+        AppFilterBar: slotStub('AppFilterBar'),
+        AppDataTable: slotStub('AppDataTable'),
+        AppEmptyState: slotStub('AppEmptyState'),
+        DictSelect: DictSelectStub,
+        AppRangeField: AppRangeFieldStub
+      }
     }
   })
 
 describe('ContractQueryBot', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     vi.clearAllMocks()
   })
 
-  it('renders text date range inputs instead of a date picker', async () => {
-    const wrapper = createWrapper()
-
-    await wrapper.find('.bot-button').trigger('click')
-
-    expect(wrapper.findComponent({ name: 'AppRangeField' }).exists()).toBe(true)
-    expect(wrapper.html()).not.toContain('el-date-picker')
+  afterEach(() => {
+    vi.runOnlyPendingTimers()
+    vi.useRealTimers()
   })
 
-  it('ignores an empty AppRangeField payload without applying a date filter', async () => {
-    const wrapper = createWrapper()
+  it('loads upstream aggregate rows when the panel opens', async () => {
+    createWrapper()
 
-    await wrapper.find('.bot-button').trigger('click')
+    await flushPromises()
 
-    const warningSpy = vi.spyOn(ElMessage, 'warning')
-    const rangeField = wrapper.findComponent({ name: 'AppRangeField' })
-    await rangeField.vm.$emit('update:modelValue', ['', ''])
-    await wrapper.vm.$nextTick()
-
-    await wrapper.find('.search-btn').trigger('click')
-
-    expect(warningSpy).toHaveBeenCalledWith('请至少输入一个搜索条件')
-    expect(wrapper.vm.signDateRange).toEqual(['', ''])
-    expect(searchContracts).not.toHaveBeenCalled()
-
-    warningSpy.mockRestore()
-  })
-
-  it('sends the committed range through to searchContracts', async () => {
-    const wrapper = createWrapper()
-
-    await wrapper.find('.bot-button').trigger('click')
-
-    const rangeField = wrapper.findComponent({ name: 'AppRangeField' })
-    await rangeField.vm.$emit('update:modelValue', ['2026-04-01', '2026-04-06'])
-    await wrapper.vm.$nextTick()
-
-    await wrapper.find('.search-btn').trigger('click')
-
-    expect(searchContracts).toHaveBeenCalledWith({
-      query: '',
-      companyCategory: '',
+    expect(queryUpstreamContracts).toHaveBeenCalledWith({
+      keyword: '',
       partyAName: '',
-      partyBName: '',
+      contractCategory: '',
+      companyCategory: '',
+      signDateStart: '',
+      signDateEnd: '',
+      page: 1,
+      pageSize: 20
+    })
+  })
+
+  it('debounces filter changes and requeries with upstream-only filters', async () => {
+    const wrapper = createWrapper()
+    await flushPromises()
+    queryUpstreamContracts.mockClear()
+
+    const inputs = wrapper.findAll('input')
+    await inputs[0].setValue('华东')
+    await inputs[1].setValue('华东甲方')
+    await wrapper.find('[data-testid="range-trigger"]').trigger('click')
+
+    vi.advanceTimersByTime(260)
+    await flushPromises()
+
+    expect(queryUpstreamContracts).toHaveBeenCalledWith({
+      keyword: '华东',
+      partyAName: '华东甲方',
+      contractCategory: '',
+      companyCategory: '',
       signDateStart: '2026-04-01',
-      signDateEnd: '2026-04-06'
+      signDateEnd: '2026-04-09',
+      page: 1,
+      pageSize: 20
+    })
+  })
+
+  it('drills into downstream details from related metric cells', async () => {
+    const wrapper = createWrapper()
+    await flushPromises()
+
+    await wrapper.find('[data-testid="drilldown-downstream-count-11"]').trigger('click')
+
+    expect(push).toHaveBeenCalledWith({
+      path: '/contracts/downstream',
+      query: {
+        upstream_contract_id: '11'
+      }
+    })
+  })
+
+  it('exports the current upstream query result set', async () => {
+    const wrapper = createWrapper()
+    await flushPromises()
+
+    const exportButton = wrapper.findAll('button').find(node => node.text().includes('导出 Excel'))
+    await exportButton.trigger('click')
+
+    expect(exportUpstreamContractQuery).toHaveBeenCalledWith({
+      keyword: '',
+      partyAName: '',
+      contractCategory: '',
+      companyCategory: '',
+      signDateStart: '',
+      signDateEnd: ''
     })
   })
 })

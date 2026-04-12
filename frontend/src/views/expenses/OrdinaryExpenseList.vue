@@ -335,6 +335,7 @@
 
 <script setup>
 import { defineAsyncComponent, ref, reactive, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { getExpenses, createExpense, updateExpense, deleteExpense, exportExpenses } from '@/api/expense'
 import { getContracts, getContract } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
@@ -349,6 +350,7 @@ import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import AppRangeField from '@/components/ui/AppRangeField.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 
+const route = useRoute()
 const loading = ref(false)
 const total = ref(0)
 const expenseList = ref([])
@@ -372,6 +374,29 @@ const queryParams = reactive({
   category: '',
   upstream_contract_id: null
 })
+
+const normalizeQueryValue = (value) => {
+  if (Array.isArray(value)) {
+    value = value[0]
+  }
+  return value
+}
+
+const parseUpstreamIdFromQuery = (value) => {
+  const normalized = normalizeQueryValue(value)
+  if (normalized === undefined || normalized === null || normalized === '') {
+    return undefined
+  }
+  const parsed = parseInt(normalized, 10)
+  return Number.isNaN(parsed) ? undefined : parsed
+}
+
+const applyRouteFilters = () => {
+  const upstreamId = parseUpstreamIdFromQuery(route.query.upstream_contract_id)
+  if (typeof upstreamId !== 'undefined') {
+    queryParams.upstream_contract_id = upstreamId
+  }
+}
 
 const dialog = reactive({
   title: '',
@@ -738,6 +763,7 @@ const formatApprovalStatus = (status) => {
 onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
+  applyRouteFilters()
   getList()
 })
 

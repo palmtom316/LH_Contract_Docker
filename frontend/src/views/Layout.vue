@@ -78,7 +78,7 @@
                 <div class="topbar-copy__title">{{ route.meta.title }}</div>
               </div>
             </div>
-            <AppTopbarActions :unread-count="unreadCount" />
+            <AppTopbarActions :unread-count="unreadCount" @open-contract-query="openContractQuery" />
           </header>
 
           <section class="app-main">
@@ -123,7 +123,7 @@
       </template>
     </el-dialog>
 
-    <ContractQueryBot />
+    <ContractQueryBot v-model="contractQueryVisible" />
   </div>
 </template>
 
@@ -152,6 +152,7 @@ const uiStore = useUiStore()
 const { isMobile } = useDevice()
 
 const isCollapse = ref(false)
+const contractQueryVisible = ref(false)
 const systemVersion = ref(`Version ${pkg.version}`)
 const changePwdVisible = ref(false)
 const changingPwd = ref(false)
@@ -210,6 +211,10 @@ watch(route, () => {
 
 function toggleSidebar() {
   isCollapse.value = !isCollapse.value
+}
+
+function openContractQuery() {
+  contractQueryVisible.value = true
 }
 
 function closeSidebar() {

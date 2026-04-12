@@ -390,6 +390,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { getZeroHourLaborList, createZeroHourLabor, updateZeroHourLabor, deleteZeroHourLabor, exportZeroHourLabor } from '@/api/zeroHourLabor'
 import { getContracts } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
@@ -406,6 +407,7 @@ import AppRangeField from '@/components/ui/AppRangeField.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 
 const { isMobile } = useMobileDetection()
+const route = useRoute()
 
 const loading = ref(false)
 const exporting = ref(false)
@@ -439,6 +441,29 @@ const queryParams = reactive({
     keyword: '',
     upstream_contract_id: null
 })
+
+const normalizeQueryValue = (value) => {
+    if (Array.isArray(value)) {
+        value = value[0]
+    }
+    return value
+}
+
+const parseUpstreamIdFromQuery = (value) => {
+    const normalized = normalizeQueryValue(value)
+    if (normalized === undefined || normalized === null || normalized === '') {
+        return undefined
+    }
+    const parsed = parseInt(normalized, 10)
+    return Number.isNaN(parsed) ? undefined : parsed
+}
+
+const applyRouteFilters = () => {
+    const upstreamId = parseUpstreamIdFromQuery(route.query.upstream_contract_id)
+    if (typeof upstreamId !== 'undefined') {
+        queryParams.upstream_contract_id = upstreamId
+    }
+}
 
 const dialog = reactive({
     title: '',
@@ -889,6 +914,7 @@ const getSummaries = (param) => {
 }
 
 onMounted(() => {
+    applyRouteFilters()
     getList()
 })
 </script>

@@ -1,8 +1,36 @@
 import { mount } from '@vue/test-utils'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { defineComponent } from 'vue'
+import { defineComponent, reactive, nextTick } from 'vue'
 import ExpenseList from '@/views/expenses/ExpenseList.vue'
 import OrdinaryExpenseList from '@/views/expenses/OrdinaryExpenseList.vue'
+
+const routeState = reactive({ query: {} })
+const routerMock = {
+  replace: vi.fn(() => Promise.resolve())
+}
+
+const setRouteQuery = (nextQuery = {}) => {
+  Object.keys(routeState.query).forEach((key) => {
+    delete routeState.query[key]
+  })
+  Object.keys(nextQuery).forEach((key) => {
+    routeState.query[key] = nextQuery[key]
+  })
+}
+
+afterEach(() => {
+  setRouteQuery({})
+  routerMock.replace.mockReset()
+})
+
+vi.mock('vue-router', async () => {
+  const actual = await vi.importActual('vue-router')
+  return {
+    ...actual,
+    useRoute: () => routeState,
+    useRouter: () => routerMock
+  }
+})
 
 const flushPromises = () => new Promise(resolve => setTimeout(resolve, 0))
 
@@ -87,7 +115,7 @@ const ElTabPaneStub = defineComponent({
   template: '<div class="el-tab-pane-stub" :data-label="label" :data-name="name"><slot /></div>'
 })
 
-const mountPage = () =>
+const mountPage = (options = {}) =>
   mount(OrdinaryExpenseList, {
     global: {
       directives: {
@@ -127,7 +155,8 @@ const mountPage = () =>
         ElTooltip: true,
         ElIcon: true
       }
-    }
+    },
+    ...options
   })
 
 const mountExpensePage = () =>
@@ -156,8 +185,51 @@ describe('ExpenseList workspace shell', () => {
   })
 })
 
+describe('ExpenseList tab routing', () => {
+  it('initializes the active tab from the query parameter', () => {
+    setRouteQuery({ tab: 'zeroHourLabor' })
+    const wrapper = mountExpensePage()
+
+    expect(wrapper.vm.activeTab).toBe('zeroHourLabor')
+  })
+
+  it('falls back to the default tab when an invalid query value is provided', () => {
+    setRouteQuery({ tab: 'unknown' })
+    const wrapper = mountExpensePage()
+
+    expect(wrapper.vm.activeTab).toBe('valuable')
+  })
+
+  it('updates the route query when the tab changes', async () => {
+    setRouteQuery({ tab: 'valuable' })
+    const wrapper = mountExpensePage()
+    routerMock.replace.mockReset()
+
+    wrapper.vm.activeTab = 'zeroHourLabor'
+    await nextTick()
+
+    expect(routerMock.replace).toHaveBeenCalledWith({
+      query: {
+        ...routeState.query,
+        tab: 'zeroHourLabor'
+      }
+    })
+  })
+
+  it('reacts to query changes by switching the active tab', async () => {
+    setRouteQuery({ tab: 'valuable' })
+    const wrapper = mountExpensePage()
+
+    setRouteQuery({ tab: 'zeroHourLabor' })
+    await nextTick()
+
+    expect(wrapper.vm.activeTab).toBe('zeroHourLabor')
+  })
+})
+
 describe('OrdinaryExpenseList upstream filter', () => {
   beforeEach(() => {
+    setRouteQuery({})
     vi.spyOn(console, 'error').mockImplementation(() => {})
     apiMocks.getExpenses.mockReset()
     apiMocks.getContracts.mockReset()
@@ -222,6 +294,18 @@ describe('OrdinaryExpenseList upstream filter', () => {
     expect(apiMocks.getExpenses).toHaveBeenCalledWith(
       expect.objectContaining({
         upstream_contract_id: 9
+      })
+    )
+  })
+
+  it('initializes upstream filter from route query when present', async () => {
+    setRouteQuery({ upstream_contract_id: '31' })
+    const wrapper = mountPage()
+    await flushPromises()
+
+    expect(apiMocks.getExpenses).toHaveBeenCalledWith(
+      expect.objectContaining({
+        upstream_contract_id: 31
       })
     )
   })

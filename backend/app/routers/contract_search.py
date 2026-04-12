@@ -2,14 +2,20 @@
 Contract Search Router (合同查询机器人后端)
 提供合同模糊搜索和关联信息查询功能
 """
+import io
+import logging
+import urllib.parse
+from datetime import date, datetime
+from decimal import Decimal, ROUND_HALF_UP
+from typing import Optional, List
+
+import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy import select, or_, and_, cast, String, func
-from typing import Optional, List
 from pydantic import BaseModel
-from decimal import Decimal, ROUND_HALF_UP
-from datetime import date
 
 from app.core.permissions import Permission, has_permission
 from app.database import get_db
@@ -36,8 +42,6 @@ from app.models.contract_management import (
 from app.models.expense import ExpenseNonContract
 from app.models.zero_hour_labor import ZeroHourLabor
 
-import logging
-
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
@@ -62,6 +66,10 @@ async def _scalar(db: AsyncSession, stmt):
 
 def _sum_related_amount(items, field: str = "amount") -> Decimal:
     return sum((_to_decimal(getattr(item, field, None)) for item in items), Decimal("0"))
+
+
+def _normalize_text(value: Optional[str]) -> str:
+    return (value or "").strip()
 
 
 def _to_associated_contract(contract, contract_type: str):
@@ -104,6 +112,37 @@ def _can_view_all_expenses(user: User) -> bool:
         UserRole.CONTRACT_MANAGER,
         UserRole.FINANCE,
     }
+
+
+def _apply_upstream_query_filters(
+    stmt,
+    *,
+    keyword: str,
+    party_a_name: str,
+    contract_category: str,
+    company_category: str,
+    sign_date_start: Optional[date],
+    sign_date_end: Optional[date],
+):
+    if keyword:
+        stmt = stmt.where(
+            or_(
+                ContractUpstream.contract_code.ilike(f"%{keyword}%"),
+                ContractUpstream.contract_name.ilike(f"%{keyword}%"),
+                cast(ContractUpstream.serial_number, String).ilike(f"%{keyword}%"),
+            )
+        )
+    if party_a_name:
+        stmt = stmt.where(ContractUpstream.party_a_name.ilike(f"%{party_a_name}%"))
+    if contract_category:
+        stmt = stmt.where(ContractUpstream.category.ilike(f"%{contract_category}%"))
+    if company_category:
+        stmt = stmt.where(ContractUpstream.company_category.ilike(f"%{company_category}%"))
+    if sign_date_start:
+        stmt = stmt.where(ContractUpstream.sign_date >= sign_date_start)
+    if sign_date_end:
+        stmt = stmt.where(ContractUpstream.sign_date <= sign_date_end)
+    return stmt
 
 
 # Response Models
@@ -171,6 +210,275 @@ class SearchResponse(BaseModel):
     downstream_results: List[AssociatedContract] = []
     management_results: List[AssociatedContract] = []
     summary: Optional[SearchSummary] = None
+
+
+class UpstreamAggregateRow(BaseModel):
+    id: int
+    serial_number: Optional[int] = None
+    contract_code: str
+    contract_name: str
+    party_a_name: str
+    party_b_name: str
+    category: Optional[str] = None
+    company_category: Optional[str] = None
+    sign_date: Optional[date] = None
+    contract_amount: float = 0
+    receivable_amount: float = 0
+    invoiced_amount: float = 0
+    received_amount: float = 0
+    settlement_amount: float = 0
+    downstream_contract_count: int = 0
+    downstream_contract_amount: float = 0
+    downstream_settlement_amount: float = 0
+    downstream_paid_amount: float = 0
+    management_contract_count: int = 0
+    management_contract_amount: float = 0
+    management_settlement_amount: float = 0
+    management_paid_amount: float = 0
+    non_contract_expense_total: float = 0
+    zero_hour_labor_total: float = 0
+
+
+class UpstreamAggregateListResponse(BaseModel):
+    total: int
+    items: List[UpstreamAggregateRow]
+    page: int
+    page_size: int
+
+
+def _sum_contract_field(contracts, field: str) -> Decimal:
+    return sum((_to_decimal(getattr(contract, field, None)) for contract in contracts), Decimal("0"))
+
+
+async def _load_upstream_aggregate_page(
+    db: AsyncSession,
+    *,
+    current_user: User,
+    keyword: str,
+    party_a_name: str,
+    contract_category: str,
+    company_category: str,
+    sign_date_start: Optional[date],
+    sign_date_end: Optional[date],
+    page: int = 1,
+    page_size: int = 20,
+    export_all: bool = False,
+):
+    scope = _search_scope(current_user)
+    if not scope["upstream"]:
+        raise HTTPException(status_code=403, detail="权限不足")
+
+    count_stmt = _apply_upstream_query_filters(
+        select(ContractUpstream.id),
+        keyword=keyword,
+        party_a_name=party_a_name,
+        contract_category=contract_category,
+        company_category=company_category,
+        sign_date_start=sign_date_start,
+        sign_date_end=sign_date_end,
+    )
+    total = await _scalar(db, select(func.count()).select_from(count_stmt.subquery()))
+
+    stmt = select(ContractUpstream).options(
+        selectinload(ContractUpstream.receivables),
+        selectinload(ContractUpstream.invoices),
+        selectinload(ContractUpstream.receipts),
+        selectinload(ContractUpstream.settlements),
+    )
+    stmt = _apply_upstream_query_filters(
+        stmt,
+        keyword=keyword,
+        party_a_name=party_a_name,
+        contract_category=contract_category,
+        company_category=company_category,
+        sign_date_start=sign_date_start,
+        sign_date_end=sign_date_end,
+    ).order_by(ContractUpstream.sign_date.desc().nulls_last(), ContractUpstream.id.desc())
+
+    if not export_all:
+        stmt = stmt.offset((page - 1) * page_size).limit(page_size)
+
+    upstream_contracts = (await db.execute(stmt)).scalars().all()
+    upstream_ids = [contract.id for contract in upstream_contracts]
+
+    downstream_by_upstream: dict[int, list[ContractDownstream]] = {}
+    management_by_upstream: dict[int, list[ContractManagement]] = {}
+    expense_total_by_upstream: dict[int, Decimal] = {}
+    labor_total_by_upstream: dict[int, Decimal] = {}
+
+    if upstream_ids and scope["downstream"]:
+        downstream_stmt = select(ContractDownstream).options(
+            selectinload(ContractDownstream.payments),
+            selectinload(ContractDownstream.settlements),
+        ).where(ContractDownstream.upstream_contract_id.in_(upstream_ids))
+        downstream_rows = (await db.execute(downstream_stmt)).scalars().all()
+        for row in downstream_rows:
+            downstream_by_upstream.setdefault(row.upstream_contract_id, []).append(row)
+
+    if upstream_ids and scope["management"]:
+        management_stmt = select(ContractManagement).options(
+            selectinload(ContractManagement.payments),
+            selectinload(ContractManagement.settlements),
+        ).where(ContractManagement.upstream_contract_id.in_(upstream_ids))
+        management_rows = (await db.execute(management_stmt)).scalars().all()
+        for row in management_rows:
+            management_by_upstream.setdefault(row.upstream_contract_id, []).append(row)
+
+    if upstream_ids and scope["expenses"]:
+        expense_stmt = select(ExpenseNonContract).where(
+            ExpenseNonContract.upstream_contract_id.in_(upstream_ids)
+        )
+        labor_stmt = select(ZeroHourLabor).where(
+            ZeroHourLabor.upstream_contract_id.in_(upstream_ids)
+        )
+        if not _can_view_all_expenses(current_user):
+            expense_stmt = expense_stmt.where(ExpenseNonContract.created_by == current_user.id)
+            labor_stmt = labor_stmt.where(ZeroHourLabor.created_by == current_user.id)
+
+        expense_rows = (await db.execute(expense_stmt)).scalars().all()
+        for row in expense_rows:
+            expense_total_by_upstream[row.upstream_contract_id] = (
+                expense_total_by_upstream.get(row.upstream_contract_id, Decimal("0"))
+                + _to_decimal(row.amount)
+            )
+
+        labor_rows = (await db.execute(labor_stmt)).scalars().all()
+        for row in labor_rows:
+            labor_total_by_upstream[row.upstream_contract_id] = (
+                labor_total_by_upstream.get(row.upstream_contract_id, Decimal("0"))
+                + _to_decimal(row.total_amount)
+            )
+
+    items: List[UpstreamAggregateRow] = []
+    for upstream in upstream_contracts:
+        downstream_rows = downstream_by_upstream.get(upstream.id, [])
+        management_rows = management_by_upstream.get(upstream.id, [])
+        items.append(
+            UpstreamAggregateRow(
+                id=upstream.id,
+                serial_number=upstream.serial_number,
+                contract_code=upstream.contract_code,
+                contract_name=upstream.contract_name,
+                party_a_name=upstream.party_a_name,
+                party_b_name=upstream.party_b_name,
+                category=upstream.category,
+                company_category=upstream.company_category,
+                sign_date=upstream.sign_date,
+                contract_amount=_money(upstream.contract_amount),
+                receivable_amount=_money(_sum_related_amount(upstream.receivables)),
+                invoiced_amount=_money(_sum_related_amount(upstream.invoices)),
+                received_amount=_money(_sum_related_amount(upstream.receipts)),
+                settlement_amount=_money(_sum_related_amount(upstream.settlements, field="settlement_amount")),
+                downstream_contract_count=len(downstream_rows),
+                downstream_contract_amount=_money(_sum_contract_field(downstream_rows, "contract_amount")),
+                downstream_settlement_amount=_money(_sum_contract_field(downstream_rows, "total_settlement")),
+                downstream_paid_amount=_money(_sum_contract_field(downstream_rows, "total_paid")),
+                management_contract_count=len(management_rows),
+                management_contract_amount=_money(_sum_contract_field(management_rows, "contract_amount")),
+                management_settlement_amount=_money(_sum_contract_field(management_rows, "total_settlement")),
+                management_paid_amount=_money(_sum_contract_field(management_rows, "total_paid")),
+                non_contract_expense_total=_money(expense_total_by_upstream.get(upstream.id, Decimal("0"))),
+                zero_hour_labor_total=_money(labor_total_by_upstream.get(upstream.id, Decimal("0"))),
+            )
+        )
+
+    return total, items
+
+
+@router.get("/search/upstream-query", response_model=UpstreamAggregateListResponse)
+async def query_upstream_contracts(
+    keyword: str = Query("", description="搜索关键词（合同序号、名称或编号）"),
+    party_a_name: str = Query("", description="甲方单位"),
+    contract_category: str = Query("", description="合同类别"),
+    company_category: str = Query("", description="合同公司分类"),
+    sign_date_start: Optional[date] = Query(None, description="签约开始日期"),
+    sign_date_end: Optional[date] = Query(None, description="签约结束日期"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    total, items = await _load_upstream_aggregate_page(
+        db,
+        current_user=current_user,
+        keyword=_normalize_text(keyword),
+        party_a_name=_normalize_text(party_a_name),
+        contract_category=_normalize_text(contract_category),
+        company_category=_normalize_text(company_category),
+        sign_date_start=sign_date_start,
+        sign_date_end=sign_date_end,
+        page=page,
+        page_size=page_size,
+    )
+    return UpstreamAggregateListResponse(
+        total=int(total),
+        items=items,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/search/upstream-query/export")
+async def export_upstream_contract_query(
+    keyword: str = Query("", description="搜索关键词（合同序号、名称或编号）"),
+    party_a_name: str = Query("", description="甲方单位"),
+    contract_category: str = Query("", description="合同类别"),
+    company_category: str = Query("", description="合同公司分类"),
+    sign_date_start: Optional[date] = Query(None, description="签约开始日期"),
+    sign_date_end: Optional[date] = Query(None, description="签约结束日期"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    _, items = await _load_upstream_aggregate_page(
+        db,
+        current_user=current_user,
+        keyword=_normalize_text(keyword),
+        party_a_name=_normalize_text(party_a_name),
+        contract_category=_normalize_text(contract_category),
+        company_category=_normalize_text(company_category),
+        sign_date_start=sign_date_start,
+        sign_date_end=sign_date_end,
+        export_all=True,
+    )
+
+    export_rows = [
+        {
+            "合同名称": row.contract_name,
+            "甲方单位": row.party_a_name,
+            "乙方单位": row.party_b_name,
+            "合同类别": row.category or "",
+            "合同公司分类": row.company_category or "",
+            "签约金额": row.contract_amount,
+            "签约日期": row.sign_date.isoformat() if row.sign_date else "",
+            "应收款": row.receivable_amount,
+            "挂账金额": row.invoiced_amount,
+            "已收款": row.received_amount,
+            "结算金额": row.settlement_amount,
+            "关联下游合同个数": row.downstream_contract_count,
+            "关联下游合同签约总金额": row.downstream_contract_amount,
+            "关联下游合同结算总金额": row.downstream_settlement_amount,
+            "关联下游合同已付款总金额": row.downstream_paid_amount,
+            "关联管理合同个数": row.management_contract_count,
+            "关联管理合同签约总金额": row.management_contract_amount,
+            "关联管理合同结算总金额": row.management_settlement_amount,
+            "关联管理合同已付款总金额": row.management_paid_amount,
+            "关联无合同费用总金额": row.non_contract_expense_total,
+            "关联零星用工总金额": row.zero_hour_labor_total,
+        }
+        for row in items
+    ]
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        pd.DataFrame(export_rows).to_excel(writer, index=False, sheet_name="上游合同查询")
+    output.seek(0)
+
+    filename = f"上游合同查询_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
+    encoded_filename = urllib.parse.quote(filename)
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename*=utf-8''{encoded_filename}"},
+    )
 
 
 @router.get("/search", response_model=SearchResponse)

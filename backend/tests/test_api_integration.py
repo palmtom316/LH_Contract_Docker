@@ -7,6 +7,7 @@ from datetime import date, datetime
 from decimal import Decimal
 import io
 import zipfile
+from uuid import uuid4
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,6 +37,166 @@ from app.models.contract_management import (
 from app.models.expense import ExpenseNonContract
 from app.models.zero_hour_labor import ZeroHourLabor
 from app.services.report_cache import invalidate_dashboard_cache
+
+
+async def _seed_upstream_query_graph(test_db: AsyncSession, test_admin: User) -> dict:
+    suffix = uuid4().hex[:8].upper()
+    contract_name = f"QUERY 上游合同 {suffix}"
+    party_a_name = f"聚合甲方 {suffix}"
+    excluded_contract_name = f"QUERY 过滤排除合同 {suffix}"
+    upstream = ContractUpstream(
+        serial_number=9301,
+        contract_code=f"QUERY-UP-{suffix}",
+        contract_name=contract_name,
+        party_a_name=party_a_name,
+        party_b_name="聚合乙方",
+        company_category="市区配网",
+        category="工程类",
+        contract_amount=Decimal("10000.00"),
+        sign_date=date(2026, 2, 10),
+        status="执行中",
+        created_by=test_admin.id,
+    )
+    downstream = ContractDownstream(
+        serial_number=9302,
+        contract_code=f"QUERY-DS-{suffix}",
+        contract_name="QUERY 下游合同",
+        party_a_name="我方公司",
+        party_b_name="下游乙方",
+        contract_amount=Decimal("3500.00"),
+        sign_date=date(2026, 2, 11),
+        status="执行中",
+        created_by=test_admin.id,
+    )
+    management = ContractManagement(
+        serial_number=9303,
+        contract_code=f"QUERY-MGMT-{suffix}",
+        contract_name="QUERY 管理合同",
+        party_a_name="我方公司",
+        party_b_name="管理乙方",
+        company_category="项目费用",
+        category="服务类",
+        contract_amount=Decimal("2200.00"),
+        sign_date=date(2026, 2, 12),
+        status="执行中",
+        created_by=test_admin.id,
+    )
+    excluded_upstream = ContractUpstream(
+        serial_number=9304,
+        contract_code=f"QUERY-EX-{suffix}",
+        contract_name=excluded_contract_name,
+        party_a_name=f"其他甲方 {suffix}",
+        party_b_name="其他乙方",
+        company_category="用户工程",
+        category="工程类",
+        contract_amount=Decimal("5000.00"),
+        sign_date=date(2026, 2, 13),
+        status="执行中",
+        created_by=test_admin.id,
+    )
+
+    test_db.add_all([upstream, downstream, management, excluded_upstream])
+    await test_db.flush()
+
+    downstream.upstream_contract_id = upstream.id
+    management.upstream_contract_id = upstream.id
+
+    expense = ExpenseNonContract(
+        expense_code="QUERY-EXP-001",
+        attribution="PROJECT",
+        category="项目费用",
+        expense_type="管理费",
+        amount=Decimal("88.00"),
+        expense_date=date(2026, 2, 24),
+        upstream_contract_id=upstream.id,
+        description="查询聚合费用",
+        created_by=test_admin.id,
+        updated_by=test_admin.id,
+    )
+    zero_hour = ZeroHourLabor(
+        labor_date=date(2026, 2, 25),
+        attribution="PROJECT",
+        upstream_contract_id=upstream.id,
+        dispatch_unit="零星用工班组",
+        skilled_unit_price=Decimal("0.00"),
+        skilled_quantity=Decimal("0.00"),
+        skilled_price_total=Decimal("0.00"),
+        general_unit_price=Decimal("260.00"),
+        general_quantity=Decimal("4.00"),
+        general_price_total=Decimal("1040.00"),
+        total_amount=Decimal("1040.00"),
+        created_by=test_admin.id,
+    )
+    test_db.add_all([
+        expense,
+        zero_hour,
+        FinanceDownstreamPayable(
+            contract_id=downstream.id,
+            category="进度款",
+            amount=Decimal("1200.00"),
+            description="下游应付",
+            expected_date=date(2026, 2, 15),
+            created_by=test_admin.id,
+            updated_by=test_admin.id,
+        ),
+        FinanceDownstreamPayment(
+            contract_id=downstream.id,
+            amount=Decimal("800.00"),
+            description="下游已付",
+            payment_date=date(2026, 2, 20),
+            created_by=test_admin.id,
+            updated_by=test_admin.id,
+        ),
+        DownstreamSettlement(
+            contract_id=downstream.id,
+            settlement_date=date(2026, 2, 21),
+            settlement_amount=Decimal("500.00"),
+            created_by=test_admin.id,
+            updated_by=test_admin.id,
+        ),
+        FinanceManagementPayable(
+            contract_id=management.id,
+            category="服务费",
+            amount=Decimal("900.00"),
+            description="管理应付",
+            expected_date=date(2026, 2, 18),
+            created_by=test_admin.id,
+            updated_by=test_admin.id,
+        ),
+        FinanceManagementPayment(
+            contract_id=management.id,
+            amount=Decimal("700.00"),
+            description="管理已付",
+            payment_date=date(2026, 2, 22),
+            created_by=test_admin.id,
+            updated_by=test_admin.id,
+        ),
+        ManagementSettlement(
+            contract_id=management.id,
+            settlement_date=date(2026, 2, 23),
+            settlement_amount=Decimal("300.00"),
+            created_by=test_admin.id,
+            updated_by=test_admin.id,
+        ),
+    ])
+    seeded = {
+        "contract_name": contract_name,
+        "party_a_name": party_a_name,
+        "excluded_contract_name": excluded_contract_name,
+        "expense_total": 88.0,
+        "zero_hour_total": 1040.0,
+        "downstream_contract_count": 1,
+        "downstream_contract_amount": 3500.0,
+        "downstream_settlement_amount": 500.0,
+        "downstream_paid_amount": 800.0,
+        "management_contract_count": 1,
+        "management_contract_amount": 2200.0,
+        "management_settlement_amount": 300.0,
+        "management_paid_amount": 700.0,
+    }
+    await test_db.commit()
+
+    return seeded
 
 
 @pytest.fixture
@@ -195,6 +356,64 @@ class TestContractSearchEndpoint:
         assert len(data["results"]) == 1
         assert data["results"][0]["contract_code"] == "SEARCH-DATE-001"
 
+    async def test_upstream_query_returns_aggregated_related_metrics(
+        self,
+        client: AsyncClient,
+        admin_token: str,
+        test_db: AsyncSession,
+        test_admin: User,
+    ):
+        seeded = await _seed_upstream_query_graph(test_db, test_admin)
+        response = await client.get(
+            "/api/v1/contracts/search/upstream-query",
+            params={"keyword": seeded["contract_name"]},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["total"] == 1
+        row = payload["items"][0]
+        assert row["contract_name"] == seeded["contract_name"]
+        assert row["party_a_name"] == seeded["party_a_name"]
+        assert row["downstream_contract_count"] == seeded["downstream_contract_count"]
+        assert row["downstream_contract_amount"] == pytest.approx(seeded["downstream_contract_amount"])
+        assert row["downstream_settlement_amount"] == pytest.approx(seeded["downstream_settlement_amount"])
+        assert row["downstream_paid_amount"] == pytest.approx(seeded["downstream_paid_amount"])
+        assert row["management_contract_count"] == seeded["management_contract_count"]
+        assert row["management_contract_amount"] == pytest.approx(seeded["management_contract_amount"])
+        assert row["management_settlement_amount"] == pytest.approx(seeded["management_settlement_amount"])
+        assert row["management_paid_amount"] == pytest.approx(seeded["management_paid_amount"])
+        assert row["non_contract_expense_total"] == pytest.approx(seeded["expense_total"])
+        assert row["zero_hour_labor_total"] == pytest.approx(seeded["zero_hour_total"])
+
+    async def test_upstream_query_export_respects_filters(
+        self,
+        client: AsyncClient,
+        admin_token: str,
+        test_db: AsyncSession,
+        test_admin: User,
+    ):
+        seeded = await _seed_upstream_query_graph(test_db, test_admin)
+        response = await client.get(
+            "/api/v1/contracts/search/upstream-query/export",
+            params={"party_a_name": seeded["party_a_name"]},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        workbook = zipfile.ZipFile(io.BytesIO(response.content))
+        assert "[Content_Types].xml" in workbook.namelist()
+        workbook_text = "\n".join(
+            workbook.read(name).decode("utf-8", errors="ignore")
+            for name in workbook.namelist()
+            if name.endswith(".xml")
+        )
+        assert seeded["contract_name"] in workbook_text
+        assert seeded["excluded_contract_name"] not in workbook_text
 
 @pytest.mark.asyncio
 class TestDashboardEndpoints:

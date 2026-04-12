@@ -14,12 +14,53 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 import OrdinaryExpenseList from './OrdinaryExpenseList.vue'
 import ZeroHourLaborList from './ZeroHourLaborList.vue'
 
-const activeTab = ref('valuable')
+const allowedTabs = ['valuable', 'zeroHourLabor']
+const route = useRoute()
+const router = useRouter()
+
+const normalizeTab = (value) => {
+  if (Array.isArray(value)) {
+    return value[0]
+  }
+  return value
+}
+
+const getInitialTab = () => {
+  const tabFromQuery = normalizeTab(route.query.tab)
+  return allowedTabs.includes(tabFromQuery) ? tabFromQuery : 'valuable'
+}
+
+const activeTab = ref(getInitialTab())
+
+watch(
+  () => normalizeTab(route.query.tab),
+  (tab) => {
+    if (tab && allowedTabs.includes(tab) && tab !== activeTab.value) {
+      activeTab.value = tab
+    }
+  }
+)
+
+watch(
+  activeTab,
+  (tab) => {
+    if (!tab || tab === normalizeTab(route.query.tab)) {
+      return
+    }
+    router.replace({
+      query: {
+        ...route.query,
+        tab
+      }
+    })
+  }
+)
 </script>
 
 <style scoped lang="scss">

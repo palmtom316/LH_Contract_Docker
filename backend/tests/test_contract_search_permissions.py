@@ -112,3 +112,16 @@ async def test_general_affairs_user_party_b_search_only_returns_management_match
     data = response.json()
     assert data["downstream_results"] == []
     assert len(data["management_results"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_user_without_upstream_visibility_cannot_query_upstream_aggregate(
+    client, general_affairs_token
+):
+    response = await client.get(
+        "/api/v1/contracts/search/upstream-query",
+        params={"keyword": "SEARCH-PERM"},
+        headers={"Authorization": f"Bearer {general_affairs_token}"},
+    )
+
+    assert response.status_code == 403

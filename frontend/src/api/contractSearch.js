@@ -47,3 +47,66 @@ export function searchContracts({
     params
   })
 }
+
+export function queryUpstreamContracts({
+  keyword = '',
+  partyAName = '',
+  contractCategory = '',
+  companyCategory = '',
+  signDateStart = '',
+  signDateEnd = '',
+  page = 1,
+  pageSize = 20
+} = {}) {
+  const params = {
+    keyword,
+    party_a_name: partyAName,
+    contract_category: contractCategory,
+    company_category: companyCategory,
+    page,
+    page_size: pageSize
+  }
+
+  if (signDateStart) {
+    params.sign_date_start = signDateStart
+  }
+  if (signDateEnd) {
+    params.sign_date_end = signDateEnd
+  }
+
+  return request({
+    url: '/contracts/search/upstream-query',
+    method: 'get',
+    params
+  })
+}
+
+export function exportUpstreamContractQuery({
+  keyword = '',
+  partyAName = '',
+  contractCategory = '',
+  companyCategory = '',
+  signDateStart = '',
+  signDateEnd = ''
+} = {}) {
+  const params = {
+    keyword,
+    party_a_name: partyAName,
+    contract_category: contractCategory,
+    company_category: companyCategory
+  }
+
+  if (signDateStart) {
+    params.sign_date_start = signDateStart
+  }
+  if (signDateEnd) {
+    params.sign_date_end = signDateEnd
+  }
+
+  return request({
+    url: '/contracts/search/upstream-query/export',
+    method: 'get',
+    params,
+    responseType: 'blob'
+  })
+}
