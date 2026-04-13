@@ -2,6 +2,23 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
+function getElementPlusChunkName(id) {
+    const elementComponentMatch = id.match(/node_modules\/element-plus\/es\/components\/([^/]+)/)
+    if (elementComponentMatch?.[1]) {
+        return `element-${elementComponentMatch[1]}`
+    }
+
+    if (id.includes('node_modules/element-plus/')) {
+        return 'element-core'
+    }
+
+    if (id.includes('node_modules/@element-plus/icons-vue/')) {
+        return 'element-icons'
+    }
+
+    return null
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
     plugins: [
@@ -13,13 +30,16 @@ export default defineConfig({
                 manualChunks(id) {
                     if (!id.includes('node_modules')) return undefined
 
+                    const elementChunk = getElementPlusChunkName(id)
+                    if (elementChunk) {
+                        return elementChunk
+                    }
+
                     if (id.includes('echarts')) {
                         return 'charts-vendor'
                     }
-                    if (id.includes('element-plus') || id.includes('@element-plus')) {
-                        return 'element-vendor'
-                    }
                     if (id.includes('vant')) return 'mobile-vendor'
+                    if (id.includes('@supabase/supabase-js')) return 'supabase-vendor'
                     if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router')) return 'framework-vendor'
                     if (id.includes('axios') || id.includes('dayjs') || id.includes('file-saver')) return 'utils-vendor'
 
