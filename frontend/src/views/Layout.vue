@@ -78,7 +78,7 @@
                 <div class="topbar-copy__title">{{ route.meta.title }}</div>
               </div>
             </div>
-            <AppTopbarActions :unread-count="unreadCount" @open-contract-query="openContractQuery" />
+            <AppTopbarActions :unread-count="unreadCount" />
           </header>
 
           <section class="app-main">
@@ -123,7 +123,6 @@
       </template>
     </el-dialog>
 
-    <ContractQueryBot v-model="contractQueryVisible" />
   </div>
 </template>
 
@@ -139,7 +138,6 @@ import { useDevice } from '@/composables/useDevice'
 import { useSystemStore } from '@/stores/system'
 import { useUiStore } from '@/stores/ui'
 import { useUserStore } from '@/stores/user'
-import ContractQueryBot from '@/components/ContractQueryBot.vue'
 import AppTopbarActions from '@/components/layout/AppTopbarActions.vue'
 import SidebarUserCard from '@/components/layout/SidebarUserCard.vue'
 import NotificationCenter from '@/views/notifications/NotificationCenter.vue'
@@ -152,7 +150,6 @@ const uiStore = useUiStore()
 const { isMobile } = useDevice()
 
 const isCollapse = ref(false)
-const contractQueryVisible = ref(false)
 const systemVersion = ref(`Version ${pkg.version}`)
 const changePwdVisible = ref(false)
 const changingPwd = ref(false)
@@ -211,10 +208,6 @@ watch(route, () => {
 
 function toggleSidebar() {
   isCollapse.value = !isCollapse.value
-}
-
-function openContractQuery() {
-  contractQueryVisible.value = true
 }
 
 function closeSidebar() {

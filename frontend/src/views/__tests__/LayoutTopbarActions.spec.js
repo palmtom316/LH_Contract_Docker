@@ -48,4 +48,13 @@ describe('Layout topbar icon actions', () => {
     expect(globalStylesSource).not.toContain('.app-chrome-icon-button::after {')
     expect(globalStylesSource).toContain('prefers-reduced-motion: reduce')
   })
+
+  it('removes the global contract query trigger and dialog wiring', () => {
+    expect(topbarActionsSource).not.toContain('ContractQueryEntry')
+    expect(topbarActionsSource).not.toContain('open-contract-query')
+    expect(layoutSource).not.toContain('ContractQueryBot')
+    expect(layoutSource).not.toContain('contractQueryVisible')
+    expect(layoutSource).not.toContain('openContractQuery')
+    expect(layoutSource).not.toContain('open-contract-query')
+  })
 })

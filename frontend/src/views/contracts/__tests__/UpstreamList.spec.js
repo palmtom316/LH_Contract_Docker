@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { defineComponent, reactive, ref } from 'vue'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
@@ -199,6 +199,7 @@ const layoutElementStubs = {
   ElIcon: true,
   ElTabs: { template: '<div><slot /></div>' },
   ElTabPane: ElTabPaneStub,
+  ContractQueryBot: true,
   ElResult: true,
   ElDivider: true
 }
@@ -232,6 +233,10 @@ describe('UpstreamList filters', () => {
     getListMock.mockClear()
   })
 
+  afterEach(() => {
+    routeMock.query = {}
+  })
+
   it('uses date input range instead of month picker for the management filter', async () => {
     const wrapper = mountPage()
     const rangeFields = wrapper.findAll('.range-field-stub')
@@ -262,6 +267,41 @@ describe('UpstreamList filters', () => {
     expect(wrapper.text()).toContain('合同管理')
     expect(wrapper.text()).toContain('上游合同基本信息')
     expect(paneLabels).toEqual(expect.arrayContaining(['合同管理', '上游合同基本信息']))
+  })
+
+  it('renders the query tab immediately after the default upstream tab', () => {
+    const wrapper = mountPage()
+    const labels = wrapper.findAll('.tab-label').map((node) => node.text())
+
+    expect(labels.slice(0, 3)).toEqual(['合同管理', '上游合同查询', '上游合同基本信息'])
+  })
+
+  it('hydrates the active tab from route query', async () => {
+    routeMock.query = { tab: 'query' }
+    const wrapper = mountPage()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.vm.activeTab).toBe('query')
+    routeMock.query = {}
+  })
+
+  it('preserves the current upstream tab when navigating to details', () => {
+    const wrapper = mountPage()
+    wrapper.vm.activeTab = 'basic_info'
+    routerMock.push.mockClear()
+
+    wrapper.vm.handleDetail({ id: 'abc-123' })
+
+    expect(routerMock.push).toHaveBeenCalledWith({
+      name: 'UpstreamDetail',
+      params: { id: 'abc-123' },
+      query: {
+        page: 1,
+        keyword: undefined,
+        status: undefined,
+        tab: 'basic_info'
+      }
+    })
   })
 
   it('shows the management filter action buttons', () => {

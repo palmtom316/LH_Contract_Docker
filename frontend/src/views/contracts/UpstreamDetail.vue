@@ -922,6 +922,7 @@ const handleBack = () => {
   if (query.page) params.append('page', query.page)
   if (query.keyword) params.append('keyword', query.keyword)
   if (query.status) params.append('status', query.status)
+  if (query.tab) params.append('tab', query.tab)
   const queryString = params.toString()
   location.href = '/contracts/upstream' + (queryString ? '?' + queryString : '')
 }

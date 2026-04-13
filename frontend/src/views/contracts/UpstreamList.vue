@@ -215,6 +215,10 @@
         </AppSectionCard>
       </el-tab-pane>
 
+      <el-tab-pane label="上游合同查询" name="query">
+        <ContractQueryBot v-if="activeTab === TAB_QUERY" />
+      </el-tab-pane>
+
       <!-- Tab 2: Basic Information List -->
       <el-tab-pane label="上游合同基本信息" name="basic_info">
         <AppSectionCard class="upstream-filter-section">
@@ -623,6 +627,7 @@ import AppDataTable from '@/components/ui/AppDataTable.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import AppRangeField from '@/components/ui/AppRangeField.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
+import ContractQueryBot from '@/components/ContractQueryBot.vue'
 
 const SmartAutocomplete = defineAsyncComponent(() => import('@/components/SmartAutocomplete.vue'))
 const PdfViewer = defineAsyncComponent(() => import('@/components/PdfViewer.vue'))
@@ -630,6 +635,7 @@ const FormulaInput = defineAsyncComponent(() => import('@/components/FormulaInpu
 
 const userStore = useUserStore()
 const systemStore = useSystemStore()
+const router = useRouter()
 const route = useRoute()
 const { getSummaries: baseGetSummaries, footerCellStyle } = useTableSummary()
 const { isMobile, checkIsMobile } = useMobileDetection()
@@ -700,7 +706,12 @@ const {
 
 const handleDelete = (row) => baseHandleDelete(row)
 
-const activeTab = ref('management')
+const TAB_MANAGEMENT = 'management'
+const TAB_QUERY = 'query'
+const TAB_BASIC_INFO = 'basic_info'
+const TAB_NAMES = new Set([TAB_MANAGEMENT, TAB_QUERY, TAB_BASIC_INFO])
+
+const activeTab = ref(TAB_MANAGEMENT)
 const dateRange = ref([])
 const monthRange = ref([])
 
@@ -812,7 +823,29 @@ const handleExport = async () => {
   await baseHandleExport()
 }
 
-const handleTabChange = () => {
+function getRouteTab() {
+  const tab = typeof route.query.tab === 'string' ? route.query.tab : TAB_MANAGEMENT
+  return TAB_NAMES.has(tab) ? tab : TAB_MANAGEMENT
+}
+
+function syncRouteTab(tab) {
+  const nextQuery = { ...route.query }
+  if (tab === TAB_MANAGEMENT) {
+    delete nextQuery.tab
+  } else {
+    nextQuery.tab = tab
+  }
+  router.replace({ query: nextQuery })
+}
+
+const handleTabChange = (nextTab) => {
+  syncRouteTab(nextTab)
+  if (nextTab === TAB_QUERY) {
+    activeTab.value = TAB_QUERY
+    return
+  }
+
+  activeTab.value = nextTab
   queryParams.page = 1
   queryParams.keyword = ''
   queryParams.status = ''
@@ -997,16 +1030,16 @@ const submitForm = async () => {
 }
 
 
-const router = useRouter() // Ensure router is imported or available
-
 const handleDetail = (row) => {
+  const preservedTab = activeTab.value === TAB_MANAGEMENT ? undefined : activeTab.value
   router.push({ 
     name: 'UpstreamDetail', 
     params: { id: row.id },
     query: {
       page: queryParams.page,
       keyword: queryParams.keyword || undefined,
-      status: queryParams.status || undefined
+      status: queryParams.status || undefined,
+      tab: preservedTab
     }
   })
 }
@@ -1064,20 +1097,22 @@ const handleImportFileChange = async (event) => {
 }
 
 onMounted(() => {
-  // 从 URL 参数恢复查询条件
-  if (route.query.page) {
-    queryParams.page = parseInt(route.query.page, 10)
+  activeTab.value = getRouteTab()
+  if (activeTab.value !== TAB_QUERY) {
+    if (route.query.page) {
+      queryParams.page = parseInt(route.query.page, 10)
+    }
+    if (route.query.keyword) {
+      queryParams.keyword = route.query.keyword
+    }
+    if (route.query.status) {
+      queryParams.status = route.query.status
+    }
+    getList()
   }
-  if (route.query.keyword) {
-    queryParams.keyword = route.query.keyword
-  }
-  if (route.query.status) {
-    queryParams.status = route.query.status
-  }
-  
+
   checkIsMobile()
   window.addEventListener('resize', handleResize)
-  getList()
 })
 
 onBeforeUnmount(() => {

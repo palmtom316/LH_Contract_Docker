@@ -166,4 +166,8 @@ describe('Contract detail workspace shell', () => {
       expect(source).toContain('background: color-mix(in srgb, var(--surface-panel-elevated) 90%, var(--brand-primary-soft) 10%);')
     })
   })
+
+  it('preserves tab=query in upstream detail back-navigation source', () => {
+    expect(detailSources[0]).toContain("if (query.tab) params.append('tab', query.tab)")
+  })
 })

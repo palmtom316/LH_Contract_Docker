@@ -50,17 +50,6 @@ vi.mock('vue-router', async (importOriginal) => {
   }
 })
 
-const ElDialogStub = {
-  name: 'ElDialog',
-  props: ['modelValue'],
-  emits: ['update:modelValue'],
-  template: `
-    <div v-if="modelValue" class="dialog-stub">
-      <slot />
-    </div>
-  `
-}
-
 const ElInputStub = {
   name: 'ElInput',
   props: ['modelValue', 'placeholder'],
@@ -72,12 +61,6 @@ const ElInputStub = {
       @input="$emit('update:modelValue', $event.target.value)"
     />
   `
-}
-
-const ElButtonStub = {
-  name: 'ElButton',
-  emits: ['click'],
-  template: '<button type="button" @click="$emit(\'click\')"><slot /></button>'
 }
 
 const ElPaginationStub = {
@@ -127,17 +110,13 @@ const slotStub = name => ({
   `
 })
 
-const createWrapper = (props = {}) =>
+const originalCreateElement = document.createElement.bind(document)
+
+const createWrapper = () =>
   mount(ContractQueryBot, {
-    props: {
-      modelValue: true,
-      ...props
-    },
     global: {
       stubs: {
-        'el-dialog': ElDialogStub,
         'el-input': ElInputStub,
-        'el-button': ElButtonStub,
         'el-pagination': ElPaginationStub,
         'el-icon': true,
         'el-tooltip': true,
@@ -157,14 +136,27 @@ describe('ContractQueryBot', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
+    if (!window.URL) {
+      window.URL = {}
+    }
+    window.URL.createObjectURL = vi.fn(() => 'blob:contract-query-export')
+    window.URL.revokeObjectURL = vi.fn()
+    vi.spyOn(document, 'createElement').mockImplementation(tagName => {
+      const element = originalCreateElement(tagName)
+      if (tagName === 'a') {
+        element.click = vi.fn()
+      }
+      return element
+    })
   })
 
   afterEach(() => {
     vi.runOnlyPendingTimers()
     vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
-  it('loads upstream aggregate rows when the panel opens', async () => {
+  it('loads upstream aggregate rows when the panel mounts', async () => {
     createWrapper()
 
     await flushPromises()
@@ -224,8 +216,7 @@ describe('ContractQueryBot', () => {
     const wrapper = createWrapper()
     await flushPromises()
 
-    const exportButton = wrapper.findAll('button').find(node => node.text().includes('导出 Excel'))
-    await exportButton.trigger('click')
+    await wrapper.find('[data-testid="contract-query-export"]').trigger('click')
 
     expect(exportUpstreamContractQuery).toHaveBeenCalledWith({
       keyword: '',
