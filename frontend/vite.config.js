@@ -17,14 +17,7 @@ export default defineConfig({
                         return 'charts-vendor'
                     }
                     if (id.includes('element-plus') || id.includes('@element-plus')) {
-                        if (id.includes('@element-plus/icons-vue')) return 'element-icons-vendor'
-                        if (id.includes('/table') || id.includes('/pagination') || id.includes('/tabs') || id.includes('/card')) {
-                            return 'element-data-vendor'
-                        }
-                        if (id.includes('/form') || id.includes('/input') || id.includes('/select') || id.includes('/date-picker') || id.includes('/dialog') || id.includes('/upload')) {
-                            return 'element-form-vendor'
-                        }
-                        return 'element-core-vendor'
+                        return 'element-vendor'
                     }
                     if (id.includes('vant')) return 'mobile-vendor'
                     if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router')) return 'framework-vendor'

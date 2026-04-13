@@ -57,7 +57,7 @@ WORKDIR /app
 COPY --from=builder /wheels /wheels
 
 # Install dependencies from wheels (no compilation needed)
-RUN pip install --no-cache-dir --no-index --find-links=/wheels /wheels/* \
+RUN pip install --no-cache-dir --no-index --find-links=/wheels -r /wheels/requirements.txt \
     && rm -rf /wheels
 
 # Copy application code

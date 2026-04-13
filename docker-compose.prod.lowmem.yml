@@ -2,8 +2,6 @@
 # 适用于内存受限环境 (4-8GB RAM)
 # 使用方法: docker compose -f docker-compose.prod.lowmem.yml up -d
 
-version: '3.8'
-
 services:
   # PostgreSQL Database - 优化内存配置
   db:

@@ -1,8 +1,6 @@
 # Docker Compose - Production Configuration
 # Optimized for production deployment
 
-version: '3.8'
-
 services:
   # PostgreSQL Database
   db:

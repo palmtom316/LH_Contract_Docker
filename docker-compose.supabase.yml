@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Supabase Development Stack for LH Contract Management System
 # This file is used for local development with Supabase services.
 # For production, use official Supabase hosting or self-hosted deployment.

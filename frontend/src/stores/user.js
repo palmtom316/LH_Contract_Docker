@@ -3,13 +3,47 @@ import { login, getInfo, logout, refreshToken as refreshTokenApi } from '@/api/a
 import { persistSession, clearSessionStorage } from '@/utils/authSession'
 import { useSystemStore } from '@/stores/system'
 
+function getStorage() {
+    try {
+        return typeof globalThis.localStorage === 'undefined' ? null : globalThis.localStorage
+    } catch {
+        return null
+    }
+}
+
+function readStorageValue(key, fallback = '') {
+    const storage = getStorage()
+    if (!storage) return fallback
+
+    try {
+        const value = storage.getItem(key)
+        return value ?? fallback
+    } catch {
+        return fallback
+    }
+}
+
+function readStorageJson(key, fallback, validator = () => true) {
+    const storage = getStorage()
+    if (!storage) return fallback
+
+    try {
+        const raw = storage.getItem(key)
+        if (!raw) return fallback
+        const parsed = JSON.parse(raw)
+        return validator(parsed) ? parsed : fallback
+    } catch {
+        return fallback
+    }
+}
+
 export const useUserStore = defineStore('user', {
     state: () => ({
-        token: localStorage.getItem('token') || '',
+        token: readStorageValue('token', ''),
         refreshToken: '',
-        tokenExpiresAt: localStorage.getItem('token_expires_at') || null,
-        user: JSON.parse(localStorage.getItem('user_info') || '{}'),
-        permissions: JSON.parse(localStorage.getItem('user_permissions') || '[]')
+        tokenExpiresAt: readStorageValue('token_expires_at', null),
+        user: readStorageJson('user_info', {}, (value) => value && typeof value === 'object' && !Array.isArray(value)),
+        permissions: readStorageJson('user_permissions', [], Array.isArray)
     }),
 
     getters: {

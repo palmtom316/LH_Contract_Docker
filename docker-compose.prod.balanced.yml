@@ -3,8 +3,6 @@
 # 适用于 6-10GB RAM 环境，20-50 并发用户
 # 使用方法: docker compose -f docker-compose.prod.balanced.yml up -d
 
-version: '3.8'
-
 services:
   # PostgreSQL Database - 折中内存配置
   db:
