@@ -14,12 +14,16 @@ vi.mock('@/api/contractSearch', () => ({
       items: [
         {
           id: 11,
+          serial_number: 501,
+          contract_code: 'UP-501',
           contract_name: '华东总包上游合同',
           party_a_name: '华东甲方',
-          party_b_name: '我方公司',
           category: '施工合同',
           company_category: '市政工程',
+          management_mode: '自营',
           sign_date: '2026-04-03',
+          completion_date: '2026-04-28',
+          warranty_date: '2027-04-28',
           contract_amount: 300000,
           receivable_amount: 180000,
           invoiced_amount: 120000,
@@ -34,6 +38,10 @@ vi.mock('@/api/contractSearch', () => ({
           management_settlement_amount: 18000,
           management_paid_amount: 16000,
           non_contract_expense_total: 12000,
+          expenses_by_category: [
+            { category: '管理费', amount: 8000 },
+            { category: '培训费', amount: 4000 }
+          ],
           zero_hour_labor_total: 6000
         }
       ]
@@ -163,13 +171,13 @@ describe('ContractQueryBot', () => {
 
     expect(queryUpstreamContracts).toHaveBeenCalledWith({
       keyword: '',
-      partyAName: '',
       contractCategory: '',
       companyCategory: '',
+      managementMode: '',
       signDateStart: '',
       signDateEnd: '',
       page: 1,
-      pageSize: 20
+      pageSize: 12
     })
   })
 
@@ -180,7 +188,7 @@ describe('ContractQueryBot', () => {
 
     const inputs = wrapper.findAll('input')
     await inputs[0].setValue('华东')
-    await inputs[1].setValue('华东甲方')
+    await wrapper.findAll('select')[1].setValue('施工合同')
     await wrapper.find('[data-testid="range-trigger"]').trigger('click')
 
     vi.advanceTimersByTime(260)
@@ -188,13 +196,13 @@ describe('ContractQueryBot', () => {
 
     expect(queryUpstreamContracts).toHaveBeenCalledWith({
       keyword: '华东',
-      partyAName: '华东甲方',
-      contractCategory: '',
+      contractCategory: '施工合同',
       companyCategory: '',
+      managementMode: '',
       signDateStart: '2026-04-01',
       signDateEnd: '2026-04-09',
       page: 1,
-      pageSize: 20
+      pageSize: 12
     })
   })
 
@@ -220,11 +228,23 @@ describe('ContractQueryBot', () => {
 
     expect(exportUpstreamContractQuery).toHaveBeenCalledWith({
       keyword: '',
-      partyAName: '',
       contractCategory: '',
       companyCategory: '',
+      managementMode: '',
       signDateStart: '',
       signDateEnd: ''
     })
+  })
+
+  it('renders upstream aggregate data as assistant cards', async () => {
+    const wrapper = createWrapper()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('合同查询助手')
+    expect(wrapper.text()).toContain('华东总包上游合同')
+    expect(wrapper.text()).toContain('甲方单位')
+    expect(wrapper.text()).toContain('质保期到期日期')
+    expect(wrapper.text()).toContain('管理费')
+    expect(wrapper.text()).toContain('培训费')
   })
 })

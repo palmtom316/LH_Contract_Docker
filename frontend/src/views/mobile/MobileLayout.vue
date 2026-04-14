@@ -50,6 +50,39 @@
       <NotificationCenter />
     </van-popup>
 
+    <button
+      v-if="userStore.canViewUpstreamContracts"
+      type="button"
+      class="contract-query-mobile-trigger"
+      aria-label="打开合同查询助手"
+      @click="uiStore.openContractQuery()"
+    >
+      合同查询助手
+    </button>
+
+    <van-popup
+      v-if="userStore.canViewUpstreamContracts"
+      v-model:show="uiStore.contractQueryOpen"
+      position="right"
+      class="contract-query-mobile-popup"
+      :style="{ width: '100%', height: '100%' }"
+    >
+      <div class="contract-query-mobile-shell">
+        <div class="contract-query-mobile-shell__header">
+          <div>
+            <span class="mobile-topbar__eyebrow">Query Assistant</span>
+            <h2 class="contract-query-mobile-shell__title">合同查询助手</h2>
+          </div>
+          <button type="button" class="menu-trigger" aria-label="关闭合同查询助手" @click="uiStore.closeContractQuery()">
+            <van-icon name="cross" />
+          </button>
+        </div>
+        <div class="contract-query-mobile-shell__body">
+          <ContractQueryBot variant="assistant" />
+        </div>
+      </div>
+    </van-popup>
+
     <el-dialog title="修改密码" v-model="changePwdVisible" :width="dialogWidth" :close-on-click-modal="false">
       <el-form ref="pwdFormRef" :model="pwdForm" :rules="pwdRules" label-width="88px">
         <el-form-item label="当前密码" prop="old_password">
@@ -71,7 +104,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Icon as VanIcon, Popup as VanPopup, Tabbar as VanTabbar, TabbarItem as VanTabbarItem } from 'vant'
@@ -81,6 +114,7 @@ import { useUiStore } from '@/stores/ui'
 import { useUserStore } from '@/stores/user'
 import { useDevice } from '@/composables/useDevice'
 import AppTopbarActions from '@/components/layout/AppTopbarActions.vue'
+import ContractQueryBot from '@/components/ContractQueryBot.vue'
 import NotificationCenter from '@/views/notifications/NotificationCenter.vue'
 import SidebarUserCard from '@/components/layout/SidebarUserCard.vue'
 
@@ -136,6 +170,11 @@ watch(() => uiStore.notificationDrawerOpen, async (open) => {
       // NotificationCenter renders the load error.
     }
   }
+})
+
+watch(() => route.path, () => {
+  drawerOpen.value = false
+  uiStore.closeContractQuery()
 })
 
 function openChangePasswordDialog() {
@@ -196,6 +235,23 @@ function confirmLogout() {
     })
     .catch(() => {})
 }
+
+function handleContractQueryKeydown(event) {
+  if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'k') {
+    return
+  }
+  event.preventDefault()
+  uiStore.openContractQuery()
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleContractQueryKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleContractQueryKeydown)
+  uiStore.closeContractQuery()
+})
 
 </script>
 
@@ -315,6 +371,53 @@ function confirmLogout() {
   background: var(--surface-page);
 }
 
+.contract-query-mobile-trigger {
+  position: fixed;
+  right: 14px;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  z-index: 1002;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-panel) 88%, var(--brand-primary-soft) 12%);
+  color: hsl(var(--foreground));
+  font-weight: 700;
+  box-shadow: var(--shadow-soft);
+}
+
+.contract-query-mobile-popup {
+  background: var(--surface-page);
+}
+
+.contract-query-mobile-shell {
+  min-height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.contract-query-mobile-shell__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: calc(12px + env(safe-area-inset-top)) 12px 12px;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+}
+
+.contract-query-mobile-shell__title {
+  margin: 4px 0 0;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.contract-query-mobile-shell__body {
+  overflow-y: auto;
+  padding: 12px 12px calc(24px + env(safe-area-inset-bottom));
+}
+
 :deep(.topbar-actions) {
   gap: 6px;
 }
@@ -363,6 +466,11 @@ function confirmLogout() {
 
   .mobile-content {
     padding: 12px 12px calc(78px + env(safe-area-inset-bottom));
+  }
+
+  .contract-query-mobile-trigger {
+    right: 12px;
+    bottom: calc(72px + env(safe-area-inset-bottom));
   }
 
   .mobile-tabbar {

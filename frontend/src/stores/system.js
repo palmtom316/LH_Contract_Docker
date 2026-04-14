@@ -57,6 +57,7 @@ export const useSystemStore = defineStore('system', () => {
     // State
     const config = ref({
         system_name: '合同管理系统',
+        system_name_line_2: '',
         system_logo: null
     })
 

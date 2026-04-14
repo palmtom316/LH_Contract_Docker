@@ -49,12 +49,18 @@ describe('Layout topbar icon actions', () => {
     expect(globalStylesSource).toContain('prefers-reduced-motion: reduce')
   })
 
-  it('removes the global contract query trigger and dialog wiring', () => {
+  it('wires the shared contract query assistant trigger into the desktop shell', () => {
     expect(topbarActionsSource).not.toContain('ContractQueryEntry')
     expect(topbarActionsSource).not.toContain('open-contract-query')
-    expect(layoutSource).not.toContain('ContractQueryBot')
-    expect(layoutSource).not.toContain('contractQueryVisible')
-    expect(layoutSource).not.toContain('openContractQuery')
-    expect(layoutSource).not.toContain('open-contract-query')
+    expect(layoutSource).toContain('class="contract-query-trigger"')
+    expect(layoutSource).toContain('ContractQueryBot variant="assistant"')
+    expect(layoutSource).toContain('uiStore.contractQueryOpen')
+    expect(layoutSource).toContain('openContractQuery()')
+    expect(layoutSource).not.toContain('@mouseenter="handleContractQueryHover"')
+    expect(layoutSource).not.toContain('@focus="openContractQuery"')
+    expect(layoutSource).not.toContain('toggleContractQuery()')
+    expect(layoutSource).toContain('contract-query-trigger__icon')
+    expect(layoutSource).toContain('合同查询</span>')
+    expect(layoutSource).toContain('Ctrl + K')
   })
 })

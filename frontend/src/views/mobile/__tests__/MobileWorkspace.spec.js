@@ -25,7 +25,10 @@ vi.mock('@/stores/system', () => ({
 
 vi.mock('@/stores/ui', () => ({
   useUiStore: () => ({
-    notificationDrawerOpen: false
+    notificationDrawerOpen: false,
+    contractQueryOpen: false,
+    openContractQuery: vi.fn(),
+    closeContractQuery: vi.fn()
   })
 }))
 
@@ -83,6 +86,7 @@ const mountPage = () =>
         RouterView: { template: '<div class="router-view-stub" />' },
         RouterLink: { template: '<a><slot /></a>' },
         AppTopbarActions: true,
+        ContractQueryBot: true,
         NotificationCenter: true,
         SidebarUserCard: true,
         VanIcon: true,
@@ -142,6 +146,7 @@ describe('Mobile workspace shell', () => {
 
     expect(wrapper.find('.mobile-shell').exists()).toBe(true)
     expect(wrapper.find('.mobile-shell__frame').exists()).toBe(true)
+    expect(wrapper.find('.contract-query-mobile-trigger').exists()).toBe(true)
   })
 
   it('renders the mobile contract toolbar shell', () => {

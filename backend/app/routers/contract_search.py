@@ -168,6 +168,7 @@ def _apply_upstream_query_filters(
     party_a_name: str,
     contract_category_values: list[str],
     company_category_values: list[str],
+    management_mode_values: list[str],
     sign_date_start: Optional[date],
     sign_date_end: Optional[date],
 ):
@@ -176,6 +177,7 @@ def _apply_upstream_query_filters(
             or_(
                 ContractUpstream.contract_code.ilike(f"%{keyword}%"),
                 ContractUpstream.contract_name.ilike(f"%{keyword}%"),
+                ContractUpstream.party_a_name.ilike(f"%{keyword}%"),
                 cast(ContractUpstream.serial_number, String).ilike(f"%{keyword}%"),
             )
         )
@@ -193,6 +195,12 @@ def _apply_upstream_query_filters(
     )
     if company_category_condition is not None:
         stmt = stmt.where(company_category_condition)
+    management_mode_condition = _build_multi_value_ilike_condition(
+        ContractUpstream.management_mode,
+        management_mode_values,
+    )
+    if management_mode_condition is not None:
+        stmt = stmt.where(management_mode_condition)
     if sign_date_start:
         stmt = stmt.where(ContractUpstream.sign_date >= sign_date_start)
     if sign_date_end:
@@ -276,7 +284,10 @@ class UpstreamAggregateRow(BaseModel):
     party_b_name: str
     category: Optional[str] = None
     company_category: Optional[str] = None
+    management_mode: Optional[str] = None
     sign_date: Optional[date] = None
+    completion_date: Optional[date] = None
+    warranty_date: Optional[date] = None
     contract_amount: float = 0
     receivable_amount: float = 0
     invoiced_amount: float = 0
@@ -291,6 +302,7 @@ class UpstreamAggregateRow(BaseModel):
     management_settlement_amount: float = 0
     management_paid_amount: float = 0
     non_contract_expense_total: float = 0
+    expenses_by_category: List[ExpenseCategory] = []
     zero_hour_labor_total: float = 0
 
 
@@ -313,6 +325,7 @@ async def _load_upstream_aggregate_page(
     party_a_name: str,
     contract_category: str,
     company_category: str,
+    management_mode: str,
     sign_date_start: Optional[date],
     sign_date_end: Optional[date],
     page: int = 1,
@@ -333,6 +346,11 @@ async def _load_upstream_aggregate_page(
         dictionary_category="project_category",
         raw_value=company_category,
     )
+    management_mode_filters = await _expand_dictionary_filter_values(
+        db,
+        dictionary_category="management_mode",
+        raw_value=management_mode,
+    )
 
     count_stmt = _apply_upstream_query_filters(
         select(ContractUpstream.id),
@@ -340,6 +358,7 @@ async def _load_upstream_aggregate_page(
         party_a_name=party_a_name,
         contract_category_values=contract_category_filters,
         company_category_values=company_category_filters,
+        management_mode_values=management_mode_filters,
         sign_date_start=sign_date_start,
         sign_date_end=sign_date_end,
     )
@@ -357,6 +376,7 @@ async def _load_upstream_aggregate_page(
         party_a_name=party_a_name,
         contract_category_values=contract_category_filters,
         company_category_values=company_category_filters,
+        management_mode_values=management_mode_filters,
         sign_date_start=sign_date_start,
         sign_date_end=sign_date_end,
     ).order_by(ContractUpstream.sign_date.desc().nulls_last(), ContractUpstream.id.desc())
@@ -370,6 +390,7 @@ async def _load_upstream_aggregate_page(
     downstream_by_upstream: dict[int, list[ContractDownstream]] = {}
     management_by_upstream: dict[int, list[ContractManagement]] = {}
     expense_total_by_upstream: dict[int, Decimal] = {}
+    expense_category_totals_by_upstream: dict[int, dict[str, Decimal]] = {}
     labor_total_by_upstream: dict[int, Decimal] = {}
 
     if upstream_ids and scope["downstream"]:
@@ -407,6 +428,9 @@ async def _load_upstream_aggregate_page(
                 expense_total_by_upstream.get(row.upstream_contract_id, Decimal("0"))
                 + _to_decimal(row.amount)
             )
+            category_label = row.expense_type or row.category or "未分类"
+            category_totals = expense_category_totals_by_upstream.setdefault(row.upstream_contract_id, {})
+            category_totals[category_label] = category_totals.get(category_label, Decimal("0")) + _to_decimal(row.amount)
 
         labor_rows = (await db.execute(labor_stmt)).scalars().all()
         for row in labor_rows:
@@ -419,6 +443,14 @@ async def _load_upstream_aggregate_page(
     for upstream in upstream_contracts:
         downstream_rows = downstream_by_upstream.get(upstream.id, [])
         management_rows = management_by_upstream.get(upstream.id, [])
+        latest_settlement = upstream.latest_settlement
+        expense_category_rows = [
+            ExpenseCategory(category=category, amount=_money(amount))
+            for category, amount in sorted(
+                expense_category_totals_by_upstream.get(upstream.id, {}).items(),
+                key=lambda item: item[0],
+            )
+        ]
         items.append(
             UpstreamAggregateRow(
                 id=upstream.id,
@@ -429,7 +461,10 @@ async def _load_upstream_aggregate_page(
                 party_b_name=upstream.party_b_name,
                 category=upstream.category,
                 company_category=upstream.company_category,
+                management_mode=upstream.management_mode,
                 sign_date=upstream.sign_date,
+                completion_date=latest_settlement.completion_date if latest_settlement else None,
+                warranty_date=latest_settlement.warranty_date if latest_settlement else None,
                 contract_amount=_money(upstream.contract_amount),
                 receivable_amount=_money(_sum_related_amount(upstream.receivables)),
                 invoiced_amount=_money(_sum_related_amount(upstream.invoices)),
@@ -444,6 +479,7 @@ async def _load_upstream_aggregate_page(
                 management_settlement_amount=_money(_sum_contract_field(management_rows, "total_settlement")),
                 management_paid_amount=_money(_sum_contract_field(management_rows, "total_paid")),
                 non_contract_expense_total=_money(expense_total_by_upstream.get(upstream.id, Decimal("0"))),
+                expenses_by_category=expense_category_rows,
                 zero_hour_labor_total=_money(labor_total_by_upstream.get(upstream.id, Decimal("0"))),
             )
         )
@@ -457,6 +493,7 @@ async def query_upstream_contracts(
     party_a_name: str = Query("", description="甲方单位"),
     contract_category: str = Query("", description="合同类别"),
     company_category: str = Query("", description="合同公司分类"),
+    management_mode: str = Query("", description="管理模式"),
     sign_date_start: Optional[date] = Query(None, description="签约开始日期"),
     sign_date_end: Optional[date] = Query(None, description="签约结束日期"),
     page: int = Query(1, ge=1),
@@ -471,6 +508,7 @@ async def query_upstream_contracts(
         party_a_name=_normalize_text(party_a_name),
         contract_category=_normalize_text(contract_category),
         company_category=_normalize_text(company_category),
+        management_mode=_normalize_text(management_mode),
         sign_date_start=sign_date_start,
         sign_date_end=sign_date_end,
         page=page,
@@ -490,6 +528,7 @@ async def export_upstream_contract_query(
     party_a_name: str = Query("", description="甲方单位"),
     contract_category: str = Query("", description="合同类别"),
     company_category: str = Query("", description="合同公司分类"),
+    management_mode: str = Query("", description="管理模式"),
     sign_date_start: Optional[date] = Query(None, description="签约开始日期"),
     sign_date_end: Optional[date] = Query(None, description="签约结束日期"),
     db: AsyncSession = Depends(get_db),
@@ -502,6 +541,7 @@ async def export_upstream_contract_query(
         party_a_name=_normalize_text(party_a_name),
         contract_category=_normalize_text(contract_category),
         company_category=_normalize_text(company_category),
+        management_mode=_normalize_text(management_mode),
         sign_date_start=sign_date_start,
         sign_date_end=sign_date_end,
         export_all=True,
@@ -514,8 +554,11 @@ async def export_upstream_contract_query(
             "乙方单位": row.party_b_name,
             "合同类别": row.category or "",
             "合同公司分类": row.company_category or "",
+            "管理模式": row.management_mode or "",
             "签约金额": row.contract_amount,
             "签约日期": row.sign_date.isoformat() if row.sign_date else "",
+            "完工日期": row.completion_date.isoformat() if row.completion_date else "",
+            "质保到期日期": row.warranty_date.isoformat() if row.warranty_date else "",
             "应收款": row.receivable_amount,
             "挂账金额": row.invoiced_amount,
             "已收款": row.received_amount,
@@ -529,6 +572,9 @@ async def export_upstream_contract_query(
             "关联管理合同结算总金额": row.management_settlement_amount,
             "关联管理合同已付款总金额": row.management_paid_amount,
             "关联无合同费用总金额": row.non_contract_expense_total,
+            "关联无合同费用分类汇总": "；".join(
+                f"{item.category}: {item.amount:.2f}" for item in row.expenses_by_category
+            ),
             "关联零星用工总金额": row.zero_hour_labor_total,
         }
         for row in items

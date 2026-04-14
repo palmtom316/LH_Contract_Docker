@@ -82,6 +82,13 @@ async def test_upstream_query_accepts_dictionary_value_for_legacy_contract_categ
             sort_order=1,
             is_active=True,
         ),
+        SysDictionary(
+            category="management_mode",
+            label="自营",
+            value="DIRECT",
+            sort_order=1,
+            is_active=True,
+        ),
         ContractUpstream(
             serial_number=9910,
             contract_code="FILTER-UP-001",
@@ -90,6 +97,7 @@ async def test_upstream_query_accepts_dictionary_value_for_legacy_contract_categ
             party_b_name="筛选乙方",
             category="工程类合同",
             company_category="市政工程",
+            management_mode="自营",
             contract_amount=Decimal("1000.00"),
             sign_date=date(2026, 4, 1),
             status="执行中",
@@ -103,6 +111,7 @@ async def test_upstream_query_accepts_dictionary_value_for_legacy_contract_categ
         params={
             "contract_category": "ENGINEERING",
             "company_category": "MUNICIPAL",
+            "management_mode": "DIRECT",
         },
         headers={"Authorization": f"Bearer {admin_token}"},
     )
@@ -111,3 +120,4 @@ async def test_upstream_query_accepts_dictionary_value_for_legacy_contract_categ
     payload = response.json()
     assert payload["total"] == 1
     assert payload["items"][0]["contract_code"] == "FILTER-UP-001"
+    assert payload["items"][0]["management_mode"] == "自营"

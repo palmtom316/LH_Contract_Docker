@@ -50,9 +50,9 @@ export function searchContracts({
 
 export function queryUpstreamContracts({
   keyword = '',
-  partyAName = '',
   contractCategory = '',
   companyCategory = '',
+  managementMode = '',
   signDateStart = '',
   signDateEnd = '',
   page = 1,
@@ -60,9 +60,9 @@ export function queryUpstreamContracts({
 } = {}) {
   const params = {
     keyword,
-    party_a_name: partyAName,
     contract_category: contractCategory,
     company_category: companyCategory,
+    management_mode: managementMode,
     page,
     page_size: pageSize
   }
@@ -83,17 +83,17 @@ export function queryUpstreamContracts({
 
 export function exportUpstreamContractQuery({
   keyword = '',
-  partyAName = '',
   contractCategory = '',
   companyCategory = '',
+  managementMode = '',
   signDateStart = '',
   signDateEnd = ''
 } = {}) {
   const params = {
     keyword,
-    party_a_name: partyAName,
     contract_category: contractCategory,
-    company_category: companyCategory
+    company_category: companyCategory,
+    management_mode: managementMode
   }
 
   if (signDateStart) {

@@ -94,6 +94,21 @@
       </div>
     </div>
 
+    <button
+      v-if="userStore.canViewUpstreamContracts"
+      type="button"
+      class="contract-query-trigger"
+      :class="{ 'is-open': uiStore.contractQueryOpen }"
+      aria-label="打开合同查询助手"
+      @click="openContractQuery"
+    >
+      <span class="contract-query-trigger__icon" aria-hidden="true">
+        <el-icon><Search /></el-icon>
+      </span>
+      <span class="contract-query-trigger__label">合同查询</span>
+      <span class="contract-query-trigger__hint">Ctrl + K</span>
+    </button>
+
     <el-drawer
       v-model="uiStore.notificationDrawerOpen"
       :size="isMobile ? '100%' : '420px'"
@@ -103,6 +118,19 @@
       @close="uiStore.closeNotificationDrawer()"
     >
       <NotificationCenter />
+    </el-drawer>
+
+    <el-drawer
+      v-if="userStore.canViewUpstreamContracts"
+      v-model="uiStore.contractQueryOpen"
+      :size="assistantDrawerSize"
+      direction="rtl"
+      title="合同查询助手"
+      append-to-body
+      class="contract-query-drawer"
+      @close="uiStore.closeContractQuery()"
+    >
+      <ContractQueryBot variant="assistant" />
     </el-drawer>
 
     <el-dialog title="修改密码" v-model="changePwdVisible" width="400px" :close-on-click-modal="false">
@@ -127,10 +155,10 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { DataAnalysis, Document, DocumentCopy, Expand, Fold, FolderChecked, HomeFilled, Money, Setting } from '@element-plus/icons-vue'
+import { DataAnalysis, Document, DocumentCopy, Expand, Fold, FolderChecked, HomeFilled, Money, Search, Setting } from '@element-plus/icons-vue'
 import pkg from '../../package.json'
 import logoNew from '@/assets/logo_new.png'
 import request from '@/utils/request'
@@ -140,6 +168,7 @@ import { useUiStore } from '@/stores/ui'
 import { useUserStore } from '@/stores/user'
 import AppTopbarActions from '@/components/layout/AppTopbarActions.vue'
 import SidebarUserCard from '@/components/layout/SidebarUserCard.vue'
+import ContractQueryBot from '@/components/ContractQueryBot.vue'
 import NotificationCenter from '@/views/notifications/NotificationCenter.vue'
 
 const route = useRoute()
@@ -165,6 +194,7 @@ const unreadCount = computed(() => {
   const items = systemStore.notifications || []
   return items.filter(item => item.unread !== false).length
 })
+const assistantDrawerSize = computed(() => (isMobile.value ? '100%' : 'min(720px, 100vw)'))
 const displayLogo = computed(() => {
   if (!systemStore.config.system_logo) return logoNew
   return systemStore.config.system_logo.startsWith('http')
@@ -204,6 +234,7 @@ watch(() => uiStore.notificationDrawerOpen, async (open) => {
 
 watch(route, () => {
   if (isMobile.value && !isCollapse.value) isCollapse.value = true
+  closeContractQuery()
 })
 
 function toggleSidebar() {
@@ -233,6 +264,22 @@ function openChangePasswordDialog() {
   pwdForm.new_password = ''
   pwdForm.confirm_password = ''
   changePwdVisible.value = true
+}
+
+function openContractQuery() {
+  uiStore.openContractQuery()
+}
+
+function closeContractQuery() {
+  uiStore.closeContractQuery()
+}
+
+function handleContractQueryKeydown(event) {
+  if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'k') {
+    return
+  }
+  event.preventDefault()
+  openContractQuery()
 }
 
 function validateConfirmPwd(rule, value, callback) {
@@ -287,6 +334,12 @@ function confirmLogout() {
 
 onMounted(() => {
   systemStore.fetchConfig()
+  window.addEventListener('keydown', handleContractQueryKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleContractQueryKeydown)
+  closeContractQuery()
 })
 </script>
 
@@ -548,6 +601,71 @@ onMounted(() => {
   box-shadow: var(--shadow-frame);
 }
 
+.contract-query-trigger {
+  position: fixed;
+  top: calc(var(--shell-header-band-height, var(--header-height)) + 24px);
+  right: 18px;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 7px 12px 7px 10px;
+  border: 1px solid var(--workspace-panel-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-panel) 92%, var(--brand-primary-soft) 8%);
+  box-shadow: var(--shadow-soft);
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.contract-query-trigger__icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--brand-primary-soft) 72%, var(--surface-panel) 28%);
+  color: var(--brand-primary-strong);
+  flex-shrink: 0;
+}
+
+.contract-query-trigger__label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.contract-query-trigger__hint {
+  padding-left: 10px;
+  border-left: 1px solid hsl(var(--border));
+  font-size: 10px;
+  font-weight: 700;
+  color: hsl(var(--muted-foreground));
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+.contract-query-trigger:hover,
+.contract-query-trigger.is-open {
+  background: color-mix(in srgb, var(--surface-panel) 82%, var(--brand-primary-soft) 18%);
+  border-color: color-mix(in srgb, var(--workspace-panel-border) 72%, var(--brand-primary-soft) 28%);
+  transform: translateY(-1px);
+}
+
+.contract-query-trigger:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand-primary-soft) 68%, white 32%);
+  outline-offset: 2px;
+}
+
+.contract-query-drawer :deep(.el-drawer__body) {
+  padding: 16px;
+  background: var(--surface-page);
+}
+
 @media (max-width: 1100px) {
   .shell {
     min-height: 100vh;
@@ -573,6 +691,11 @@ onMounted(() => {
   .topbar {
     padding: 0 16px;
   }
+
+  .contract-query-trigger {
+    top: calc(var(--shell-header-band-height, var(--header-height)) + 16px);
+    right: 16px;
+  }
 }
 
 @media (max-width: 767px) {
@@ -592,6 +715,10 @@ onMounted(() => {
 
   .app-main__frame {
     padding: 16px;
+  }
+
+  .contract-query-trigger {
+    display: none;
   }
 }
 

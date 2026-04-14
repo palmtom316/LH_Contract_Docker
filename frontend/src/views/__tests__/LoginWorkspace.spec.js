@@ -1,12 +1,25 @@
-import { shallowMount } from '@vue/test-utils'
+import { flushPromises, shallowMount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { defineComponent } from 'vue'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import Login from '@/views/Login.vue'
 
+const fetchConfigMock = vi.fn().mockResolvedValue(undefined)
+
 vi.mock('vue-router', () => ({
   useRouter: () => ({ push: vi.fn() })
+}))
+
+vi.mock('@/stores/system', () => ({
+  useSystemStore: () => ({
+    config: {
+      system_name: '合同管理系统',
+      system_name_line_2: 'Contract Workspace',
+      system_logo: ''
+    },
+    fetchConfig: fetchConfigMock
+  })
 }))
 
 vi.mock('@/stores/user', () => ({
@@ -42,18 +55,25 @@ const loginSource = readFileSync(
 )
 
 describe('Login workspace shell', () => {
-  it('wraps login in the shared login shell panels', () => {
+  it('renders login in a single workspace surface with configured system copy', async () => {
     const wrapper = mountPage()
+    await flushPromises()
 
+    expect(fetchConfigMock).toHaveBeenCalled()
     expect(wrapper.find('.login-shell').exists()).toBe(true)
     expect(wrapper.find('.login-shell__panel').exists()).toBe(true)
-    expect(wrapper.find('.login-shell__brand').exists()).toBe(true)
+    expect(wrapper.find('.login-shell__header').exists()).toBe(true)
     expect(wrapper.find('.login-shell__form').exists()).toBe(true)
+    expect(wrapper.find('.login-shell__brand').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('系统配置 / 基础设置')
+    expect(wrapper.text()).toContain('合同管理系统')
+    expect(wrapper.text()).toContain('Contract Workspace')
   })
 
   it('keeps the login surface aligned with the refined workspace tokens', () => {
     expect(loginSource).toContain('background: var(--surface-page-gradient);')
     expect(loginSource).toContain('background: color-mix(in srgb, hsl(var(--card)) 94%, hsl(var(--muted)) 6%);')
+    expect(loginSource).toContain('border-radius: calc(var(--radius-lg) + 2px);')
     expect(loginSource).toContain('min-height: 40px;')
   })
 })

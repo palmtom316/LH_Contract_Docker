@@ -86,6 +86,24 @@ describe('ui store', () => {
     expect(store.notificationDrawerOpen).toBe(false)
   })
 
+  it('manages contract query assistant open state through dedicated actions', () => {
+    const store = useUiStore()
+
+    expect(store.contractQueryOpen).toBe(false)
+
+    store.openContractQuery()
+    expect(store.contractQueryOpen).toBe(true)
+
+    store.closeContractQuery()
+    expect(store.contractQueryOpen).toBe(false)
+
+    store.toggleContractQuery()
+    expect(store.contractQueryOpen).toBe(true)
+
+    store.setContractQueryOpen(false)
+    expect(store.contractQueryOpen).toBe(false)
+  })
+
   it('keeps legacy color token aliases mapped to semantic tokens', () => {
     const tokens = readFileSync(tokensPath, 'utf8')
 

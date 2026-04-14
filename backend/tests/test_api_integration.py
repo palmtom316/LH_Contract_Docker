@@ -52,6 +52,7 @@ async def _seed_upstream_query_graph(test_db: AsyncSession, test_admin: User) ->
         party_b_name="聚合乙方",
         company_category="市区配网",
         category="工程类",
+        management_mode="自营",
         contract_amount=Decimal("10000.00"),
         sign_date=date(2026, 2, 10),
         status="执行中",
@@ -113,6 +114,18 @@ async def _seed_upstream_query_graph(test_db: AsyncSession, test_admin: User) ->
         created_by=test_admin.id,
         updated_by=test_admin.id,
     )
+    expense_second = ExpenseNonContract(
+        expense_code="QUERY-EXP-002",
+        attribution="PROJECT",
+        category="项目费用",
+        expense_type="培训费",
+        amount=Decimal("32.00"),
+        expense_date=date(2026, 2, 26),
+        upstream_contract_id=upstream.id,
+        description="查询聚合费用-培训",
+        created_by=test_admin.id,
+        updated_by=test_admin.id,
+    )
     zero_hour = ZeroHourLabor(
         labor_date=date(2026, 2, 25),
         attribution="PROJECT",
@@ -129,7 +142,17 @@ async def _seed_upstream_query_graph(test_db: AsyncSession, test_admin: User) ->
     )
     test_db.add_all([
         expense,
+        expense_second,
         zero_hour,
+        ProjectSettlement(
+            contract_id=upstream.id,
+            settlement_date=date(2026, 2, 28),
+            completion_date=date(2026, 3, 5),
+            warranty_date=date(2027, 3, 5),
+            settlement_amount=Decimal("2600.00"),
+            created_by=test_admin.id,
+            updated_by=test_admin.id,
+        ),
         FinanceDownstreamPayable(
             contract_id=downstream.id,
             category="进度款",
@@ -183,7 +206,7 @@ async def _seed_upstream_query_graph(test_db: AsyncSession, test_admin: User) ->
         "contract_name": contract_name,
         "party_a_name": party_a_name,
         "excluded_contract_name": excluded_contract_name,
-        "expense_total": 88.0,
+        "expense_total": 120.0,
         "zero_hour_total": 1040.0,
         "downstream_contract_count": 1,
         "downstream_contract_amount": 3500.0,
@@ -193,6 +216,9 @@ async def _seed_upstream_query_graph(test_db: AsyncSession, test_admin: User) ->
         "management_contract_amount": 2200.0,
         "management_settlement_amount": 300.0,
         "management_paid_amount": 700.0,
+        "management_mode": "自营",
+        "completion_date": "2026-03-05",
+        "warranty_date": "2027-03-05",
     }
     await test_db.commit()
 
@@ -376,6 +402,9 @@ class TestContractSearchEndpoint:
         row = payload["items"][0]
         assert row["contract_name"] == seeded["contract_name"]
         assert row["party_a_name"] == seeded["party_a_name"]
+        assert row["management_mode"] == seeded["management_mode"]
+        assert row["completion_date"] == seeded["completion_date"]
+        assert row["warranty_date"] == seeded["warranty_date"]
         assert row["downstream_contract_count"] == seeded["downstream_contract_count"]
         assert row["downstream_contract_amount"] == pytest.approx(seeded["downstream_contract_amount"])
         assert row["downstream_settlement_amount"] == pytest.approx(seeded["downstream_settlement_amount"])
@@ -385,6 +414,10 @@ class TestContractSearchEndpoint:
         assert row["management_settlement_amount"] == pytest.approx(seeded["management_settlement_amount"])
         assert row["management_paid_amount"] == pytest.approx(seeded["management_paid_amount"])
         assert row["non_contract_expense_total"] == pytest.approx(seeded["expense_total"])
+        assert row["expenses_by_category"] == [
+            {"category": "培训费", "amount": pytest.approx(32.0)},
+            {"category": "管理费", "amount": pytest.approx(88.0)},
+        ]
         assert row["zero_hour_labor_total"] == pytest.approx(seeded["zero_hour_total"])
 
     async def test_upstream_query_export_respects_filters(

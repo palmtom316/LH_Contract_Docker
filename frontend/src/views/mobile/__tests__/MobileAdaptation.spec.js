@@ -20,6 +20,8 @@ const expenseListMobileSource = readFileSync(
 describe('Mobile adaptation', () => {
   it('adapts the mobile shell for narrow phones and dynamic drawer widths', () => {
     expect(mobileLayoutSource).toContain(':style="{ width: drawerWidth, height: \'100%\' }"')
+    expect(mobileLayoutSource).toContain('contract-query-mobile-trigger')
+    expect(mobileLayoutSource).toContain('contract-query-mobile-popup')
     expect(mobileLayoutSource).toContain('@media (max-width: 480px)')
     expect(mobileLayoutSource).toContain('border-radius: 0;')
     expect(mobileLayoutSource).toContain('padding: 0;')

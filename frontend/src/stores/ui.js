@@ -45,7 +45,8 @@ function applyTheme(theme) {
 export const useUiStore = defineStore('ui', {
   state: () => ({
     theme: readStoredTheme(),
-    notificationDrawerOpen: false
+    notificationDrawerOpen: false,
+    contractQueryOpen: false
   }),
   actions: {
     initTheme() {
@@ -71,6 +72,18 @@ export const useUiStore = defineStore('ui', {
     },
     toggleNotificationDrawer() {
       this.setNotificationDrawerOpen(!this.notificationDrawerOpen)
+    },
+    setContractQueryOpen(open) {
+      this.contractQueryOpen = Boolean(open)
+    },
+    openContractQuery() {
+      this.setContractQueryOpen(true)
+    },
+    closeContractQuery() {
+      this.setContractQueryOpen(false)
+    },
+    toggleContractQuery() {
+      this.setContractQueryOpen(!this.contractQueryOpen)
     }
   }
 })

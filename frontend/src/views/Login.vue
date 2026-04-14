@@ -1,14 +1,17 @@
 <template>
   <div class="login-shell">
     <div class="login-shell__panel">
-      <section class="login-shell__brand">
-        <h1 class="login-shell__title">合同管理系统</h1>
-        <p class="login-shell__subtitle">登录到企业工作台</p>
+      <section class="login-shell__header">
+        <div class="login-shell__system-copy">
+          <h1 class="login-shell__title">{{ displayName }}</h1>
+          <p class="login-shell__subtitle">{{ displayNameLine2 }}</p>
+        </div>
       </section>
 
       <section class="login-shell__form">
         <div class="login-shell__form-copy">
           <h2>账号登录</h2>
+          <p>输入用户名和密码后进入业务工作台。</p>
         </div>
 
         <el-form
@@ -59,12 +62,14 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useSystemStore } from '@/stores/system'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
+const systemStore = useSystemStore()
 const userStore = useUserStore()
 const loginFormRef = ref(null)
 
@@ -79,6 +84,13 @@ const loginRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
+
+const displayName = computed(() => systemStore.config.system_name || '合同管理系统')
+const displayNameLine2 = computed(() => systemStore.config.system_name_line_2 || 'Contract Workspace')
+
+onMounted(() => {
+  systemStore.fetchConfig()
+})
 
 const handleLogin = async () => {
   if (!loginFormRef.value) return
@@ -110,34 +122,38 @@ const handleLogin = async () => {
 }
 
 .login-shell__panel {
-  width: min(920px, 100%);
+  width: min(560px, 100%);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
   border: 1px solid hsl(var(--border));
-  border-radius: var(--radius-lg);
+  border-radius: calc(var(--radius-lg) + 2px);
   background: color-mix(in srgb, hsl(var(--card)) 94%, hsl(var(--muted)) 6%);
   box-shadow: var(--shadow-frame);
   overflow: hidden;
 }
 
-.login-shell__brand,
+.login-shell__header,
 .login-shell__form {
+  display: grid;
   min-width: 0;
 }
 
-.login-shell__brand {
-  display: grid;
-  align-content: end;
+.login-shell__header {
+  align-content: start;
   gap: 12px;
-  padding: 36px;
-  border-right: 1px solid hsl(var(--border));
-  background: hsl(var(--muted));
+  padding: 28px 32px 24px;
+  border-bottom: 1px solid hsl(var(--border));
+  background: color-mix(in srgb, hsl(var(--muted)) 82%, hsl(var(--card)) 18%);
+}
+
+.login-shell__system-copy {
+  display: grid;
+  gap: 6px;
 }
 
 .login-shell__title {
   margin: 0;
-  font-size: clamp(28px, 3.5vw, 40px);
-  line-height: 1.02;
+  font-size: clamp(28px, 3vw, 34px);
+  line-height: 1.08;
   color: hsl(var(--foreground));
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -145,16 +161,18 @@ const handleLogin = async () => {
 
 .login-shell__subtitle {
   margin: 0;
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.5;
   color: hsl(var(--muted-foreground));
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .login-shell__form {
   display: grid;
   align-content: center;
   gap: 20px;
-  padding: 36px;
+  padding: 28px 32px 32px;
 }
 
 .login-shell__form-copy h2 {
@@ -162,6 +180,13 @@ const handleLogin = async () => {
   font-size: 20px;
   line-height: 1.2;
   color: hsl(var(--foreground));
+}
+
+.login-shell__form-copy p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: hsl(var(--muted-foreground));
 }
 
 .login-form :deep(.el-form-item__label) {
@@ -194,24 +219,12 @@ const handleLogin = async () => {
   border-color: hsl(var(--primary) / 0.92);
 }
 
-@media (max-width: 900px) {
-  .login-shell__panel {
-    grid-template-columns: 1fr;
-  }
-
-  .login-shell__brand {
-    border-right: 0;
-    border-bottom: 1px solid hsl(var(--border));
-    align-content: start;
-  }
-}
-
 @media (max-width: 768px) {
   .login-shell {
     padding: 16px;
   }
 
-  .login-shell__brand,
+  .login-shell__header,
   .login-shell__form {
     padding: 24px 20px;
   }
