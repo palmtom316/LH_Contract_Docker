@@ -829,6 +829,7 @@ onUnmounted(() => {
 .contract-query-table .is-contract .table-link {
   display: block;
   width: 100%;
+  text-align: left;
   white-space: normal;
   word-break: break-word;
   overflow-wrap: anywhere;
