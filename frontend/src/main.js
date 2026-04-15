@@ -1,10 +1,25 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'
 import '@/styles/index.scss' // Global styles
-import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
-import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+import {
+    CircleCheck,
+    Delete,
+    Document,
+    Download,
+    Edit,
+    Lock,
+    Money,
+    More,
+    Plus,
+    Refresh,
+    Search,
+    Tickets,
+    Upload,
+    User,
+    Wallet,
+    ZoomIn,
+    ZoomOut
+} from '@element-plus/icons-vue'
 
 // Vant UI for mobile views
 import 'vant/lib/index.css'
@@ -23,14 +38,32 @@ Locale.use('zh-CN', zhCN)
 const app = createApp(App)
 const pinia = createPinia()
 
-// Register Element Plus icons
-for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+const globalIcons = {
+    CircleCheck,
+    Delete,
+    Document,
+    Download,
+    Edit,
+    Lock,
+    Money,
+    More,
+    Plus,
+    Refresh,
+    Search,
+    Tickets,
+    Upload,
+    User,
+    Wallet,
+    ZoomIn,
+    ZoomOut
+}
+
+for (const [key, component] of Object.entries(globalIcons)) {
     app.component(key, component)
 }
 
 app.use(pinia)
 app.use(router)
-app.use(ElementPlus, { locale: zhCn })
 
 const uiStore = useUiStore(pinia)
 uiStore.initTheme()

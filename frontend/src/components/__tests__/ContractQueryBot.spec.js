@@ -63,12 +63,16 @@ vi.mock('vue-router', async (importOriginal) => {
   }
 })
 
-vi.mock('element-plus', () => ({
-  ElMessage: {
-    success: elMessageSuccess,
-    error: elMessageError
+vi.mock('element-plus', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    ElMessage: {
+      success: elMessageSuccess,
+      error: elMessageError
+    }
   }
-}))
+})
 
 const ElInputStub = {
   name: 'ElInput',
