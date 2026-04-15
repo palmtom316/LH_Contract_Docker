@@ -85,6 +85,121 @@
           description="调整关键字、分类或签约日期后会自动刷新。"
         />
 
+        <div v-else-if="!isAssistant" class="contract-query-table-shell">
+          <AppDataTable>
+            <table class="contract-query-table">
+              <thead>
+                <tr>
+                  <th>合同名称</th>
+                  <th>甲方单位</th>
+                  <th>乙方单位</th>
+                  <th>合同类别</th>
+                  <th>公司合同分类</th>
+                  <th>管理模式</th>
+                  <th>签约日期</th>
+                  <th class="is-number">签约金额</th>
+                  <th class="is-number">应收款</th>
+                  <th class="is-number">挂账金额</th>
+                  <th class="is-number">已收款</th>
+                  <th class="is-number">结算金额</th>
+                  <th class="is-number">关联下游合同个数</th>
+                  <th class="is-number">关联下游合同签约总金额</th>
+                  <th class="is-number">关联下游合同结算总金额</th>
+                  <th class="is-number">关联下游合同已付款总金额</th>
+                  <th class="is-number">关联管理合同个数</th>
+                  <th class="is-number">关联管理合同签约总金额</th>
+                  <th class="is-number">关联管理合同结算总金额</th>
+                  <th class="is-number">关联管理合同已付款总金额</th>
+                  <th class="is-number">关联无合同费用总金额</th>
+                  <th class="is-number">关联零星用工总金额</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in rows" :key="row.id">
+                  <td class="is-wide">
+                    <button type="button" class="table-link table-link--primary" @click="openUpstreamDetail(row)">
+                      {{ row.contract_name }}
+                    </button>
+                  </td>
+                  <td>{{ row.party_a_name || '-' }}</td>
+                  <td>{{ row.party_b_name || '-' }}</td>
+                  <td>{{ row.category || '-' }}</td>
+                  <td>{{ row.company_category || '-' }}</td>
+                  <td>{{ row.management_mode || '-' }}</td>
+                  <td>{{ formatDate(row.sign_date) }}</td>
+                  <td class="is-number">{{ formatMoney(row.contract_amount) }}</td>
+                  <td class="is-number">{{ formatMoney(row.receivable_amount) }}</td>
+                  <td class="is-number">{{ formatMoney(row.invoiced_amount) }}</td>
+                  <td class="is-number">{{ formatMoney(row.received_amount) }}</td>
+                  <td class="is-number">{{ formatMoney(row.settlement_amount) }}</td>
+                  <td class="is-number">
+                    <button
+                      :data-testid="`drilldown-downstream-count-${row.id}`"
+                      type="button"
+                      class="table-link"
+                      :disabled="!row.downstream_contract_count"
+                      @click="openRelatedList('downstream', row)"
+                    >
+                      {{ row.downstream_contract_count }}
+                    </button>
+                  </td>
+                  <td class="is-number">
+                    <button type="button" class="table-link" :disabled="!row.downstream_contract_amount" @click="openRelatedList('downstream', row)">
+                      {{ formatMoney(row.downstream_contract_amount) }}
+                    </button>
+                  </td>
+                  <td class="is-number">
+                    <button type="button" class="table-link" :disabled="!row.downstream_settlement_amount" @click="openRelatedList('downstream', row)">
+                      {{ formatMoney(row.downstream_settlement_amount) }}
+                    </button>
+                  </td>
+                  <td class="is-number">
+                    <button type="button" class="table-link" :disabled="!row.downstream_paid_amount" @click="openRelatedList('downstream', row)">
+                      {{ formatMoney(row.downstream_paid_amount) }}
+                    </button>
+                  </td>
+                  <td class="is-number">
+                    <button type="button" class="table-link" :disabled="!row.management_contract_count" @click="openRelatedList('management', row)">
+                      {{ row.management_contract_count }}
+                    </button>
+                  </td>
+                  <td class="is-number">
+                    <button type="button" class="table-link" :disabled="!row.management_contract_amount" @click="openRelatedList('management', row)">
+                      {{ formatMoney(row.management_contract_amount) }}
+                    </button>
+                  </td>
+                  <td class="is-number">
+                    <button type="button" class="table-link" :disabled="!row.management_settlement_amount" @click="openRelatedList('management', row)">
+                      {{ formatMoney(row.management_settlement_amount) }}
+                    </button>
+                  </td>
+                  <td class="is-number">
+                    <button type="button" class="table-link" :disabled="!row.management_paid_amount" @click="openRelatedList('management', row)">
+                      {{ formatMoney(row.management_paid_amount) }}
+                    </button>
+                  </td>
+                  <td class="is-number">
+                    <button type="button" class="table-link" :disabled="!row.non_contract_expense_total" @click="openRelatedList('expense', row)">
+                      {{ formatMoney(row.non_contract_expense_total) }}
+                    </button>
+                  </td>
+                  <td class="is-number">
+                    <button
+                      :data-testid="`drilldown-labor-total-${row.id}`"
+                      type="button"
+                      class="table-link"
+                      :disabled="!row.zero_hour_labor_total"
+                      @click="openRelatedList('labor', row)"
+                    >
+                      {{ formatMoney(row.zero_hour_labor_total) }}
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </AppDataTable>
+        </div>
+
         <div v-else class="contract-query-panel__cards">
           <article v-for="row in rows" :key="row.id" class="contract-query-card">
             <header class="contract-query-card__header">
@@ -155,12 +270,6 @@
                 <div class="contract-query-card__metric">
                   <span>结算金额</span>
                   <strong>¥ {{ formatMoney(row.settlement_amount) }}</strong>
-                </div>
-                <div class="contract-query-card__metric">
-                  <span>零星用工金额合计</span>
-                  <button type="button" class="contract-query-card__metric-link" @click="openRelatedList('labor', row)">
-                    ¥ {{ formatMoney(row.zero_hour_labor_total) }}
-                  </button>
                 </div>
               </div>
             </section>
@@ -245,6 +354,17 @@
                     ¥ {{ formatMoney(row.non_contract_expense_total) }}
                   </button>
                 </div>
+                <div class="contract-query-card__metric">
+                  <span>关联零星用工总金额</span>
+                  <button
+                    :data-testid="`drilldown-labor-total-${row.id}`"
+                    type="button"
+                    class="contract-query-card__metric-link"
+                    @click="openRelatedList('labor', row)"
+                  >
+                    ¥ {{ formatMoney(row.zero_hour_labor_total) }}
+                  </button>
+                </div>
               </div>
               <div v-if="row.expenses_by_category?.length" class="contract-query-card__expense-list">
                 <div v-for="expense in row.expenses_by_category" :key="`${row.id}-${expense.category}`" class="contract-query-card__expense-chip">
@@ -283,6 +403,7 @@ import AppRangeField from '@/components/ui/AppRangeField.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import AppFilterBar from '@/components/ui/AppFilterBar.vue'
+import AppDataTable from '@/components/ui/AppDataTable.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 
 const props = defineProps({
@@ -560,6 +681,75 @@ onUnmounted(() => {
 .contract-query-panel__action-button:disabled {
   opacity: 0.52;
   cursor: not-allowed;
+}
+
+.contract-query-table-shell {
+  display: grid;
+  gap: 14px;
+}
+
+.contract-query-table {
+  width: 100%;
+  min-width: 2160px;
+  border-collapse: collapse;
+  background: var(--surface-panel);
+}
+
+.contract-query-table th,
+.contract-query-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--workspace-panel-border);
+  vertical-align: top;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.5;
+  color: hsl(var(--foreground));
+}
+
+.contract-query-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: color-mix(in srgb, var(--surface-panel) 94%, var(--muted) 6%);
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.contract-query-table tbody tr:hover {
+  background: color-mix(in srgb, var(--surface-panel) 76%, var(--brand-primary-soft) 24%);
+}
+
+.contract-query-table .is-number {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.contract-query-table .is-wide {
+  min-width: 240px;
+}
+
+.table-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: hsl(var(--primary));
+  font: inherit;
+  cursor: pointer;
+}
+
+.table-link:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.table-link:disabled {
+  color: hsl(var(--muted-foreground));
+  cursor: default;
+}
+
+.table-link--primary {
+  font-weight: 700;
 }
 
 .contract-query-panel__cards {

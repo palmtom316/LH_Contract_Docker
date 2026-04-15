@@ -3,6 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ContractQueryBot from '@/components/ContractQueryBot.vue'
 import { exportUpstreamContractQuery, queryUpstreamContracts } from '@/api/contractSearch'
 
+const { elMessageSuccess, elMessageError } = vi.hoisted(() => ({
+  elMessageSuccess: vi.fn(),
+  elMessageError: vi.fn()
+}))
+
 const push = vi.fn()
 
 vi.mock('@/api/contractSearch', () => ({
@@ -57,6 +62,13 @@ vi.mock('vue-router', async (importOriginal) => {
     useRouter: () => ({ push })
   }
 })
+
+vi.mock('element-plus', () => ({
+  ElMessage: {
+    success: elMessageSuccess,
+    error: elMessageError
+  }
+}))
 
 const ElInputStub = {
   name: 'ElInput',
@@ -221,6 +233,21 @@ describe('ContractQueryBot', () => {
     })
   })
 
+  it('drills into zero-hour labor details from the assistant metric', async () => {
+    const wrapper = createWrapper({ variant: 'assistant' })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="drilldown-labor-total-11"]').trigger('click')
+
+    expect(push).toHaveBeenCalledWith({
+      path: '/expenses',
+      query: {
+        tab: 'zeroHourLabor',
+        upstream_contract_id: '11'
+      }
+    })
+  })
+
   it('exports the current upstream query result set', async () => {
     const wrapper = createWrapper()
     await flushPromises()
@@ -246,9 +273,8 @@ describe('ContractQueryBot', () => {
     expect(wrapper.text()).not.toContain('按合同名称、甲方单位、合同序号与关键分类快速定位上游合同。')
     expect(wrapper.text()).toContain('华东总包上游合同')
     expect(wrapper.text()).toContain('甲方单位')
-    expect(wrapper.text()).toContain('质保期到期日期')
-    expect(wrapper.text()).toContain('管理费')
-    expect(wrapper.text()).toContain('培训费')
+    expect(wrapper.text()).toContain('关联零星用工总金额')
+    expect(wrapper.text()).toContain('6,000.00')
   })
 
   it('renders the assistant variant with only the assistant title', async () => {
@@ -258,5 +284,8 @@ describe('ContractQueryBot', () => {
     expect(wrapper.text()).toContain('Ctrl + K')
     expect(wrapper.text()).toContain('合同查询助手')
     expect(wrapper.text()).not.toContain('按合同名称、甲方单位、合同序号与关键分类快速定位上游合同。')
+    expect(wrapper.text()).toContain('关联零星用工总金额')
+    expect(wrapper.text()).toContain('管理费')
+    expect(wrapper.text()).toContain('培训费')
   })
 })
