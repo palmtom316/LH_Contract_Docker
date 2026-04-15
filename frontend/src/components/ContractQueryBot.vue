@@ -90,13 +90,13 @@
             <table class="contract-query-table">
               <thead>
                 <tr>
-                  <th>合同名称</th>
-                  <th>甲方单位</th>
-                  <th>乙方单位</th>
-                  <th>合同类别</th>
-                  <th>公司合同分类</th>
-                  <th>管理模式</th>
-                  <th>签约日期</th>
+                  <th class="is-contract">合同名称</th>
+                  <th class="is-party">甲方单位</th>
+                  <th class="is-party">乙方单位</th>
+                  <th class="is-tag-col">合同类别</th>
+                  <th class="is-tag-col">公司合同分类</th>
+                  <th class="is-tag-col">管理模式</th>
+                  <th class="is-date">签约日期</th>
                   <th class="is-number">签约金额</th>
                   <th class="is-number">应收款</th>
                   <th class="is-number">挂账金额</th>
@@ -116,17 +116,17 @@
               </thead>
               <tbody>
                 <tr v-for="row in rows" :key="row.id">
-                  <td class="is-wide">
+                  <td class="is-contract">
                     <button type="button" class="table-link table-link--primary" @click="openUpstreamDetail(row)">
                       {{ row.contract_name }}
                     </button>
                   </td>
-                  <td>{{ row.party_a_name || '-' }}</td>
-                  <td>{{ row.party_b_name || '-' }}</td>
-                  <td>{{ row.category || '-' }}</td>
-                  <td>{{ row.company_category || '-' }}</td>
-                  <td>{{ row.management_mode || '-' }}</td>
-                  <td>{{ formatDate(row.sign_date) }}</td>
+                  <td class="is-party">{{ row.party_a_name || '-' }}</td>
+                  <td class="is-party">{{ row.party_b_name || '-' }}</td>
+                  <td class="is-tag-col">{{ row.category || '-' }}</td>
+                  <td class="is-tag-col">{{ row.company_category || '-' }}</td>
+                  <td class="is-tag-col">{{ row.management_mode || '-' }}</td>
+                  <td class="is-date">{{ formatDate(row.sign_date) }}</td>
                   <td class="is-number">{{ formatMoney(row.contract_amount) }}</td>
                   <td class="is-number">{{ formatMoney(row.receivable_amount) }}</td>
                   <td class="is-number">{{ formatMoney(row.invoiced_amount) }}</td>
@@ -690,9 +690,10 @@ onUnmounted(() => {
 
 .contract-query-table {
   width: 100%;
-  min-width: 2160px;
+  min-width: 2520px;
   border-collapse: collapse;
   background: var(--surface-panel);
+  table-layout: auto;
 }
 
 .contract-query-table th,
@@ -715,6 +716,9 @@ onUnmounted(() => {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
+  white-space: nowrap;
+  word-break: keep-all;
+  writing-mode: horizontal-tb;
 }
 
 .contract-query-table tbody tr:hover {
@@ -726,8 +730,32 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.contract-query-table .is-wide {
-  min-width: 240px;
+.contract-query-table .is-contract {
+  min-width: 300px;
+}
+
+.contract-query-table .is-contract .table-link {
+  display: inline-block;
+  min-width: 100%;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.contract-query-table .is-party {
+  min-width: 180px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.contract-query-table .is-tag-col {
+  min-width: 112px;
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+.contract-query-table .is-date {
+  min-width: 112px;
+  white-space: nowrap;
 }
 
 .table-link {
