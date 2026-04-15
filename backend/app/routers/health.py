@@ -61,9 +61,11 @@ async def check_redis() -> Dict[str, Any]:
 async def check_minio() -> Dict[str, Any]:
     """Check MinIO connectivity"""
     try:
-        from app.core.minio import minio_client
-        if minio_client:
-            buckets = minio_client.list_buckets()
+        from app.core.minio import get_minio_client
+
+        client = get_minio_client()
+        if client:
+            buckets = client.list_buckets()
             return {
                 "status": "healthy",
                 "buckets": len(buckets)

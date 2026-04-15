@@ -46,6 +46,21 @@ def test_health_detailed_returns_503_when_any_dependency_is_unhealthy(monkeypatc
     assert response.json()["status"] == "unhealthy"
 
 
+def test_check_minio_uses_factory_client(monkeypatch):
+    class DummyClient:
+        def list_buckets(self):
+            return ["contracts", "archive"]
+
+    monkeypatch.setattr(
+        "app.core.minio.get_minio_client",
+        lambda: DummyClient(),
+    )
+
+    result = asyncio.run(health_router.check_minio())
+
+    assert result == {"status": "healthy", "buckets": 2}
+
+
 def test_health_ready_returns_503_when_database_is_unhealthy(monkeypatch):
     async def override_get_db():
         yield object()
