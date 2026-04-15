@@ -90,6 +90,8 @@
             <table class="contract-query-table">
               <thead>
                 <tr>
+                  <th class="is-serial">合同序号</th>
+                  <th class="is-code">合同编号</th>
                   <th class="is-contract">合同名称</th>
                   <th class="is-party">甲方单位</th>
                   <th class="is-party">乙方单位</th>
@@ -116,13 +118,26 @@
               </thead>
               <tbody>
                 <tr v-for="row in rows" :key="row.id">
+                  <td class="is-serial">{{ row.serial_number || '-' }}</td>
+                  <td class="is-code" :title="row.contract_code || '-'">
+                    <span class="cell-text">{{ row.contract_code || '-' }}</span>
+                  </td>
                   <td class="is-contract">
-                    <button type="button" class="table-link table-link--primary" @click="openUpstreamDetail(row)">
+                    <button
+                      type="button"
+                      class="table-link table-link--primary"
+                      :title="row.contract_name"
+                      @click="openUpstreamDetail(row)"
+                    >
                       {{ row.contract_name }}
                     </button>
                   </td>
-                  <td class="is-party">{{ row.party_a_name || '-' }}</td>
-                  <td class="is-party">{{ row.party_b_name || '-' }}</td>
+                  <td class="is-party" :title="row.party_a_name || '-'">
+                    <span class="cell-text">{{ row.party_a_name || '-' }}</span>
+                  </td>
+                  <td class="is-party" :title="row.party_b_name || '-'">
+                    <span class="cell-text">{{ row.party_b_name || '-' }}</span>
+                  </td>
                   <td class="is-tag-col">{{ row.category || '-' }}</td>
                   <td class="is-tag-col">{{ row.company_category || '-' }}</td>
                   <td class="is-tag-col">{{ row.management_mode || '-' }}</td>
@@ -688,9 +703,13 @@ onUnmounted(() => {
   gap: 14px;
 }
 
+.contract-query-table-shell :deep(.app-data-table__scroll) {
+  overflow-y: visible;
+}
+
 .contract-query-table {
   width: 100%;
-  min-width: 2520px;
+  min-width: 2800px;
   border-collapse: collapse;
   background: var(--surface-panel);
   table-layout: auto;
@@ -700,6 +719,7 @@ onUnmounted(() => {
 .contract-query-table td {
   padding: 12px 14px;
   border-bottom: 1px solid var(--workspace-panel-border);
+  border-right: 1px solid var(--workspace-panel-border);
   vertical-align: top;
   text-align: left;
   font-size: 13px;
@@ -707,10 +727,15 @@ onUnmounted(() => {
   color: hsl(var(--foreground));
 }
 
+.contract-query-table th:last-child,
+.contract-query-table td:last-child {
+  border-right: 0;
+}
+
 .contract-query-table th {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 4;
   background: color-mix(in srgb, var(--surface-panel) 94%, var(--muted) 6%);
   color: hsl(var(--muted-foreground));
   font-size: 12px;
@@ -719,6 +744,7 @@ onUnmounted(() => {
   white-space: nowrap;
   word-break: keep-all;
   writing-mode: horizontal-tb;
+  box-shadow: inset 0 -1px 0 var(--workspace-panel-border);
 }
 
 .contract-query-table tbody tr:hover {
@@ -730,21 +756,98 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
+.contract-query-table .is-serial {
+  min-width: 108px;
+  width: 108px;
+  white-space: nowrap;
+}
+
+.contract-query-table .is-code {
+  min-width: 168px;
+  max-width: 168px;
+  white-space: normal;
+}
+
 .contract-query-table .is-contract {
-  min-width: 300px;
+  min-width: 320px;
+  max-width: 420px;
+}
+
+.contract-query-table th.is-serial,
+.contract-query-table td.is-serial,
+.contract-query-table th.is-code,
+.contract-query-table td.is-code,
+.contract-query-table th.is-contract,
+.contract-query-table td.is-contract {
+  position: sticky;
+}
+
+.contract-query-table th.is-serial,
+.contract-query-table td.is-serial {
+  left: 0;
+}
+
+.contract-query-table th.is-code,
+.contract-query-table td.is-code {
+  left: 108px;
+}
+
+.contract-query-table th.is-contract,
+.contract-query-table td.is-contract {
+  left: 276px;
+}
+
+.contract-query-table th.is-serial,
+.contract-query-table th.is-code,
+.contract-query-table th.is-contract {
+  z-index: 6;
+}
+
+.contract-query-table td.is-serial,
+.contract-query-table td.is-code,
+.contract-query-table td.is-contract {
+  z-index: 2;
+  background: var(--surface-panel);
+}
+
+.contract-query-table td.is-contract {
+  box-shadow: inset -1px 0 0 var(--workspace-panel-border), 14px 0 18px -18px hsl(var(--foreground) / 0.42);
+}
+
+.contract-query-table tbody tr:hover td.is-serial,
+.contract-query-table tbody tr:hover td.is-code,
+.contract-query-table tbody tr:hover td.is-contract {
+  background: color-mix(in srgb, var(--surface-panel) 76%, var(--brand-primary-soft) 24%);
+}
+
+@media (max-width: 767px) {
+  .contract-query-table th {
+    top: calc(var(--shell-header-band-height, var(--header-height)) + 8px);
+  }
 }
 
 .contract-query-table .is-contract .table-link {
-  display: inline-block;
-  min-width: 100%;
+  display: block;
+  width: 100%;
   white-space: normal;
   word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .contract-query-table .is-party {
   min-width: 180px;
+  max-width: 220px;
   white-space: normal;
+}
+
+.contract-query-table .is-code .cell-text,
+.contract-query-table .is-party .cell-text {
+  display: -webkit-box;
+  overflow: hidden;
   word-break: break-word;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .contract-query-table .is-tag-col {

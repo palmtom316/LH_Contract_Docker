@@ -275,6 +275,10 @@ describe('ContractQueryBot', () => {
     expect(wrapper.text()).toContain('合同查询')
     expect(wrapper.text()).not.toContain('合同查询助手')
     expect(wrapper.text()).not.toContain('按合同名称、甲方单位、合同序号与关键分类快速定位上游合同。')
+    expect(wrapper.text()).toContain('合同序号')
+    expect(wrapper.text()).toContain('合同编号')
+    expect(wrapper.text()).toContain('501')
+    expect(wrapper.text()).toContain('UP-501')
     expect(wrapper.text()).toContain('华东总包上游合同')
     expect(wrapper.text()).toContain('甲方单位')
     expect(wrapper.text()).toContain('关联零星用工总金额')
@@ -291,5 +295,57 @@ describe('ContractQueryBot', () => {
     expect(wrapper.text()).toContain('关联零星用工总金额')
     expect(wrapper.text()).toContain('管理费')
     expect(wrapper.text()).toContain('培训费')
+  })
+
+  it('preserves full contract and party names through title attributes for long text rows', async () => {
+    const longContractName =
+      '华东区域城市更新综合开发项目一期总承包施工上游合同含多专业协同与跨区域联动条款测试超长名称展示'
+    const longPartyAName = '上海某某城市建设发展投资控股集团有限公司浦东新区重大项目建设指挥部'
+    const longPartyBName = '江苏某某建筑工程总承包与机电安装联合体项目公司'
+
+    queryUpstreamContracts.mockResolvedValueOnce({
+      total: 1,
+      page: 1,
+      page_size: 20,
+      items: [
+        {
+          id: 22,
+          serial_number: 502,
+          contract_code: 'UP-502',
+          contract_name: longContractName,
+          party_a_name: longPartyAName,
+          party_b_name: longPartyBName,
+          category: '施工合同',
+          company_category: '市政工程',
+          management_mode: '自营',
+          sign_date: '2026-04-04',
+          contract_amount: 500000,
+          receivable_amount: 210000,
+          invoiced_amount: 120000,
+          received_amount: 100000,
+          settlement_amount: 180000,
+          downstream_contract_count: 0,
+          downstream_contract_amount: 0,
+          downstream_settlement_amount: 0,
+          downstream_paid_amount: 0,
+          management_contract_count: 0,
+          management_contract_amount: 0,
+          management_settlement_amount: 0,
+          management_paid_amount: 0,
+          non_contract_expense_total: 0,
+          zero_hour_labor_total: 0
+        }
+      ]
+    })
+
+    const wrapper = createWrapper()
+    await flushPromises()
+
+    expect(wrapper.find('td.is-contract .table-link--primary').attributes('title')).toBe(longContractName)
+
+    const partyCells = wrapper.findAll('td.is-party')
+    expect(partyCells).toHaveLength(2)
+    expect(partyCells[0].attributes('title')).toBe(longPartyAName)
+    expect(partyCells[1].attributes('title')).toBe(longPartyBName)
   })
 })
