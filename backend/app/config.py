@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 2  # 2 hours (shortened for security)
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # 7 days for refresh token
+    ENABLE_API_DOCS: bool = os.getenv("ENABLE_API_DOCS", "false").lower() == "true"
     
     # CORS - Whitelist of allowed origins
     CORS_ORIGINS: str = os.getenv(

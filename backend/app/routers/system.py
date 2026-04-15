@@ -21,9 +21,13 @@ from sqlalchemy import select, delete, update
 from app.database import get_db
 from app.models.system import SysDictionary, SystemConfig
 from app.services.dictionary_usage_service import DictionaryUsageService
+from app.utils.file_validator import validate_file_upload
+import logging
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 LOGO_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".svg")
+LOGO_ALLOWED_EXTENSIONS = [ext.lstrip(".") for ext in LOGO_EXTENSIONS]
 
 def _safe_remove_file(path: str) -> None:
     """Best-effort file removal to avoid backup accumulation."""
@@ -105,7 +109,7 @@ def run_db_dump(output_file: str):
         if parsed.password:
             env["PGPASSWORD"] = unquote(parsed.password)
     except Exception as e:
-        print(f"Password parsing warning: {e}")
+        logger.warning("Failed to parse database password for pg_dump environment", exc_info=e)
 
     # Execute pg_dump
     try:
@@ -146,9 +150,7 @@ async def backup_database(
         )
         
     except Exception as e:
-        print(f"Backup error: {str(e)}")
-        # Check if it is our custom error detail or generic
-        detail_msg = f"数据库备份失败: {str(e)}"
+        logger.exception("Database backup failed")
         raise DatabaseError(message="数据库备份失败", detail=str(e))
 
 
@@ -208,7 +210,7 @@ async def backup_system(
         )
 
     except Exception as e:
-        print(f"Full backup error: {str(e)}")
+        logger.exception("Full system backup failed")
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
         raise DatabaseError(message="系统备份失败", detail=str(e))
@@ -224,9 +226,8 @@ async def upload_logo(
     if not current_user.is_superuser:
         raise PermissionDeniedError(detail="需要超级管理员权限")
     
-    # Validate file type
-    if not file.content_type.startswith("image/"):
-        raise ValidationError(message="文件类型错误", field_errors={"file": "请上传图片文件"})
+    # Validate file name, extension, size, and MIME signature
+    await validate_file_upload(file, allowed_extensions=LOGO_ALLOWED_EXTENSIONS)
     
     # Save to uploads/system/logo.png
     system_dir = os.path.join(settings.UPLOAD_DIR, "system")
@@ -673,5 +674,5 @@ async def reset_system(
 
     except Exception as e:
         await db.rollback()
-        print(f"Reset error: {e}")
+        logger.exception("System reset failed")
         raise DatabaseError(message="系统重置失败", detail=str(e))

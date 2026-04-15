@@ -16,6 +16,12 @@ def test_main_mounts_detailed_health_route():
     assert "/health/detailed" in routes
 
 
+def test_main_keeps_api_docs_closed_by_default():
+    routes = {route.path for route in app.routes}
+    assert "/docs" not in routes
+    assert "/openapi.json" not in routes
+
+
 def test_main_does_not_run_schema_mutation_as_part_of_normal_boot_contract():
     content = (REPO_ROOT / "backend/app/main.py").read_text(encoding="utf-8")
     assert "run_startup_check" not in content

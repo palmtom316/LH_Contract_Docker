@@ -3,6 +3,20 @@ import { ElMessage } from 'element-plus'
 import router from '@/router'
 import { clearSessionStorage, refreshSessionWithStoredToken } from '@/utils/authSession'
 
+let refreshPromise = null
+
+async function getRefreshedToken() {
+    if (!refreshPromise) {
+        refreshPromise = refreshSessionWithStoredToken()
+            .then(() => localStorage.getItem('token'))
+            .finally(() => {
+                refreshPromise = null
+            })
+    }
+
+    return refreshPromise
+}
+
 // Create Axios instance
 const service = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
@@ -75,10 +89,10 @@ service.interceptors.response.use(
                         if (!response.config._retry) {
                             response.config._retry = true
                             try {
-                                await refreshSessionWithStoredToken()
+                                const refreshedToken = await getRefreshedToken()
 
                                 // Retry the original request with new token
-                                response.config.headers['Authorization'] = `Bearer ${localStorage.getItem('token')}`
+                                response.config.headers['Authorization'] = `Bearer ${refreshedToken}`
                                 return service(response.config)
                             } catch (refreshError) {
                                 // Refresh failed, redirect to login

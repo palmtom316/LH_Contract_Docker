@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import List, Optional
 from sqlalchemy.exc import IntegrityError
+import logging
 
 from app.database import get_db
 from app.models.user import User, UserRole, ROLE_DISPLAY_NAMES
@@ -27,6 +28,7 @@ from app.core.errors import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/", response_model=List[UserResponse])
@@ -50,7 +52,7 @@ async def read_users(
                 )
             except Exception as e:
                 # If individual user fails, log and skip
-                print(f"Error processing user {u.username}: {e}")
+                logger.warning("Failed to build permission-rich user response for %s", u.username, exc_info=e)
                 # Add basic response without permissions as fallback
                 user_responses.append(UserResponse(
                     id=u.id,
@@ -68,7 +70,7 @@ async def read_users(
                 ))
         return user_responses
     except Exception as e:
-        print(f"Error fetching users: {e}")
+        logger.exception("Error fetching users")
         raise DatabaseError(message="获取用户列表失败", detail=str(e))
 
 
@@ -218,15 +220,14 @@ async def delete_user(
         )
     except Exception as e:
         await db.rollback()
-        # Log the full error for debugging
-        print(f"Error deleting user {user_id}: {e}")
+        logger.exception("Error deleting user %s", user_id)
         raise DatabaseError(message="数据库操作失败", detail="请重试或联系管理员")
     
     return {"message": "用户已删除"}
 
 
 class ResetPasswordRequest(BaseModel):
-    new_password: str = Field(..., min_length=6, max_length=100)
+    new_password: str = Field(..., min_length=8, max_length=72)
 
 
 @router.post("/{user_id}/reset-password")
@@ -246,5 +247,3 @@ async def reset_user_password(
     await db.commit()
     
     return {"message": "密码重置成功"}
-
-

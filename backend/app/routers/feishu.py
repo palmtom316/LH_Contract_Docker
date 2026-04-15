@@ -13,6 +13,7 @@ import logging
 from typing import Optional
 from fastapi import APIRouter, Request, BackgroundTasks, HTTPException
 from pydantic import BaseModel
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,10 @@ class WebhookResponse(BaseModel):
 def _verify_feishu_event(body: dict) -> None:
     """Require the configured Feishu verification token on every callback."""
     if not FEISHU_WEBHOOK_VERIFICATION_TOKEN:
-        return
+        logger.error("Feishu webhook verification token is not configured")
+        if settings.DEBUG:
+            return
+        raise HTTPException(status_code=503, detail="Feishu webhook verification is not configured")
 
     if body.get("token") != FEISHU_WEBHOOK_VERIFICATION_TOKEN:
         logger.warning("Webhook token verification failed")

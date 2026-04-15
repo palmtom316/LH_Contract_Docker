@@ -5,10 +5,8 @@
         <template #header>
           <div class="contract-query-panel__header-copy">
             <span v-if="isAssistant" class="contract-query-panel__eyebrow">Ctrl + K</span>
-            <span v-else class="contract-query-panel__eyebrow">上游合同聚合</span>
             <div class="contract-query-panel__title-block">
-              <span class="contract-query-panel__title">合同查询助手</span>
-              <p class="contract-query-panel__summary">按合同名称、甲方单位、合同序号与关键分类快速定位上游合同。</p>
+              <span class="contract-query-panel__title">{{ isAssistant ? '合同查询助手' : '合同查询' }}</span>
             </div>
           </div>
         </template>

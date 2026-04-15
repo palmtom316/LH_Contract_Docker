@@ -120,8 +120,9 @@ const slotStub = name => ({
 
 const originalCreateElement = document.createElement.bind(document)
 
-const createWrapper = () =>
+const createWrapper = (props = {}) =>
   mount(ContractQueryBot, {
+    props,
     global: {
       stubs: {
         'el-input': ElInputStub,
@@ -236,15 +237,26 @@ describe('ContractQueryBot', () => {
     })
   })
 
-  it('renders upstream aggregate data as assistant cards', async () => {
+  it('renders upstream aggregate data with the updated page title', async () => {
     const wrapper = createWrapper()
     await flushPromises()
 
-    expect(wrapper.text()).toContain('合同查询助手')
+    expect(wrapper.text()).toContain('合同查询')
+    expect(wrapper.text()).not.toContain('合同查询助手')
+    expect(wrapper.text()).not.toContain('按合同名称、甲方单位、合同序号与关键分类快速定位上游合同。')
     expect(wrapper.text()).toContain('华东总包上游合同')
     expect(wrapper.text()).toContain('甲方单位')
     expect(wrapper.text()).toContain('质保期到期日期')
     expect(wrapper.text()).toContain('管理费')
     expect(wrapper.text()).toContain('培训费')
+  })
+
+  it('renders the assistant variant with only the assistant title', async () => {
+    const wrapper = createWrapper({ variant: 'assistant' })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Ctrl + K')
+    expect(wrapper.text()).toContain('合同查询助手')
+    expect(wrapper.text()).not.toContain('按合同名称、甲方单位、合同序号与关键分类快速定位上游合同。')
   })
 })

@@ -24,6 +24,7 @@ from app.services.auth import get_current_active_user
 from app.core.errors import ValidationError, DatabaseError, PermissionDeniedError
 from app.core.validators import FileValidators
 from app.services.file_authorization import user_can_access_file_path
+from app.utils.file_validator import validate_file_upload
 
 router = APIRouter()
 
@@ -84,14 +85,10 @@ async def upload_file(
         }
     """
     logger.info(f"[UPLOAD] Start: filename={file.filename}, content_type={file.content_type}, upload_dir={upload_dir}, user={current_user.username}")
-    
-    # 1. Validate extension
-    ext = file.filename.split('.')[-1].lower()
-    if ext not in settings.ALLOWED_EXTENSIONS:
-        raise ValidationError(
-            message="不支持的文件类型",
-            field_errors={"file": f"不支持的文件类型: {ext}，支持的类型: {', '.join(settings.ALLOWED_EXTENSIONS)}"}
-        )
+
+    # 1. Validate filename, extension, MIME signature, and size
+    safe_name = await validate_file_upload(file)
+    ext = safe_name.rsplit('.', 1)[-1].lower()
     
     # 2. Generate Object Key
     # Format: {year}/{month}/{uuid}.{ext} to avoid flat folder limit issues

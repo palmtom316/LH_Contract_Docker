@@ -84,7 +84,7 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.production
     image: lh-contract-backend:latest
     container_name: lh_contract_backend_prod
     restart: always
@@ -136,14 +136,11 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.production
     container_name: lh_contract_frontend_prod
     restart: always
-    environment:
-      VITE_API_BASE_URL: /api/v1
-      NODE_OPTIONS: "--max-old-space-size=256" # 限制 Node.js 堆内存
-    ports:
-      - "3000:3000"
+    expose:
+      - "80"
     networks:
       - lh_network
     depends_on:
