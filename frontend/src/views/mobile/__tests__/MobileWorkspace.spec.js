@@ -54,10 +54,14 @@ vi.mock('vant', async (importOriginal) => {
   }
 })
 
-vi.mock('element-plus', () => ({
-  ElMessage: { success: vi.fn(), error: vi.fn() },
-  ElMessageBox: { confirm: vi.fn().mockResolvedValue() }
-}))
+vi.mock('element-plus', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    ElMessage: { success: vi.fn(), error: vi.fn() },
+    ElMessageBox: { confirm: vi.fn().mockResolvedValue() }
+  }
+})
 
 vi.mock('@/api/contractUpstream', () => ({
   getContracts: vi.fn().mockResolvedValue({ items: [], total: 0 })

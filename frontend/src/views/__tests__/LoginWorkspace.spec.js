@@ -28,9 +28,13 @@ vi.mock('@/stores/user', () => ({
   })
 }))
 
-vi.mock('element-plus', () => ({
-  ElMessage: { success: vi.fn(), error: vi.fn() }
-}))
+vi.mock('element-plus', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    ElMessage: { success: vi.fn(), error: vi.fn() }
+  }
+})
 
 const ElInputStub = defineComponent({
   props: ['modelValue', 'type', 'placeholder', 'size', 'disabled'],
