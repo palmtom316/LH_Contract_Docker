@@ -4,9 +4,10 @@ Permission Definitions and Checkers for RBAC
 """
 from enum import Enum
 from typing import List, Set
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 from app.models.user import User, UserRole
 from app.services.auth import get_current_active_user
+from app.core.errors import PermissionDeniedError
 
 
 class Permission(str, Enum):
@@ -238,9 +239,8 @@ def require_permission(permission: Permission):
         current_user: User = Depends(get_current_active_user)
     ) -> User:
         if not has_permission(current_user, permission):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"权限不足: 需要 {permission.value} 权限"
+            raise PermissionDeniedError(
+                detail=f"需要 {permission.value} 权限"
             )
         return current_user
     return permission_checker
@@ -252,10 +252,7 @@ def require_any_permission(permissions: List[Permission]):
         current_user: User = Depends(get_current_active_user)
     ) -> User:
         if not has_any_permission(current_user, permissions):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="权限不足"
-            )
+            raise PermissionDeniedError()
         return current_user
     return permission_checker
 
@@ -268,9 +265,8 @@ def require_roles(allowed_roles: List[UserRole]):
         if current_user.is_superuser:
             return current_user
         if current_user.role not in allowed_roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="权限不足: 您的角色无法访问此功能"
+            raise PermissionDeniedError(
+                detail="您的角色无法访问此功能"
             )
         return current_user
     return role_checker

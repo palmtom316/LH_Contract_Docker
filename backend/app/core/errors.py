@@ -14,7 +14,7 @@ class ErrorCode(str, Enum):
     INVALID_CREDENTIALS = "1001"
     TOKEN_EXPIRED = "1002"
     TOKEN_INVALID = "1003"
-    INSUFFICIENT_PERMISSIONS = "1004"  # Fixed: was duplicate of 1003
+    INSUFFICIENT_PERMISSIONS = "1004"
     USER_NOT_FOUND = "1005"
     USER_INACTIVE = "1006"
     PASSWORD_TOO_WEAK = "1007"
@@ -219,32 +219,3 @@ class DatabaseError(AppException):
             detail=detail,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-
-
-# Error message mapping for user-friendly display
-ERROR_MESSAGES = {
-    ErrorCode.INVALID_CREDENTIALS: "用户名或密码错误",
-    ErrorCode.TOKEN_EXPIRED: "登录已过期，请重新登录",
-    ErrorCode.TOKEN_INVALID: "登录信息无效",
-    ErrorCode.INSUFFICIENT_PERMISSIONS: "您没有权限执行此操作",
-    ErrorCode.USER_NOT_FOUND: "用户不存在",
-    ErrorCode.USER_INACTIVE: "用户已被禁用",
-    ErrorCode.PASSWORD_TOO_WEAK: "密码强度不足",
-    
-    ErrorCode.CONTRACT_NOT_FOUND: "合同不存在",
-    ErrorCode.CONTRACT_DUPLICATE: "合同编号已存在",
-    ErrorCode.CONTRACT_INVALID_STATUS: "合同状态无效",
-    
-    ErrorCode.FILE_TOO_LARGE: "文件大小超过限制",
-    ErrorCode.FILE_TYPE_NOT_ALLOWED: "不支持的文件类型",
-    ErrorCode.FILE_UPLOAD_FAILED: "文件上传失败",
-    
-    ErrorCode.DATABASE_ERROR: "数据库操作失败",
-    ErrorCode.VALIDATION_ERROR: "数据验证失败",
-    ErrorCode.INTERNAL_SERVER_ERROR: "服务器内部错误",
-}
-
-
-def get_error_message(error_code: ErrorCode) -> str:
-    """Get user-friendly error message by error code"""
-    return ERROR_MESSAGES.get(error_code, "操作失败")

@@ -4,6 +4,7 @@ Provides caching functionality for frequently accessed data
 """
 from typing import Optional, Any, Callable
 from functools import wraps
+import fnmatch
 import json
 import logging
 import hashlib
@@ -150,8 +151,8 @@ class CacheManager:
                     await self.redis_client.delete(*keys)
                 return len(keys)
             else:
-                # Clear memory cache keys matching pattern
-                keys_to_delete = [k for k in self.memory_cache.keys() if pattern.replace('*', '') in k]
+                # Clear memory cache keys matching pattern (glob-style: *, ?)
+                keys_to_delete = [k for k in self.memory_cache.keys() if fnmatch.fnmatchcase(k, pattern)]
                 for key in keys_to_delete:
                     del self.memory_cache[key]
                 return len(keys_to_delete)
