@@ -1,8 +1,6 @@
 /**
  * Utility functions for file downloads
- * Uses file-saver library for cross-browser compatibility
  */
-// import { saveAs } from 'file-saver'
 
 /**
  * Download a blob as a file

@@ -1,21 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-// Mobile route to PC route mapping (for auto-redirect)
+// Mobile route -> PC route redirect map (PC user lands on /m/* -> bounce to PC).
+// Reverse direction is intentionally not enforced: mobile users can still open PC lists.
 const mobileToPC = {
     '/m/contracts': '/contracts/upstream',
     '/m/expenses': '/expenses',
     '/m/reports': '/reports',
     '/m/profile': '/system'
-}
-
-// PC route to mobile route mapping
-const pcToMobile = {
-    '/contracts/upstream': '/m/contracts',
-    '/contracts/downstream': '/m/contracts',
-    '/contracts/management': '/m/contracts',
-    '/expenses': '/m/expenses',
-    '/reports': '/m/reports',
-    '/system': '/m/profile'
 }
 
 const routes = [
@@ -160,31 +151,13 @@ router.beforeEach((to, from, next) => {
         if (to.path === '/login') {
             next('/')
         } else {
-            // Auto-redirect based on device type
             const isMobile = isMobileDevice()
 
-            // Mobile user accessing PC route -> redirect to mobile
-            // Disabled: User wants ability to view PC lists on mobile
-            /*
-            if (isMobile && !to.path.startsWith('/m') && to.path !== '/' && pcToMobile[to.path]) {
-                next(pcToMobile[to.path])
-                return
-            }
-            */
-
-            // PC user accessing mobile route -> redirect to PC
+            // PC user accessing mobile route -> redirect to PC equivalent
             if (!isMobile && to.path.startsWith('/m') && mobileToPC[to.path]) {
                 next(mobileToPC[to.path])
                 return
             }
-
-            // Handle root path based on device
-            // if (to.path === '/') {
-            //     if (isMobile) {
-            //         next('/m/contracts')
-            //         return
-            //     }
-            // }
 
             next()
         }

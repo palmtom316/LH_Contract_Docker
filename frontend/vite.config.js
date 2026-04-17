@@ -44,7 +44,7 @@ export default defineConfig({
                     }
                     if (id.includes('vant')) return 'mobile-vendor'
                     if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router')) return 'framework-vendor'
-                    if (id.includes('axios') || id.includes('dayjs') || id.includes('file-saver')) return 'utils-vendor'
+                    if (id.includes('axios') || id.includes('dayjs')) return 'utils-vendor'
 
                     return 'vendor'
                 }
