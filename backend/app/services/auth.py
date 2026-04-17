@@ -5,10 +5,9 @@ Enhanced with security improvements
 from datetime import datetime, timedelta
 from typing import Optional, Tuple
 import re
-# from passlib.context import CryptContext
 import bcrypt
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -18,56 +17,63 @@ from app.config import settings
 from app.database import get_db
 from app.models.user import User
 from app.schemas.user import TokenData
+from app.core.errors import AuthenticationError, PermissionDeniedError, ValidationError
 
 logger = logging.getLogger(__name__)
-
-# Password hashing
-# pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
-def _require_access_token_type(payload: dict, credentials_exception: HTTPException) -> None:
+def _auth_error() -> AuthenticationError:
+    """401 for request authentication flows (preserves Bearer challenge)."""
+    err = AuthenticationError(message="无法验证凭据")
+    err.headers = {"WWW-Authenticate": "Bearer"}
+    return err
+
+
+def _require_access_token_type(payload: dict) -> None:
     """Reject non-access JWTs for request authentication flows."""
     if payload.get("type") != "access":
-        raise credentials_exception
+        raise _auth_error()
 
 
 def validate_password_strength(password: str) -> bool:
     """
-    Validate password strength
-    
+    Validate password strength.
+
     Requirements:
-    - At least 8 characters
-    - Contains at least one letter
-    - Contains at least one number
+    - 8-72 characters (72 is bcrypt's hard limit)
+    - At least one letter
+    - At least one number
+
+    Raises:
+        ValidationError: when any rule fails. field_errors["password"] carries the reason.
     """
     if len(password) < 8:
-        raise HTTPException(
-            status_code=400,
-            detail="密码长度必须至少8个字符"
+        raise ValidationError(
+            message="密码长度必须至少8个字符",
+            field_errors={"password": "密码长度必须至少8个字符"}
         )
-    
+
     if len(password) > 72:
-        raise HTTPException(
-            status_code=400,
-            detail="密码长度不能超过72个字符（bcrypt限制）"
+        raise ValidationError(
+            message="密码长度不能超过72个字符",
+            field_errors={"password": "密码长度不能超过72个字符（bcrypt 限制）"}
         )
-    
-    # Check for at least one letter and one number
+
     if not re.search(r'[a-zA-Z]', password):
-        raise HTTPException(
-            status_code=400,
-            detail="密码必须包含至少一个字母"
+        raise ValidationError(
+            message="密码必须包含至少一个字母",
+            field_errors={"password": "密码必须包含至少一个字母"}
         )
-    
+
     if not re.search(r'\d', password):
-        raise HTTPException(
-            status_code=400,
-            detail="密码必须包含至少一个数字"
+        raise ValidationError(
+            message="密码必须包含至少一个数字",
+            field_errors={"password": "密码必须包含至少一个数字"}
         )
-    
+
     return True
 
 
@@ -94,10 +100,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def get_password_hash(password: str) -> str:
     """Generate password hash with validation"""
-    # Validate password strength before hashing
     validate_password_strength(password)
-    
-    # return pwd_context.hash(password)
+
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
@@ -185,38 +189,38 @@ async def verify_refresh_token_with_db(token: str, db: AsyncSession) -> Optional
     Returns payload if valid, None otherwise.
     """
     from app.models.refresh_token import RefreshToken
-    
+
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        
+
         # Ensure this is a refresh token
         if payload.get("type") != "refresh":
             logger.warning("Token is not a refresh token")
             return None
-        
-        # Check JTI in database
+
+        # JTI is mandatory — refuse any token that does not carry one, so DB
+        # revocation is always enforced.
         jti = payload.get("jti")
         if not jti:
-            logger.warning("Refresh token missing JTI - legacy token")
-            # For backwards compatibility, allow tokens without JTI but log warning
-            return payload
-        
+            logger.warning("Refresh token rejected: missing JTI")
+            return None
+
         # Verify token is not revoked
         result = await db.execute(
             select(RefreshToken).where(RefreshToken.jti == jti)
         )
         token_record = result.scalar_one_or_none()
-        
+
         if not token_record:
             logger.warning(f"Refresh token JTI {jti[:8]}... not found in database")
             return None
-        
+
         if token_record.revoked:
             logger.warning(f"Refresh token JTI {jti[:8]}... has been revoked")
             return None
-        
+
         return payload
-        
+
     except jwt.ExpiredSignatureError:
         logger.info("Refresh token has expired")
         return None
@@ -286,40 +290,32 @@ async def get_current_user(
     db: AsyncSession = Depends(get_db)
 ) -> User:
     """Get current user from JWT token"""
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="无法验证凭据",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        _require_access_token_type(payload, credentials_exception)
+        _require_access_token_type(payload)
         sub = payload.get("sub")
         username: str = payload.get("username")
-        
+
         if sub is None:
-            raise credentials_exception
-        
+            raise _auth_error()
+
         # Convert sub to int (it's stored as string in the token)
         try:
             user_id = int(sub)
         except (ValueError, TypeError):
-            raise credentials_exception
-            
+            raise _auth_error()
+
         token_data = TokenData(user_id=user_id, username=username)
     except jwt.PyJWTError:
-        raise credentials_exception
-    
+        raise _auth_error()
+
     result = await db.execute(select(User).where(User.id == token_data.user_id))
     user = result.scalar_one_or_none()
-    
+
     if user is None:
-        raise credentials_exception
+        raise _auth_error()
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="用户已被禁用"
-        )
+        raise PermissionDeniedError(message="用户已被禁用")
     return user
 
 
@@ -328,20 +324,8 @@ async def get_current_active_user(
 ) -> User:
     """Get current active user"""
     if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="用户未激活")
+        raise PermissionDeniedError(message="用户未激活")
     return current_user
-
-
-def require_role(allowed_roles: list):
-    """Dependency to require specific roles"""
-    async def role_checker(current_user: User = Depends(get_current_user)) -> User:
-        if current_user.role not in allowed_roles and not current_user.is_superuser:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="权限不足"
-            )
-        return current_user
-    return role_checker
 
 
 async def get_user_from_token(
@@ -349,26 +333,22 @@ async def get_user_from_token(
     db: AsyncSession
 ) -> User:
     """Get user from token string (for URL parameter authentication)"""
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="无法验证凭据",
-    )
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        _require_access_token_type(payload, credentials_exception)
+        _require_access_token_type(payload)
         sub = payload.get("sub")
-        
+
         if sub is None:
-            raise credentials_exception
-        
+            raise _auth_error()
+
         user_id = int(sub)
     except (jwt.PyJWTError, ValueError, TypeError):
-        raise credentials_exception
-    
+        raise _auth_error()
+
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
-    
+
     if user is None or not user.is_active:
-        raise credentials_exception
+        raise _auth_error()
     return user
 

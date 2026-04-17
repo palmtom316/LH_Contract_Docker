@@ -195,7 +195,14 @@ async def delete_user(
     current_user: User = Depends(require_roles([UserRole.ADMIN])),
     db: AsyncSession = Depends(get_db)
 ):
-    """Delete (deactivate) user"""
+    """
+    Hard-delete a user (Admin only).
+
+    Users with linked business data (contracts, finance records) cannot be deleted
+    and must be disabled via PUT /{user_id} with is_active=false instead. Audit
+    logs survive the delete with user_id cleared (ON DELETE SET NULL) but keep
+    the username snapshot captured at log creation time.
+    """
     if current_user.id == user_id:
         raise ValidationError(
             message="不能删除当前登录用户",

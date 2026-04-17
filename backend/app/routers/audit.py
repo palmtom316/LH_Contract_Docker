@@ -96,33 +96,47 @@ async def delete_audit_logs_before_date(
     current_user: User = Depends(require_roles([UserRole.ADMIN])),
     db: AsyncSession = Depends(get_db)
 ):
-    """Delete all audit logs before specified date (Admin only)"""
-    from datetime import datetime
+    """
+    Delete all audit logs strictly before the given date (Admin only).
+
+    Safety: the cutoff must be at least 30 days in the past. For anything newer,
+    use POST /archive which exports before deleting.
+    """
+    from datetime import datetime, date, timedelta
     from sqlalchemy import delete
     from app.models.audit_log import AuditLog
-    
+
     try:
-        # Parse date
         cutoff_date = datetime.strptime(before_date, '%Y-%m-%d').date()
-        
-        # Delete logs before this date
+    except ValueError:
+        raise ValidationError(
+            message="日期格式错误",
+            field_errors={"before_date": "请使用 YYYY-MM-DD 格式"}
+        )
+
+    min_age_days = 30
+    earliest_allowed = date.today() - timedelta(days=min_age_days)
+    if cutoff_date > earliest_allowed:
+        raise ValidationError(
+            message="清理时间过近",
+            field_errors={
+                "before_date": f"cutoff 必须至少早于今天 {min_age_days} 天；更近的日志请先走 /archive 归档"
+            }
+        )
+
+    try:
         stmt = delete(AuditLog).where(AuditLog.created_at < cutoff_date)
         result = await db.execute(stmt)
         await db.commit()
-        
+
         deleted_count = result.rowcount
-        
+
         return {
             "success": True,
             "message": f"成功删除 {deleted_count} 条审计日志",
             "deleted_count": deleted_count,
             "before_date": before_date
         }
-    except ValueError:
-        raise ValidationError(
-            message="日期格式错误",
-            field_errors={"before_date": "请使用 YYYY-MM-DD 格式"}
-        )
     except Exception as e:
         raise DatabaseError(message="删除失败", detail=str(e))
 
