@@ -10,8 +10,8 @@ from datetime import date, timedelta
 from decimal import Decimal
 import random
 
-# 添加父目录到Python路径
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add backend/ root to Python path (file lives at backend/app/scripts/*.py)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from sqlalchemy import select
 from app.database import AsyncSessionLocal

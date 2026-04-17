@@ -1,4 +1,6 @@
-# Multi-stage build for optimized backend image
+# Backend Dockerfile — OPTIMIZED (multi-stage)
+# Intermediate variant between Dockerfile (dev) and Dockerfile.production (prod).
+# Verify which variant your deployment pipeline actually builds before editing.
 FROM python:3.11-slim as builder
 
 WORKDIR /app

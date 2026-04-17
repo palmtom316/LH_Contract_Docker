@@ -1,3 +1,6 @@
+# Backend Dockerfile — DEVELOPMENT
+# Used by docker-compose.yml. Single-stage, reload enabled.
+# For production builds, see Dockerfile.production (multi-stage, no reload).
 FROM python:3.11-slim
 
 WORKDIR /app

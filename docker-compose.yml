@@ -1,3 +1,7 @@
+# docker-compose.yml — DEVELOPMENT stack
+# Default local dev: postgres + backend (uvicorn --reload) + frontend (vite dev) + MinIO.
+# For production variants see: docker-compose.prod.yml, docker-compose.prod.balanced.yml,
+# docker-compose.prod.lowmem.yml, docker-compose.production.yml, docker-compose.pve-prod.yml.
 services:
   # Database
   db:

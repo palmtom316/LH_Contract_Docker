@@ -1,5 +1,4 @@
 @use './tokens.scss';
-@use './variables.scss' as *;
 
 html,
 body,
@@ -510,7 +509,7 @@ a:focus-visible,
     white-space: nowrap !important;
 }
 
-@media only screen and (max-width: $mobile-width) {
+@media only screen and (max-width: 767px) {
     .el-dialog {
         width: 90% !important;
         max-width: none !important;
