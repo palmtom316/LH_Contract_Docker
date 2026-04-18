@@ -13,19 +13,20 @@ const globals = readFileSync(
 )
 
 describe('visual token contract', () => {
-  it('keeps a compact radius ladder while warming the workspace neutrals', () => {
+  it('keeps a compact radius ladder with a cool minimalist SaaS neutral palette', () => {
     expect(tokens).toContain('--radius: 0.75rem;')
     expect(tokens).toContain('--radius-lg: 1rem;')
-    expect(tokens).toContain('--background: 35 24% 96%;')
-    expect(tokens).toContain('--card: 36 28% 98%;')
-    expect(tokens).toContain('--muted: 32 22% 93%;')
-    expect(tokens).toContain('--workspace-control-height: 40px;')
+    expect(tokens).toContain('--background: 220 16% 97%;')
+    expect(tokens).toContain('--card: 0 0% 100%;')
+    expect(tokens).toContain('--muted: 220 14% 95%;')
+    expect(tokens).toContain('--primary: 160 52% 39%;')
+    expect(tokens).toContain('--workspace-control-height: 36px;')
     expect(tokens).toContain(
       '--surface-page-gradient: linear-gradient(180deg, hsl(var(--background)) 0%, color-mix(in srgb, hsl(var(--background)) 82%, hsl(var(--card)) 18%) 100%);'
     )
     expect(tokens).not.toContain('radial-gradient(circle at top left')
     expect(tokens).not.toContain('--workspace-panel-highlight:')
-    expect(tokens).toContain('--shadow-frame: 0 18px 40px hsl(24 18% 20% / 0.08);')
+    expect(tokens).toContain('--shadow-frame: 0 8px 24px hsl(220 24% 14% / 0.06);')
     expect(tokens).not.toContain('0.625rem')
   })
 

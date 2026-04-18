@@ -12,15 +12,20 @@ body,
     box-sizing: border-box;
 }
 
-:root {
+:root,
+:root.dark,
+:root[data-theme='dark'] {
     --el-color-primary: hsl(var(--primary));
     --el-color-primary-light-9: hsl(var(--primary) / 0.12);
     --el-bg-color: hsl(var(--card));
     --el-bg-color-page: hsl(var(--background));
+    --el-bg-color-overlay: hsl(var(--card));
     --el-fill-color-blank: hsl(var(--card));
+    --el-fill-color: hsl(var(--muted));
     --el-fill-color-light: hsl(var(--muted));
     --el-fill-color-lighter: hsl(var(--muted));
     --el-fill-color-extra-light: hsl(var(--muted));
+    --el-fill-color-dark: hsl(var(--muted));
     --el-text-color-primary: hsl(var(--foreground));
     --el-text-color-regular: hsl(var(--muted-foreground));
     --el-text-color-secondary: hsl(var(--muted-foreground));
@@ -29,14 +34,20 @@ body,
     --el-border-color-light: hsl(var(--border));
     --el-border-color-lighter: hsl(var(--border));
     --el-border-color-extra-light: hsl(var(--border));
+    --el-border-color-dark: hsl(var(--border));
     --el-mask-color: var(--surface-overlay);
     --el-box-shadow: var(--shadow-card);
     --el-box-shadow-light: var(--shadow-soft);
     --el-card-bg-color: hsl(var(--card));
     --el-dialog-bg-color: hsl(var(--card));
+    --el-drawer-bg-color: hsl(var(--card));
     --el-table-bg-color: hsl(var(--card));
     --el-table-tr-bg-color: hsl(var(--card));
     --el-table-header-bg-color: hsl(var(--muted));
+    --el-table-row-hover-bg-color: color-mix(in srgb, hsl(var(--muted)) 48%, hsl(var(--card)) 52%);
+    --el-table-border-color: hsl(var(--border));
+    --el-table-header-text-color: hsl(var(--muted-foreground));
+    --el-table-text-color: hsl(var(--foreground));
 }
 
 body {
@@ -110,9 +121,10 @@ a:focus-visible,
     min-height: var(--workspace-control-height);
     height: var(--workspace-control-height);
     border-radius: var(--radius);
-    font-weight: 600;
+    font-weight: 500;
+    font-size: 13px;
     padding-inline: 14px;
-    letter-spacing: 0.01em;
+    letter-spacing: 0;
     box-shadow: none;
 }
 
@@ -376,32 +388,45 @@ a:focus-visible,
     border-radius: 0;
     overflow: hidden;
     background: var(--surface-panel);
+    color: hsl(var(--foreground));
+}
+
+.el-table tr,
+.el-table tr > td.el-table__cell {
+    background-color: var(--surface-panel);
 }
 
 .el-table th.el-table__cell {
-    font-weight: 600;
+    font-weight: 500;
     color: hsl(var(--muted-foreground));
-    background: var(--workspace-table-header-background);
+    background-color: hsl(var(--muted));
     font-size: 12px;
-}
-
-.el-table td.el-table__cell {
-    color: hsl(var(--foreground));
-    font-size: 14px;
+    letter-spacing: 0.02em;
     padding-top: 8px;
     padding-bottom: 8px;
 }
 
-.el-table tr:hover > td.el-table__cell {
-    background: color-mix(in srgb, hsl(var(--muted)) 70%, hsl(var(--card)) 30%);
+.el-table td.el-table__cell {
+    color: hsl(var(--foreground));
+    font-size: 13px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+
+.el-table tr:hover > td.el-table__cell,
+.el-table tbody tr:hover > td.el-table__cell {
+    background-color: color-mix(in srgb, hsl(var(--muted)) 55%, hsl(var(--card)) 45%);
 }
 
 .el-tag {
     border-radius: 999px;
     padding-inline: 10px;
-    min-height: 24px;
-    font-weight: 600;
-    border-color: hsl(var(--border));
+    min-height: 22px;
+    height: 22px;
+    line-height: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    border-color: transparent;
     background: hsl(var(--muted));
     color: hsl(var(--foreground));
 }
@@ -412,23 +437,48 @@ a:focus-visible,
 }
 
 .el-tag--success {
-    background: rgb(16 185 129 / 0.12);
-    color: rgb(5 150 105);
+    background: rgb(16 185 129 / 0.1);
+    color: rgb(5 122 85);
 }
 
 .el-tag--warning {
-    background: rgb(245 158 11 / 0.14);
-    color: rgb(180 83 9);
+    background: rgb(245 158 11 / 0.12);
+    color: rgb(161 98 7);
 }
 
 .el-tag--danger {
-    background: rgb(244 63 94 / 0.14);
-    color: rgb(190 24 93);
+    background: rgb(239 68 68 / 0.1);
+    color: rgb(185 28 28);
 }
 
 .el-tag.el-tag--primary {
-    background: hsl(var(--primary) / 0.12);
-    color: hsl(var(--primary));
+    background: hsl(var(--primary) / 0.1);
+    color: var(--brand-primary-strong);
+}
+
+.el-drawer__header {
+    padding: 16px 20px;
+    margin-bottom: 0;
+    border-bottom: 1px solid hsl(var(--border));
+    font-weight: 600;
+    font-size: 14px;
+    color: hsl(var(--foreground));
+}
+
+.el-drawer__body {
+    padding: 16px 20px;
+}
+
+.el-dialog__header {
+    padding: 16px 20px;
+    border-bottom: 1px solid hsl(var(--border));
+    margin-right: 0;
+}
+
+.el-dialog__title {
+    font-weight: 600;
+    font-size: 14px;
+    color: hsl(var(--foreground));
 }
 
 .app-tabs {

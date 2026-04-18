@@ -15,10 +15,6 @@ const mountPage = () =>
       stubs: {
         Overview: { template: '<div class="overview-stub" />' },
         Business: { template: '<div class="business-stub" />' },
-        AppWorkspacePanel: {
-          props: ['panelClass'],
-          template: '<section class="app-workspace-panel-stub" :class="panelClass"><slot /></section>'
-        },
         ElTabs: { template: '<div><slot /></div>' },
         ElTabPane: { template: '<div><slot /></div>' }
       }
@@ -26,17 +22,16 @@ const mountPage = () =>
   })
 
 describe('Dashboard workspace shell', () => {
-  it('renders the shared dashboard frame wrappers without the page header', () => {
+  it('renders a flat dashboard shell with tabs without an outer workspace panel', () => {
     const wrapper = mountPage()
 
     expect(wrapper.find('.dashboard-page-header').exists()).toBe(false)
     expect(wrapper.find('.dashboard-shell').exists()).toBe(true)
-    expect(wrapper.find('.dashboard-tabs-panel').exists()).toBe(true)
-    expect(wrapper.find('.dashboard-tab-panel').exists()).toBe(true)
+    expect(wrapper.find('.app-workspace-panel-stub').exists()).toBe(false)
   })
 
   it('uses the refined workspace spacing rhythm in the dashboard shell', () => {
-    expect(dashboardSource).toContain('gap: var(--space-5);')
-    expect(dashboardSource).toContain('padding: var(--space-5);')
+    expect(dashboardSource).toContain('gap: var(--space-4);')
+    expect(dashboardSource).not.toContain('AppWorkspacePanel')
   })
 })

@@ -22,8 +22,10 @@ describe('createBarChartOption', () => {
     })
 
     expect(option.grid.containLabel).toBe(true)
-    expect(option.legend.bottom).toBe(0)
+    expect(option.legend.bottom).toBe(4)
+    expect(option.legend.itemGap).toBeGreaterThanOrEqual(16)
     expect(option.xAxis.axisLabel.hideOverlap).toBe(true)
+    expect(option.xAxis.axisLabel.margin).toBeGreaterThanOrEqual(8)
     expect(option.aria.enabled).toBe(true)
   })
 

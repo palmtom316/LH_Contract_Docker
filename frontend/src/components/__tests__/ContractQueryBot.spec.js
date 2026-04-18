@@ -289,8 +289,8 @@ describe('ContractQueryBot', () => {
     const wrapper = createWrapper({ variant: 'assistant' })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Ctrl + K')
     expect(wrapper.text()).toContain('合同查询助手')
+    expect(wrapper.text()).not.toContain('Ctrl + K')
     expect(wrapper.text()).not.toContain('按合同名称、甲方单位、合同序号与关键分类快速定位上游合同。')
     expect(wrapper.text()).toContain('关联零星用工总金额')
     expect(wrapper.text()).toContain('管理费')

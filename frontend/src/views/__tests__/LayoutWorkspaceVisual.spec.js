@@ -8,11 +8,13 @@ const desktopShell = readFileSync(
 )
 
 describe('workspace shell visual contract', () => {
-  it('removes glossy transform-based hover chrome from the desktop shell', () => {
+  it('keeps the shell flat so page content owns its own surface hierarchy', () => {
     expect(desktopShell).not.toContain('translateX(-18%)')
     expect(desktopShell).not.toContain('.sidebar-nav-item::after')
     expect(desktopShell).toContain('background: var(--surface-page-gradient);')
-    expect(desktopShell).toContain('box-shadow: var(--shadow-frame);')
+    expect(desktopShell).toContain('box-shadow: var(--shadow-soft);')
     expect(desktopShell).toContain('border-radius: var(--radius);')
+    expect(desktopShell).not.toMatch(/\.app-main__frame\s*\{[^}]*box-shadow/)
+    expect(desktopShell).not.toMatch(/\.app-main__frame\s*\{[^}]*border:\s*1px/)
   })
 })

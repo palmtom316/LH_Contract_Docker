@@ -4,7 +4,6 @@
       <AppSectionCard class="contract-query-panel__section contract-query-panel__section--filters">
         <template #header>
           <div class="contract-query-panel__header-copy">
-            <span v-if="isAssistant" class="contract-query-panel__eyebrow">Ctrl + K</span>
             <div class="contract-query-panel__title-block">
               <span class="contract-query-panel__title">{{ isAssistant ? '合同查询助手' : '合同查询' }}</span>
             </div>
@@ -24,7 +23,7 @@
           <button type="button" class="contract-query-panel__action-button" @click="resetFilters">重置</button>
         </template>
 
-        <AppFilterBar inline-actions>
+        <AppFilterBar>
           <el-input
             v-model="keyword"
             data-testid="contract-query-keyword"
@@ -59,9 +58,6 @@
             start-placeholder="签约开始日期"
             end-placeholder="签约结束日期"
           />
-          <template #actions>
-            <div class="contract-query-panel__filter-tip">结果自动刷新，仅返回当前账号有权限查看的上游合同聚合信息。</div>
-          </template>
         </AppFilterBar>
       </AppSectionCard>
 
@@ -623,6 +619,11 @@ onUnmounted(() => {
   min-width: 0;
 }
 
+.contract-query-panel--assistant {
+  padding: 16px;
+  min-height: 100%;
+}
+
 .contract-query-panel__shell {
   display: grid;
   gap: var(--space-4);
@@ -633,19 +634,16 @@ onUnmounted(() => {
   gap: 0;
 }
 
+.contract-query-panel--assistant :deep(.app-section-card),
+.contract-query-panel--assistant :deep(.app-filter-bar) {
+  box-shadow: none;
+  border-color: hsl(var(--border));
+}
+
 .contract-query-panel__header-copy {
   display: grid;
   gap: 8px;
   min-width: 0;
-}
-
-.contract-query-panel__eyebrow {
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: 0.12em;
-  color: hsl(var(--muted-foreground));
-  text-transform: uppercase;
 }
 
 .contract-query-panel__title-block {
@@ -655,19 +653,18 @@ onUnmounted(() => {
 
 .contract-query-panel__title {
   color: hsl(var(--foreground));
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .contract-query-panel__summary,
-.contract-query-panel__filter-tip,
 .contract-query-panel__stats,
 .contract-query-card__empty-note {
   margin: 0;
   color: hsl(var(--muted-foreground));
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 12.5px;
+  line-height: 1.5;
 }
 
 .contract-query-panel__stats {
@@ -680,12 +677,13 @@ onUnmounted(() => {
 .contract-query-panel__action-button {
   min-height: var(--workspace-control-height);
   padding: 0 14px;
-  border: 1px solid var(--workspace-panel-border);
+  border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
   background: var(--surface-panel);
   color: hsl(var(--foreground));
   font: inherit;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -717,12 +715,12 @@ onUnmounted(() => {
 
 .contract-query-table th,
 .contract-query-table td {
-  padding: 12px 14px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--workspace-panel-border);
   border-right: 1px solid var(--workspace-panel-border);
   vertical-align: top;
   text-align: left;
-  font-size: 13px;
+  font-size: 12.5px;
   line-height: 1.5;
   color: hsl(var(--foreground));
 }
@@ -736,19 +734,19 @@ onUnmounted(() => {
   position: sticky;
   top: 0;
   z-index: 4;
-  background: color-mix(in srgb, var(--surface-panel) 94%, var(--muted) 6%);
+  background: var(--surface-panel);
   color: hsl(var(--muted-foreground));
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-weight: 500;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   word-break: keep-all;
   writing-mode: horizontal-tb;
-  box-shadow: inset 0 -1px 0 var(--workspace-panel-border);
+  box-shadow: inset 0 -1px 0 var(--border-subtle);
 }
 
 .contract-query-table tbody tr:hover {
-  background: color-mix(in srgb, var(--surface-panel) 76%, var(--brand-primary-soft) 24%);
+  background: color-mix(in srgb, var(--surface-panel) 86%, var(--brand-primary-soft) 14%);
 }
 
 .contract-query-table .is-number {
@@ -817,7 +815,7 @@ onUnmounted(() => {
 .contract-query-table tbody tr:hover td.is-serial,
 .contract-query-table tbody tr:hover td.is-code,
 .contract-query-table tbody tr:hover td.is-contract {
-  background: color-mix(in srgb, var(--surface-panel) 76%, var(--brand-primary-soft) 24%);
+  background: color-mix(in srgb, var(--surface-panel) 86%, var(--brand-primary-soft) 14%);
 }
 
 @media (max-width: 767px) {

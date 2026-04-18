@@ -116,15 +116,16 @@ export function createBarChartOption({ categories = [], series = [] }) {
       textStyle: { color: theme.textStrong, fontSize: 12 }
     },
     legend: {
-      bottom: 0,
+      bottom: 4,
+      itemGap: 18,
       type: 'scroll',
       textStyle: { color: theme.text, fontSize: 12 }
     },
     grid: {
       left: '8%',
       right: '4%',
-      top: '12%',
-      bottom: '64px',
+      top: '16%',
+      bottom: '56px',
       containLabel: true
     },
     xAxis: {
@@ -132,6 +133,8 @@ export function createBarChartOption({ categories = [], series = [] }) {
       data: safeCategories,
       axisLabel: {
         hideOverlap: true,
+        interval: 'auto',
+        margin: 12,
         color: theme.text,
         fontSize: 11
       },
@@ -196,6 +199,7 @@ export function createPieChartOption({ title = '', data = [] }) {
     legend: {
       bottom: 0,
       type: 'scroll',
+      itemGap: 16,
       textStyle: {
         color: theme.text,
         fontSize: 12
@@ -289,15 +293,18 @@ export function createStackedTrendOption({
   option.legend.data = legendNames.length ? legendNames : series.map((item) => item.name)
   option.legend.type = mobile ? 'scroll' : 'plain'
   option.legend.textStyle = { color: theme.text, fontSize: mobile ? 10 : 12 }
-  option.grid.top = mobile ? '14%' : '12%'
-  option.grid.bottom = mobile ? '88px' : '72px'
+  option.legend.itemGap = mobile ? 10 : 18
+  option.legend.itemWidth = mobile ? 10 : 14
+  option.legend.itemHeight = mobile ? 10 : 12
+  option.grid.top = mobile ? '18%' : '16%'
+  option.grid.bottom = mobile ? '82px' : '64px'
   option.grid.left = mobile ? '11%' : '8%'
   option.grid.right = '4%'
   option.xAxis.axisLabel.interval = 'auto'
   option.xAxis.axisLabel.rotate = mobile ? 36 : 0
   option.xAxis.axisLabel.formatter = (value) => formatTrendLabel(value, labelSliceStart)
   option.yAxis.name = '金额 (万元)'
-  option.yAxis.nameTextStyle = { color: theme.text, padding: [0, 0, 6, 0] }
+  option.yAxis.nameTextStyle = { color: theme.text, fontSize: 11, padding: [0, 0, 10, 0] }
 
   return option
 }

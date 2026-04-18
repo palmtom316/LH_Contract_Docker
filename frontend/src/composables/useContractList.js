@@ -198,10 +198,10 @@ export function useTableSummary() {
     }
 
     const footerCellStyle = () => ({
-        backgroundColor: '#FFFF00',
-        color: '#000000',
-        fontWeight: 'bold',
-        fontSize: '16px'
+        backgroundColor: 'var(--status-highlight)',
+        color: 'hsl(var(--foreground))',
+        fontWeight: '700',
+        fontSize: '13px'
     })
 
     return {
