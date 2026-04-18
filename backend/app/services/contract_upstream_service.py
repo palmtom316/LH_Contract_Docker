@@ -1,7 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, or_, outerjoin
 from sqlalchemy.orm import selectinload, aliased
-from fastapi import HTTPException
 from typing import List, Optional, Dict, Any
 from datetime import datetime, date
 
@@ -24,7 +23,7 @@ from app.models.user import User
 from app.services.audit_service import create_audit_log, AuditAction, ResourceType
 from app.services.contract_code_generator import ContractCodeGenerator
 from app.services.base_contract_service import BaseContractService
-from app.core.errors import AppException, ErrorCode
+from app.core.errors import AppException, ErrorCode, DuplicateRecordError, ResourceNotFoundError
 
 
 class ContractWrapper:
@@ -430,15 +429,21 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
             if contract_in.serial_number:
                 logger.info(f"Checking serial_number: {contract_in.serial_number}")
                 if await self.check_serial_number_exists(contract_in.serial_number):
-                    raise HTTPException(status_code=400, detail=f"合同序号 {contract_in.serial_number} 已存在")
+                    raise DuplicateRecordError(
+                        resource_type="合同序号",
+                        field_name="serial_number",
+                        field_value=contract_in.serial_number,
+                    )
             
             # Check unique contract_code
             logger.info(f"Checking contract_code: {data['contract_code']}")
             existing_contract = await self.check_contract_code_exists(data['contract_code'])
             if existing_contract:
-                raise HTTPException(
-                    status_code=400, 
-                    detail=f"合同编号 '{data['contract_code']}' 已被使用（合同名称：{existing_contract.contract_name}），请使用其他编号"
+                raise AppException(
+                    error_code=ErrorCode.CONTRACT_NUMBER_EXISTS,
+                    message="合同编号已被使用",
+                    detail=f"合同编号 '{data['contract_code']}' 已被使用（合同名称：{existing_contract.contract_name}），请使用其他编号",
+                    status_code=409,
                 )
             
             logger.info("Creating contract object...")
@@ -472,7 +477,7 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
             logger.info(f"Contract created successfully: ID={contract.id}")
             return contract
             
-        except HTTPException:
+        except AppException:
             raise
         except Exception as e:
             logger.error(f"Error creating contract: {e}", exc_info=True)
@@ -482,8 +487,12 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
         """Update existing contract"""
         contract = await self.get_contract(contract_id)
         if not contract:
-            raise HTTPException(status_code=404, detail="合同不存在")
-            
+            raise ResourceNotFoundError(
+                resource_type="合同",
+                resource_id=contract_id,
+                error_code=ErrorCode.CONTRACT_NOT_FOUND,
+            )
+
         old_values = {
             k: getattr(contract, k) for k in contract_in.model_dump(exclude_unset=True).keys() 
             if hasattr(contract, k)
@@ -494,15 +503,21 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
         # Check serial_number uniqueness
         if 'serial_number' in update_data and update_data['serial_number'] != contract.serial_number:
             if await self.check_serial_number_exists(update_data['serial_number'], exclude_id=contract_id):
-                 raise HTTPException(status_code=400, detail=f"合同序号 {update_data['serial_number']} 已存在")
+                 raise DuplicateRecordError(
+                    resource_type="合同序号",
+                    field_name="serial_number",
+                    field_value=update_data['serial_number'],
+                )
         
         # Check contract_code uniqueness
         if 'contract_code' in update_data and update_data['contract_code'] != contract.contract_code:
             existing_contract = await self.check_contract_code_exists(update_data['contract_code'], exclude_id=contract_id)
             if existing_contract:
-                raise HTTPException(
-                    status_code=400, 
-                    detail=f"合同编号 '{update_data['contract_code']}' 已被使用（合同名称：{existing_contract.contract_name}），请使用其他编号"
+                raise AppException(
+                    error_code=ErrorCode.CONTRACT_NUMBER_EXISTS,
+                    message="合同编号已被使用",
+                    detail=f"合同编号 '{update_data['contract_code']}' 已被使用（合同名称：{existing_contract.contract_name}），请使用其他编号",
+                    status_code=409,
                 )
         
         for field, value in update_data.items():
@@ -532,8 +547,12 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
         """Delete contract"""
         contract = await self.get_contract(contract_id)
         if not contract:
-            raise HTTPException(status_code=404, detail="合同不存在")
-        
+            raise ResourceNotFoundError(
+                resource_type="合同",
+                resource_id=contract_id,
+                error_code=ErrorCode.CONTRACT_NOT_FOUND,
+            )
+
         contract_name = contract.contract_name
         contract_data = {
             "id": contract.id,

@@ -10,7 +10,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional, List
 
 import pandas as pd
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -18,6 +18,7 @@ from sqlalchemy import select, or_, and_, cast, String, func
 from pydantic import BaseModel
 
 from app.core.permissions import Permission, has_permission
+from app.core.errors import PermissionDeniedError
 from app.database import get_db
 from app.models.user import User, UserRole
 from app.services.auth import get_current_active_user
@@ -334,7 +335,7 @@ async def _load_upstream_aggregate_page(
 ):
     scope = _search_scope(current_user)
     if not scope["upstream"]:
-        raise HTTPException(status_code=403, detail="权限不足")
+        raise PermissionDeniedError()
 
     contract_category_filters = await _expand_dictionary_filter_values(
         db,
@@ -622,7 +623,7 @@ async def search_contracts(
     """
     scope = _search_scope(current_user)
     if not any(scope.values()):
-        raise HTTPException(status_code=403, detail="权限不足")
+        raise PermissionDeniedError()
 
     # Normalize inputs
     query = (query or "").strip()

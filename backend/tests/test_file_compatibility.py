@@ -143,7 +143,7 @@ async def test_file_endpoint_rejects_cookie_only_auth(monkeypatch):
 
     monkeypatch.setattr(common, "get_user_from_token", fake_get_user_from_token)
 
-    with pytest.raises(common.HTTPException) as exc:
+    with pytest.raises(common.AuthenticationError) as exc:
         await common.get_file(
             path="contracts/2026/04/demo.pdf",
             request=_build_request({"cookie": "lh_access_token=cookie-token"}),

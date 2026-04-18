@@ -4,7 +4,7 @@ Common Utility Router
 2. File Upload
 Refactored to use standardized AppException
 """
-from fastapi import APIRouter, Depends, status, UploadFile, File, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, status, UploadFile, File, Form, Request
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, distinct, union
@@ -21,7 +21,7 @@ from app.models.contract_upstream import ContractUpstream
 from app.models.contract_downstream import ContractDownstream
 from app.models.contract_management import ContractManagement
 from app.services.auth import get_current_active_user
-from app.core.errors import ValidationError, DatabaseError, PermissionDeniedError
+from app.core.errors import ValidationError, DatabaseError, PermissionDeniedError, AuthenticationError
 from app.core.validators import FileValidators
 from app.services.file_authorization import user_can_access_file_path
 from app.utils.file_validator import validate_file_upload
@@ -212,11 +212,9 @@ async def get_file(
             current_user = await get_user_from_token(bearer_token, db)
     
     if not current_user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="无法验证凭据",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        err = AuthenticationError(message="无法验证凭据")
+        err.headers = {"WWW-Authenticate": "Bearer"}
+        raise err
 
     if not await user_can_access_file_path(safe_path, db, current_user):
         raise PermissionDeniedError(

@@ -1,7 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, or_
 from sqlalchemy.orm import joinedload
-from fastapi import HTTPException
 from typing import List, Optional, Dict, Any
 from datetime import datetime, date
 
@@ -10,6 +9,7 @@ from app.models.user import User, UserRole
 from app.schemas.expense import ExpenseCreate, ExpenseUpdate
 from app.services.cache import cache, dashboard_cache_key
 from app.services.audit_service import create_audit_log, AuditAction, ResourceType
+from app.core.errors import AppException, ErrorCode, DuplicateRecordError, ResourceNotFoundError, PermissionDeniedError
 from app.models.enums import ExpenseCategory, ExpenseType
 from app.services.contract_code_generator import ContractCodeGenerator
 
@@ -207,7 +207,7 @@ class ExpenseService:
         # Check for duplicate expense code
         existing = await self.db.execute(select(ExpenseNonContract).where(ExpenseNonContract.expense_code == data['expense_code']))
         if existing.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="费用编号已存在")
+            raise DuplicateRecordError(resource_type="费用编号", field_name="expense_code", field_value=data['expense_code'])
             
         expense = ExpenseNonContract(**data, created_by=user.id, updated_by=user.id)
         self.db.add(expense)
@@ -240,12 +240,12 @@ class ExpenseService:
         expense = result.scalar_one_or_none()
         
         if not expense:
-            raise HTTPException(status_code=404, detail="费用记录不存在")
-        
+            raise ResourceNotFoundError(resource_type="费用记录", resource_id=expense_id)
+
         # Ownership check: non-admin users can only edit their own records
         if not self._can_view_all_expenses(user):
             if expense.created_by != user.id:
-                raise HTTPException(status_code=403, detail="权限不足：您只能编辑自己创建的费用记录")
+                raise PermissionDeniedError(message="您只能编辑自己创建的费用记录")
 
         # 检查费用编号是否更新且是否与其他记录重复
         update_data = expense_in.model_dump(exclude_unset=True)
@@ -257,7 +257,7 @@ class ExpenseService:
                 )
             )
             if existing.scalar_one_or_none():
-                raise HTTPException(status_code=400, detail="费用编号已存在")
+                raise DuplicateRecordError(resource_type="费用编号", field_name="expense_code", field_value=update_data['expense_code'])
 
         old_values = {
             k: getattr(expense, k) for k in update_data.keys() 
@@ -296,12 +296,12 @@ class ExpenseService:
         expense = result.scalar_one_or_none()
         
         if not expense:
-            raise HTTPException(status_code=404, detail="费用记录不存在")
-        
+            raise ResourceNotFoundError(resource_type="费用记录", resource_id=expense_id)
+
         # Ownership check: non-admin users can only delete their own records
         if not self._can_view_all_expenses(user):
             if expense.created_by != user.id:
-                raise HTTPException(status_code=403, detail="权限不足：您只能删除自己创建的费用记录")
+                raise PermissionDeniedError(message="您只能删除自己创建的费用记录")
         
         expense_code = expense.expense_code
         expense_data = {
@@ -329,7 +329,7 @@ class ExpenseService:
         """Approve or reject expense"""
         expense = await self.get_expense(expense_id)
         if not expense:
-            raise HTTPException(status_code=404, detail="费用记录不存在")
+            raise ResourceNotFoundError(resource_type="费用记录", resource_id=expense_id)
             
         expense.status = "已审核" if approved else "已驳回"
         expense.approved_by = user.id

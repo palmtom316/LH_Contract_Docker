@@ -1,7 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func, or_
 from sqlalchemy.orm import joinedload, selectinload
-from fastapi import HTTPException
 from typing import List, Optional, Dict, Any
 from datetime import datetime, date
 
@@ -9,6 +8,7 @@ from app.models.zero_hour_labor import ZeroHourLabor, ZeroHourLaborMaterial
 from app.models.user import User
 from app.schemas.zero_hour_labor import ZeroHourLaborCreate, ZeroHourLaborUpdate
 from app.services.audit_service import create_audit_log, AuditAction, ResourceType
+from app.core.errors import ResourceNotFoundError
 
 class ZeroHourLaborService:
     def __init__(self, db: AsyncSession):
@@ -105,7 +105,7 @@ class ZeroHourLaborService:
     async def update(self, id: int, data_in: ZeroHourLaborUpdate, user: User) -> ZeroHourLabor:
         obj = await self.get(id)
         if not obj:
-            raise HTTPException(status_code=404, detail="记录不存在")
+            raise ResourceNotFoundError(resource_type="零星用工记录", resource_id=id)
             
         old_values = {
             k: getattr(obj, k) for k in data_in.model_dump(exclude_unset=True).keys() 
@@ -152,7 +152,7 @@ class ZeroHourLaborService:
     async def delete(self, id: int, user: User) -> None:
         obj = await self.get(id)
         if not obj:
-            raise HTTPException(status_code=404, detail="记录不存在")
+            raise ResourceNotFoundError(resource_type="零星用工记录", resource_id=id)
         
         resource_name = f"Labor-{obj.labor_date}"
         

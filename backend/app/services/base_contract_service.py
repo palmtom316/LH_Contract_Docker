@@ -1,7 +1,6 @@
 from typing import TypeVar, Generic, Type, Optional, List, Dict, Any, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
-from fastapi import HTTPException
 from app.services.cache import cache, dashboard_cache_key
 
 ModelType = TypeVar("ModelType")
