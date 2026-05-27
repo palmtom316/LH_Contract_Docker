@@ -1,7 +1,7 @@
 """
 Downstream Contract Models (下游合同 - 乙方/供应商合同)
 """
-from sqlalchemy import Column, Integer, String, Text, Numeric, Date, DateTime, ForeignKey, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Text, Numeric, Date, DateTime, ForeignKey, UniqueConstraint, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -86,6 +86,7 @@ class ContractDownstream(Base):
     invoices = relationship("FinanceDownstreamInvoice", back_populates="contract", cascade="all, delete-orphan")
     payments = relationship("FinanceDownstreamPayment", back_populates="contract", cascade="all, delete-orphan")
     settlements = relationship("DownstreamSettlement", back_populates="contract", cascade="all, delete-orphan")
+    allocations = relationship("DownstreamUpstreamAllocation", back_populates="downstream_contract", cascade="all, delete-orphan")
     
     @property
     def total_payable(self):
@@ -247,3 +248,50 @@ class DownstreamSettlement(Base):
     
     def __repr__(self):
         return f"<DownstreamSettlement(id={self.id}, code={self.settlement_code}, amount={self.settlement_amount})>"
+
+
+class DownstreamUpstreamAllocation(Base):
+    """
+    下游合同到上游合同的金额分摊明细
+    (1 个下游合同的合同金额按消费拆分到多个上游合同)
+    """
+    __tablename__ = "downstream_upstream_allocations"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    downstream_contract_id = Column(
+        Integer,
+        ForeignKey("contracts_downstream.id", ondelete="CASCADE", onupdate="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    upstream_contract_id = Column(
+        Integer,
+        ForeignKey("contracts_upstream.id", ondelete="RESTRICT", onupdate="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    amount = Column(Numeric(15, 2), nullable=False, default=0)
+    description = Column(String(300), nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "downstream_contract_id",
+            "upstream_contract_id",
+            name="uq_downstream_upstream_allocation",
+        ),
+    )
+
+    downstream_contract = relationship("ContractDownstream", back_populates="allocations")
+    upstream_contract = relationship("ContractUpstream", back_populates="cost_allocations")
+
+    def __repr__(self):
+        return (
+            f"<DownstreamUpstreamAllocation(id={self.id}, "
+            f"downstream={self.downstream_contract_id}, "
+            f"upstream={self.upstream_contract_id}, amount={self.amount})>"
+        )

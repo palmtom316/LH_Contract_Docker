@@ -244,6 +244,11 @@
                 </el-row>
             </div>
 
+            <!-- Description Field -->
+            <el-form-item label="零星用工说明" prop="description">
+                <el-input v-model="form.description" type="textarea" :rows="2" placeholder="请输入零星用工说明" />
+            </el-form-item>
+
             <!-- Labor Section -->
             <el-divider content-position="left">人工费用</el-divider>
             
@@ -372,9 +377,32 @@
                 </el-col>
              </el-row>
 
+             <!-- Tax Section -->
+             <el-divider content-position="left">税金计算</el-divider>
+             <el-row :gutter="20">
+                <el-col :span="8">
+                    <el-form-item label="税率 (%)" prop="tax_rate">
+                        <el-input-number v-model="form.tax_rate" :min="0" :max="100" :precision="2" :controls="false" style="width: 100%" placeholder="输入税率" />
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="税金">
+                        <span class="tax-amount">¥ {{ formatMoney(calcTaxAmount) }}</span>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="8">
+                    <el-form-item label="含税总额">
+                        <span class="tax-total">¥ {{ formatMoney(grandTotalWithTax) }}</span>
+                    </el-form-item>
+                </el-col>
+             </el-row>
+
              <el-divider />
              <div class="grand-total">
-                总金额: <span class="grand-total__amount">¥ {{ formatMoney(grandTotal) }}</span>
+                零星用工总金额: <span class="grand-total__amount">¥ {{ formatMoney(grandTotal) }}</span>
+             </div>
+             <div class="grand-total" style="margin-top: 8px;">
+                含税总金额: <span class="grand-total__amount grand-total__amount--final">¥ {{ formatMoney(grandTotalWithTax) }}</span>
              </div>
 
         </el-form>
@@ -481,15 +509,16 @@ const form = reactive({
     dispatch_unit: '',
     dispatch_file_path: '',
     dispatch_file_key: '',
-    
+    description: '',  // New field for labor description
+
     approval_status: '',
     feishu_instance_code: '',
     approval_pdf_path: '',
-    
+
     // Skilled
     skilled_unit_price: 0,
     skilled_quantity: 0,
-    
+
     // General
     general_unit_price: 0,
     general_quantity: 0,
@@ -497,10 +526,14 @@ const form = reactive({
     vehicle_unit_price: 0,
     vehicle_quantity: 0,
     vehicle_price_total: 0,
-    
+
     // Materials List
     materials: [],
-    
+
+    // Tax fields
+    tax_rate: 0,  // Tax rate percentage
+    tax_amount: 0,  // Calculated tax amount
+
     total_amount: 0
 })
 
@@ -524,6 +557,12 @@ const calcMaterialTotal = computed(() => {
 })
 const grandTotal = computed(() => {
     return Number(calcLaborTotal.value + calcVehicleTotal.value + calcMaterialTotal.value)
+})
+const calcTaxAmount = computed(() => {
+    return Number((grandTotal.value * (form.tax_rate || 0)) / 100)
+})
+const grandTotalWithTax = computed(() => {
+    return Number(grandTotal.value + calcTaxAmount.value)
 })
 
 const addMaterial = () => {
@@ -683,24 +722,27 @@ const resetForm = () => {
     form.upstream_contract_id = undefined
     form.dispatch_unit = ''
     form.dispatch_file_path = ''
+    form.description = ''
 
     form.approval_status = ''
     form.feishu_instance_code = ''
     form.approval_pdf_path = ''
-    
+
     form.skilled_unit_price = 0
     form.skilled_quantity = 0
     form.general_unit_price = 0
     form.general_quantity = 0
-    
+
     form.vehicle_unit_price = 0
     form.vehicle_quantity = 0
     form.vehicle_price_total = 0
-    
+
     form.materials = []
-    
+
+    form.tax_rate = 0
+    form.tax_amount = 0
     form.total_amount = 0
-    
+
     fileList.value = []
 }
 
@@ -764,12 +806,16 @@ const handleEdit = async (row) => {
 
 const submitForm = async () => {
     if (!formRef.value) return
-    
+
     // Calculate totals for both labor types
     const skilledTotal = (form.skilled_unit_price || 0) * (form.skilled_quantity || 0)
     const generalTotal = (form.general_unit_price || 0) * (form.general_quantity || 0)
     const laborTotal = skilledTotal + generalTotal
-    
+
+    // Calculate tax
+    const taxAmount = (grandTotal.value * (form.tax_rate || 0)) / 100
+    const totalWithTax = grandTotal.value + taxAmount
+
     // Prepare Submit Data
     const submitData = {
         ...form,
@@ -777,25 +823,31 @@ const submitForm = async () => {
         skilled_unit_price: form.skilled_unit_price || 0,
         skilled_quantity: form.skilled_quantity || 0,
         skilled_price_total: skilledTotal,
-        
+
         // General labor
         general_unit_price: form.general_unit_price || 0,
         general_quantity: form.general_quantity || 0,
         general_price_total: generalTotal,
-        
+
         // Legacy fields (for backward compatibility)
         labor_type: form.skilled_quantity > 0 ? 'SKILLED' : (form.general_quantity > 0 ? 'GENERAL' : 'NONE'),
         labor_unit_price: form.skilled_unit_price || form.general_unit_price || 0,
         labor_quantity: (form.skilled_quantity || 0) + (form.general_quantity || 0),
         labor_price_total: laborTotal,
-        
+
         vehicle_price_total: calcVehicleTotal.value,
-        total_amount: laborTotal + calcVehicleTotal.value + calcMaterialTotal.value,
-        
+
+        // Tax fields
+        tax_rate: form.tax_rate || 0,
+        tax_amount: taxAmount,
+
+        // Total amount is now the amount WITH tax
+        total_amount: totalWithTax,
+
         materials: form.materials
     }
 
-    
+
     await formRef.value.validate(async (valid) => {
         if (valid) {
             if (dialog.isEdit) {
@@ -1072,6 +1124,8 @@ onMounted(() => {
 
 .cost-block__summary,
 .vehicle-total,
+.tax-amount,
+.tax-total,
 .grand-total {
   font-weight: 700;
   color: var(--text-primary);
@@ -1079,6 +1133,11 @@ onMounted(() => {
 
 .cost-block__summary {
   text-align: right;
+}
+
+.tax-amount,
+.tax-total {
+  font-size: 15px;
 }
 
 .grand-total {
@@ -1089,6 +1148,11 @@ onMounted(() => {
 .grand-total__amount {
   font-size: 24px;
   color: var(--status-danger);
+}
+
+.grand-total__amount--final {
+  color: var(--brand-primary-strong);
+  font-size: 26px;
 }
 
 .action-item {

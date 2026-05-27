@@ -32,8 +32,12 @@ class ZeroHourLaborBase(BaseModel):
     vehicle_quantity: Decimal = 0
     vehicle_unit_price: Decimal = 0
     vehicle_price_total: Decimal = 0
-    
-    total_amount: Decimal = 0
+
+    description: Optional[str] = None  # 零星用工说明
+    tax_rate: Decimal = 0  # 税率 (%)
+    tax_amount: Decimal = 0  # 税金
+
+    total_amount: Decimal = 0  # 含税总金额
 
 class ZeroHourLaborMaterialBase(BaseModel):
     material_name: str
@@ -60,14 +64,14 @@ class ZeroHourLaborUpdate(BaseModel):
     upstream_contract_id: Optional[int] = None
     dispatch_unit: Optional[str] = None
     dispatch_file_path: Optional[str] = None
-    
+
     skilled_unit_price: Optional[Decimal] = None
     skilled_quantity: Optional[Decimal] = None
     skilled_price_total: Optional[Decimal] = None
     general_unit_price: Optional[Decimal] = None
     general_quantity: Optional[Decimal] = None
     general_price_total: Optional[Decimal] = None
-    
+
     labor_type: Optional[str] = None
     labor_unit_price: Optional[Decimal] = None
     labor_quantity: Optional[Decimal] = None
@@ -75,6 +79,11 @@ class ZeroHourLaborUpdate(BaseModel):
     vehicle_quantity: Optional[Decimal] = None
     vehicle_unit_price: Optional[Decimal] = None
     vehicle_price_total: Optional[Decimal] = None
+
+    description: Optional[str] = None
+    tax_rate: Optional[Decimal] = None
+    tax_amount: Optional[Decimal] = None
+
     total_amount: Optional[Decimal] = None
     materials: Optional[List[ZeroHourLaborMaterialCreate]] = None
 
@@ -92,9 +101,9 @@ class ZeroHourLaborResponse(ZeroHourLaborBase):
     created_by: Optional[int] = None
     upstream_contract: Optional[UpstreamContractRef] = None
     materials: List[ZeroHourLaborMaterialResponse] = []
-    
+
     material_price_total: Decimal = 0
-    
+
     approval_status: Optional[str] = None
     feishu_instance_code: Optional[str] = None
     approval_pdf_path: Optional[str] = None
@@ -114,6 +123,8 @@ class ZeroHourLaborResponse(ZeroHourLaborBase):
         "vehicle_quantity",
         "vehicle_unit_price",
         "vehicle_price_total",
+        "tax_rate",
+        "tax_amount",
         "total_amount",
         "material_price_total",
         mode="before",
@@ -121,7 +132,7 @@ class ZeroHourLaborResponse(ZeroHourLaborBase):
     @classmethod
     def coerce_null_decimals_to_zero(cls, value):
         return Decimal("0") if value is None else value
-    
+
     class Config:
         from_attributes = True
 

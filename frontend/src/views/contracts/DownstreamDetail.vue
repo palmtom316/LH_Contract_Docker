@@ -237,6 +237,97 @@
           </el-table-column>
         </el-table>
       </el-tab-pane>
+
+      <!-- 6. Allocations to Upstream (低频功能：把下游合同金额拆分到多个上游合同) -->
+      <el-tab-pane label="分摊到上游" name="allocations">
+        <div class="allocation-summary">
+          <span>合同总额：<strong>¥ {{ formatMoney(contract.contract_amount) }}</strong></span>
+          <span>已分摊：<strong>¥ {{ formatMoney(totalAllocated) }}</strong></span>
+          <span :class="{ 'allocation-balance-error': !isAllocationBalanced }">
+            未分摊余额：<strong>¥ {{ formatMoney(allocationBalance) }}</strong>
+          </span>
+          <el-tag v-if="isAllocationBalanced && allocationRows.length > 0" type="success" size="small">已平衡</el-tag>
+          <el-tag v-else-if="allocationRows.length > 0" type="danger" size="small">未平衡</el-tag>
+        </div>
+
+        <div class="tab-actions">
+          <el-button
+            v-if="userStore.canManageDownstreamContracts"
+            type="primary"
+            size="small"
+            icon="Plus"
+            @click="addAllocationRow"
+          >新增分摊行</el-button>
+          <el-button
+            v-if="userStore.canManageDownstreamContracts"
+            type="success"
+            size="small"
+            :disabled="!isAllocationBalanced || allocationRows.length === 0"
+            @click="saveAllocations"
+          >保存分摊</el-button>
+          <el-button
+            v-if="userStore.canManageDownstreamContracts && allocationRows.length > 0"
+            type="danger"
+            size="small"
+            plain
+            @click="confirmClearAllocations"
+          >清空</el-button>
+        </div>
+
+        <el-table :data="allocationRows" border style="width: 100%">
+          <el-table-column label="上游合同" min-width="280">
+            <template #default="{ row, $index }">
+              <el-select
+                v-model="row.upstream_contract_id"
+                filterable
+                remote
+                reserve-keyword
+                placeholder="搜索上游合同(序号/编号/名称)"
+                :remote-method="(q) => searchAllocationUpstream(q, $index)"
+                :loading="row._loading"
+                style="width: 100%"
+                :disabled="!userStore.canManageDownstreamContracts"
+              >
+                <el-option
+                  v-for="item in (row._options || [])"
+                  :key="item.id"
+                  :label="buildUpstreamOptionLabel(item)"
+                  :value="item.id"
+                >
+                  <div style="display: flex; flex-direction: column; line-height: 1.4;">
+                    <span>{{ buildUpstreamOptionLabel(item) }}</span>
+                    <span style="font-size: 12px; color: #909399;">{{ item.contract_code }} · {{ item.party_a_name }}</span>
+                  </div>
+                </el-option>
+              </el-select>
+            </template>
+          </el-table-column>
+          <el-table-column label="分摊金额" width="180" align="right">
+            <template #default="{ row }">
+              <FormulaInput v-model="row.amount" :disabled="!userStore.canManageDownstreamContracts" style="width: 100%" />
+            </template>
+          </el-table-column>
+          <el-table-column label="说明" min-width="200">
+            <template #default="{ row }">
+              <el-input v-model="row.description" :disabled="!userStore.canManageDownstreamContracts" placeholder="可选" />
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="80" align="center" fixed="right">
+            <template #default="{ $index }">
+              <el-button
+                v-if="userStore.canManageDownstreamContracts"
+                link
+                type="danger"
+                size="small"
+                @click="removeAllocationRow($index)"
+              >删除</el-button>
+            </template>
+          </el-table-column>
+          <template #empty>
+            <span style="color: #909399;">暂无分摊。点击"新增分摊行"添加，所有行的金额合计须等于合同总额后才能保存。</span>
+          </template>
+        </el-table>
+      </el-tab-pane>
     </el-tabs>
     </AppWorkspacePanel>
     </div>
@@ -397,13 +488,15 @@ import SmartDateInput from '@/components/SmartDateInput.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Document, ArrowLeft, Money, Wallet, Tickets, CircleCheck } from '@element-plus/icons-vue'
-import { 
-  getContract, 
+import {
+  getContract,
   getPayables, createPayable, updatePayable, deletePayable,
   getInvoices, createInvoice, updateInvoice, deleteInvoice,
   getPayments, createPayment, updatePayment, deletePayment,
-  getSettlements, createSettlement, updateSettlement, deleteSettlement
+  getSettlements, createSettlement, updateSettlement, deleteSettlement,
+  getAllocations, setAllocations, clearAllocations
 } from '@/api/contractDownstream'
+import { getContracts as getUpstreamContracts } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
 import { formatMoney, getStatusType } from '@/utils/common'
 import { openProtectedFile } from '@/utils/protectedFiles'
@@ -429,6 +522,7 @@ const payables = ref([])
 const invoices = ref([])
 const payments = ref([])
 const settlements = ref([])
+const allocationRows = ref([])
 const fileList = ref([])
 
 // Dialog State
@@ -464,6 +558,22 @@ const paymentPercentage = computed(() => {
   const p = (totalPayments.value / totalPayables.value) * 100
   return Math.min(p, 100).toFixed(1)
 })
+
+// Allocations (分摊到上游合同)
+const totalAllocated = computed(() =>
+  allocationRows.value.reduce((sum, r) => sum + Number(r.amount || 0), 0)
+)
+const allocationBalance = computed(() =>
+  Number(contract.value.contract_amount || 0) - totalAllocated.value
+)
+const isAllocationBalanced = computed(() =>
+  Math.abs(allocationBalance.value) < 0.01 && allocationRows.value.length > 0
+)
+const buildUpstreamOptionLabel = (item) => {
+  const sn = item?.serial_number ?? '-'
+  const name = item?.contract_name || '未命名合同'
+  return `[${sn}] ${name}`
+}
 
 const detailTitle = computed(() => contract.value.contract_name || '下游合同详情')
 
@@ -524,7 +634,7 @@ const loadData = async () => {
   loading.value = true
   try {
     contract.value = await getContract(contractId)
-    await Promise.all([loadPayables(), loadInvoices(), loadPayments(), loadSettlements()])
+    await Promise.all([loadPayables(), loadInvoices(), loadPayments(), loadSettlements(), loadAllocations()])
   } catch (e) {
     ElMessage.error('加载合同数据失败')
   } finally {
@@ -533,11 +643,109 @@ const loadData = async () => {
 }
 
 const loadPayables = async () => { payables.value = await getPayables(contractId) }
-const loadInvoices = async () => { 
+const loadInvoices = async () => {
   invoices.value = await getInvoices(contractId)
 }
 const loadPayments = async () => { payments.value = await getPayments(contractId) }
 const loadSettlements = async () => { settlements.value = await getSettlements(contractId) }
+
+const loadAllocations = async () => {
+  const items = await getAllocations(contractId)
+  // 预填每行的上游合同选项（仅当前已选的那条），以便 el-select 能渲染 label
+  const enriched = []
+  for (const it of items) {
+    const row = {
+      upstream_contract_id: it.upstream_contract_id,
+      amount: Number(it.amount),
+      description: it.description || '',
+      _loading: false,
+      _options: []
+    }
+    try {
+      const res = await getUpstreamContracts({ keyword: String(it.upstream_contract_id), page_size: 5 })
+      const matched = (res.items || []).find(c => c.id === it.upstream_contract_id)
+      row._options = matched ? [matched] : []
+    } catch (e) {
+      row._options = []
+    }
+    enriched.push(row)
+  }
+  allocationRows.value = enriched
+}
+
+const addAllocationRow = () => {
+  allocationRows.value.push({
+    upstream_contract_id: null,
+    amount: 0,
+    description: '',
+    _loading: false,
+    _options: []
+  })
+}
+
+const removeAllocationRow = (index) => {
+  allocationRows.value.splice(index, 1)
+}
+
+const searchAllocationUpstream = async (query, index) => {
+  const row = allocationRows.value[index]
+  if (!row) return
+  if (!query) { row._options = []; return }
+  row._loading = true
+  try {
+    const res = await getUpstreamContracts({ keyword: query, page_size: 50 })
+    row._options = res.items || []
+  } catch (e) {
+    row._options = []
+  } finally {
+    row._loading = false
+  }
+}
+
+const saveAllocations = async () => {
+  if (!isAllocationBalanced.value) {
+    ElMessage.warning('分摊总额必须等于合同金额')
+    return
+  }
+  const ids = allocationRows.value.map(r => r.upstream_contract_id)
+  if (ids.some(id => !id)) {
+    ElMessage.warning('请为所有分摊行选择上游合同')
+    return
+  }
+  if (new Set(ids).size !== ids.length) {
+    ElMessage.warning('同一上游合同不能出现多次')
+    return
+  }
+  try {
+    await setAllocations(
+      contractId,
+      allocationRows.value.map(r => ({
+        upstream_contract_id: r.upstream_contract_id,
+        amount: Number(r.amount),
+        description: r.description || null
+      }))
+    )
+    ElMessage.success('分摊已保存')
+    await loadAllocations()
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '保存失败')
+  }
+}
+
+const confirmClearAllocations = async () => {
+  try {
+    await ElMessageBox.confirm('确认清空当前下游合同的所有分摊明细？', '提示', {
+      type: 'warning'
+    })
+    await clearAllocations(contractId)
+    ElMessage.success('已清空分摊')
+    allocationRows.value = []
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('清空失败')
+    }
+  }
+}
 
 const handleUpload = async (option) => {
   try {
@@ -896,5 +1104,24 @@ onBeforeUnmount(() => {
   .detail-context__actions {
     justify-content: flex-start;
   }
+}
+
+.allocation-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: var(--el-fill-color-light);
+  border-radius: 6px;
+  font-size: 13px;
+}
+.allocation-summary strong {
+  color: var(--el-color-primary);
+  margin-left: 4px;
+}
+.allocation-balance-error strong {
+  color: var(--el-color-danger);
 }
 </style>

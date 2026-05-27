@@ -33,8 +33,10 @@ from app.schemas.contract_upstream import (
 )
 from app.services.auth import get_current_active_user
 from app.services.contract_upstream_service import ContractUpstreamService
+from app.services.contract_downstream_service import ContractDownstreamService
 from app.core.permissions import require_permission, Permission
 from app.core.errors import ResourceNotFoundError, DuplicateRecordError, ValidationError, DatabaseError, AppException, ErrorCode
+from app.schemas.contract_downstream import UpstreamCostAllocationResponse
 
 router = APIRouter()
 
@@ -796,3 +798,18 @@ async def import_contracts_from_excel(
         import traceback
         traceback.print_exc()
         raise DatabaseError(message="导入失败", detail=str(e))
+
+
+# ===== Upstream Cost Allocations (from Downstream contracts) =====
+@router.get(
+    "/{contract_id}/cost-allocations",
+    response_model=List[UpstreamCostAllocationResponse],
+)
+async def list_cost_allocations(
+    contract_id: int,
+    current_user: User = Depends(require_permission(Permission.VIEW_UPSTREAM_BASIC_INFO)),
+    db: AsyncSession = Depends(get_db),
+):
+    """列出归集到该上游合同的所有下游合同分摊明细（只读）"""
+    service = ContractDownstreamService(db)
+    return await service.list_upstream_cost_allocations(contract_id)

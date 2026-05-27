@@ -242,3 +242,46 @@ class DownstreamSettlementResponse(DownstreamSettlementBase):
 
     class Config:
         from_attributes = True
+
+
+# ===== Downstream-to-Upstream Allocation Schemas =====
+class AllocationBase(BaseModel):
+    """下游合同分摊到上游合同的基础 schema"""
+    upstream_contract_id: int = Field(..., gt=0, description="上游合同 ID")
+    amount: Decimal = Field(..., gt=0, description="分摊金额")
+    description: Optional[str] = Field(None, max_length=300)
+
+
+class AllocationCreate(AllocationBase):
+    """新建分摊条目（不带 downstream_contract_id，由路径参数提供）"""
+    pass
+
+
+class AllocationResponse(AllocationBase):
+    """分摊条目响应"""
+    id: int
+    downstream_contract_id: int
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class AllocationBulkRequest(BaseModel):
+    """一次性原子替换该下游合同的所有分摊"""
+    allocations: List[AllocationCreate] = Field(default_factory=list)
+
+
+class UpstreamCostAllocationResponse(BaseModel):
+    """上游合同视角的成本归集（展开下游合同信息）"""
+    id: int
+    downstream_contract_id: int
+    downstream_contract_code: Optional[str] = None
+    downstream_contract_name: Optional[str] = None
+    amount: Decimal
+    description: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True

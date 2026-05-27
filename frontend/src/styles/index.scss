@@ -147,31 +147,31 @@ a:focus-visible,
 }
 
 .el-button--primary {
-    background: hsl(var(--primary));
-    border-color: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
+    background: hsl(var(--primary)) !important;
+    border-color: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
 }
 
 .el-button--primary:hover,
 .el-button--primary:focus-visible {
-    background: hsl(var(--primary) / 0.92);
-    border-color: hsl(var(--primary) / 0.92);
+    background: hsl(var(--primary) / 0.92) !important;
+    border-color: hsl(var(--primary) / 0.92) !important;
 }
 
 .el-button.is-plain,
 .el-button--primary.is-plain {
-    background: hsl(var(--card));
-    border-color: hsl(var(--border));
-    color: hsl(var(--foreground));
+    background: hsl(var(--card)) !important;
+    border-color: hsl(var(--border)) !important;
+    color: hsl(var(--foreground)) !important;
 }
 
 .el-button.is-plain:hover,
 .el-button.is-plain:focus-visible,
 .el-button--primary.is-plain:hover,
 .el-button--primary.is-plain:focus-visible {
-    background: hsl(var(--muted));
-    border-color: hsl(var(--border));
-    color: hsl(var(--foreground));
+    background: hsl(var(--muted)) !important;
+    border-color: hsl(var(--border)) !important;
+    color: hsl(var(--foreground)) !important;
 }
 
 .el-button [class*='el-icon'] + span,
@@ -180,21 +180,21 @@ a:focus-visible,
 }
 
 .el-button--success {
-    background: var(--status-success);
-    border-color: var(--status-success);
-    color: #f6fffb;
+    background: var(--status-success) !important;
+    border-color: var(--status-success) !important;
+    color: #f6fffb !important;
 }
 
 .el-button--warning {
-    background: var(--status-warning);
-    border-color: var(--status-warning);
-    color: #fffaf1;
+    background: var(--status-warning) !important;
+    border-color: var(--status-warning) !important;
+    color: #fffaf1 !important;
 }
 
 .el-button--danger {
-    background: var(--status-danger);
-    border-color: var(--status-danger);
-    color: #fff7fb;
+    background: var(--status-danger) !important;
+    border-color: var(--status-danger) !important;
+    color: #fff7fb !important;
 }
 
 .el-button--success.is-plain,
@@ -432,28 +432,28 @@ a:focus-visible,
 }
 
 .el-tag--info {
-    background: hsl(var(--muted));
-    color: hsl(var(--muted-foreground));
+    background: hsl(var(--muted)) !important;
+    color: hsl(var(--muted-foreground)) !important;
 }
 
 .el-tag--success {
-    background: rgb(16 185 129 / 0.1);
-    color: rgb(5 122 85);
+    background: rgb(16 185 129 / 0.1) !important;
+    color: rgb(5 122 85) !important;
 }
 
 .el-tag--warning {
-    background: rgb(245 158 11 / 0.12);
-    color: rgb(161 98 7);
+    background: rgb(245 158 11 / 0.12) !important;
+    color: rgb(161 98 7) !important;
 }
 
 .el-tag--danger {
-    background: rgb(239 68 68 / 0.1);
-    color: rgb(185 28 28);
+    background: rgb(239 68 68 / 0.1) !important;
+    color: rgb(185 28 28) !important;
 }
 
 .el-tag.el-tag--primary {
-    background: hsl(var(--primary) / 0.1);
-    color: var(--brand-primary-strong);
+    background: hsl(var(--primary) / 0.1) !important;
+    color: var(--brand-primary-strong) !important;
 }
 
 .el-drawer__header {
@@ -502,8 +502,8 @@ a:focus-visible,
 }
 
 .app-tabs .el-tabs__item.is-active {
-    color: hsl(var(--primary));
-    background: hsl(var(--accent));
+    color: hsl(var(--primary)) !important;
+    background: hsl(var(--accent)) !important;
 }
 
 .app-tabs--line :deep(.el-tabs__header) {
@@ -533,7 +533,7 @@ a:focus-visible,
 .app-tabs--line :deep(.el-tabs__active-bar) {
     height: 2px;
     border-radius: 999px;
-    background: hsl(var(--primary));
+    background: hsl(var(--primary)) !important;
 }
 
 .app-tabs--line :deep(.el-tabs__content) {

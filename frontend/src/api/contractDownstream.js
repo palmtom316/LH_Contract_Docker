@@ -170,3 +170,26 @@ export function deleteSettlement(contractId, settlementId) {
         method: 'delete'
     })
 }
+
+// Allocations (分摊到上游合同)
+export function getAllocations(contractId) {
+    return request({
+        url: `/contracts/downstream/${contractId}/allocations`,
+        method: 'get'
+    })
+}
+
+export function setAllocations(contractId, allocations) {
+    return request({
+        url: `/contracts/downstream/${contractId}/allocations`,
+        method: 'put',
+        data: { allocations }
+    })
+}
+
+export function clearAllocations(contractId) {
+    return request({
+        url: `/contracts/downstream/${contractId}/allocations`,
+        method: 'delete'
+    })
+}

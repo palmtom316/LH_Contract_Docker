@@ -68,6 +68,7 @@ class ContractUpstream(Base):
     invoices = relationship("FinanceUpstreamInvoice", back_populates="contract", cascade="all, delete-orphan")
     receipts = relationship("FinanceUpstreamReceipt", back_populates="contract", cascade="all, delete-orphan")
     settlements = relationship("ProjectSettlement", back_populates="contract", cascade="all, delete-orphan")
+    cost_allocations = relationship("DownstreamUpstreamAllocation", back_populates="upstream_contract")
     
     @property
     def total_receivable(self):

@@ -249,6 +249,30 @@
           </el-table-column>
         </el-table>
       </el-tab-pane>
+
+      <!-- Downstream Cost Allocations (只读：来自下游合同的成本归集) -->
+      <el-tab-pane label="下游成本归集" name="cost-allocations">
+        <el-table :data="costAllocations" border style="width: 100%" show-summary :summary-method="getCostAllocationsSummary">
+          <el-table-column label="下游合同编号" width="180">
+            <template #default="{ row }">
+              <router-link
+                v-if="row.downstream_contract_id"
+                :to="`/contracts/downstream/${row.downstream_contract_id}`"
+                class="el-link el-link--primary"
+              >{{ row.downstream_contract_code || '-' }}</router-link>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="downstream_contract_name" label="下游合同名称" show-overflow-tooltip />
+          <el-table-column prop="amount" label="分摊金额" width="160" align="right">
+            <template #default="{ row }">¥ {{ formatMoney(row.amount) }}</template>
+          </el-table-column>
+          <el-table-column prop="description" label="说明" show-overflow-tooltip />
+          <template #empty>
+            <span style="color: #909399;">尚无下游合同分摊到该上游合同。</span>
+          </template>
+        </el-table>
+      </el-tab-pane>
     </el-tabs>
     </AppWorkspacePanel>
     </div>
@@ -446,12 +470,13 @@ import SmartDateInput from '@/components/SmartDateInput.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Document, ArrowLeft, Wallet, Money, Tickets, CircleCheck } from '@element-plus/icons-vue'
-import { 
-  getContract, 
+import {
+  getContract,
   getReceivables, createReceivable, updateReceivable, deleteReceivable,
   getInvoices, createInvoice, updateInvoice, deleteInvoice,
   getReceipts, createReceipt, updateReceipt, deleteReceipt,
-  getSettlements, createSettlement, updateSettlement, deleteSettlement, getContractSummary
+  getSettlements, createSettlement, updateSettlement, deleteSettlement, getContractSummary,
+  getCostAllocations
 } from '@/api/contractUpstream'
 import { uploadFile } from '@/api/common'
 import { formatMoney, getStatusType } from '@/utils/common'
@@ -480,6 +505,7 @@ const receivables = ref([])
 const invoices = ref([])
 const receipts = ref([])
 const settlements = ref([])
+const costAllocations = ref([])
 const fileList = ref([]) // For dialog uploads
 const invoiceFileList = ref([]) // For invoice file uploads
 // Settlement report file lists
@@ -538,7 +564,7 @@ const loadData = async () => {
   loading.value = true
   try {
     contract.value = await getContract(contractId)
-    await Promise.all([loadReceivables(), loadInvoices(), loadReceipts(), loadSettlements()])
+    await Promise.all([loadReceivables(), loadInvoices(), loadReceipts(), loadSettlements(), loadCostAllocations()])
   } catch (e) {
     ElMessage.error('加载合同数据失败')
   } finally {
@@ -602,6 +628,28 @@ const getSettlementsSummary = ({ columns }) => {
     }
     return ''
   })
+}
+
+const totalCostAllocations = computed(() =>
+  costAllocations.value.reduce((sum, r) => sum + Number(r.amount || 0), 0)
+)
+
+const getCostAllocationsSummary = ({ columns }) => {
+  return columns.map((column, index) => {
+    if (index === 0) return '合计'
+    if (column.property === 'amount') {
+      return '¥ ' + formatMoney(totalCostAllocations.value)
+    }
+    return ''
+  })
+}
+
+const loadCostAllocations = async () => {
+  try {
+    costAllocations.value = await getCostAllocations(contractId)
+  } catch (e) {
+    costAllocations.value = []
+  }
 }
 
 

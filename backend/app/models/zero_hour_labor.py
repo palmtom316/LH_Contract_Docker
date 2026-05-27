@@ -43,15 +43,20 @@ class ZeroHourLabor(Base):
     vehicle_quantity = Column(Numeric(15, 2), default=0)
     vehicle_unit_price = Column(Numeric(15, 2), default=0)
     vehicle_price_total = Column(Numeric(15, 2), default=0)
-    
+
     # Material Details (DEPRECATED - Moved to ZeroHourLaborMaterial)
     # material_name = Column(String(200), nullable=True)
     # material_quantity = Column(Numeric(15, 2), default=0)
     # material_unit_price = Column(Numeric(15, 2), default=0)
     # material_price_total = Column(Numeric(15, 2), default=0)
-    
+
+    # Description and Tax
+    description = Column(Text, nullable=True)  # 零星用工说明
+    tax_rate = Column(Numeric(5, 2), default=0)  # 税率 (%)
+    tax_amount = Column(Numeric(15, 2), default=0)  # 税金
+
     # Summary
-    total_amount = Column(Numeric(15, 2), nullable=False, default=0)
+    total_amount = Column(Numeric(15, 2), nullable=False, default=0)  # 含税总金额
     
     # Approval Status
     approval_status = Column(String(50), nullable=True, default="DRAFT")

@@ -22,7 +22,8 @@ from app.models.contract_downstream import (
     FinanceDownstreamPayable,
     FinanceDownstreamInvoice,
     FinanceDownstreamPayment,
-    DownstreamSettlement
+    DownstreamSettlement,
+    DownstreamUpstreamAllocation
 )
 from app.models.contract_management import (
     ContractManagement,
@@ -61,6 +62,7 @@ __all__ = [
     "FinanceDownstreamInvoice",
     "FinanceDownstreamPayment",
     "DownstreamSettlement",
+    "DownstreamUpstreamAllocation",
     # Management
     "ContractManagement",
     "FinanceManagementPayable",

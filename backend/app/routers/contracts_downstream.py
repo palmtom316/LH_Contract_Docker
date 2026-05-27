@@ -23,7 +23,8 @@ from app.schemas.contract_downstream import (
     PayableCreate, PayableResponse,
     InvoiceDownstreamCreate, InvoiceDownstreamResponse,
     PaymentCreate, PaymentResponse,
-    DownstreamSettlementCreate, DownstreamSettlementResponse
+    DownstreamSettlementCreate, DownstreamSettlementResponse,
+    AllocationResponse, AllocationBulkRequest
 )
 from app.services.auth import get_current_active_user
 from app.services.contract_downstream_service import ContractDownstreamService
@@ -53,6 +54,9 @@ can_view_settlements = require_permission(Permission.VIEW_SETTLEMENTS)
 can_create_settlements = require_permission(Permission.CREATE_SETTLEMENTS)
 can_edit_settlements = require_permission(Permission.EDIT_SETTLEMENTS)
 can_delete_settlements = require_permission(Permission.DELETE_SETTLEMENTS)
+
+can_view_downstream = require_permission(Permission.VIEW_DOWNSTREAM_CONTRACTS)
+can_edit_downstream = require_permission(Permission.EDIT_DOWNSTREAM_CONTRACTS)
 
 
 @router.get("/export/excel", response_class=StreamingResponse)
@@ -570,6 +574,39 @@ async def delete_settlement(
     
     await db.delete(settlement)
     await db.commit()
-    
+
     await service.refresh_contract_status(contract_id)
     return {"message": "删除成功"}
+
+
+# ===== Downstream-to-Upstream Allocations =====
+@router.get("/{contract_id}/allocations", response_model=List[AllocationResponse])
+async def list_allocations(
+    contract_id: int,
+    current_user: User = Depends(can_view_downstream),
+    service: ContractDownstreamService = Depends(get_contract_service),
+):
+    """列出该下游合同的所有分摊到上游合同的明细"""
+    return await service.list_allocations(contract_id)
+
+
+@router.put("/{contract_id}/allocations", response_model=List[AllocationResponse])
+async def replace_allocations(
+    contract_id: int,
+    body: AllocationBulkRequest,
+    current_user: User = Depends(can_edit_downstream),
+    service: ContractDownstreamService = Depends(get_contract_service),
+):
+    """原子替换该下游合同的所有分摊明细（要求 Σ amount == 合同金额）"""
+    return await service.replace_allocations(contract_id, body.allocations, current_user)
+
+
+@router.delete("/{contract_id}/allocations")
+async def clear_allocations(
+    contract_id: int,
+    current_user: User = Depends(can_edit_downstream),
+    service: ContractDownstreamService = Depends(get_contract_service),
+):
+    """清空该下游合同的所有分摊明细"""
+    await service.clear_allocations(contract_id, current_user)
+    return {"message": "已清空分摊"}

@@ -1,25 +1,31 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc, or_, outerjoin
+from sqlalchemy import select, func, desc, or_, outerjoin, delete as sql_delete
 from sqlalchemy.orm import selectinload
 from typing import List, Optional, Dict, Any
 from datetime import datetime, date
+from decimal import Decimal
 
 from app.models.contract_downstream import (
     ContractDownstream,
     FinanceDownstreamPayable,
     FinanceDownstreamPayment,
     DownstreamSettlement,
-    FinanceDownstreamInvoice
+    FinanceDownstreamInvoice,
+    DownstreamUpstreamAllocation
 )
 from app.models.contract_upstream import ContractUpstream
-from app.schemas.contract_downstream import ContractDownstreamCreate, ContractDownstreamUpdate
+from app.schemas.contract_downstream import (
+    ContractDownstreamCreate,
+    ContractDownstreamUpdate,
+    AllocationCreate,
+)
 from app.services.cache import cache, dashboard_cache_key
 from app.services.status_service import calculate_contract_status
 from app.models.user import User
 from app.services.audit_service import create_audit_log, AuditAction, ResourceType
 from app.services.contract_code_generator import ContractCodeGenerator
 from app.services.base_contract_service import BaseContractService
-from app.core.errors import AppException, ErrorCode, DuplicateRecordError, ResourceNotFoundError
+from app.core.errors import AppException, ErrorCode, DuplicateRecordError, ResourceNotFoundError, ValidationError
 
 
 class ContractWrapper:
@@ -420,5 +426,167 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
             contract.status = new_status
             self.db.add(contract)
             await self.db.commit()
-            
+
         await self._invalidate_dashboard_cache()
+
+    # ===== Downstream-to-Upstream Allocations =====
+    async def list_allocations(self, contract_id: int) -> List[DownstreamUpstreamAllocation]:
+        """列出某下游合同的所有分摊条目"""
+        query = (
+            select(DownstreamUpstreamAllocation)
+            .where(DownstreamUpstreamAllocation.downstream_contract_id == contract_id)
+            .order_by(DownstreamUpstreamAllocation.id)
+        )
+        result = await self.db.execute(query)
+        return result.scalars().all()
+
+    async def replace_allocations(
+        self,
+        contract_id: int,
+        items: List[AllocationCreate],
+        user: User,
+    ) -> List[DownstreamUpstreamAllocation]:
+        """原子替换某下游合同的所有分摊条目，并强校验金额平衡"""
+        contract = await self.get_contract(contract_id)
+        if not contract:
+            raise ResourceNotFoundError(
+                resource_type="合同",
+                resource_id=contract_id,
+                error_code=ErrorCode.CONTRACT_NOT_FOUND,
+            )
+
+        # 校验：上游 ID 不能重复
+        upstream_ids = [item.upstream_contract_id for item in items]
+        if len(upstream_ids) != len(set(upstream_ids)):
+            raise ValidationError(
+                message="同一上游合同在分摊明细中重复",
+                field_errors={"allocations": "请合并同一上游合同的多条分摊"},
+            )
+
+        # 校验：所有上游合同存在
+        if upstream_ids:
+            existing_q = select(ContractUpstream.id).where(ContractUpstream.id.in_(upstream_ids))
+            existing_ids = {row[0] for row in (await self.db.execute(existing_q)).all()}
+            missing = [uid for uid in upstream_ids if uid not in existing_ids]
+            if missing:
+                raise ValidationError(
+                    message=f"上游合同不存在: {missing}",
+                    field_errors={"upstream_contract_id": f"以下上游合同不存在: {missing}"},
+                )
+
+        # 强平衡校验：Σ amount == contract_amount（容差 0.01）
+        contract_amount = Decimal(contract.contract_amount or 0)
+        total = sum((Decimal(item.amount) for item in items), Decimal("0"))
+        if abs(total - contract_amount) > Decimal("0.01"):
+            raise ValidationError(
+                message=f"分摊总额 {total} 与合同金额 {contract_amount} 不一致",
+                field_errors={
+                    "allocations": f"分摊总额必须等于合同金额 {contract_amount}, 当前为 {total}"
+                },
+            )
+
+        # 原子替换：删除旧条目，插入新条目
+        await self.db.execute(
+            sql_delete(DownstreamUpstreamAllocation).where(
+                DownstreamUpstreamAllocation.downstream_contract_id == contract_id
+            )
+        )
+
+        new_objs: List[DownstreamUpstreamAllocation] = []
+        for item in items:
+            obj = DownstreamUpstreamAllocation(
+                downstream_contract_id=contract_id,
+                upstream_contract_id=item.upstream_contract_id,
+                amount=item.amount,
+                description=item.description,
+                created_by=user.id,
+                updated_by=user.id,
+            )
+            self.db.add(obj)
+            new_objs.append(obj)
+
+        await create_audit_log(
+            db=self.db,
+            user=user,
+            action=AuditAction.UPDATE,
+            resource_type=ResourceType.DOWNSTREAM_CONTRACT,
+            resource_id=contract_id,
+            resource_name=contract.contract_name,
+            new_values={
+                "allocations": [
+                    {
+                        "upstream_contract_id": item.upstream_contract_id,
+                        "amount": str(item.amount),
+                        "description": item.description,
+                    }
+                    for item in items
+                ]
+            },
+            description=f"更新下游合同分摊: {contract.contract_name}",
+        )
+
+        await self.db.commit()
+        for obj in new_objs:
+            await self.db.refresh(obj)
+
+        await self._invalidate_dashboard_cache()
+        return new_objs
+
+    async def clear_allocations(self, contract_id: int, user: User) -> None:
+        """清空某下游合同的所有分摊条目"""
+        contract = await self.get_contract(contract_id)
+        if not contract:
+            raise ResourceNotFoundError(
+                resource_type="合同",
+                resource_id=contract_id,
+                error_code=ErrorCode.CONTRACT_NOT_FOUND,
+            )
+
+        await self.db.execute(
+            sql_delete(DownstreamUpstreamAllocation).where(
+                DownstreamUpstreamAllocation.downstream_contract_id == contract_id
+            )
+        )
+        await create_audit_log(
+            db=self.db,
+            user=user,
+            action=AuditAction.UPDATE,
+            resource_type=ResourceType.DOWNSTREAM_CONTRACT,
+            resource_id=contract_id,
+            resource_name=contract.contract_name,
+            description=f"清空下游合同分摊: {contract.contract_name}",
+        )
+        await self.db.commit()
+        await self._invalidate_dashboard_cache()
+
+    async def list_upstream_cost_allocations(
+        self, upstream_contract_id: int
+    ) -> List[Dict[str, Any]]:
+        """上游合同视角：列出归集到该上游的所有下游分摊（含下游合同号/名）"""
+        query = (
+            select(
+                DownstreamUpstreamAllocation,
+                ContractDownstream.contract_code,
+                ContractDownstream.contract_name,
+            )
+            .join(
+                ContractDownstream,
+                ContractDownstream.id == DownstreamUpstreamAllocation.downstream_contract_id,
+            )
+            .where(DownstreamUpstreamAllocation.upstream_contract_id == upstream_contract_id)
+            .order_by(DownstreamUpstreamAllocation.id)
+        )
+        result = await self.db.execute(query)
+        rows = result.all()
+        return [
+            {
+                "id": alloc.id,
+                "downstream_contract_id": alloc.downstream_contract_id,
+                "downstream_contract_code": code,
+                "downstream_contract_name": name,
+                "amount": alloc.amount,
+                "description": alloc.description,
+                "created_at": alloc.created_at,
+            }
+            for alloc, code, name in rows
+        ]

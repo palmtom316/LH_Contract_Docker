@@ -70,7 +70,7 @@
         :footer-cell-style="footerCellStyle"
       >
         <el-table-column prop="serial_number" label="合同序号" width="100" fixed />
-        <el-table-column prop="contract_code" label="合同编号" min-width="100" fixed />
+        <el-table-column prop="contract_code" label="合同编号" min-width="160" fixed />
         <el-table-column prop="contract_name" label="合同名称" min-width="220">
           <template #default="scope">
             <div class="contract-cell--wrap">{{ scope.row.contract_name }}</div>

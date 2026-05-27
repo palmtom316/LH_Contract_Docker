@@ -202,3 +202,11 @@ export function getNextSerialNumber() {
         method: 'get'
     })
 }
+
+// 下游成本归集（只读：列出归集到该上游的所有下游合同分摊）
+export function getCostAllocations(contractId) {
+    return request({
+        url: `/contracts/upstream/${contractId}/cost-allocations`,
+        method: 'get'
+    })
+}
