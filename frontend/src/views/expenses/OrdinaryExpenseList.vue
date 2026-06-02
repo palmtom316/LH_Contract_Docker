@@ -48,7 +48,7 @@
         <el-button v-if="!isMobile" type="primary" plain icon="Plus" @click="handleAdd">新增费用</el-button>
         <el-button v-if="!isMobile" icon="Download" @click="handleExport">导出</el-button>
         <el-dropdown v-if="isMobile" trigger="click" class="action-item">
-          <el-button icon="More" circle />
+          <el-button icon="More" circle aria-label="更多费用操作" />
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item @click="handleAdd"><el-icon><Plus /></el-icon> 新增费用</el-dropdown-item>

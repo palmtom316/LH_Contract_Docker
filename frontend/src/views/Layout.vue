@@ -12,7 +12,7 @@
       <aside class="sidebar" :class="{ collapsed: isCollapse }">
         <div class="brand" :class="{ 'brand--collapsed': isCollapse }">
           <div class="brand-mark">
-            <img :src="displayLogo" class="brand-logo" alt="logo" />
+            <img :src="displayLogo" class="brand-logo" :alt="displayName" />
           </div>
           <div v-if="!isCollapse" class="brand-text">
             <span>{{ displayName }}</span>

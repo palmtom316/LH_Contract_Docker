@@ -283,6 +283,18 @@ a:focus-visible,
     margin-left: 0;
 }
 
+@media (max-width: 767px) {
+    .contract-list-file-button.el-button,
+    .contract-list-action-button.el-button {
+        min-height: 44px;
+        height: 44px;
+    }
+
+    .contract-list-file-button.el-button {
+        width: 44px;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .app-chrome-icon-button {
         transition: none;

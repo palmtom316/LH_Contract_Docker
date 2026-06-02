@@ -1,8 +1,6 @@
 <template>
   <div class="system-management-shell">
     <AppWorkspacePanel panel-class="system-management-panel">
-    <AppSectionCard>
-      <template #header>系统工作台</template>
       <el-tabs v-model="activeTab" class="app-tabs--line system-management__tabs">
         <el-tab-pane label="用户管理" name="users">
           <UserManagement />
@@ -109,7 +107,6 @@
           </section>
         </el-tab-pane>
       </el-tabs>
-    </AppSectionCard>
     </AppWorkspacePanel>
   </div>
 </template>

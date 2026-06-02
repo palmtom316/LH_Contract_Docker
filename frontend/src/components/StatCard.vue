@@ -73,20 +73,9 @@ const toneClass = computed(() => `stat-card-modern--${props.tone}`)
   position: relative;
   overflow: hidden;
   height: 136px;
-  cursor: pointer;
-  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
   margin-bottom: 12px;
   background: var(--surface-panel);
-  
-  &:hover {
-    transform: translateY(-1px);
-    border-color: color-mix(in srgb, var(--border-subtle) 55%, var(--brand-primary) 45%);
-    
-    .card-icon-bg {
-      transform: scale(1.03);
-      opacity: 1;
-    }
-  }
 
   .card-icon-bg {
     position: absolute;
@@ -100,7 +89,7 @@ const toneClass = computed(() => `stat-card-modern--${props.tone}`)
     justify-content: center;
     opacity: 0.9;
     pointer-events: none;
-    transition: transform 0.2s ease, opacity 0.2s ease;
+    transition: opacity 0.2s ease;
     
     .el-icon {
       font-size: 18px;

@@ -22,7 +22,7 @@
                         :headers="headers"
                         name="file"
                     >
-                        <img v-if="configForm.system_logo" :src="configForm.system_logo" class="avatar" />
+                        <img v-if="configForm.system_logo" :src="configForm.system_logo" class="avatar" alt="系统 Logo 预览" />
                         <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
                     </el-upload>
                 </el-form-item>

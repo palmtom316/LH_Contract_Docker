@@ -434,12 +434,12 @@ const getRoleTagType = (role) => {
     'COMPANY_LEADER': 'warning',
     'CONTRACT_MANAGER': 'success',
     'FINANCE': 'primary',
-    'ENGINEERING': '',
+    'ENGINEERING': 'info',
     'AUDIT': 'info',
     'BIDDING': 'info',
-    'GENERAL_AFFAIRS': ''
+    'GENERAL_AFFAIRS': 'info'
   }
-  return typeMap[role] || ''
+  return typeMap[role] || 'info'
 }
 
 // Format datetime

@@ -2,9 +2,9 @@
   <div class="pdf-viewer-container">
     <div class="toolbar">
       <el-button-group>
-        <el-button icon="ZoomOut" @click="scale -= 0.1" :disabled="scale <= 0.5" />
+        <el-button icon="ZoomOut" aria-label="缩小 PDF 预览" @click="scale -= 0.1" :disabled="scale <= 0.5" />
         <el-button>{{ Math.round(scale * 100) }}%</el-button>
-        <el-button icon="ZoomIn" @click="scale += 0.1" :disabled="scale >= 3" />
+        <el-button icon="ZoomIn" aria-label="放大 PDF 预览" @click="scale += 0.1" :disabled="scale >= 3" />
       </el-button-group>
       <el-button icon="Download" type="primary" link @click="download">下载</el-button>
     </div>

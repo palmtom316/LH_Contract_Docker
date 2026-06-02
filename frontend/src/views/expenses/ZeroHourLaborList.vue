@@ -43,7 +43,7 @@
         <el-button v-if="!isMobile" type="primary" plain :icon="Plus" @click="handleAdd">新增用工</el-button>
         <el-button v-if="!isMobile" :icon="Download" @click="handleExport" :loading="exporting">导出</el-button>
         <el-dropdown v-if="isMobile" trigger="click" class="action-item">
-          <el-button :icon="More" circle />
+          <el-button :icon="More" circle aria-label="更多用工操作" />
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item @click="handleAdd"><el-icon><Plus /></el-icon> 新增用工</el-dropdown-item>

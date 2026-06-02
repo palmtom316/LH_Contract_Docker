@@ -120,6 +120,7 @@ const mountPage = (component) =>
         ElDescriptionsItem: { template: '<div class="el-descriptions-item-stub"><slot /></div>' },
         ElLink: clickableStub,
         ElButton: clickableStub,
+        RouterLink: { template: '<a><slot /></a>' },
         ElTable: { template: '<div class="el-table-stub" />' },
         ElTableColumn: { template: '<div class="el-table-column-stub" />' }
       }

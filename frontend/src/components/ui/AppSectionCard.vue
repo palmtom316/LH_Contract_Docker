@@ -22,12 +22,7 @@
   border-radius: calc(var(--radius) + 2px);
   background: var(--surface-panel);
   box-shadow: var(--workspace-panel-shadow);
-  transition: box-shadow 180ms ease, border-color 180ms ease, transform 180ms ease;
-}
-
-.app-section-card:hover {
-  border-color: hsl(var(--border));
-  transform: translateY(-1px);
+  transition: box-shadow 180ms ease, border-color 180ms ease;
 }
 
 .app-section-card__header {
