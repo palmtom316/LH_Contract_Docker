@@ -119,7 +119,7 @@
               <template #default="scope">
                 <el-button 
                   v-if="scope.row.contract_file_path" 
-                  link 
+                  class="contract-list-file-button"
                   type="primary" 
                   size="small"
                   icon="Document"
@@ -128,11 +128,13 @@
                 <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="140" fixed="right">
+            <el-table-column label="操作" width="180" fixed="right">
               <template #default="scope">
-                <el-button v-if="userStore.canManageUpstreamContracts" link type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
-                <el-button link type="primary" size="small" @click="handleDetail(scope.row)">详情</el-button>
-                <el-button v-if="userStore.canManageUpstreamContracts" link type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
+                <div class="contract-list-actions">
+                  <el-button v-if="userStore.canManageUpstreamContracts" class="contract-list-action-button" type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
+                  <el-button class="contract-list-action-button" type="primary" size="small" @click="handleDetail(scope.row)">详情</el-button>
+                  <el-button v-if="userStore.canManageUpstreamContracts" class="contract-list-action-button" type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
+                </div>
               </template>
             </el-table-column>
           </el-table>

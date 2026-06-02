@@ -127,20 +127,22 @@
           <template #default="scope">
             <el-button 
               v-if="scope.row.contract_file_path" 
-              link 
+              class="contract-list-file-button"
               type="primary" 
               size="small"
               icon="Document"
               @click="openPdfInNewTab(scope.row.contract_file_path)"
-            >查看</el-button>
+            />
             <span v-else class="cell-placeholder">-</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="190" fixed="right">
           <template #default="scope">
-            <el-button v-if="userStore.canManageDownstreamContracts" link type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button link type="primary" size="small" @click="handleDetail(scope.row)">详情</el-button>
-            <el-button v-if="userStore.canManageDownstreamContracts" link type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
+            <div class="contract-list-actions">
+              <el-button v-if="userStore.canManageDownstreamContracts" class="contract-list-action-button" type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
+              <el-button class="contract-list-action-button" type="primary" size="small" @click="handleDetail(scope.row)">详情</el-button>
+              <el-button v-if="userStore.canManageDownstreamContracts" class="contract-list-action-button" type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>

@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import 'element-plus/dist/index.css'
 import '@/styles/index.scss' // Global styles
 import {
     CircleCheck,

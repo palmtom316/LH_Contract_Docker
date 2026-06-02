@@ -78,7 +78,12 @@
                 <div class="topbar-copy__title">{{ route.meta.title }}</div>
               </div>
             </div>
-            <AppTopbarActions :unread-count="unreadCount" />
+            <AppTopbarActions
+              :unread-count="unreadCount"
+              :show-contract-query="userStore.canViewUpstreamContracts"
+              :is-contract-query-open="uiStore.contractQueryOpen"
+              @open-contract-query="openContractQuery"
+            />
           </header>
 
           <section class="app-main">
@@ -93,21 +98,6 @@
         </main>
       </div>
     </div>
-
-    <button
-      v-if="userStore.canViewUpstreamContracts"
-      type="button"
-      class="contract-query-trigger"
-      :class="{ 'is-open': uiStore.contractQueryOpen }"
-      aria-label="打开合同查询助手"
-      @click="openContractQuery"
-    >
-      <span class="contract-query-trigger__icon" aria-hidden="true">
-        <el-icon><Search /></el-icon>
-      </span>
-      <span class="contract-query-trigger__label">合同查询</span>
-      <span class="contract-query-trigger__hint">Ctrl + K</span>
-    </button>
 
     <el-drawer
       v-model="uiStore.notificationDrawerOpen"
@@ -158,7 +148,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { DataAnalysis, Document, DocumentCopy, Expand, Fold, FolderChecked, HomeFilled, Money, Search, Setting } from '@element-plus/icons-vue'
+import { DataAnalysis, Document, DocumentCopy, Expand, Fold, FolderChecked, HomeFilled, Money, Setting } from '@element-plus/icons-vue'
 import pkg from '../../package.json'
 import logoNew from '@/assets/logo_new.png'
 import request from '@/utils/request'
@@ -597,68 +587,6 @@ onUnmounted(() => {
   padding: 20px;
 }
 
-.contract-query-trigger {
-  position: fixed;
-  top: calc(var(--shell-header-band-height, var(--header-height)) + 20px);
-  right: 20px;
-  z-index: 30;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 36px;
-  padding: 6px 14px 6px 10px;
-  border: 1px solid hsl(var(--border));
-  border-radius: 999px;
-  background: var(--surface-panel);
-  box-shadow: var(--shadow-soft);
-  color: hsl(var(--foreground));
-  cursor: pointer;
-  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
-}
-
-.contract-query-trigger__icon {
-  width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--brand-primary-soft);
-  color: var(--brand-primary-strong);
-  flex-shrink: 0;
-}
-
-.contract-query-trigger__label {
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0;
-  line-height: 1;
-}
-
-.contract-query-trigger__hint {
-  margin-left: 4px;
-  padding-left: 8px;
-  border-left: 1px solid hsl(var(--border));
-  font-size: 11px;
-  font-weight: 500;
-  color: hsl(var(--muted-foreground));
-  letter-spacing: 0;
-  line-height: 1;
-}
-
-.contract-query-trigger:hover,
-.contract-query-trigger.is-open {
-  background: var(--surface-panel);
-  border-color: hsl(var(--primary) / 0.5);
-  box-shadow: 0 2px 8px hsl(var(--primary) / 0.12);
-  transform: translateY(-1px);
-}
-
-.contract-query-trigger:focus-visible {
-  outline: none;
-  box-shadow: var(--shadow-focus);
-}
-
 .contract-query-drawer :deep(.el-drawer__body) {
   padding: 0;
   background: hsl(var(--background));
@@ -690,14 +618,6 @@ onUnmounted(() => {
     padding: 0 16px;
   }
 
-  .contract-query-trigger {
-    top: calc(var(--shell-header-band-height, var(--header-height)) + 16px);
-    right: 16px;
-  }
-
-  .contract-query-trigger__hint {
-    display: none;
-  }
 }
 
 @media (max-width: 767px) {
@@ -719,9 +639,6 @@ onUnmounted(() => {
     padding: 16px;
   }
 
-  .contract-query-trigger {
-    display: none;
-  }
 }
 
 .sidebar.collapsed .sidebar-nav-item {

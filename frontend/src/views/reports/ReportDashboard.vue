@@ -873,6 +873,11 @@ onMounted(() => {
 :deep(.cost-total-row td.el-table__cell) {
   background: color-mix(in srgb, var(--status-warning) 12%, var(--surface-panel));
   font-weight: 700;
+  white-space: nowrap;
+}
+
+:deep(.cost-total-row td.el-table__cell .cell) {
+  white-space: nowrap;
 }
 
 .report-export-grid {
