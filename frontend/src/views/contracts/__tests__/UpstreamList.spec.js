@@ -331,6 +331,16 @@ describe('UpstreamList filters', () => {
     expect(upstreamSource).toContain('.upstream-filter-section :deep(.filter-control--compact) {')
     expect(upstreamSource).toContain('grid-column: span 2;')
   })
+
+  it('places company category and sign time before the upstream amount column', () => {
+    const companyCategoryIndex = upstreamSource.indexOf('prop="company_category" label="公司合同分类"')
+    const signTimeIndex = upstreamSource.indexOf('prop="sign_date" label="签约时间"')
+    const amountIndex = upstreamSource.indexOf('prop="contract_amount" label="签约金额"')
+
+    expect(companyCategoryIndex).toBeGreaterThan(-1)
+    expect(signTimeIndex).toBeGreaterThan(companyCategoryIndex)
+    expect(amountIndex).toBeGreaterThan(signTimeIndex)
+  })
 })
 
 describe('upstream workspace shell structure', () => {

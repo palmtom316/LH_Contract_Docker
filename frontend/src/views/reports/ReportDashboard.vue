@@ -178,35 +178,25 @@
           </div>
 
           <AppFilterBar class="report-export-card__filters" :class="`report-export-card__filters--${card.type}`">
-            <template v-if="card.type === 'daterange'">
+            <template v-for="field in card.fields" :key="field.key">
               <AppRangeField
-                v-model="card.model.value"
+                v-if="field.type === 'dateRange'"
+                v-model="field.model.value"
                 class="filter-control--range-wide"
-                start-placeholder="开始日期"
-                end-placeholder="结束日期"
+                :start-placeholder="field.startPlaceholder || '开始日期'"
+                :end-placeholder="field.endPlaceholder || '结束日期'"
               />
-            </template>
-            <template v-else-if="card.type === 'daterange-with-status'">
-              <AppRangeField
-                v-model="exportFilters.dateRange"
-                class="filter-control--range-wide"
-                start-placeholder="开始日期"
-                end-placeholder="结束日期"
+              <DictSelect
+                v-else-if="field.type === 'companyCategory'"
+                v-model="field.model.value"
+                category="project_category"
+                :placeholder="field.placeholder || '公司合同分类'"
+                clearable
               />
-              <el-select v-model="exportFilters.status" placeholder="合同状态">
-                <el-option label="全部" value="全部" />
-                <el-option label="执行中" value="执行中" />
-                <el-option label="已完工" value="已完工" />
-                <el-option label="已结算" value="已结算" />
-                <el-option label="质保期到期" value="质保期到期" />
-                <el-option label="合同终止" value="合同终止" />
-                <el-option label="合同中止" value="合同中止" />
-              </el-select>
-            </template>
-            <template v-else>
               <el-input
-                v-model="card.model.value"
-                placeholder="请输入合同序号/编号/名称"
+                v-else
+                v-model="field.model.value"
+                :placeholder="field.placeholder"
                 clearable
               />
             </template>
@@ -231,6 +221,7 @@ import AppDataTable from '@/components/ui/AppDataTable.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import AppRangeField from '@/components/ui/AppRangeField.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
+import DictSelect from '@/components/DictSelect.vue'
 import { buildExportParams } from '@/views/reports/reportDashboard.helpers'
 import {
   getCostMonthlyQuarterlyReport,
@@ -245,7 +236,8 @@ import {
   downloadExpensePaymentsReport,
   downloadUpstreamSettlementsReport,
   downloadDownstreamSettlementsReport,
-  downloadAssociationReport
+  downloadAssociationReport,
+  downloadZeroHourLaborReport
 } from '@/api/reports'
 
 const COST_FIELDS = [
@@ -429,19 +421,28 @@ function costCellStyle({ column }) {
 
 const exportFilters = ref({
   dateRange: [],
-  status: '全部'
+  companyCategory: ''
 })
 const exportLoading = ref(false)
 const recDateRange = ref([])
+const recCompanyCategory = ref('')
 const payDateRange = ref([])
 const upInvDateRange = ref([])
+const upInvCompanyCategory = ref('')
 const downInvDateRange = ref([])
 const upReceiptDateRange = ref([])
+const upReceiptCompanyCategory = ref('')
 const downPayDateRange = ref([])
 const expPayDateRange = ref([])
+const expPayUpstreamContractName = ref('')
+const expPayCompanyCategory = ref('')
 const upSettlementDateRange = ref([])
 const downSettlementDateRange = ref([])
 const assocQuery = ref('')
+const assocDateRange = ref([])
+const zeroHourLaborDateRange = ref([])
+const zeroHourLaborUpstreamContractName = ref('')
+const zeroHourLaborCompanyCategory = ref('')
 
 const recLoading = ref(false)
 const payLoading = ref(false)
@@ -453,13 +454,36 @@ const expPayLoading = ref(false)
 const upSettlementLoading = ref(false)
 const downSettlementLoading = ref(false)
 const assocLoading = ref(false)
+const zeroHourLaborLoading = ref(false)
+
+const dateRangeField = (key, model, startPlaceholder = '开始日期', endPlaceholder = '结束日期') => ({
+  key,
+  type: 'dateRange',
+  model,
+  startPlaceholder,
+  endPlaceholder
+})
+
+const companyCategoryField = (key, model, placeholder = '公司合同分类') => ({
+  key,
+  type: 'companyCategory',
+  model,
+  placeholder
+})
+
+const inputField = (key, model, placeholder) => ({
+  key,
+  type: 'input',
+  model,
+  placeholder
+})
 
 async function handleExport() {
   exportLoading.value = true
   try {
     const params = buildExportParams({
       dateRange: exportFilters.value.dateRange,
-      status: exportFilters.value.status
+      companyCategory: exportFilters.value.companyCategory
     })
     const res = await downloadComprehensiveReport(params)
     downloadFile(res, `上游合同综合报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
@@ -475,7 +499,10 @@ async function handleExport() {
 async function handleExportRec() {
   recLoading.value = true
   try {
-    const params = buildExportParams({ dateRange: recDateRange.value })
+    const params = buildExportParams({
+      dateRange: recDateRange.value,
+      companyCategory: recCompanyCategory.value
+    })
     const res = await downloadReceivablesReport(params)
     downloadFile(res, `上游合同应收款明细_${new Date().toISOString().slice(0, 10)}.xlsx`)
     ElMessage.success('导出成功')
@@ -505,7 +532,10 @@ async function handleExportPay() {
 async function handleExportUpInv() {
   upInvLoading.value = true
   try {
-    const params = buildExportParams({ dateRange: upInvDateRange.value })
+    const params = buildExportParams({
+      dateRange: upInvDateRange.value,
+      companyCategory: upInvCompanyCategory.value
+    })
     const res = await downloadUpstreamInvoicesReport(params)
     downloadFile(res, `上游合同挂账报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
     ElMessage.success('导出成功')
@@ -535,7 +565,10 @@ async function handleExportDownInv() {
 async function handleExportUpReceipt() {
   upReceiptLoading.value = true
   try {
-    const params = buildExportParams({ dateRange: upReceiptDateRange.value })
+    const params = buildExportParams({
+      dateRange: upReceiptDateRange.value,
+      companyCategory: upReceiptCompanyCategory.value
+    })
     const res = await downloadUpstreamReceiptsReport(params)
     downloadFile(res, `上游合同收款报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
     ElMessage.success('导出成功')
@@ -565,7 +598,11 @@ async function handleExportDownPay() {
 async function handleExportExpPay() {
   expPayLoading.value = true
   try {
-    const params = buildExportParams({ dateRange: expPayDateRange.value })
+    const params = buildExportParams({
+      dateRange: expPayDateRange.value,
+      upstreamContractName: expPayUpstreamContractName.value,
+      companyCategory: expPayCompanyCategory.value
+    })
     const res = await downloadExpensePaymentsReport(params)
     downloadFile(res, `无合同费用付款报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
     ElMessage.success('导出成功')
@@ -610,9 +647,8 @@ async function handleExportDownSettlement() {
 async function handleExportAssociation() {
   assocLoading.value = true
   try {
-    const params = {
-      query: assocQuery.value
-    }
+    const params = buildExportParams({ dateRange: assocDateRange.value })
+    if (assocQuery.value) params.query = assocQuery.value
     const res = await downloadAssociationReport(params)
     downloadFile(res, `上下游合同关联报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
     ElMessage.success('导出成功')
@@ -624,12 +660,41 @@ async function handleExportAssociation() {
   }
 }
 
+async function handleExportZeroHourLabor() {
+  zeroHourLaborLoading.value = true
+  try {
+    const params = buildExportParams({
+      dateRange: zeroHourLaborDateRange.value,
+      upstreamContractName: zeroHourLaborUpstreamContractName.value,
+      companyCategory: zeroHourLaborCompanyCategory.value
+    })
+    const res = await downloadZeroHourLaborReport(params)
+    downloadFile(res, `零星用工报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('导出失败')
+  } finally {
+    zeroHourLaborLoading.value = false
+  }
+}
+
 const exportCards = computed(() => [
   {
     title: '上游合同综合报表导出',
-    description: '按时间范围与合同状态导出综合统计结果。',
+    description: '按时间范围与公司合同分类导出综合统计结果。',
     footnote: '导出内容包含：上游合同基础信息、财务累计数据，以及关联的下游、管理、无合同费用统计。',
-    type: 'daterange-with-status',
+    type: 'daterange-with-category',
+    fields: [
+      dateRangeField('comprehensive-date', computed({
+        get: () => exportFilters.value.dateRange,
+        set: (value) => { exportFilters.value.dateRange = value }
+      })),
+      companyCategoryField('comprehensive-company-category', computed({
+        get: () => exportFilters.value.companyCategory,
+        set: (value) => { exportFilters.value.companyCategory = value }
+      }))
+    ],
     loading: exportLoading,
     action: handleExport
   },
@@ -637,8 +702,11 @@ const exportCards = computed(() => [
     title: '上下游合同关联报表导出',
     description: '通过合同编号、名称或序号快速定位关联关系。',
     footnote: '导出内容包含：上游合同及其关联的下游、管理合同与无合同费用明细。',
-    type: 'query',
-    model: assocQuery,
+    type: 'query-with-daterange',
+    fields: [
+      inputField('association-query', assocQuery, '请输入合同序号/编号/名称'),
+      dateRangeField('association-date', assocDateRange, '签约开始日期', '签约结束日期')
+    ],
     loading: assocLoading,
     action: handleExportAssociation
   },
@@ -646,8 +714,11 @@ const exportCards = computed(() => [
     title: '上游合同应收款报表导出',
     description: '筛选应收时间范围，导出应收款记录。',
     footnote: '导出内容包含：金额、日期、备注等应收款明细。',
-    type: 'daterange',
-    model: recDateRange,
+    type: 'daterange-with-category',
+    fields: [
+      dateRangeField('receivable-date', recDateRange),
+      companyCategoryField('receivable-company-category', recCompanyCategory)
+    ],
     loading: recLoading,
     action: handleExportRec
   },
@@ -656,7 +727,7 @@ const exportCards = computed(() => [
     description: '按应付时间导出付款记录。',
     footnote: '导出内容包含：金额、日期、备注等应付款明细。',
     type: 'daterange',
-    model: payDateRange,
+    fields: [dateRangeField('payable-date', payDateRange)],
     loading: payLoading,
     action: handleExportPay
   },
@@ -664,8 +735,11 @@ const exportCards = computed(() => [
     title: '上游合同挂账报表导出',
     description: '导出上游挂账与开票记录。',
     footnote: '导出内容包含：金额、日期、发票号、备注等字段。',
-    type: 'daterange',
-    model: upInvDateRange,
+    type: 'daterange-with-category',
+    fields: [
+      dateRangeField('upstream-invoice-date', upInvDateRange),
+      companyCategoryField('upstream-invoice-company-category', upInvCompanyCategory)
+    ],
     loading: upInvLoading,
     action: handleExportUpInv
   },
@@ -674,7 +748,7 @@ const exportCards = computed(() => [
     description: '导出下游及管理合同挂账与收票记录。',
     footnote: '导出内容包含：金额、日期、发票号、备注等字段。',
     type: 'daterange',
-    model: downInvDateRange,
+    fields: [dateRangeField('downstream-invoice-date', downInvDateRange)],
     loading: downInvLoading,
     action: handleExportDownInv
   },
@@ -682,8 +756,11 @@ const exportCards = computed(() => [
     title: '上游合同收款报表导出',
     description: '按收款时间范围导出到账记录。',
     footnote: '导出内容包含：金额、日期、方式、备注等收款明细。',
-    type: 'daterange',
-    model: upReceiptDateRange,
+    type: 'daterange-with-category',
+    fields: [
+      dateRangeField('upstream-receipt-date', upReceiptDateRange),
+      companyCategoryField('upstream-receipt-company-category', upReceiptCompanyCategory)
+    ],
     loading: upReceiptLoading,
     action: handleExportUpReceipt
   },
@@ -692,7 +769,7 @@ const exportCards = computed(() => [
     description: '按付款时间范围导出实际付款记录。',
     footnote: '导出内容包含：金额、日期、方式、备注等付款明细。',
     type: 'daterange',
-    model: downPayDateRange,
+    fields: [dateRangeField('downstream-payment-date', downPayDateRange)],
     loading: downPayLoading,
     action: handleExportDownPay
   },
@@ -700,17 +777,34 @@ const exportCards = computed(() => [
     title: '无合同费用付款报表导出',
     description: '导出无合同费用支出记录。',
     footnote: '导出内容包含：金额、日期、类别、经办人、备注等字段。',
-    type: 'daterange',
-    model: expPayDateRange,
+    type: 'expense-payment',
+    fields: [
+      dateRangeField('expense-payment-date', expPayDateRange),
+      inputField('expense-payment-upstream-name', expPayUpstreamContractName, '上游合同名称'),
+      companyCategoryField('expense-payment-company-category', expPayCompanyCategory, '上游公司合同分类')
+    ],
     loading: expPayLoading,
     action: handleExportExpPay
+  },
+  {
+    title: '零星用工报表导出',
+    description: '按用工时间与上游合同信息导出零星用工记录。',
+    footnote: '导出内容包含：用工时间、归宿、上游合同、各项费用与总计。',
+    type: 'zero-hour-labor',
+    fields: [
+      dateRangeField('zero-hour-labor-date', zeroHourLaborDateRange),
+      inputField('zero-hour-labor-upstream-name', zeroHourLaborUpstreamContractName, '上游合同名称'),
+      companyCategoryField('zero-hour-labor-company-category', zeroHourLaborCompanyCategory, '上游公司合同分类')
+    ],
+    loading: zeroHourLaborLoading,
+    action: handleExportZeroHourLabor
   },
   {
     title: '上游合同结算报表导出',
     description: '导出上游合同结算与完工记录。',
     footnote: '导出内容包含：结算金额、完工日期、备注等字段。',
     type: 'daterange',
-    model: upSettlementDateRange,
+    fields: [dateRangeField('upstream-settlement-date', upSettlementDateRange)],
     loading: upSettlementLoading,
     action: handleExportUpSettlement
   },
@@ -719,7 +813,7 @@ const exportCards = computed(() => [
     description: '导出下游及管理合同结算记录。',
     footnote: '导出内容包含：结算金额、备注等字段。',
     type: 'daterange',
-    model: downSettlementDateRange,
+    fields: [dateRangeField('downstream-settlement-date', downSettlementDateRange)],
     loading: downSettlementLoading,
     action: handleExportDownSettlement
   }
@@ -847,15 +941,6 @@ onMounted(() => {
 :deep(.app-filter-bar.report-export-card__filters .el-select) {
   width: 100%;
   max-width: 100%;
-}
-
-:deep(.app-filter-bar.report-export-card__filters--daterange-with-status .app-filter-bar__main) {
-  display: flex;
-  flex-direction: column;
-}
-
-:deep(.app-filter-bar.report-export-card__filters--daterange-with-status .el-date-editor) {
-  width: 100%;
 }
 
 .report-export-card__footnote {

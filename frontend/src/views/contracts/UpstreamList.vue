@@ -79,6 +79,8 @@
                 <div class="contract-cell--wrap">{{ scope.row.party_b_name }}</div>
               </template>
             </el-table-column>
+            <el-table-column prop="company_category" label="公司合同分类" width="140" align="center" show-overflow-tooltip />
+            <el-table-column prop="sign_date" label="签约时间" width="120" align="center" />
             <el-table-column prop="contract_amount" label="签约金额" width="150" align="right">
               <template #default="scope">
                 <span class="contract-cell--amount">¥ {{ formatMoney(scope.row.contract_amount) }}</span>
@@ -108,13 +110,11 @@
                 <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
-            <el-table-column prop="sign_date" label="签约日期" width="100" align="center" />
             <el-table-column prop="status" label="状态" width="80" align="center">
               <template #default="scope">
                 <el-tag :type="getStatusType(scope.row.status)" size="small">{{ scope.row.status }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="company_category" label="分类" width="120" align="center" show-overflow-tooltip />
             <el-table-column label="文件" width="60" align="center">
               <template #default="scope">
                 <el-button 

@@ -186,4 +186,14 @@ describe('DownstreamList workspace shell', () => {
     expect(downstreamListSource).toContain('border-top: 1px solid var(--border-subtle);')
     expect(downstreamListSource).not.toContain('background: transparent;')
   })
+
+  it('places upstream contract name and sign time before the downstream amount column', () => {
+    const upstreamNameIndex = downstreamListSource.indexOf('prop="upstream_contract_name" label="上游合同名称"')
+    const signTimeIndex = downstreamListSource.indexOf('prop="sign_date" label="签约时间"')
+    const amountIndex = downstreamListSource.indexOf('prop="contract_amount" label="合同金额"')
+
+    expect(upstreamNameIndex).toBeGreaterThan(-1)
+    expect(signTimeIndex).toBeGreaterThan(upstreamNameIndex)
+    expect(amountIndex).toBeGreaterThan(signTimeIndex)
+  })
 })

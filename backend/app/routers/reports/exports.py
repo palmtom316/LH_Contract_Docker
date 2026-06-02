@@ -30,11 +30,36 @@ from app.models.contract_management import (
     FinanceManagementPayable, ManagementSettlement
 )
 from app.models.expense import ExpenseNonContract
+from app.models.zero_hour_labor import ZeroHourLabor
 from app.services.auth import get_current_active_user
 from app.core.permissions import require_permission, Permission
 
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(require_permission(Permission.DOWNLOAD_REPORTS))])
+
+EXPENSE_PAYMENT_COLUMNS = [
+    "序号",
+    "费用类型",
+    "费用归属",
+    "费用类别",
+    "费用分类",
+    "关联上游合同",
+    "公司合同分类",
+    "发生日期",
+    "金额",
+    "经办人",
+    "说明",
+]
+
+ZERO_HOUR_LABOR_REPORT_COLUMNS = [
+    "用工时间",
+    "归宿",
+    "上游合同名称",
+    "用工费用",
+    "用车费用",
+    "材料费用",
+    "总计",
+]
 
 
 def _create_excel_response(df: pd.DataFrame, sheet_name: str, filename: str) -> StreamingResponse:
@@ -177,11 +202,82 @@ def _build_association_base_info(
         "上游合同序号": upstream.serial_number,
         "上游合同名称": upstream.contract_name,
         "公司合同分类": upstream.company_category or "",
+        "签约时间": upstream.sign_date,
         "上游签约金额": float(upstream.contract_amount or 0),
         "上游完工时间": up_completion_date,
         "上游结算金额": up_settle_amount,
         "上游已收款金额": up_received,
     }
+
+
+def _upstream_company_category(contract) -> str:
+    upstream = getattr(contract, "upstream_contract", None)
+    return upstream.company_category if upstream and upstream.company_category else ""
+
+
+def _upstream_contract_name(contract) -> str:
+    upstream = getattr(contract, "upstream_contract", None)
+    return upstream.contract_name if upstream and upstream.contract_name else ""
+
+
+def _labor_attribution_label(value: str | None) -> str:
+    return "项目用工" if value == "PROJECT" else "公司用工"
+
+
+def _build_expense_payment_row(idx: int, exp: ExpenseNonContract) -> dict:
+    return {
+        "序号": idx,
+        "费用类型": "无合同费用",
+        "费用归属": exp.attribution or "",
+        "费用类别": exp.category or "",
+        "费用分类": exp.expense_type or "",
+        "关联上游合同": _upstream_contract_name(exp),
+        "公司合同分类": _upstream_company_category(exp),
+        "发生日期": exp.expense_date,
+        "金额": float(exp.amount or 0),
+        "经办人": exp.handler or "",
+        "说明": exp.description or "",
+    }
+
+
+def _build_zero_hour_expense_payment_row(idx: int, labor: ZeroHourLabor) -> dict:
+    return {
+        "序号": idx,
+        "费用类型": "零星用工",
+        "费用归属": _labor_attribution_label(labor.attribution),
+        "费用类别": "零星用工",
+        "费用分类": "零星用工",
+        "关联上游合同": _upstream_contract_name(labor),
+        "公司合同分类": _upstream_company_category(labor),
+        "发生日期": labor.labor_date,
+        "金额": float(labor.total_amount or 0),
+        "经办人": labor.dispatch_unit or "",
+        "说明": f"技工{labor.skilled_quantity or 0}人,普工{labor.general_quantity or 0}人",
+    }
+
+
+def _build_zero_hour_labor_report_row(labor: ZeroHourLabor) -> dict:
+    return {
+        "用工时间": labor.labor_date,
+        "归宿": _labor_attribution_label(labor.attribution),
+        "上游合同名称": _upstream_contract_name(labor),
+        "用工费用": float(labor.labor_price_total or 0),
+        "用车费用": float(labor.vehicle_price_total or 0),
+        "材料费用": float(labor.material_price_total or 0),
+        "总计": float(labor.total_amount or 0),
+    }
+
+
+def _apply_upstream_text_filters(stmt, company_category: str | None = None, upstream_contract_name: str | None = None):
+    if company_category:
+        stmt = stmt.where(ContractUpstream.company_category == company_category)
+    if upstream_contract_name:
+        stmt = stmt.where(ContractUpstream.contract_name.ilike(f"%{upstream_contract_name}%"))
+    return stmt
+
+
+def _data_frame_with_columns(rows: list[dict], columns: list[str]) -> pd.DataFrame:
+    return pd.DataFrame(rows, columns=columns)
 
 
 @router.get("/export/cost/monthly-quarterly")
@@ -220,6 +316,7 @@ async def export_comprehensive_report(
     start_date: date = None,
     end_date: date = None,
     status: str = None,
+    company_category: str = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -237,6 +334,8 @@ async def export_comprehensive_report(
         stmt = stmt.where(ContractUpstream.sign_date <= end_date)
     if status and status != '全部':
         stmt = stmt.where(ContractUpstream.status == status)
+    if company_category:
+        stmt = stmt.where(ContractUpstream.company_category == company_category)
     
     stmt = stmt.order_by(ContractUpstream.sign_date.desc())
     
@@ -298,7 +397,6 @@ async def export_comprehensive_report(
     map_exp = await get_agg(stmt_exp)
 
     # Zero Hour Labor Aggregation
-    from app.models.zero_hour_labor import ZeroHourLabor
     stmt_zhl = select(ZeroHourLabor.upstream_contract_id, func.sum(ZeroHourLabor.total_amount))\
         .where(ZeroHourLabor.upstream_contract_id.in_(upstream_ids))\
         .group_by(ZeroHourLabor.upstream_contract_id)
@@ -343,6 +441,7 @@ async def export_comprehensive_report(
 async def export_receivables(
     start_date: date = None,
     end_date: date = None,
+    company_category: str = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -353,6 +452,8 @@ async def export_receivables(
         stmt = stmt.where(FinanceUpstreamReceivable.expected_date >= start_date)
     if end_date:
         stmt = stmt.where(FinanceUpstreamReceivable.expected_date <= end_date)
+    if company_category:
+        stmt = stmt.where(ContractUpstream.company_category == company_category)
     
     stmt = stmt.order_by(FinanceUpstreamReceivable.expected_date.desc())
     
@@ -440,6 +541,7 @@ async def export_payables(
 async def export_upstream_invoices(
     start_date: date = None,
     end_date: date = None,
+    company_category: str = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -450,6 +552,8 @@ async def export_upstream_invoices(
         stmt = stmt.where(FinanceUpstreamInvoice.invoice_date >= start_date)
     if end_date:
         stmt = stmt.where(FinanceUpstreamInvoice.invoice_date <= end_date)
+    if company_category:
+        stmt = stmt.where(ContractUpstream.company_category == company_category)
     
     stmt = stmt.order_by(FinanceUpstreamInvoice.invoice_date.desc())
     
@@ -462,6 +566,7 @@ async def export_upstream_invoices(
             "序号": idx,
             "上游合同编号": contract.contract_code,
             "上游合同名称": contract.contract_name,
+            "公司合同分类": contract.company_category or "",
             "挂账日期": inv.invoice_date,
             "挂账金额": float(inv.amount or 0),
             "发票号码": inv.invoice_number or "",
@@ -540,6 +645,7 @@ async def export_downstream_invoices(
 async def export_upstream_receipts(
     start_date: date = None,
     end_date: date = None,
+    company_category: str = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -550,6 +656,8 @@ async def export_upstream_receipts(
         stmt = stmt.where(FinanceUpstreamReceipt.receipt_date >= start_date)
     if end_date:
         stmt = stmt.where(FinanceUpstreamReceipt.receipt_date <= end_date)
+    if company_category:
+        stmt = stmt.where(ContractUpstream.company_category == company_category)
     
     stmt = stmt.order_by(FinanceUpstreamReceipt.receipt_date.desc())
     
@@ -562,6 +670,7 @@ async def export_upstream_receipts(
             "序号": idx,
             "上游合同编号": contract.contract_code,
             "上游合同名称": contract.contract_name,
+            "公司合同分类": contract.company_category or "",
             "收款日期": rec.receipt_date,
             "收款金额": float(rec.amount or 0),
             "收款方式": rec.payment_method or "",
@@ -642,16 +751,20 @@ async def export_downstream_payments(
 async def export_expense_payments(
     start_date: date = None,
     end_date: date = None,
+    upstream_contract_name: str = None,
+    company_category: str = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """Export Non-Contract Expense Payments (无合同费用) including Zero Hour Labor"""
     stmt = select(ExpenseNonContract).options(selectinload(ExpenseNonContract.upstream_contract))
-    
+    stmt = stmt.outerjoin(ContractUpstream, ExpenseNonContract.upstream_contract_id == ContractUpstream.id)
+
     if start_date:
         stmt = stmt.where(ExpenseNonContract.expense_date >= start_date)
     if end_date:
         stmt = stmt.where(ExpenseNonContract.expense_date <= end_date)
+    stmt = _apply_upstream_text_filters(stmt, company_category, upstream_contract_name)
     
     stmt = stmt.order_by(ExpenseNonContract.expense_date.desc())
     
@@ -661,54 +774,63 @@ async def export_expense_payments(
     data_list = []
     idx = 1
     for exp in rows:
-        data_list.append({
-            "序号": idx,
-            "费用类型": "无合同费用",
-            "费用归属": exp.attribution or "",
-            "费用类别": exp.category or "",
-            "费用分类": exp.expense_type or "",
-            "关联上游合同": exp.upstream_contract.contract_name if exp.upstream_contract else "",
-            "发生日期": exp.expense_date,
-            "金额": float(exp.amount or 0),
-            "经办人": exp.handler or "",
-            "说明": exp.description or ""
-        })
+        data_list.append(_build_expense_payment_row(idx, exp))
         idx += 1
-    
+
     # Zero Hour Labor
-    from app.models.zero_hour_labor import ZeroHourLabor
-    from sqlalchemy.orm import selectinload as sl
-    
-    stmt_zhl = select(ZeroHourLabor).options(sl(ZeroHourLabor.upstream_contract))
-    
+    stmt_zhl = select(ZeroHourLabor).options(selectinload(ZeroHourLabor.upstream_contract))
+    stmt_zhl = stmt_zhl.outerjoin(ContractUpstream, ZeroHourLabor.upstream_contract_id == ContractUpstream.id)
+
     if start_date:
         stmt_zhl = stmt_zhl.where(ZeroHourLabor.labor_date >= start_date)
     if end_date:
         stmt_zhl = stmt_zhl.where(ZeroHourLabor.labor_date <= end_date)
+    stmt_zhl = _apply_upstream_text_filters(stmt_zhl, company_category, upstream_contract_name)
     
     stmt_zhl = stmt_zhl.order_by(ZeroHourLabor.labor_date.desc())
     
     result_zhl = await db.execute(stmt_zhl)
     rows_zhl = result_zhl.scalars().all()
-    
+
     for zhl in rows_zhl:
-        data_list.append({
-            "序号": idx,
-            "费用类型": "零星用工",
-            "费用归属": "项目用工" if zhl.attribution == "PROJECT" else "公司用工",
-            "费用类别": "零星用工",
-            "费用分类": "零星用工",
-            "关联上游合同": zhl.upstream_contract.contract_name if zhl.upstream_contract else "",
-            "发生日期": zhl.labor_date,
-            "金额": float(zhl.total_amount or 0),
-            "经办人": zhl.dispatch_unit or "",
-            "说明": f"技工{zhl.skilled_quantity or 0}人,普工{zhl.general_quantity or 0}人"
-        })
+        data_list.append(_build_zero_hour_expense_payment_row(idx, zhl))
         idx += 1
-        
-    df = pd.DataFrame(data_list)
+
+    df = _data_frame_with_columns(data_list, EXPENSE_PAYMENT_COLUMNS)
     filename = f"无合同费用付款报表_{datetime.now().strftime('%Y%m%d')}.xlsx"
     return _create_excel_response(df, '费用明细', filename)
+
+
+@router.get("/export/zero-hour-labor")
+async def export_zero_hour_labor_report(
+    start_date: date = None,
+    end_date: date = None,
+    upstream_contract_name: str = None,
+    company_category: str = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Export Zero Hour Labor report."""
+    stmt = select(ZeroHourLabor).options(
+        selectinload(ZeroHourLabor.upstream_contract),
+        selectinload(ZeroHourLabor.materials),
+    )
+    stmt = stmt.outerjoin(ContractUpstream, ZeroHourLabor.upstream_contract_id == ContractUpstream.id)
+
+    if start_date:
+        stmt = stmt.where(ZeroHourLabor.labor_date >= start_date)
+    if end_date:
+        stmt = stmt.where(ZeroHourLabor.labor_date <= end_date)
+    stmt = _apply_upstream_text_filters(stmt, company_category, upstream_contract_name)
+
+    stmt = stmt.order_by(ZeroHourLabor.labor_date.desc())
+    result = await db.execute(stmt)
+    rows = result.scalars().all()
+
+    data_list = [_build_zero_hour_labor_report_row(row) for row in rows]
+    df = _data_frame_with_columns(data_list, ZERO_HOUR_LABOR_REPORT_COLUMNS)
+    filename = f"零星用工报表_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    return _create_excel_response(df, '零星用工明细', filename)
 
 
 @router.get("/export/settlements/upstream")
@@ -812,6 +934,8 @@ async def export_downstream_settlements(
 @router.get("/export/association")
 async def export_association_report(
     query: str = None,
+    start_date: date = None,
+    end_date: date = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -829,6 +953,10 @@ async def export_association_report(
                 cast(ContractUpstream.serial_number, String).ilike(f"%{query}%")
             )
         )
+    if start_date:
+        stmt = stmt.where(ContractUpstream.sign_date >= start_date)
+    if end_date:
+        stmt = stmt.where(ContractUpstream.sign_date <= end_date)
     
     stmt = stmt.order_by(ContractUpstream.contract_code)
     
@@ -907,7 +1035,6 @@ async def export_association_report(
             exp_summary[exp_type_cn] = exp_summary.get(exp_type_cn, 0.0) + float(e.amount or 0)
         
         # Zero Hour Labor
-        from app.models.zero_hour_labor import ZeroHourLabor
         stmt_zhl = select(ZeroHourLabor).where(ZeroHourLabor.upstream_contract_id == up.id)
         res_zhl = await db.execute(stmt_zhl)
         zhls = res_zhl.scalars().all()

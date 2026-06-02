@@ -13,5 +13,13 @@ export function buildExportParams(filters = {}) {
     params.status = filters.status
   }
 
+  if (filters.companyCategory) {
+    params.company_category = filters.companyCategory
+  }
+
+  if (filters.upstreamContractName) {
+    params.upstream_contract_name = filters.upstreamContractName
+  }
+
   return params
 }

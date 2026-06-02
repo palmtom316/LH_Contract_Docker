@@ -25,4 +25,18 @@ describe('buildExportParams', () => {
       end_date: '2026-04-30'
     })
   })
+
+  it('includes company category and upstream contract filters when provided', () => {
+    expect(buildExportParams({
+      dateRange: ['2026-04-01', '2026-04-30'],
+      companyCategory: '市政工程',
+      upstreamContractName: '上游合同一',
+      status: '全部'
+    })).toEqual({
+      start_date: '2026-04-01',
+      end_date: '2026-04-30',
+      company_category: '市政工程',
+      upstream_contract_name: '上游合同一'
+    })
+  })
 })

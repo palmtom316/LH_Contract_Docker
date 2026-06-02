@@ -147,3 +147,12 @@ export function downloadAssociationReport(params) {
         responseType: 'blob'
     })
 }
+
+export function downloadZeroHourLaborReport(params) {
+    return request({
+        url: '/reports/export/zero-hour-labor',
+        method: 'get',
+        params,
+        responseType: 'blob'
+    })
+}

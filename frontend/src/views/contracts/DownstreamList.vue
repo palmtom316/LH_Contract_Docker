@@ -83,6 +83,12 @@
         </el-table-column>
         <el-table-column prop="category" label="合同类别" width="140" show-overflow-tooltip />
         <el-table-column prop="pricing_mode" label="计价模式" width="120" show-overflow-tooltip />
+        <el-table-column prop="upstream_contract_name" label="上游合同名称" min-width="200" show-overflow-tooltip>
+          <template #default="scope">
+            <div class="contract-cell--wrap">{{ scope.row.upstream_contract_name || '-' }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="sign_date" label="签约时间" width="120" sortable />
         <el-table-column prop="contract_amount" label="合同金额" width="150" align="right">
           <template #default="scope">
             <span class="contract-cell--amount">¥ {{ Number(scope.row.contract_amount).toLocaleString() }}</span>
@@ -112,7 +118,6 @@
             <span v-else class="cell-placeholder">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="sign_date" label="签订日期" width="100" sortable />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="scope">
             <el-tag :type="getStatusType(scope.row.status)">{{ scope.row.status }}</el-tag>
