@@ -135,7 +135,7 @@
       </template>
     </AppWorkspacePanel>
 
-    <el-dialog title="操作详情" v-model="detailVisible" :width="isMobile ? '92%' : '720px'">
+    <el-dialog title="操作详情" v-model="detailVisible" :width="isMobile ? '92%' : '720px'" append-to-body>
       <div class="audit-detail">
         <el-descriptions :column="1" border>
           <el-descriptions-item label="操作时间">{{ formatDateTime(currentLog.created_at) }}</el-descriptions-item>

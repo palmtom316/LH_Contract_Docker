@@ -89,7 +89,7 @@
     </AppWorkspacePanel>
 
     <!-- Option Dialog -->
-    <el-dialog v-model="dialogVisible" :title="dialogType==='create'?'新增选项':'编辑选项'">
+    <el-dialog v-model="dialogVisible" :title="dialogType==='create'?'新增选项':'编辑选项'" append-to-body>
         <el-form :model="optionForm" label-width="100px">
             <el-form-item label="显示名称">
                 <el-input v-model="optionForm.label" />

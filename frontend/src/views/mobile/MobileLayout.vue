@@ -83,7 +83,7 @@
       </div>
     </van-popup>
 
-    <el-dialog title="修改密码" v-model="changePwdVisible" :width="dialogWidth" :close-on-click-modal="false">
+    <el-dialog title="修改密码" v-model="changePwdVisible" :width="dialogWidth" append-to-body :close-on-click-modal="false">
       <el-form ref="pwdFormRef" :model="pwdForm" :rules="pwdRules" label-width="88px">
         <el-form-item label="当前密码" prop="old_password">
           <el-input v-model="pwdForm.old_password" type="password" show-password />

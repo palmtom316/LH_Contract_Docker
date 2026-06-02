@@ -136,6 +136,7 @@
       :title="dialogTitle" 
       v-model="dialogVisible" 
       width="500px"
+      append-to-body
       :close-on-click-modal="false"
     >
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
@@ -176,6 +177,7 @@
       title="重置密码" 
       v-model="resetPwdVisible" 
       width="400px"
+      append-to-body
       :close-on-click-modal="false"
     >
       <el-form ref="resetFormRef" :model="resetForm" :rules="resetRules" label-width="100px">
