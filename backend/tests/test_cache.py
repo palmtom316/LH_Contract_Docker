@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock, patch
 import json
 
 from app.core.cache import CacheManager, cache_manager
+from app.services.base_contract_service import BaseContractService
+from app.services.cache import cache, dashboard_cache_key
 
 
 @pytest.fixture
@@ -126,6 +128,21 @@ class TestReportCacheService:
         assert cached["year"] == 2024
         assert cached["total"] == 100000
         assert len(cached["items"]) == 1
+
+    async def test_contract_invalidation_clears_report_cache(self):
+        """Contract mutations should clear report caches that group by contract fields."""
+        cache_manager.use_redis = False
+        cache_manager.memory_cache = {}
+        await cache.clear()
+
+        await cache.set(dashboard_cache_key(), {"stale": True})
+        await cache_manager.set("reports:cost_monthly_quarterly_v2:2026:1", {"stale": True})
+
+        service = BaseContractService(db=None, model=object)
+        await service._invalidate_dashboard_cache()
+
+        assert await cache.get(dashboard_cache_key()) is None
+        assert await cache_manager.get("reports:cost_monthly_quarterly_v2:2026:1") is None
     
     async def test_cache_serialization(self, mock_cache_manager: CacheManager):
         """Test that complex data types are properly serialized"""
