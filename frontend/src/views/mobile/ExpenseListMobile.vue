@@ -1,0 +1,362 @@
+<template>
+  <div class="mobile-expense-list">
+    <div class="mobile-expense-list__controls">
+      <section class="mobile-expense-list__toolbar">
+        <van-tabs v-model:active="activeType" @change="handleTypeChange">
+          <van-tab title="普通费用" name="ordinary" />
+          <van-tab title="零星用工" name="labor" />
+        </van-tabs>
+      </section>
+
+      <section class="mobile-expense-list__filters">
+        <van-search
+          v-model="queryParams.keyword"
+          placeholder="搜索内容..."
+          show-action
+          @search="handleQuery"
+          @cancel="resetQuery"
+        />
+      </section>
+    </div>
+
+    <section class="mobile-expense-list__cards">
+      <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
+        <van-list
+          v-model:loading="listLoading"
+          :finished="finished"
+          finished-text="没有更多了"
+          :immediate-check="false"
+          @load="loadMore"
+        >
+          <template v-if="activeType === 'ordinary'">
+            <van-cell-group inset v-for="item in list" :key="item.id" class="expense-card">
+              <van-cell :title="item.expense_type" :label="item.project_name">
+                <template #value>
+                  <div class="amount-info">
+                    <div class="amount">¥{{ formatMoney(item.amount) }}</div>
+                    <van-tag :type="item.is_paid ? 'success' : 'warning'">{{ item.is_paid ? '已支付' : '未支付' }}</van-tag>
+                  </div>
+                </template>
+              </van-cell>
+              <van-cell>
+                <template #title>
+                  <div class="detail-row">
+                    <span>经办人: {{ item.handler_name }}</span>
+                    <span>日期: {{ formatDate(item.expense_date) }}</span>
+                  </div>
+                  <div class="detail-row" v-if="item.notes">
+                    <span class="notes">备注: {{ item.notes }}</span>
+                  </div>
+                </template>
+              </van-cell>
+              <van-cell v-if="item.attachments && item.attachments.length" title="附件" is-link @click="viewAttachments(item.attachments)">
+                <template #value>
+                  {{ item.attachments.length }}个附件
+                </template>
+              </van-cell>
+            </van-cell-group>
+          </template>
+
+          <template v-else>
+            <van-cell-group inset v-for="item in list" :key="item.id" class="expense-card">
+              <van-cell :title="item.worker_name" :label="item.job_content">
+                <template #value>
+                  <div class="amount-info">
+                    <div class="amount">¥{{ formatMoney(item.amount) }}</div>
+                    <div class="date">{{ formatDate(item.work_date) }}</div>
+                  </div>
+                </template>
+              </van-cell>
+              <van-cell>
+                <template #title>
+                  <div class="detail-row">
+                    <span>工时: {{ item.work_hours }}小时</span>
+                    <span>单价: ¥{{ item.unit_price }}</span>
+                  </div>
+                  <div class="detail-row" v-if="item.notes">
+                    <span class="notes">备注: {{ item.notes }}</span>
+                  </div>
+                </template>
+              </van-cell>
+            </van-cell-group>
+          </template>
+
+          <van-empty
+            v-if="!listLoading && list.length === 0"
+            description="暂无记录"
+          />
+        </van-list>
+      </van-pull-refresh>
+    </section>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive, onMounted } from 'vue';
+import dayjs from 'dayjs';
+import { showToast, showImagePreview } from 'vant';
+import * as expenseApi from '@/api/expense';
+import * as laborApi from '@/api/zeroHourLabor';
+import { formatMoney } from '@/utils/common';
+import { createProtectedObjectUrl } from '@/utils/protectedFiles';
+
+import {
+  Tabs as VanTabs,
+  Tab as VanTab,
+  Search as VanSearch,
+  PullRefresh as VanPullRefresh,
+  List as VanList,
+  Cell as VanCell,
+  CellGroup as VanCellGroup,
+  Tag as VanTag,
+  Empty as VanEmpty,
+} from 'vant';
+
+// State
+const activeType = ref('ordinary'); // ordinary, labor
+const refreshing = ref(false);
+const listLoading = ref(false);
+const finished = ref(false);
+const list = ref<any[]>([]);
+const total = ref(0);
+
+const queryParams = reactive({
+  page: 1,
+  page_size: 10,
+  keyword: '',
+  // Add specific filters if needed
+});
+
+// Helper
+const formatDate = (date: string) => {
+    return date ? dayjs(date).format('YYYY-MM-DD') : '-';
+};
+
+const viewAttachments = async (attachments: string) => {
+    if (!attachments) return;
+    try {
+        // Assume attachments is custom comma separated string or JSON? 
+        // Backend usually returns comma separated paths or array. 
+        // Let's assume array or string.
+        let paths: string[] = [];
+        if (Array.isArray(attachments)) {
+             paths = attachments;
+        } else if (typeof attachments === 'string') {
+             paths = attachments.split(',').map(path => path.trim()).filter(Boolean);
+        }
+
+        const urls = await Promise.all(paths.map(path => createProtectedObjectUrl(path)))
+        if (urls.length > 0) {
+            showImagePreview(urls);
+            window.setTimeout(() => {
+                urls.forEach(url => {
+                    if (url.startsWith('blob:')) {
+                        URL.revokeObjectURL(url)
+                    }
+                })
+            }, 60_000)
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('无法预览附件');
+    }
+}
+
+// Data Fetching
+const fetchList = async (isLoadMore = false) => {
+    if (!isLoadMore) {
+        listLoading.value = true;
+    }
+
+    try {
+        let res;
+        if (activeType.value === 'ordinary') {
+            res = await expenseApi.getExpenses(queryParams);
+        } else {
+            res = await laborApi.getZeroHourLaborList(queryParams);
+        }
+
+        const newItems = res.items || [];
+        if (isLoadMore) {
+            list.value = [...list.value, ...newItems];
+        } else {
+            list.value = newItems;
+        }
+
+        total.value = res.total || 0;
+        
+        if (list.value.length >= total.value) {
+            finished.value = true;
+        } else {
+            finished.value = false;
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('加载失败');
+        if (isLoadMore) {
+            queryParams.page--;
+            finished.value = true;
+        }
+    } finally {
+        listLoading.value = false;
+        refreshing.value = false;
+    }
+};
+
+const handleQuery = () => {
+    queryParams.page = 1;
+    finished.value = false;
+    fetchList();
+};
+
+const resetQuery = () => {
+    queryParams.keyword = '';
+    handleQuery();
+};
+
+const handleTypeChange = () => {
+    queryParams.page = 1;
+    finished.value = false;
+    list.value = [];
+    queryParams.keyword = '';
+    fetchList();
+};
+
+const onRefresh = () => {
+    queryParams.page = 1;
+    finished.value = false;
+    fetchList();
+};
+
+const loadMore = () => {
+    if (listLoading.value || finished.value) return;
+    queryParams.page++;
+    fetchList(true);
+};
+
+onMounted(() => {
+    fetchList();
+});
+
+</script>
+
+<style scoped>
+.mobile-expense-list {
+  display: grid;
+  gap: 14px;
+}
+
+.mobile-expense-list__controls {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: grid;
+  gap: 14px;
+}
+
+.mobile-expense-list__toolbar,
+.mobile-expense-list__filters,
+.mobile-expense-list__cards {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-soft);
+}
+
+.mobile-expense-list__toolbar {
+  padding: 14px 14px 6px;
+}
+
+.mobile-expense-list__cards {
+  padding: 12px;
+}
+
+.expense-card {
+  margin: 0 0 12px;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.mobile-expense-list__cards :deep(.van-list) {
+  display: grid;
+  gap: 12px;
+}
+
+.mobile-expense-list__cards :deep(.van-cell-group--inset) {
+  margin: 0;
+  background: var(--surface-panel);
+}
+
+.mobile-expense-list__cards :deep(.van-cell) {
+  padding: 14px 16px;
+}
+
+.mobile-expense-list__filters :deep(.van-search__content) {
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: var(--surface-panel);
+}
+
+.mobile-expense-list__toolbar :deep(.van-tabs__wrap) {
+  padding-bottom: 6px;
+}
+
+.mobile-expense-list__toolbar :deep(.van-tabs__line) {
+  background: var(--brand-primary);
+}
+
+.amount-info {
+    text-align: right;
+}
+
+.amount {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.detail-row {
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.notes {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.date {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+@media (min-width: 768px) {
+  .mobile-expense-list__controls {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.88fr);
+    align-items: start;
+  }
+
+  .mobile-expense-list__cards :deep(.van-list) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 420px) {
+  .detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .amount-info {
+    display: grid;
+    justify-items: start;
+    gap: 4px;
+    text-align: left;
+  }
+}
+</style>

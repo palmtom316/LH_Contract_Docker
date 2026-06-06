@@ -1,0 +1,645 @@
+@use './tokens.scss';
+
+html,
+body,
+#app {
+    min-height: 100vh;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+:root,
+:root.dark,
+:root[data-theme='dark'] {
+    --el-color-primary: hsl(var(--primary));
+    --el-color-primary-light-9: hsl(var(--primary) / 0.12);
+    --el-bg-color: hsl(var(--card));
+    --el-bg-color-page: hsl(var(--background));
+    --el-bg-color-overlay: hsl(var(--card));
+    --el-fill-color-blank: hsl(var(--card));
+    --el-fill-color: hsl(var(--muted));
+    --el-fill-color-light: hsl(var(--muted));
+    --el-fill-color-lighter: hsl(var(--muted));
+    --el-fill-color-extra-light: hsl(var(--muted));
+    --el-fill-color-dark: hsl(var(--muted));
+    --el-text-color-primary: hsl(var(--foreground));
+    --el-text-color-regular: hsl(var(--muted-foreground));
+    --el-text-color-secondary: hsl(var(--muted-foreground));
+    --el-text-color-placeholder: hsl(var(--muted-foreground));
+    --el-border-color: hsl(var(--border));
+    --el-border-color-light: hsl(var(--border));
+    --el-border-color-lighter: hsl(var(--border));
+    --el-border-color-extra-light: hsl(var(--border));
+    --el-border-color-dark: hsl(var(--border));
+    --el-mask-color: var(--surface-overlay);
+    --el-box-shadow: var(--shadow-card);
+    --el-box-shadow-light: var(--shadow-soft);
+    --el-card-bg-color: hsl(var(--card));
+    --el-dialog-bg-color: hsl(var(--card));
+    --el-drawer-bg-color: hsl(var(--card));
+    --el-table-bg-color: hsl(var(--card));
+    --el-table-tr-bg-color: hsl(var(--card));
+    --el-table-header-bg-color: hsl(var(--muted));
+    --el-table-row-hover-bg-color: color-mix(in srgb, hsl(var(--muted)) 48%, hsl(var(--card)) 52%);
+    --el-table-border-color: hsl(var(--border));
+    --el-table-header-text-color: hsl(var(--muted-foreground));
+    --el-table-text-color: hsl(var(--foreground));
+}
+
+body {
+    margin: 0;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-font-smoothing: antialiased;
+    font-family: var(--font-family-base);
+    background: var(--surface-page-gradient);
+    background-color: hsl(var(--background));
+    background-attachment: fixed;
+    color: hsl(var(--foreground));
+    transition: background-color 160ms ease, color 160ms ease;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+::selection {
+    background: hsl(var(--primary) / 0.16);
+}
+
+button:focus-visible,
+a:focus-visible,
+.native-input:focus-visible,
+.el-select:focus-visible,
+.el-textarea:focus-visible,
+.el-button:focus-visible,
+.el-input__wrapper.is-focus {
+    outline: 2px solid transparent;
+    box-shadow: var(--shadow-focus);
+}
+
+.el-input__inner:focus,
+.el-input__inner:focus-visible,
+.el-textarea__inner:focus,
+.el-textarea__inner:focus-visible,
+.el-select__selected-item:focus,
+.el-select__selected-item:focus-visible {
+    outline: none;
+    box-shadow: none !important;
+}
+
+.el-button,
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner,
+.el-card {
+    border-radius: var(--radius);
+    transition:
+        background-color 180ms ease,
+        border-color 180ms ease,
+        box-shadow 180ms ease,
+        color 180ms ease,
+        transform 180ms ease;
+}
+
+.app-container {
+    color: hsl(var(--foreground));
+}
+
+.el-button {
+    min-height: var(--workspace-control-height);
+    height: var(--workspace-control-height);
+    border-radius: var(--radius);
+    font-weight: 500;
+    font-size: 13px;
+    padding-inline: 14px;
+    letter-spacing: 0;
+    box-shadow: none;
+}
+
+.el-button:hover,
+.el-button:focus-visible {
+    box-shadow: none;
+}
+
+.el-button--default {
+    background: hsl(var(--card));
+    border-color: hsl(var(--border));
+    color: hsl(var(--foreground));
+}
+
+.el-button--default:hover,
+.el-button--default:focus-visible {
+    background: hsl(var(--muted));
+    border-color: hsl(var(--border));
+    color: hsl(var(--foreground));
+}
+
+.el-button--primary {
+    background: hsl(var(--primary)) !important;
+    border-color: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+}
+
+.el-button--primary:hover,
+.el-button--primary:focus-visible {
+    background: hsl(var(--primary) / 0.92) !important;
+    border-color: hsl(var(--primary) / 0.92) !important;
+}
+
+.el-button.is-plain,
+.el-button--primary.is-plain {
+    background: hsl(var(--card)) !important;
+    border-color: hsl(var(--border)) !important;
+    color: hsl(var(--foreground)) !important;
+}
+
+.el-button.is-plain:hover,
+.el-button.is-plain:focus-visible,
+.el-button--primary.is-plain:hover,
+.el-button--primary.is-plain:focus-visible {
+    background: hsl(var(--muted)) !important;
+    border-color: hsl(var(--border)) !important;
+    color: hsl(var(--foreground)) !important;
+}
+
+.el-button [class*='el-icon'] + span,
+.el-button span + [class*='el-icon'] {
+    margin-left: 6px;
+}
+
+.el-button--success {
+    background: var(--status-success) !important;
+    border-color: var(--status-success) !important;
+    color: #f6fffb !important;
+}
+
+.el-button--warning {
+    background: var(--status-warning) !important;
+    border-color: var(--status-warning) !important;
+    color: #fffaf1 !important;
+}
+
+.el-button--danger {
+    background: var(--status-danger) !important;
+    border-color: var(--status-danger) !important;
+    color: #fff7fb !important;
+}
+
+.el-button--success.is-plain,
+.el-button--warning.is-plain,
+.el-button--danger.is-plain {
+    background: var(--surface-panel);
+}
+
+.el-card {
+    border: 1px solid var(--workspace-panel-border);
+    border-radius: calc(var(--radius) + 2px);
+    background: var(--surface-panel);
+    box-shadow: var(--shadow-card);
+}
+
+.el-card__header {
+    padding: 16px 16px 0;
+    border-bottom: 0;
+}
+
+.el-card__body {
+    padding: 16px;
+}
+
+.app-chrome-icon-button {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--workspace-panel-border);
+    border-radius: var(--radius);
+    background: var(--surface-panel);
+    color: hsl(var(--muted-foreground));
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--shadow-soft);
+    transition:
+        background-color 180ms ease,
+        border-color 180ms ease,
+        box-shadow 180ms ease,
+        color 180ms ease,
+        transform 180ms ease;
+}
+
+.app-chrome-icon-button:hover {
+    background: var(--surface-sidebar-hover);
+    border-color: hsl(var(--border));
+    color: hsl(var(--foreground));
+    transform: translateY(-1px);
+}
+
+.app-chrome-icon-button .el-icon {
+    font-size: 18px;
+}
+
+.contract-list-file-button.el-button,
+.contract-list-action-button.el-button {
+    min-height: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.contract-list-file-button.el-button {
+    width: 32px;
+    padding: 0;
+}
+
+.contract-list-action-button.el-button {
+    min-width: 42px;
+    padding: 0 10px;
+}
+
+.contract-list-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.contract-list-actions .el-button + .el-button {
+    margin-left: 0;
+}
+
+@media (max-width: 767px) {
+    .contract-list-file-button.el-button,
+    .contract-list-action-button.el-button {
+        min-height: 44px;
+        height: 44px;
+    }
+
+    .contract-list-file-button.el-button {
+        width: 44px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-chrome-icon-button {
+        transition: none;
+    }
+}
+
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner,
+.el-date-editor.el-input__wrapper {
+    min-height: var(--workspace-control-height);
+    border-radius: var(--radius);
+    background: var(--workspace-control-background);
+    border: 1px solid hsl(var(--input));
+    box-shadow: none;
+}
+
+.el-input__wrapper:hover,
+.el-select__wrapper:hover,
+.el-textarea__inner:hover,
+.el-date-editor.el-input__wrapper:hover {
+    border-color: hsl(var(--border));
+    box-shadow: none;
+}
+
+.el-input__wrapper.is-focus,
+.el-select__wrapper.is-focused,
+.el-textarea__inner:focus,
+.el-date-editor.el-input__wrapper.is-focus {
+    border-color: hsl(var(--ring));
+    box-shadow: var(--shadow-focus);
+}
+
+.el-input__inner,
+.el-select__placeholder,
+.el-textarea__inner,
+.el-date-editor .el-range-input {
+    font-size: 14px;
+    color: hsl(var(--foreground));
+}
+
+.el-input__inner::placeholder,
+.el-textarea__inner::placeholder {
+    color: hsl(var(--muted-foreground));
+}
+
+.el-date-editor,
+.el-date-editor.el-input,
+.el-date-editor.el-input__wrapper,
+.el-date-editor--daterange,
+.el-date-editor--monthrange {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0 !important;
+}
+
+.el-date-editor .el-range-input {
+    min-width: 0;
+    width: 0;
+    flex: 1 1 0;
+    color: var(--text-primary);
+}
+
+.el-date-editor .el-range-separator,
+.el-date-editor .el-range__icon,
+.el-date-editor .el-range__close-icon {
+    color: hsl(var(--muted-foreground));
+}
+
+.el-date-editor--daterange.el-input__wrapper,
+.el-date-editor--monthrange.el-input__wrapper,
+.el-range-editor.el-input__wrapper {
+    display: inline-flex;
+    align-items: center;
+    width: 100%;
+    min-width: 0 !important;
+    gap: 8px;
+    padding-inline: 12px;
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.el-date-editor .el-range-separator {
+    flex: 0 0 auto;
+    font-weight: 600;
+    font-size: 0;
+    padding-inline: 0;
+    width: 0;
+    overflow: hidden;
+}
+
+.el-date-editor .el-range__icon,
+.el-date-editor .el-range__close-icon {
+    flex: 0 0 auto;
+}
+
+.el-popper {
+    border-radius: var(--radius-lg) !important;
+}
+
+.el-select__popper.el-popper,
+.el-picker__popper.el-popper,
+.el-dropdown__popper.el-popper {
+    border: 1px solid hsl(var(--border)) !important;
+    background: var(--surface-panel) !important;
+    box-shadow: var(--shadow-frame) !important;
+}
+
+.el-select-dropdown,
+.el-picker-panel,
+.el-dropdown-menu {
+    background: var(--surface-panel) !important;
+    color: hsl(var(--popover-foreground)) !important;
+}
+
+.el-select-dropdown__item,
+.el-dropdown-menu__item {
+    color: hsl(var(--muted-foreground)) !important;
+    border-radius: 8px;
+}
+
+.el-select-dropdown__item.hover,
+.el-select-dropdown__item:hover,
+.el-dropdown-menu__item:hover {
+    background: hsl(var(--muted)) !important;
+    color: hsl(var(--foreground)) !important;
+}
+
+.el-select-dropdown__item.selected {
+    color: hsl(var(--primary)) !important;
+    font-weight: 600;
+}
+
+.el-table {
+    border-radius: 0;
+    overflow: hidden;
+    background: var(--surface-panel);
+    color: hsl(var(--foreground));
+}
+
+.el-table tr,
+.el-table tr > td.el-table__cell {
+    background-color: var(--surface-panel);
+}
+
+.el-table th.el-table__cell {
+    font-weight: 500;
+    color: hsl(var(--muted-foreground));
+    background-color: hsl(var(--muted));
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.el-table td.el-table__cell {
+    color: hsl(var(--foreground));
+    font-size: 13px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+
+.el-table tr:hover > td.el-table__cell,
+.el-table tbody tr:hover > td.el-table__cell {
+    background-color: color-mix(in srgb, hsl(var(--muted)) 55%, hsl(var(--card)) 45%);
+}
+
+.el-tag {
+    border-radius: 999px;
+    padding-inline: 10px;
+    min-height: 22px;
+    height: 22px;
+    line-height: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    border-color: transparent;
+    background: hsl(var(--muted));
+    color: hsl(var(--foreground));
+}
+
+.el-tag--info {
+    background: hsl(var(--muted)) !important;
+    color: hsl(var(--muted-foreground)) !important;
+}
+
+.el-tag--success {
+    background: rgb(16 185 129 / 0.1) !important;
+    color: rgb(5 122 85) !important;
+}
+
+.el-tag--warning {
+    background: rgb(245 158 11 / 0.12) !important;
+    color: rgb(161 98 7) !important;
+}
+
+.el-tag--danger {
+    background: rgb(239 68 68 / 0.1) !important;
+    color: rgb(185 28 28) !important;
+}
+
+.el-tag.el-tag--primary {
+    background: hsl(var(--primary) / 0.1) !important;
+    color: var(--brand-primary-strong) !important;
+}
+
+.el-drawer__header {
+    padding: 16px 20px;
+    margin-bottom: 0;
+    border-bottom: 1px solid hsl(var(--border));
+    font-weight: 600;
+    font-size: 14px;
+    color: hsl(var(--foreground));
+}
+
+.el-drawer__body {
+    padding: 16px 20px;
+}
+
+.el-overlay-message-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.el-message-box {
+    max-width: calc(100vw - 32px);
+    border: 1px solid var(--workspace-panel-border);
+    border-radius: calc(var(--radius) + 2px);
+    background: var(--surface-panel);
+    box-shadow: var(--shadow-frame);
+}
+
+.el-message-box__header {
+    padding: 16px 20px 8px;
+}
+
+.el-message-box__title {
+    color: hsl(var(--foreground));
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.el-message-box__content {
+    padding: 8px 20px 16px;
+    color: hsl(var(--muted-foreground));
+}
+
+.el-message-box__btns {
+    padding: 0 20px 18px;
+}
+
+.el-dialog__header {
+    padding: 16px 20px;
+    border-bottom: 1px solid hsl(var(--border));
+    margin-right: 0;
+}
+
+.el-dialog__title {
+    font-weight: 600;
+    font-size: 14px;
+    color: hsl(var(--foreground));
+}
+
+.app-tabs {
+    --el-tabs-header-height: auto;
+}
+
+.app-tabs .el-tabs__header {
+    margin: 0 0 8px;
+}
+
+.app-tabs .el-tabs__nav-wrap::after {
+    background: hsl(var(--border));
+}
+
+.app-tabs .el-tabs__item {
+    height: auto;
+    padding: 8px 12px;
+    color: hsl(var(--muted-foreground));
+    border-radius: 12px 12px 0 0;
+    transition: color 160ms ease, background-color 160ms ease;
+}
+
+.app-tabs .el-tabs__item.is-active {
+    color: hsl(var(--primary)) !important;
+    background: hsl(var(--accent)) !important;
+}
+
+.app-tabs--line :deep(.el-tabs__header) {
+    margin: 0 0 var(--space-4);
+}
+
+.app-tabs--line :deep(.el-tabs__nav-wrap::after) {
+    background: hsl(var(--border));
+}
+
+.app-tabs--line :deep(.el-tabs__item) {
+    height: 36px;
+    padding: 0 4px;
+    margin-right: 20px;
+    border-radius: 0;
+    color: hsl(var(--muted-foreground));
+    background: transparent;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.app-tabs--line :deep(.el-tabs__item.is-active) {
+    color: hsl(var(--foreground));
+    background: transparent;
+}
+
+.app-tabs--line :deep(.el-tabs__active-bar) {
+    height: 2px;
+    border-radius: 999px;
+    background: hsl(var(--primary)) !important;
+}
+
+.app-tabs--line :deep(.el-tabs__content) {
+    padding-top: 12px;
+}
+
+.custom-footer-table .el-table__footer-wrapper tbody td,
+.custom-footer-table .el-table__fixed-footer-wrapper tbody td,
+.custom-footer-table .el-table__footer-wrapper tbody tr,
+.custom-footer-table .el-table__fixed-footer-wrapper tbody tr {
+    background-color: var(--status-highlight) !important;
+    color: hsl(var(--foreground)) !important;
+    font-weight: 700 !important;
+    font-size: 14px !important;
+    --el-table-row-hover-bg-color: var(--status-highlight) !important;
+}
+
+.custom-footer-table .el-table__footer-wrapper tbody td .cell,
+.custom-footer-table .el-table__fixed-footer-wrapper tbody td .cell {
+    background-color: var(--status-highlight) !important;
+    color: hsl(var(--foreground)) !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+}
+
+@media only screen and (max-width: 767px) {
+    .el-dialog {
+        width: 90% !important;
+        max-width: none !important;
+    }
+}

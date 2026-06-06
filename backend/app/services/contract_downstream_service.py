@@ -1,0 +1,592 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, desc, or_, outerjoin, delete as sql_delete
+from sqlalchemy.orm import selectinload
+from typing import List, Optional, Dict, Any
+from datetime import datetime, date
+from decimal import Decimal
+
+from app.models.contract_downstream import (
+    ContractDownstream,
+    FinanceDownstreamPayable,
+    FinanceDownstreamPayment,
+    DownstreamSettlement,
+    FinanceDownstreamInvoice,
+    DownstreamUpstreamAllocation
+)
+from app.models.contract_upstream import ContractUpstream
+from app.schemas.contract_downstream import (
+    ContractDownstreamCreate,
+    ContractDownstreamUpdate,
+    AllocationCreate,
+)
+from app.services.cache import cache, dashboard_cache_key
+from app.services.status_service import calculate_contract_status
+from app.models.user import User
+from app.services.audit_service import create_audit_log, AuditAction, ResourceType
+from app.services.contract_code_generator import ContractCodeGenerator
+from app.services.base_contract_service import BaseContractService
+from app.core.errors import AppException, ErrorCode, DuplicateRecordError, ResourceNotFoundError, ValidationError
+
+
+class ContractWrapper:
+    """
+    Wrapper to enforce SQL-calculated totals over model properties.
+    Proxies all other attributes to the underlying contract model.
+    """
+    def __init__(self, contract, total_payable, total_invoiced, total_paid, total_settlement):
+        self._contract = contract
+        self._total_payable = total_payable or 0
+        self._total_invoiced = total_invoiced or 0
+        self._total_paid = total_paid or 0
+        self._total_settlement = total_settlement or 0
+
+    @property
+    def total_payable(self):
+        return self._total_payable
+
+    @property
+    def total_invoiced(self):
+        return self._total_invoiced
+
+    @property
+    def total_paid(self):
+        return self._total_paid
+
+    @property
+    def total_settlement(self):
+        return self._total_settlement
+
+    def __getattr__(self, name):
+        return getattr(self._contract, name)
+
+class ContractDownstreamService(BaseContractService[ContractDownstream]):
+    def __init__(self, db: AsyncSession):
+        super().__init__(db, ContractDownstream)
+
+    async def get_contract(self, contract_id: int) -> Optional[ContractDownstream]:
+        """Get contract by ID (Override to load relations)"""
+        query = select(ContractDownstream).options(
+            selectinload(ContractDownstream.upstream_contract),
+            selectinload(ContractDownstream.payables),
+            selectinload(ContractDownstream.invoices),
+            selectinload(ContractDownstream.payments),
+            selectinload(ContractDownstream.settlements)
+        ).where(ContractDownstream.id == contract_id)
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+
+    async def get_contract_with_relations(self, contract_id: int) -> Optional[ContractDownstream]:
+        """Get contract by ID with all financial relations loaded"""
+        return await self.get_contract(contract_id)
+
+    async def list_contracts(
+        self,
+        page: int = 1,
+        page_size: int = 10,
+        keyword: Optional[str] = None,
+        status: Optional[str] = None,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        category: Optional[str] = None,
+        upstream_contract_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """List contracts with filtering and pagination (Optimized)"""
+        
+        # Payables Sum
+        payables_sub = (
+            select(func.sum(FinanceDownstreamPayable.amount))
+            .where(FinanceDownstreamPayable.contract_id == ContractDownstream.id)
+            .correlate(ContractDownstream)
+            .scalar_subquery()
+        )
+        
+        # Invoices Sum
+        invoices_sub = (
+            select(func.sum(FinanceDownstreamInvoice.amount))
+            .where(FinanceDownstreamInvoice.contract_id == ContractDownstream.id)
+            .correlate(ContractDownstream)
+            .scalar_subquery()
+        )
+        
+        # Payments Sum
+        payments_sub = (
+            select(func.sum(FinanceDownstreamPayment.amount))
+            .where(FinanceDownstreamPayment.contract_id == ContractDownstream.id)
+            .correlate(ContractDownstream)
+            .scalar_subquery()
+        )
+        
+        # Settlements Sum
+        settlements_sub = (
+            select(func.sum(DownstreamSettlement.settlement_amount))
+            .where(DownstreamSettlement.contract_id == ContractDownstream.id)
+            .correlate(ContractDownstream)
+            .scalar_subquery()
+        )
+
+        query = select(
+            ContractDownstream,
+            payables_sub.label("total_payable"),
+            invoices_sub.label("total_invoiced"),
+            payments_sub.label("total_paid"),
+            settlements_sub.label("total_settlement")
+        ).options(
+            selectinload(ContractDownstream.upstream_contract),
+             # Simplify eager loads for list view - keep upstream and settlements (for reports)
+            selectinload(ContractDownstream.settlements)
+        )
+
+        if keyword:
+            conditions = [
+                ContractDownstream.contract_name.ilike(f"%{keyword}%"),
+                ContractDownstream.contract_code.ilike(f"%{keyword}%"),
+                ContractDownstream.party_a_name.ilike(f"%{keyword}%"),
+                ContractDownstream.party_b_name.ilike(f"%{keyword}%")
+            ]
+            if keyword.isdigit():
+                conditions.append(ContractDownstream.serial_number == int(keyword))
+                conditions.append(ContractDownstream.id == int(keyword))
+            
+            query = query.where(or_(*conditions))
+
+        if status:
+            query = query.where(ContractDownstream.status == status)
+
+        if start_date:
+            query = query.where(ContractDownstream.sign_date >= start_date)
+        
+        if end_date:
+            query = query.where(ContractDownstream.sign_date <= end_date)
+
+        if category:
+            query = query.where(ContractDownstream.category == category)
+
+        if upstream_contract_id:
+            query = query.where(ContractDownstream.upstream_contract_id == upstream_contract_id)
+
+        # Count total
+        count_query = select(func.count()).select_from(query.subquery())
+        total = (await self.db.execute(count_query)).scalar_one()
+
+        # Pagination
+        query = query.order_by(desc(ContractDownstream.created_at)).offset((page - 1) * page_size).limit(page_size)
+        result = await self.db.execute(query)
+        rows = result.all()
+        
+        items = [
+            ContractWrapper(r[0], r[1], r[2], r[3], r[4])
+            for r in rows
+        ]
+
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "page_size": page_size
+        }
+
+    async def list_all_contracts(
+        self, 
+        keyword: Optional[str] = None, 
+        status: Optional[str] = None,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        category: Optional[str] = None,
+        upstream_contract_id: Optional[int] = None
+    ) -> List[ContractDownstream]:
+        """List all contracts for export (no pagination) - Optimized"""
+        
+        payables_sub = (
+            select(func.sum(FinanceDownstreamPayable.amount))
+            .where(FinanceDownstreamPayable.contract_id == ContractDownstream.id)
+            .correlate(ContractDownstream)
+            .scalar_subquery()
+        )
+        
+        invoices_sub = (
+            select(func.sum(FinanceDownstreamInvoice.amount))
+            .where(FinanceDownstreamInvoice.contract_id == ContractDownstream.id)
+            .correlate(ContractDownstream)
+            .scalar_subquery()
+        )
+        
+        payments_sub = (
+            select(func.sum(FinanceDownstreamPayment.amount))
+            .where(FinanceDownstreamPayment.contract_id == ContractDownstream.id)
+            .correlate(ContractDownstream)
+            .scalar_subquery()
+        )
+        
+        settlements_sub = (
+            select(func.sum(DownstreamSettlement.settlement_amount))
+            .where(DownstreamSettlement.contract_id == ContractDownstream.id)
+            .correlate(ContractDownstream)
+            .scalar_subquery()
+        )
+
+        query = select(
+            ContractDownstream,
+            payables_sub.label("total_payable"),
+            invoices_sub.label("total_invoiced"),
+            payments_sub.label("total_paid"),
+            settlements_sub.label("total_settlement")
+        ).options(
+            selectinload(ContractDownstream.upstream_contract),
+            selectinload(ContractDownstream.settlements)
+        )
+
+        if keyword:
+            conditions = [
+                ContractDownstream.contract_name.ilike(f"%{keyword}%"),
+                ContractDownstream.contract_code.ilike(f"%{keyword}%"),
+                ContractDownstream.party_a_name.ilike(f"%{keyword}%"),
+                ContractDownstream.party_b_name.ilike(f"%{keyword}%")
+            ]
+            if keyword.isdigit():
+                conditions.append(ContractDownstream.serial_number == int(keyword))
+                conditions.append(ContractDownstream.id == int(keyword))
+            query = query.where(or_(*conditions))
+
+        if status:
+            query = query.where(ContractDownstream.status == status)
+
+        if start_date:
+            query = query.where(ContractDownstream.sign_date >= start_date)
+        
+        if end_date:
+            query = query.where(ContractDownstream.sign_date <= end_date)
+
+        if category:
+            query = query.where(ContractDownstream.category == category)
+
+        if upstream_contract_id:
+            query = query.where(ContractDownstream.upstream_contract_id == upstream_contract_id)
+
+        query = query.order_by(desc(ContractDownstream.created_at))
+        result = await self.db.execute(query)
+        rows = result.all()
+        
+        return [
+            ContractWrapper(r[0], r[1], r[2], r[3], r[4])
+            for r in rows
+        ]
+
+    async def create_contract(self, contract_in: ContractDownstreamCreate, user: User) -> ContractDownstream:
+        """Create new downstream contract"""
+        data = contract_in.model_dump()
+        
+        # Auto-generate contract code if not provided or empty (use sign_date for year/month)
+        if not data.get('contract_code') or data['contract_code'].strip() == '':
+            code_generator = ContractCodeGenerator(self.db)
+            sign_date = data.get('sign_date')
+            data['contract_code'] = await code_generator.generate_downstream_code(sign_date)
+        
+        # Check unique serial_number
+        if contract_in.serial_number:
+            if await self.check_serial_number_exists(contract_in.serial_number):
+                raise DuplicateRecordError(
+                    resource_type="合同序号",
+                    field_name="serial_number",
+                    field_value=contract_in.serial_number,
+                )
+
+        # Check unique contract_code
+        if await self.check_contract_code_exists(data['contract_code']):
+            raise AppException(
+                error_code=ErrorCode.CONTRACT_NUMBER_EXISTS,
+                message="合同编号已存在",
+                status_code=409,
+            )
+
+        contract = ContractDownstream(**data, created_by=user.id)
+        self.db.add(contract)
+        await self.db.flush()
+        await create_audit_log(
+            db=self.db,
+            user=user,
+            action=AuditAction.CREATE,
+            resource_type=ResourceType.DOWNSTREAM_CONTRACT,
+            resource_id=contract.id,
+            resource_name=contract.contract_name,
+            new_values=contract_in.model_dump(mode='json'),
+            description=f"创建下游合同: {contract.contract_name}"
+        )
+        await self.db.commit()
+        await self.db.refresh(contract)
+        
+        # Invalidate dashboard cache
+        await self._invalidate_dashboard_cache()
+        
+        # Return with eager loaded relations if needed 
+        return await self.get_contract(contract.id)
+
+    async def update_contract(self, contract_id: int, contract_in: ContractDownstreamUpdate, user: User) -> ContractDownstream:
+        """Update existing contract"""
+        contract = await self.get_contract(contract_id)
+        if not contract:
+            raise ResourceNotFoundError(
+                resource_type="合同",
+                resource_id=contract_id,
+                error_code=ErrorCode.CONTRACT_NOT_FOUND,
+            )
+
+        old_values = {
+            k: getattr(contract, k) for k in contract_in.model_dump(exclude_unset=True).keys() 
+            if hasattr(contract, k)
+        }
+
+        update_data = contract_in.model_dump(exclude_unset=True, exclude={'upstream_contract_name_snapshot'})
+
+        # Check serial_number uniqueness
+        if 'serial_number' in update_data and update_data['serial_number'] != contract.serial_number:
+            if await self.check_serial_number_exists(update_data['serial_number'], exclude_id=contract_id):
+                raise DuplicateRecordError(
+                    resource_type="合同序号",
+                    field_name="serial_number",
+                    field_value=update_data['serial_number'],
+                )
+
+        # Check contract_code uniqueness
+        if 'contract_code' in update_data and update_data['contract_code'] != contract.contract_code:
+            if await self.check_contract_code_exists(update_data['contract_code'], exclude_id=contract_id):
+                raise AppException(
+                    error_code=ErrorCode.CONTRACT_NUMBER_EXISTS,
+                    message="合同编号已存在",
+                    status_code=409,
+                )
+
+        for field, value in update_data.items():
+            setattr(contract, field, value)
+
+        await create_audit_log(
+            db=self.db,
+            user=user,
+            action=AuditAction.UPDATE,
+            resource_type=ResourceType.DOWNSTREAM_CONTRACT,
+            resource_id=contract.id,
+            resource_name=contract.contract_name,
+            old_values=old_values,
+            new_values=update_data,
+            description=f"更新下游合同: {contract.contract_name}"
+        )
+        await self.db.commit()
+        await self.db.refresh(contract)
+        
+        await self._invalidate_dashboard_cache()
+
+        return contract
+
+    async def delete_contract(self, contract_id: int, user: User) -> None:
+        """Delete contract"""
+        contract = await self.get_contract(contract_id)
+        if not contract:
+            raise ResourceNotFoundError(
+                resource_type="合同",
+                resource_id=contract_id,
+                error_code=ErrorCode.CONTRACT_NOT_FOUND,
+            )
+
+        contract_name = contract.contract_name
+        contract_data = {
+            "id": contract.id,
+            "serial_number": contract.serial_number,
+            "contract_name": contract.contract_name,
+            "contract_code": contract.contract_code
+        }
+
+        await self.db.delete(contract)
+        await create_audit_log(
+            db=self.db,
+            user=user,
+            action=AuditAction.DELETE,
+            resource_type=ResourceType.DOWNSTREAM_CONTRACT,
+            resource_id=contract_id,
+            resource_name=contract_name,
+            old_values=contract_data,
+            description=f"删除下游合同: {contract_name}"
+        )
+        await self.db.commit()
+        
+        await self._invalidate_dashboard_cache()
+
+    async def refresh_contract_status(self, contract_id: int) -> None:
+        """Recalculate and update contract status"""
+        contract = await self.get_contract_with_relations(contract_id)
+        if not contract:
+            return
+
+        # Calculate Totals
+        total_settlement = sum(s.settlement_amount or 0 for s in contract.settlements)
+        total_paid = sum(p.amount or 0 for p in contract.payments)
+        total_payable = sum(p.amount or 0 for p in contract.payables)
+
+        new_status = calculate_contract_status(contract, total_settlement, total_paid, total_payable)
+
+        if contract.status != new_status:
+            contract.status = new_status
+            self.db.add(contract)
+            await self.db.commit()
+
+        await self._invalidate_dashboard_cache()
+
+    # ===== Downstream-to-Upstream Allocations =====
+    async def list_allocations(self, contract_id: int) -> List[DownstreamUpstreamAllocation]:
+        """列出某下游合同的所有分摊条目"""
+        query = (
+            select(DownstreamUpstreamAllocation)
+            .where(DownstreamUpstreamAllocation.downstream_contract_id == contract_id)
+            .order_by(DownstreamUpstreamAllocation.id)
+        )
+        result = await self.db.execute(query)
+        return result.scalars().all()
+
+    async def replace_allocations(
+        self,
+        contract_id: int,
+        items: List[AllocationCreate],
+        user: User,
+    ) -> List[DownstreamUpstreamAllocation]:
+        """原子替换某下游合同的所有分摊条目，并强校验金额平衡"""
+        contract = await self.get_contract(contract_id)
+        if not contract:
+            raise ResourceNotFoundError(
+                resource_type="合同",
+                resource_id=contract_id,
+                error_code=ErrorCode.CONTRACT_NOT_FOUND,
+            )
+
+        # 校验：上游 ID 不能重复
+        upstream_ids = [item.upstream_contract_id for item in items]
+        if len(upstream_ids) != len(set(upstream_ids)):
+            raise ValidationError(
+                message="同一上游合同在分摊明细中重复",
+                field_errors={"allocations": "请合并同一上游合同的多条分摊"},
+            )
+
+        # 校验：所有上游合同存在
+        if upstream_ids:
+            existing_q = select(ContractUpstream.id).where(ContractUpstream.id.in_(upstream_ids))
+            existing_ids = {row[0] for row in (await self.db.execute(existing_q)).all()}
+            missing = [uid for uid in upstream_ids if uid not in existing_ids]
+            if missing:
+                raise ValidationError(
+                    message=f"上游合同不存在: {missing}",
+                    field_errors={"upstream_contract_id": f"以下上游合同不存在: {missing}"},
+                )
+
+        # 强平衡校验：Σ amount == contract_amount（容差 0.01）
+        contract_amount = Decimal(contract.contract_amount or 0)
+        total = sum((Decimal(item.amount) for item in items), Decimal("0"))
+        if abs(total - contract_amount) > Decimal("0.01"):
+            raise ValidationError(
+                message=f"分摊总额 {total} 与合同金额 {contract_amount} 不一致",
+                field_errors={
+                    "allocations": f"分摊总额必须等于合同金额 {contract_amount}, 当前为 {total}"
+                },
+            )
+
+        # 原子替换：删除旧条目，插入新条目
+        await self.db.execute(
+            sql_delete(DownstreamUpstreamAllocation).where(
+                DownstreamUpstreamAllocation.downstream_contract_id == contract_id
+            )
+        )
+
+        new_objs: List[DownstreamUpstreamAllocation] = []
+        for item in items:
+            obj = DownstreamUpstreamAllocation(
+                downstream_contract_id=contract_id,
+                upstream_contract_id=item.upstream_contract_id,
+                amount=item.amount,
+                description=item.description,
+                created_by=user.id,
+                updated_by=user.id,
+            )
+            self.db.add(obj)
+            new_objs.append(obj)
+
+        await create_audit_log(
+            db=self.db,
+            user=user,
+            action=AuditAction.UPDATE,
+            resource_type=ResourceType.DOWNSTREAM_CONTRACT,
+            resource_id=contract_id,
+            resource_name=contract.contract_name,
+            new_values={
+                "allocations": [
+                    {
+                        "upstream_contract_id": item.upstream_contract_id,
+                        "amount": str(item.amount),
+                        "description": item.description,
+                    }
+                    for item in items
+                ]
+            },
+            description=f"更新下游合同分摊: {contract.contract_name}",
+        )
+
+        await self.db.commit()
+        for obj in new_objs:
+            await self.db.refresh(obj)
+
+        await self._invalidate_dashboard_cache()
+        return new_objs
+
+    async def clear_allocations(self, contract_id: int, user: User) -> None:
+        """清空某下游合同的所有分摊条目"""
+        contract = await self.get_contract(contract_id)
+        if not contract:
+            raise ResourceNotFoundError(
+                resource_type="合同",
+                resource_id=contract_id,
+                error_code=ErrorCode.CONTRACT_NOT_FOUND,
+            )
+
+        await self.db.execute(
+            sql_delete(DownstreamUpstreamAllocation).where(
+                DownstreamUpstreamAllocation.downstream_contract_id == contract_id
+            )
+        )
+        await create_audit_log(
+            db=self.db,
+            user=user,
+            action=AuditAction.UPDATE,
+            resource_type=ResourceType.DOWNSTREAM_CONTRACT,
+            resource_id=contract_id,
+            resource_name=contract.contract_name,
+            description=f"清空下游合同分摊: {contract.contract_name}",
+        )
+        await self.db.commit()
+        await self._invalidate_dashboard_cache()
+
+    async def list_upstream_cost_allocations(
+        self, upstream_contract_id: int
+    ) -> List[Dict[str, Any]]:
+        """上游合同视角：列出归集到该上游的所有下游分摊（含下游合同号/名）"""
+        query = (
+            select(
+                DownstreamUpstreamAllocation,
+                ContractDownstream.contract_code,
+                ContractDownstream.contract_name,
+            )
+            .join(
+                ContractDownstream,
+                ContractDownstream.id == DownstreamUpstreamAllocation.downstream_contract_id,
+            )
+            .where(DownstreamUpstreamAllocation.upstream_contract_id == upstream_contract_id)
+            .order_by(DownstreamUpstreamAllocation.id)
+        )
+        result = await self.db.execute(query)
+        rows = result.all()
+        return [
+            {
+                "id": alloc.id,
+                "downstream_contract_id": alloc.downstream_contract_id,
+                "downstream_contract_code": code,
+                "downstream_contract_name": name,
+                "amount": alloc.amount,
+                "description": alloc.description,
+                "created_at": alloc.created_at,
+            }
+            for alloc, code, name in rows
+        ]

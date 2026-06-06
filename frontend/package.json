@@ -1,0 +1,45 @@
+{
+    "name": "lh-contract-frontend",
+    "version": "1.7.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "test": "vitest run --environment jsdom",
+        "test:watch": "vitest --environment jsdom"
+    },
+    "dependencies": {
+        "@element-plus/icons-vue": "^2.3.1",
+        "axios": "^1.7.9",
+        "dayjs": "^1.11.13",
+        "echarts": "^5.5.1",
+        "element-plus": "^2.9.1",
+        "mathjs": "^15.1.0",
+        "pinia": "^2.3.0",
+        "vant": "^4.9.14",
+        "vue": "^3.5.13",
+        "vue-pdf-embed": "^2.1.0",
+        "vue-router": "^4.5.0"
+    },
+    "devDependencies": {
+        "@vitejs/plugin-vue": "^6.0.2",
+        "@vue/test-utils": "^2.4.6",
+        "autoprefixer": "^10.4.17",
+        "jsdom": "^26.1.0",
+        "postcss": "^8.4.33",
+        "sass": "^1.70.0",
+        "tailwindcss": "^3.4.1",
+        "unplugin-auto-import": "^19.3.0",
+        "unplugin-vue-components": "^28.8.0",
+        "vite": "^7.2.7",
+        "vitest": "^3.2.4"
+    },
+    "vitest": {
+        "environment": "jsdom",
+        "setupFiles": [
+            "src/test/setup.js"
+        ]
+    }
+}

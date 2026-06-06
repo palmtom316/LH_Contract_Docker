@@ -1,0 +1,73 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+    darkMode: 'class',
+    content: [
+        "./index.html",
+        "./src/**/*.{vue,js,ts,jsx,tsx}",
+    ],
+    // Don't apply Tailwind's base styles to avoid conflicts with Element Plus
+    corePlugins: {
+        preflight: false,
+    },
+    theme: {
+        extend: {
+            colors: {
+                border: 'hsl(var(--border) / <alpha-value>)',
+                input: 'hsl(var(--input) / <alpha-value>)',
+                ring: 'hsl(var(--ring) / <alpha-value>)',
+                background: 'hsl(var(--background) / <alpha-value>)',
+                foreground: 'hsl(var(--foreground) / <alpha-value>)',
+                primary: {
+                    DEFAULT: 'hsl(var(--primary) / <alpha-value>)',
+                    foreground: 'hsl(var(--primary-foreground) / <alpha-value>)',
+                },
+                secondary: {
+                    DEFAULT: 'hsl(var(--secondary) / <alpha-value>)',
+                    foreground: 'hsl(var(--secondary-foreground) / <alpha-value>)',
+                },
+                destructive: {
+                    DEFAULT: 'hsl(var(--destructive) / <alpha-value>)',
+                    foreground: 'hsl(var(--destructive-foreground) / <alpha-value>)',
+                },
+                muted: {
+                    DEFAULT: 'hsl(var(--muted) / <alpha-value>)',
+                    foreground: 'hsl(var(--muted-foreground) / <alpha-value>)',
+                },
+                accent: {
+                    DEFAULT: 'hsl(var(--accent) / <alpha-value>)',
+                    foreground: 'hsl(var(--accent-foreground) / <alpha-value>)',
+                },
+                card: {
+                    DEFAULT: 'hsl(var(--card) / <alpha-value>)',
+                    foreground: 'hsl(var(--card-foreground) / <alpha-value>)',
+                },
+                popover: {
+                    DEFAULT: 'hsl(var(--popover) / <alpha-value>)',
+                    foreground: 'hsl(var(--popover-foreground) / <alpha-value>)',
+                },
+            },
+            fontFamily: {
+                sans: ['"Noto Sans SC"', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif'],
+            },
+            spacing: {
+                'safe-bottom': 'env(safe-area-inset-bottom)',
+                'safe-top': 'env(safe-area-inset-top)',
+            },
+            borderRadius: {
+                xl: 'calc(var(--radius) + 2px)',
+                lg: 'var(--radius)',
+                md: 'calc(var(--radius) - 2px)',
+                sm: 'calc(var(--radius) - 4px)',
+            },
+            screens: {
+                'xs': '375px',
+                'sm': '640px',
+                'md': '768px',
+                'lg': '1024px',
+                'xl': '1280px',
+                '2xl': '1536px',
+            },
+        },
+    },
+    plugins: [],
+}

@@ -1,0 +1,1127 @@
+<template>
+<div class="app-container detail-workspace">
+    <div class="detail-workspace__sections">
+    <AppWorkspacePanel panel-class="detail-region detail-region--summary">
+      <div class="detail-context">
+        <div class="detail-context__copy">
+          <h1 class="detail-context__title">{{ detailTitle }}</h1>
+          <p class="detail-context__description">{{ detailDescription }}</p>
+        </div>
+        <div class="detail-context__actions">
+          <el-tag v-if="contract.status" :type="getStatusType(contract.status)">{{ contract.status }}</el-tag>
+          <el-button plain @click="handleBack">
+            <el-icon><ArrowLeft /></el-icon>
+            返回列表
+          </el-button>
+        </div>
+      </div>
+    <el-row :gutter="20" class="summary-cards">
+      <el-col :span="4" :xs="12">
+        <StatCard
+          title="合同总额"
+          :value="contract.contract_amount"
+          icon="Document"
+          tone="info"
+        />
+      </el-col>
+      <el-col :span="4" :xs="12">
+        <StatCard
+          title="累计应付"
+          :value="totalPayables"
+          icon="Money"
+          tone="warning"
+        />
+      </el-col>
+      <el-col :span="4" :xs="12">
+        <StatCard
+          title="累计已付"
+          :value="totalPayments"
+          icon="Wallet"
+          tone="success"
+          :subInfo="`已付比例: ${paymentPercentage}%`"
+        />
+      </el-col>
+      <el-col :span="4" :xs="12">
+        <StatCard
+          title="累计收票(挂账)"
+          :value="totalInvoices"
+          icon="Tickets"
+          tone="accent"
+        />
+      </el-col>
+      <el-col :span="4" :xs="12">
+        <StatCard
+          title="合同结算"
+          :value="totalSettlements"
+          icon="CircleCheck"
+          tone="danger"
+        />
+      </el-col>
+    </el-row>
+    </AppWorkspacePanel>
+
+    <AppWorkspacePanel panel-class="detail-region detail-region--tabs">
+    <el-tabs v-model="activeTab" class="main-tabs" type="border-card">
+      
+      <!-- 1. Basic Info -->
+      <el-tab-pane label="基本信息" name="info">
+        <el-descriptions :column="isMobile ? 1 : 2" border>
+          <el-descriptions-item label="合同序号">{{ contract.serial_number }}</el-descriptions-item>
+          <el-descriptions-item label="合同编号">{{ contract.contract_code }}</el-descriptions-item>
+          <el-descriptions-item label="合同名称">{{ contract.contract_name }}</el-descriptions-item>
+          <el-descriptions-item label="关联上游合同">{{ contract.upstream_contract_name || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="合同甲方单位">{{ contract.party_a_name }}</el-descriptions-item>
+          <el-descriptions-item label="合同乙方单位">{{ contract.party_b_name || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="签约日期">{{ contract.sign_date }}</el-descriptions-item>
+          <el-descriptions-item label="签约金额">¥ {{ formatMoney(contract.contract_amount) }}</el-descriptions-item>
+          <el-descriptions-item label="合同类别">{{ contract.category }}</el-descriptions-item>
+          <el-descriptions-item label="计价模式">{{ contract.pricing_mode || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="合同经办人">{{ contract.contract_handler || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="合同负责人">{{ contract.contract_manager || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="合同文件" :span="2">
+            <el-link 
+              v-if="contract.contract_file_path" 
+              class="detail-contract-file-link"
+              type="primary" 
+              :underline="false"
+              @click.prevent="openAttachment(contract.contract_file_path)"
+            >
+              <el-icon class="el-icon--left"><Document /></el-icon> 查看合同文件
+            </el-link>
+            <span v-else class="detail-placeholder">未上传</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="备注" :span="2">{{ contract.notes }}</el-descriptions-item>
+        </el-descriptions>
+      </el-tab-pane>
+
+      <!-- 2. Payables -->
+      <el-tab-pane label="应付款明细" name="payables">
+        <div class="tab-actions">
+          <el-button v-if="userStore.canManagePayables" type="primary" size="small" icon="Plus" @click="openFinanceDialog('payable')">新增应付款</el-button>
+        </div>
+        <el-table :data="payables" border style="width: 100%" show-summary :summary-method="getPayablesSummary">
+          <el-table-column prop="category" label="应付款类别" width="120">
+            <template #default="{ row }">{{ row.category }}</template>
+          </el-table-column>
+          <el-table-column prop="amount" label="金额" align="right">
+            <template #default="{ row }">¥ {{ formatMoney(row.amount) }}</template>
+          </el-table-column>
+          <el-table-column prop="expected_date" label="产生日期" width="120" />
+          <el-table-column label="审批文件" width="100" align="center">
+            <template #default="{ row }">
+              <el-button 
+                v-if="row.file_path" 
+                link 
+                type="primary" 
+                size="small"
+                icon="Document"
+                @click="openAttachment(row.file_path)"
+              >查看</el-button>
+              <span v-else class="detail-placeholder">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="description" label="备注" show-overflow-tooltip />
+           <el-table-column label="操作" width="120" align="center" fixed="right">
+            <template #default="{ row }">
+              <el-button v-if="userStore.canManagePayables" link type="primary" size="small" @click="openEditDialog('payable', row)">编辑</el-button>
+              <el-button v-if="userStore.canManagePayables" link type="danger" size="small" @click="handleDelete('payable', row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-tab-pane>
+
+      <!-- 3. Invoices (Received) -->
+      <el-tab-pane label="挂账明细" name="invoices">
+          <div class="tab-actions">
+          <el-button v-if="userStore.canManageInvoices" type="primary" size="small" icon="Plus" @click="openFinanceDialog('invoice')">新增挂账</el-button>
+        </div>
+        <el-table :data="invoices" border style="width: 100%" show-summary :summary-method="getInvoicesSummary">
+          <el-table-column prop="invoice_number" label="发票号" width="150" />
+          <el-table-column prop="amount" label="金额" align="right">
+            <template #default="{ row }">¥ {{ formatMoney(row.amount) }}</template>
+          </el-table-column>
+          <el-table-column prop="invoice_date" label="开票日期" width="120" />
+          <el-table-column prop="invoice_type" label="类型" width="100" />
+          <el-table-column prop="tax_rate" label="税率" width="80" align="center">
+            <template #default="{ row }">{{ row.tax_rate ? row.tax_rate + '%' : '-' }}</template>
+          </el-table-column>
+          <el-table-column prop="supplier_name" label="开票方" show-overflow-tooltip />
+          <el-table-column label="发票文件" width="100" align="center">
+            <template #default="{ row }">
+              <el-button 
+                v-if="row.file_path" 
+                link 
+                type="primary" 
+                size="small"
+                icon="Document"
+                @click="openAttachment(row.file_path)"
+              >查看</el-button>
+              <span v-else class="detail-placeholder">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" align="center" fixed="right">
+            <template #default="{ row }">
+              <el-button v-if="userStore.canManageInvoices" link type="primary" size="small" @click="openEditDialog('invoice', row)">编辑</el-button>
+              <el-button v-if="userStore.canManageInvoices" link type="danger" size="small" @click="handleDelete('invoice', row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-tab-pane>
+
+      <!-- 4. Payments -->
+      <el-tab-pane label="付款明细" name="payments">
+          <div class="tab-actions">
+          <el-button v-if="userStore.canManagePayments" type="primary" size="small" icon="Plus" @click="openFinanceDialog('payment')">新增付款</el-button>
+        </div>
+        <el-table :data="payments" border style="width: 100%" show-summary :summary-method="getPaymentsSummary">
+          <el-table-column prop="payment_date" label="付款日期" width="120" />
+          <el-table-column prop="amount" label="金额" align="right">
+            <template #default="{ row }">¥ {{ formatMoney(row.amount) }}</template>
+          </el-table-column>
+          <el-table-column prop="payment_method" label="方式" width="100" />
+          <el-table-column prop="payee_name" label="收款单位" show-overflow-tooltip />
+          <el-table-column label="支付凭证" width="100" align="center">
+            <template #default="{ row }">
+              <el-button 
+                v-if="row.file_path" 
+                link 
+                type="primary" 
+                size="small"
+                icon="Document"
+                @click="openAttachment(row.file_path)"
+              >查看</el-button>
+               <span v-else class="detail-placeholder">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" align="center" fixed="right">
+            <template #default="{ row }">
+              <el-button v-if="userStore.canManagePayments" link type="primary" size="small" @click="openEditDialog('payment', row)">编辑</el-button>
+              <el-button v-if="userStore.canManagePayments" link type="danger" size="small" @click="handleDelete('payment', row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-tab-pane>
+      
+      <!-- 5. Settlements -->
+      <el-tab-pane label="结算" name="settlements">
+          <div class="tab-actions">
+          <el-button v-if="userStore.canManageSettlements" type="primary" size="small" icon="Plus" @click="openFinanceDialog('settlement')">新增结算</el-button>
+        </div>
+        <el-table :data="settlements" border style="width: 100%" show-summary :summary-method="getSettlementsSummary">
+          <el-table-column prop="settlement_code" label="结算单号" width="150" />
+          <el-table-column prop="settlement_amount" label="结算金额" align="right">
+            <template #default="{ row }">¥ {{ formatMoney(row.settlement_amount) }}</template>
+          </el-table-column>
+          <el-table-column prop="settlement_date" label="结算办结日期" width="120" />
+          <el-table-column prop="completion_date" label="完工日期" width="120" />
+          <el-table-column prop="warranty_date" label="质保到期日期" width="120" />
+          <el-table-column label="审批文件" width="100" align="center">
+            <template #default="{ row }">
+              <el-button 
+                v-if="row.file_path" 
+                link 
+                type="primary" 
+                size="small"
+                icon="Document"
+                @click="openAttachment(row.file_path)"
+              >查看</el-button>
+               <span v-else class="detail-placeholder">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="description" label="说明" show-overflow-tooltip />
+          <el-table-column label="操作" width="120" align="center" fixed="right">
+            <template #default="{ row }">
+              <el-button v-if="userStore.canManageSettlements" link type="primary" size="small" @click="openEditDialog('settlement', row)">编辑</el-button>
+              <el-button v-if="userStore.canManageSettlements" link type="danger" size="small" @click="handleDelete('settlement', row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-tab-pane>
+
+      <!-- 6. Allocations to Upstream (低频功能：把下游合同金额拆分到多个上游合同) -->
+      <el-tab-pane label="分摊到上游" name="allocations">
+        <div class="allocation-summary">
+          <span>合同总额：<strong>¥ {{ formatMoney(contract.contract_amount) }}</strong></span>
+          <span>已分摊：<strong>¥ {{ formatMoney(totalAllocated) }}</strong></span>
+          <span :class="{ 'allocation-balance-error': !isAllocationBalanced }">
+            未分摊余额：<strong>¥ {{ formatMoney(allocationBalance) }}</strong>
+          </span>
+          <el-tag v-if="isAllocationBalanced && allocationRows.length > 0" type="success" size="small">已平衡</el-tag>
+          <el-tag v-else-if="allocationRows.length > 0" type="danger" size="small">未平衡</el-tag>
+        </div>
+
+        <div class="tab-actions">
+          <el-button
+            v-if="userStore.canManageDownstreamContracts"
+            type="primary"
+            size="small"
+            icon="Plus"
+            @click="addAllocationRow"
+          >新增分摊行</el-button>
+          <el-button
+            v-if="userStore.canManageDownstreamContracts"
+            type="success"
+            size="small"
+            :disabled="!isAllocationBalanced || allocationRows.length === 0"
+            @click="saveAllocations"
+          >保存分摊</el-button>
+          <el-button
+            v-if="userStore.canManageDownstreamContracts && allocationRows.length > 0"
+            type="danger"
+            size="small"
+            plain
+            @click="confirmClearAllocations"
+          >清空</el-button>
+        </div>
+
+        <el-table :data="allocationRows" border style="width: 100%">
+          <el-table-column label="上游合同" min-width="280">
+            <template #default="{ row, $index }">
+              <el-select
+                v-model="row.upstream_contract_id"
+                filterable
+                remote
+                reserve-keyword
+                placeholder="搜索上游合同(序号/编号/名称)"
+                :remote-method="(q) => searchAllocationUpstream(q, $index)"
+                :loading="row._loading"
+                style="width: 100%"
+                :disabled="!userStore.canManageDownstreamContracts"
+              >
+                <el-option
+                  v-for="item in (row._options || [])"
+                  :key="item.id"
+                  :label="buildUpstreamOptionLabel(item)"
+                  :value="item.id"
+                >
+                  <div style="display: flex; flex-direction: column; line-height: 1.4;">
+                    <span>{{ buildUpstreamOptionLabel(item) }}</span>
+                    <span style="font-size: 12px; color: #909399;">{{ item.contract_code }} · {{ item.party_a_name }}</span>
+                  </div>
+                </el-option>
+              </el-select>
+            </template>
+          </el-table-column>
+          <el-table-column label="分摊金额" width="180" align="right">
+            <template #default="{ row }">
+              <FormulaInput v-model="row.amount" :disabled="!userStore.canManageDownstreamContracts" style="width: 100%" />
+            </template>
+          </el-table-column>
+          <el-table-column label="说明" min-width="200">
+            <template #default="{ row }">
+              <el-input v-model="row.description" :disabled="!userStore.canManageDownstreamContracts" placeholder="可选" />
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="80" align="center" fixed="right">
+            <template #default="{ $index }">
+              <el-button
+                v-if="userStore.canManageDownstreamContracts"
+                link
+                type="danger"
+                size="small"
+                @click="removeAllocationRow($index)"
+              >删除</el-button>
+            </template>
+          </el-table-column>
+          <template #empty>
+            <span style="color: #909399;">暂无分摊。点击"新增分摊行"添加，所有行的金额合计须等于合同总额后才能保存。</span>
+          </template>
+        </el-table>
+      </el-tab-pane>
+    </el-tabs>
+    </AppWorkspacePanel>
+    </div>
+
+    <!-- Finance Create/Edit Dialog -->
+    <el-dialog v-model="financeDialog.visible" :title="financeDialog.title" width="500px" append-to-body>
+      <el-form :model="financeForm" label-width="100px">
+        
+        <!-- Payable Fields -->
+        <template v-if="financeDialog.type === 'payable'">
+          <el-form-item label="应付款类别">
+             <DictSelect 
+              v-model="financeForm.category" 
+              category="payment_category" 
+              placeholder="请选择" 
+              style="width: 100%" 
+            />
+          </el-form-item>
+          <el-form-item label="应付金额">
+            <FormulaInput v-model="financeForm.amount" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="产生日期">
+            <SmartDateInput v-model="financeForm.expected_date" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="备注">
+            <el-input v-model="financeForm.description" />
+          </el-form-item>
+          <el-form-item label="审批文件">
+            <el-upload
+              :file-list="fileList"
+              :http-request="handleUpload"
+              :limit="1"
+              accept=".pdf"
+            >
+              <el-button size="small" type="primary">选择文件 (PDF)</el-button>
+            </el-upload>
+          </el-form-item>
+        </template>
+
+        <!-- Invoice Fields -->
+        <template v-if="financeDialog.type === 'invoice'">
+           <el-form-item label="发票号码">
+            <el-input v-model="financeForm.invoice_number" />
+          </el-form-item>
+          <el-form-item label="发票金额">
+            <FormulaInput v-model="financeForm.amount" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="税率(%)">
+            <el-select v-model="financeForm.tax_rate" style="width: 100%">
+              <el-option label="0%" :value="0" />
+              <el-option label="1%" :value="1" />
+              <el-option label="3%" :value="3" />
+              <el-option label="6%" :value="6" />
+              <el-option label="9%" :value="9" />
+              <el-option label="13%" :value="13" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="开票日期">
+            <SmartDateInput v-model="financeForm.invoice_date" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="发票类型">
+             <el-select v-model="financeForm.invoice_type" style="width: 100%">
+              <el-option label="专票" value="专票" />
+              <el-option label="普票" value="普票" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="开票方">
+            <el-input v-model="financeForm.supplier_name" />
+          </el-form-item>
+          <el-form-item label="发票文件">
+            <el-upload
+              :file-list="fileList"
+              :http-request="handleUpload"
+              :limit="1"
+              accept=".pdf,.jpg,.png"
+            >
+              <el-button size="small" type="primary">选择文件</el-button>
+            </el-upload>
+          </el-form-item>
+        </template>
+
+        <!-- Payment Fields -->
+        <template v-if="financeDialog.type === 'payment'">
+          <el-form-item label="付款金额">
+            <FormulaInput v-model="financeForm.amount" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="付款日期">
+            <SmartDateInput v-model="financeForm.payment_date" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="付款方式">
+            <el-select v-model="financeForm.payment_method" style="width: 100%">
+              <el-option label="银行转账" value="银行转账" />
+              <el-option label="支票" value="支票" />
+              <el-option label="现金" value="现金" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="收款单位">
+            <el-input v-model="financeForm.payee_name" />
+          </el-form-item>
+          <el-form-item label="支付凭证">
+            <el-upload
+              :file-list="fileList"
+              :http-request="handleUpload"
+              :limit="1"
+              accept=".pdf,.jpg,.png"
+            >
+              <el-button size="small" type="primary">选择文件</el-button>
+            </el-upload>
+          </el-form-item>
+        </template>
+
+        <!-- Settlement Fields -->
+        <template v-if="financeDialog.type === 'settlement'">
+          <el-form-item label="结算单号">
+            <el-input v-model="financeForm.settlement_code" />
+          </el-form-item>
+          <el-form-item label="结算金额">
+            <FormulaInput v-model="financeForm.settlement_amount" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="结算办结日期">
+            <SmartDateInput v-model="financeForm.settlement_date" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="完工日期">
+            <SmartDateInput v-model="financeForm.completion_date" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="质保到期日期">
+            <SmartDateInput v-model="financeForm.warranty_date" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="说明">
+            <el-input v-model="financeForm.description" type="textarea" />
+          </el-form-item>
+          <el-form-item label="结算审批文件">
+            <el-upload
+              :file-list="fileList"
+              :http-request="handleUpload"
+              :limit="1"
+              accept=".pdf"
+            >
+              <el-button size="small" type="primary">选择文件 (PDF)</el-button>
+            </el-upload>
+          </el-form-item>
+        </template>
+
+      </el-form>
+      <template #footer>
+        <el-button @click="financeDialog.visible = false">取消</el-button>
+        <el-button type="primary" @click="submitFinance">提交</el-button>
+      </template>
+    </el-dialog>
+
+  </div>
+</template>
+
+<script setup>
+import { defineAsyncComponent, ref, reactive, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
+import DictSelect from '@/components/DictSelect.vue'
+import SmartDateInput from '@/components/SmartDateInput.vue'
+import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Document, ArrowLeft, Money, Wallet, Tickets, CircleCheck } from '@element-plus/icons-vue'
+import {
+  getContract,
+  getPayables, createPayable, updatePayable, deletePayable,
+  getInvoices, createInvoice, updateInvoice, deleteInvoice,
+  getPayments, createPayment, updatePayment, deletePayment,
+  getSettlements, createSettlement, updateSettlement, deleteSettlement,
+  getAllocations, setAllocations, clearAllocations
+} from '@/api/contractDownstream'
+import { getContracts as getUpstreamContracts } from '@/api/contractUpstream'
+import { uploadFile } from '@/api/common'
+import { formatMoney, getStatusType } from '@/utils/common'
+import { openProtectedFile } from '@/utils/protectedFiles'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUserStore } from '@/stores/user'
+
+const FormulaInput = defineAsyncComponent(() => import('@/components/FormulaInput.vue'))
+const StatCard = defineAsyncComponent(() => import('@/components/StatCard.vue'))
+
+const userStore = useUserStore()
+const route = useRoute()
+const router = useRouter()
+const contractId = route.params.id
+
+const loading = ref(false)
+const isMobile = ref(window.innerWidth < 768)
+
+const contract = ref({})
+const activeTab = ref('info')
+
+// Financial Data Lists
+const payables = ref([])
+const invoices = ref([])
+const payments = ref([])
+const settlements = ref([])
+const allocationRows = ref([])
+const fileList = ref([])
+
+// Dialog State
+const financeDialog = reactive({
+  visible: false,
+  title: '',
+  type: '',
+  isEdit: false,
+  editingId: null
+})
+
+const financeForm = reactive({})
+
+// Computed
+const totalPayables = computed(() => {
+  return payables.value.reduce((sum, item) => sum + Number(item.amount), 0)
+})
+
+const totalPayments = computed(() => {
+  return payments.value.reduce((sum, item) => sum + Number(item.amount), 0)
+})
+
+const totalInvoices = computed(() => {
+  return invoices.value.reduce((sum, item) => sum + Number(item.amount), 0)
+})
+
+const totalSettlements = computed(() => {
+  return settlements.value.reduce((sum, item) => sum + Number(item.settlement_amount), 0)
+})
+
+const paymentPercentage = computed(() => {
+  if (!totalPayables.value) return 0
+  const p = (totalPayments.value / totalPayables.value) * 100
+  return Math.min(p, 100).toFixed(1)
+})
+
+// Allocations (分摊到上游合同)
+const totalAllocated = computed(() =>
+  allocationRows.value.reduce((sum, r) => sum + Number(r.amount || 0), 0)
+)
+const allocationBalance = computed(() =>
+  Number(contract.value.contract_amount || 0) - totalAllocated.value
+)
+const isAllocationBalanced = computed(() =>
+  Math.abs(allocationBalance.value) < 0.01 && allocationRows.value.length > 0
+)
+const buildUpstreamOptionLabel = (item) => {
+  const sn = item?.serial_number ?? '-'
+  const name = item?.contract_name || '未命名合同'
+  return `[${sn}] ${name}`
+}
+
+const detailTitle = computed(() => contract.value.contract_name || '下游合同详情')
+
+const detailDescription = computed(() => {
+  const summary = [
+    contract.value.contract_code,
+    contract.value.upstream_contract_name,
+    contract.value.party_b_name
+  ].filter(Boolean)
+
+  return summary.join(' / ') || '查看下游合同基础信息、应付款、收票、付款与结算数据。'
+})
+
+// Summary Methods for Tables
+const getPayablesSummary = ({ columns }) => {
+  return columns.map((column, index) => {
+    if (index === 0) return '合计'
+    if (column.property === 'amount') {
+      return '¥ ' + formatMoney(totalPayables.value)
+    }
+    return ''
+  })
+}
+
+const getInvoicesSummary = ({ columns }) => {
+  return columns.map((column, index) => {
+    if (index === 0) return '合计'
+    if (column.property === 'amount') {
+      return '¥ ' + formatMoney(totalInvoices.value)
+    }
+    return ''
+  })
+}
+
+const getPaymentsSummary = ({ columns }) => {
+  return columns.map((column, index) => {
+    if (index === 0) return '合计'
+    if (column.property === 'amount') {
+      return '¥ ' + formatMoney(totalPayments.value)
+    }
+    return ''
+  })
+}
+
+const getSettlementsSummary = ({ columns }) => {
+  return columns.map((column, index) => {
+    if (index === 0) return '合计'
+    if (column.property === 'settlement_amount') {
+      return '¥ ' + formatMoney(totalSettlements.value)
+    }
+    return ''
+  })
+}
+
+
+// Load Functions
+const loadData = async () => {
+  loading.value = true
+  try {
+    contract.value = await getContract(contractId)
+    await Promise.all([loadPayables(), loadInvoices(), loadPayments(), loadSettlements(), loadAllocations()])
+  } catch (e) {
+    ElMessage.error('加载合同数据失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const loadPayables = async () => { payables.value = await getPayables(contractId) }
+const loadInvoices = async () => {
+  invoices.value = await getInvoices(contractId)
+}
+const loadPayments = async () => { payments.value = await getPayments(contractId) }
+const loadSettlements = async () => { settlements.value = await getSettlements(contractId) }
+
+const loadAllocations = async () => {
+  const items = await getAllocations(contractId)
+  // 预填每行的上游合同选项（仅当前已选的那条），以便 el-select 能渲染 label
+  const enriched = []
+  for (const it of items) {
+    const row = {
+      upstream_contract_id: it.upstream_contract_id,
+      amount: Number(it.amount),
+      description: it.description || '',
+      _loading: false,
+      _options: []
+    }
+    try {
+      const res = await getUpstreamContracts({ keyword: String(it.upstream_contract_id), page_size: 5 })
+      const matched = (res.items || []).find(c => c.id === it.upstream_contract_id)
+      row._options = matched ? [matched] : []
+    } catch (e) {
+      row._options = []
+    }
+    enriched.push(row)
+  }
+  allocationRows.value = enriched
+}
+
+const addAllocationRow = () => {
+  allocationRows.value.push({
+    upstream_contract_id: null,
+    amount: 0,
+    description: '',
+    _loading: false,
+    _options: []
+  })
+}
+
+const removeAllocationRow = (index) => {
+  allocationRows.value.splice(index, 1)
+}
+
+const searchAllocationUpstream = async (query, index) => {
+  const row = allocationRows.value[index]
+  if (!row) return
+  if (!query) { row._options = []; return }
+  row._loading = true
+  try {
+    const res = await getUpstreamContracts({ keyword: query, page_size: 50 })
+    row._options = res.items || []
+  } catch (e) {
+    row._options = []
+  } finally {
+    row._loading = false
+  }
+}
+
+const saveAllocations = async () => {
+  if (!isAllocationBalanced.value) {
+    ElMessage.warning('分摊总额必须等于合同金额')
+    return
+  }
+  const ids = allocationRows.value.map(r => r.upstream_contract_id)
+  if (ids.some(id => !id)) {
+    ElMessage.warning('请为所有分摊行选择上游合同')
+    return
+  }
+  if (new Set(ids).size !== ids.length) {
+    ElMessage.warning('同一上游合同不能出现多次')
+    return
+  }
+  try {
+    await setAllocations(
+      contractId,
+      allocationRows.value.map(r => ({
+        upstream_contract_id: r.upstream_contract_id,
+        amount: Number(r.amount),
+        description: r.description || null
+      }))
+    )
+    ElMessage.success('分摊已保存')
+    await loadAllocations()
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '保存失败')
+  }
+}
+
+const confirmClearAllocations = async () => {
+  try {
+    await ElMessageBox.confirm('确认清空当前下游合同的所有分摊明细？', '提示', {
+      type: 'warning'
+    })
+    await clearAllocations(contractId)
+    ElMessage.success('已清空分摊')
+    allocationRows.value = []
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('清空失败')
+    }
+  }
+}
+
+const handleUpload = async (option) => {
+  try {
+    const result = await uploadFile(option.file)
+    financeForm.file_path = result.path
+    fileList.value = [{ name: option.file.name, url: result.path }]
+    option.onSuccess(result)
+    ElMessage.success('上传成功')
+  } catch (e) {
+    console.error('Upload error:', e)
+    ElMessage.error('上传失败')
+    option.onError(e)
+  }
+}
+
+const openFinanceDialog = (type) => {
+  financeDialog.type = type
+  financeDialog.visible = true
+  financeDialog.isEdit = false
+  financeDialog.editingId = null
+  
+  // Reset form with Object.assign to preserve reactivity
+  Object.assign(financeForm, {
+    contract_id: Number(contractId),
+    category: undefined,
+    amount: 0,
+    expected_date: '',
+    description: '',
+    file_path: '',
+    invoice_number: '',
+    tax_rate: 0,
+    invoice_date: '',
+    invoice_type: '',
+    supplier_name: '',
+    payment_date: '',
+    payment_method: '',
+    payee_name: '',
+    settlement_code: '',
+    settlement_amount: 0,
+    settlement_date: '',
+    completion_date: null,
+    warranty_date: null
+  })
+  
+  fileList.value = []
+  
+  if (type === 'payable') {
+    financeDialog.title = '新增应付款'
+    financeForm.category = '进度款'
+    financeForm.amount = 0
+    financeForm.expected_date = ''
+    financeForm.description = ''
+    financeForm.file_path = ''
+  } else if (type === 'invoice') {
+    financeDialog.title = '新增收票记录'
+    financeForm.invoice_number = ''
+    financeForm.amount = 0
+    financeForm.tax_rate = 0
+    financeForm.invoice_date = new Date().toISOString().split('T')[0]
+    financeForm.invoice_type = '专票'
+    financeForm.supplier_name = contract.value.party_b_name
+    financeForm.file_path = ''
+  } else if (type === 'payment') {
+    financeDialog.title = '新增付款记录'
+    financeForm.amount = 0
+    financeForm.payment_date = new Date().toISOString().split('T')[0]
+    financeForm.payment_method = '银行转账'
+    financeForm.payee_name = contract.value.party_b_name
+    financeForm.file_path = ''
+  } else if (type === 'settlement') {
+    financeDialog.title = '新增结算记录'
+    financeForm.settlement_code = ''
+    financeForm.settlement_amount = 0
+    financeForm.settlement_date = new Date().toISOString().split('T')[0]
+    financeForm.completion_date = null
+    financeForm.warranty_date = null
+    financeForm.description = ''
+    financeForm.file_path = ''
+  }
+}
+
+const openEditDialog = (type, row) => {
+  financeDialog.type = type
+  financeDialog.visible = true
+  financeDialog.isEdit = true
+  financeDialog.editingId = row.id
+  
+  // Reset form with Object.assign to preserve reactivity
+  Object.assign(financeForm, {
+    contract_id: Number(contractId),
+    category: undefined,
+    amount: 0,
+    expected_date: '',
+    description: '',
+    file_path: '',
+    invoice_number: '',
+    tax_rate: 0,
+    invoice_date: '',
+    invoice_type: '',
+    supplier_name: '',
+    payment_date: '',
+    payment_method: '',
+    payee_name: '',
+    settlement_code: '',
+    settlement_amount: 0,
+    settlement_date: '',
+    completion_date: null,
+    warranty_date: null
+  })
+  
+  if (type === 'payable') {
+    financeDialog.title = '编辑应付款'
+    financeForm.category = row.category
+    financeForm.amount = row.amount
+    financeForm.expected_date = row.expected_date
+    financeForm.description = row.description
+    financeForm.file_path = row.file_path || ''
+    fileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
+  } else if (type === 'invoice') {
+    financeDialog.title = '编辑收票记录'
+    financeForm.invoice_number = row.invoice_number
+    financeForm.amount = row.amount
+    financeForm.tax_rate = row.tax_rate
+    financeForm.invoice_date = row.invoice_date
+    financeForm.invoice_type = row.invoice_type
+    financeForm.supplier_name = row.supplier_name
+    financeForm.file_path = row.file_path || ''
+    fileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
+  } else if (type === 'payment') {
+    financeDialog.title = '编辑付款记录'
+    financeForm.amount = row.amount
+    financeForm.payment_date = row.payment_date
+    financeForm.payment_method = row.payment_method
+    financeForm.payee_name = row.payee_name
+    financeForm.file_path = row.file_path || ''
+    fileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
+  } else if (type === 'settlement') {
+    financeDialog.title = '编辑结算记录'
+    financeForm.settlement_code = row.settlement_code
+    financeForm.settlement_amount = row.settlement_amount
+    financeForm.settlement_date = row.settlement_date
+    financeForm.completion_date = row.completion_date
+    financeForm.warranty_date = row.warranty_date
+    financeForm.description = row.description
+    financeForm.file_path = row.file_path || ''
+    fileList.value = row.file_path ? [{ name: '已上传文件', url: row.file_path }] : []
+  }
+}
+
+// Feishu Approval Helpers (V1.4)
+const getApprovalStatusType = (status) => {
+  const map = {
+    'DRAFT': 'info',
+    'PENDING': 'warning',
+    'APPROVED': 'success',
+    'REJECTED': 'danger'
+  }
+  return map[status] || 'info'
+}
+
+const formatApprovalStatus = (status) => {
+  const map = {
+    'DRAFT': '草稿',
+    'PENDING': '审批中',
+    'APPROVED': '已通过',
+    'REJECTED': '已拒绝'
+  }
+  return map[status] || status
+}
+
+const openAttachment = async (path) => {
+  if (!path) return
+  await openProtectedFile(path)
+}
+
+const handleDelete = (type, row) => {
+  const typeNames = { payable: '应付款', invoice: '收票', payment: '付款', settlement: '结算' }
+  ElMessageBox.confirm(`确定删除该${typeNames[type]}记录吗？`, '提示', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
+    .then(async () => {
+      try {
+        if (type === 'payable') { await deletePayable(contractId, row.id); await loadPayables() }
+        else if (type === 'invoice') { await deleteInvoice(contractId, row.id); await loadInvoices() }
+        else if (type === 'payment') { await deletePayment(contractId, row.id); await loadPayments() }
+        else if (type === 'settlement') { await deleteSettlement(contractId, row.id); await loadSettlements() }
+        ElMessage.success('删除成功')
+      } catch (e) { ElMessage.error('删除失败') }
+    }).catch(() => {})
+}
+
+const submitFinance = async () => {
+  try {
+    if (financeDialog.type === 'payable') {
+      financeDialog.isEdit ? await updatePayable(contractId, financeDialog.editingId, financeForm) : await createPayable(contractId, financeForm)
+      await loadPayables()
+    } else if (financeDialog.type === 'invoice') {
+      financeDialog.isEdit ? await updateInvoice(contractId, financeDialog.editingId, financeForm) : await createInvoice(contractId, financeForm)
+      await loadInvoices()
+    } else if (financeDialog.type === 'payment') {
+      financeDialog.isEdit ? await updatePayment(contractId, financeDialog.editingId, financeForm) : await createPayment(contractId, financeForm)
+      await loadPayments()
+    } else if (financeDialog.type === 'settlement') {
+      // Clean up dates
+      if (financeForm.completion_date === '') financeForm.completion_date = null
+      if (financeForm.warranty_date === '') financeForm.warranty_date = null
+      financeDialog.isEdit ? await updateSettlement(contractId, financeDialog.editingId, financeForm) : await createSettlement(contractId, financeForm)
+      await loadSettlements()
+    }
+    ElMessage.success(financeDialog.isEdit ? '修改成功' : '保存成功')
+    financeDialog.visible = false
+  } catch (e) {
+    console.error('Submit error:', e)
+    ElMessage.error(financeDialog.isEdit ? '修改失败' : '保存失败')
+  }
+}
+
+
+
+// Force reload to avoid router freeze
+const handleBack = () => {
+  const query = route.query
+  const params = new URLSearchParams()
+  if (query.page) params.append('page', query.page)
+  if (query.keyword) params.append('keyword', query.keyword)
+  if (query.status) params.append('status', query.status)
+  const queryString = params.toString()
+  location.href = '/contracts/downstream' + (queryString ? '?' + queryString : '')
+}
+
+// Resize handler function (named so we can remove it properly)
+const handleResize = () => {
+  isMobile.value = window.innerWidth < 768
+}
+
+onMounted(() => {
+  loadData()
+  window.addEventListener('resize', handleResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
+})
+</script>
+
+<style scoped lang="scss">
+.detail-workspace {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.detail-workspace__sections {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.detail-region {
+  gap: var(--space-5);
+}
+
+.detail-context {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 0;
+  padding-bottom: 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 88%, var(--brand-primary-soft) 12%);
+}
+
+.detail-context__copy {
+  display: grid;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.detail-context__title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.detail-context__description {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.detail-context__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.detail-region--summary {
+  background: color-mix(in srgb, var(--surface-panel-elevated) 90%, var(--brand-primary-soft) 10%);
+}
+
+.detail-region--tabs {
+  padding-bottom: 8px;
+}
+
+.summary-cards {
+  margin: 0;
+
+  :deep(.el-col) {
+    margin-bottom: 12px;
+  }
+}
+
+.tab-actions {
+  margin-bottom: 15px;
+}
+
+.main-tabs {
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+
+  :deep(.el-tabs__content) {
+    padding: 20px 0 0;
+  }
+
+  :deep(.el-tabs__nav-wrap::after) {
+    background-color: var(--border-subtle);
+  }
+}
+
+.detail-placeholder {
+  color: var(--text-muted);
+}
+
+.detail-region :deep(.el-table__header th.el-table__cell) {
+  background: color-mix(in srgb, var(--surface-panel-muted) 72%, var(--surface-panel) 28%);
+}
+
+.detail-region :deep(.el-table) {
+  --el-table-border-color: var(--border-subtle);
+  --el-table-header-text-color: var(--text-secondary);
+  --el-table-text-color: var(--text-primary);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--surface-panel-muted) 56%, var(--surface-panel) 44%);
+}
+
+@media (max-width: 768px) {
+  .detail-workspace,
+  .detail-workspace__sections {
+    gap: 20px;
+  }
+
+  .detail-context {
+    flex-direction: column;
+  }
+
+  .detail-context__actions {
+    justify-content: flex-start;
+  }
+}
+
+.allocation-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: var(--el-fill-color-light);
+  border-radius: 6px;
+  font-size: 13px;
+}
+.allocation-summary strong {
+  color: var(--el-color-primary);
+  margin-left: 4px;
+}
+.allocation-balance-error strong {
+  color: var(--el-color-danger);
+}
+</style>

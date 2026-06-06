@@ -1,0 +1,1371 @@
+<template>
+  <div class="upstream-page-shell">
+    <AppWorkspacePanel panel-class="upstream-page-tabs">
+      <div class="contract-surface">
+        <el-tabs v-model="activeTab" class="contract-tabs app-tabs--line" @tab-change="handleTabChange">
+      <!-- Tab 1: Contract Management -->
+      <el-tab-pane label="合同管理" name="management">
+        <!-- Search Bar -->
+        <AppSectionCard class="upstream-filter-section">
+          <template #header>合同筛选</template>
+          <template #actions>
+            <el-button type="primary" plain icon="Download" @click="handleExport">导出</el-button>
+            <el-dropdown @command="handleImportCommand" v-if="userStore.canManageUpstreamContracts">
+              <el-button icon="Upload">导入<el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="template">下载导入模板</el-dropdown-item>
+                  <el-dropdown-item command="import">选择 Excel 文件导入</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+            <el-button v-if="userStore.canManageUpstreamContracts" type="primary" icon="Plus" @click="handleAdd">新建合同</el-button>
+          </template>
+          <AppFilterBar inline-actions>
+            <el-input v-model="queryParams.keyword" class="filter-control--search" placeholder="合同序号/编号/名称/甲方" clearable @keyup.enter="handleQuery" />
+            <el-select v-model="queryParams.status" placeholder="合同状态" clearable>
+              <el-option label="执行中" value="执行中" />
+              <el-option label="已完工" value="已完工" />
+              <el-option label="已结算" value="已结算" />
+              <el-option label="质保到期" value="质保到期" />
+              <el-option label="合同终止" value="合同终止" />
+              <el-option label="合同中止" value="合同中止" />
+            </el-select>
+            <DictSelect v-model="queryParams.company_category" class="filter-control--compact" category="project_category" placeholder="公司合同分类" clearable />
+            <DictSelect v-model="queryParams.category" class="filter-control--compact" category="contract_category" placeholder="合同类别" clearable />
+            <DictSelect v-model="queryParams.management_mode" class="filter-control--compact" category="management_mode" placeholder="管理模式" clearable />
+            <AppRangeField
+              v-model="monthRange"
+              class="filter-control--time"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+            />
+            <template #actions>
+            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+            </template>
+          </AppFilterBar>
+        </AppSectionCard>
+
+        <!-- Table View (PC) -->
+        <AppSectionCard v-if="!isMobile" class="upstream-table-section">
+          <template #header>合同列表</template>
+          <AppDataTable>
+          <el-table 
+            v-loading="loading" 
+            :data="contractList" 
+            style="width: 100%" 
+            border
+            highlight-current-row
+            show-summary
+            :summary-method="getSummaries"
+            class="custom-footer-table contract-table--dense"
+            :footer-cell-style="footerCellStyle"
+          >
+            <el-table-column prop="serial_number" label="合同序号" width="100" align="center" fixed="left" />
+            <el-table-column prop="contract_code" label="合同编号" min-width="100" show-overflow-tooltip />
+            <el-table-column prop="contract_name" label="合同名称" min-width="220" show-overflow-tooltip>
+              <template #default="scope">
+                <div class="contract-name-cell contract-cell--wrap">{{ scope.row.contract_name }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="party_a_name" label="甲方" min-width="120" show-overflow-tooltip>
+              <template #default="scope">
+                <div class="contract-cell--wrap">{{ scope.row.party_a_name }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="party_b_name" label="乙方" min-width="120" show-overflow-tooltip>
+              <template #default="scope">
+                <div class="contract-cell--wrap">{{ scope.row.party_b_name }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="company_category" label="公司合同分类" width="140" align="center" show-overflow-tooltip />
+            <el-table-column prop="sign_date" label="签约时间" width="120" align="center" />
+            <el-table-column prop="contract_amount" label="签约金额" width="150" align="right">
+              <template #default="scope">
+                <span class="contract-cell--amount">¥ {{ formatMoney(scope.row.contract_amount) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="total_receivable" label="应收" width="140" align="right">
+              <template #default="scope">
+                <span v-if="scope.row.total_receivable" class="contract-cell--amount">¥ {{ formatMoney(scope.row.total_receivable) }}</span>
+                <span v-else class="cell-placeholder">-</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="total_invoiced" label="挂账" width="140" align="right">
+              <template #default="scope">
+                <span v-if="scope.row.total_invoiced" class="contract-cell--amount">¥ {{ formatMoney(scope.row.total_invoiced) }}</span>
+                <span v-else class="cell-placeholder">-</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="total_received" label="回款" width="140" align="right">
+              <template #default="scope">
+                <span v-if="scope.row.total_received" class="contract-cell--amount">¥ {{ formatMoney(scope.row.total_received) }}</span>
+                <span v-else class="cell-placeholder">-</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="total_settlement" label="结算" width="140" align="right">
+              <template #default="scope">
+                <span v-if="scope.row.total_settlement" class="contract-cell--amount">¥ {{ formatMoney(scope.row.total_settlement) }}</span>
+                <span v-else class="cell-placeholder">-</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="status" label="状态" width="80" align="center">
+              <template #default="scope">
+                <el-tag :type="getStatusType(scope.row.status)" size="small">{{ scope.row.status }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="文件" width="60" align="center">
+              <template #default="scope">
+                <el-button 
+                  v-if="scope.row.contract_file_path" 
+                  class="contract-list-file-button"
+                  type="primary" 
+                  size="small"
+                  icon="Document"
+                  @click="openPdfInNewTab(scope.row.contract_file_path)"
+                />
+                <span v-else class="cell-placeholder">-</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="180" fixed="right">
+              <template #default="scope">
+                <div class="contract-list-actions">
+                  <el-button v-if="userStore.canManageUpstreamContracts" class="contract-list-action-button" type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
+                  <el-button class="contract-list-action-button" type="primary" size="small" @click="handleDetail(scope.row)">详情</el-button>
+                  <el-button v-if="userStore.canManageUpstreamContracts" class="contract-list-action-button" type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <!-- Pagination -->
+          <div class="pagination-container">
+            <el-pagination
+              v-model:current-page="queryParams.page"
+              v-model:page-size="queryParams.page_size"
+              :page-sizes="[10, 20, 50, 100]"
+              layout="total, sizes, prev, pager, next, jumper"
+              :total="total"
+              @size-change="getList"
+              @current-change="getList"
+            />
+          </div>
+          </AppDataTable>
+        </AppSectionCard>
+
+        <!-- Card View (Mobile) -->
+        <AppSectionCard v-else class="upstream-table-section">
+          <template #header>合同列表</template>
+          <AppEmptyState
+            v-if="!loading && !contractList.length"
+            title="暂无上游合同"
+          />
+          <div v-else class="card-list">
+          <el-card v-for="item in contractList" :key="item.id" class="contract-card" shadow="hover">
+            <div class="card-header">
+              <div class="title">{{ item.contract_name }}</div>
+              <el-tag :type="getStatusType(item.status)" size="small">{{ item.status }}</el-tag>
+            </div>
+            <div class="card-body">
+              <div class="info-row">
+                <span class="label">合同编号:</span>
+                <span class="value">{{ item.contract_code }}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">甲方:</span>
+                <span class="value">{{ item.party_a_name }}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">合同金额:</span>
+                <span class="value amount">¥ {{ formatMoney(item.contract_amount) }}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">签订日期:</span>
+                <span class="value">{{ item.sign_date }}</span>
+              </div>
+            </div>
+            <div class="card-footer">
+               <el-button 
+                v-if="item.contract_file_path" 
+                size="small" 
+                type="warning" 
+                icon="Document" 
+                circle
+                @click="handlePreview(item.contract_file_path)"
+              />
+              <el-button v-if="userStore.canManageUpstreamContracts" size="small" type="primary" @click="handleEdit(item)">编辑</el-button>
+              <el-button size="small" @click="handleDetail(item)">详情</el-button>
+              <el-button v-if="userStore.canManageUpstreamContracts" size="small" type="danger" @click="handleDelete(item)">删除</el-button>
+            </div>
+          </el-card>
+
+          <!-- Mobile Pagination -->
+          <div class="pagination-container">
+            <el-pagination
+              v-model:current-page="queryParams.page"
+              v-model:page-size="queryParams.page_size"
+              :page-sizes="[10, 20, 50]"
+              layout="total, prev, pager, next"
+              :total="total"
+              small
+              @size-change="getList"
+              @current-change="getList"
+            />
+          </div>
+          </div>
+        </AppSectionCard>
+      </el-tab-pane>
+
+      <el-tab-pane label="上游合同查询" name="query">
+        <ContractQueryBot v-if="activeTab === TAB_QUERY" />
+      </el-tab-pane>
+
+      <!-- Tab 2: Basic Information List -->
+      <el-tab-pane label="上游合同基本信息" name="basic_info">
+        <AppSectionCard class="upstream-filter-section">
+          <template #header>基础信息筛选</template>
+          <AppFilterBar inline-actions>
+            <el-input v-model="queryParams.keyword" class="filter-control--search" placeholder="合同序号/编号/名称/甲方" clearable @keyup.enter="handleQuery" />
+            <AppRangeField
+              v-model="dateRange"
+              class="filter-control--time"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+            />
+            <template #actions>
+            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+            </template>
+          </AppFilterBar>
+        </AppSectionCard>
+
+        <AppSectionCard v-if="!isMobile" class="upstream-table-section">
+          <template #header>基础信息列表</template>
+          <AppDataTable>
+          <el-table 
+            v-loading="loading" 
+            :data="contractList" 
+            style="width: 100%" 
+            border
+            highlight-current-row
+            class="custom-footer-table contract-table--dense"
+          >
+            <el-table-column prop="serial_number" label="合同序号" width="100" align="center" fixed="left" />
+            <el-table-column prop="contract_code" label="合同编号" min-width="140" show-overflow-tooltip />
+            <el-table-column prop="contract_name" label="合同名称" min-width="220" show-overflow-tooltip>
+              <template #default="scope">
+                <div class="contract-name-cell contract-cell--wrap">{{ scope.row.contract_name }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="party_a_name" label="合同甲方单位" min-width="200" show-overflow-tooltip>
+              <template #default="scope">
+                <div class="contract-cell--wrap">{{ scope.row.party_a_name }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="contract_amount" label="签约金额" width="140" align="right">
+              <template #default="scope">
+                <span class="contract-cell--amount">¥ {{ formatMoney(scope.row.contract_amount) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="total_settlement" label="结算金额" width="140" align="right">
+              <template #default="scope">
+                <span v-if="scope.row.total_settlement" class="contract-cell--amount">¥ {{ formatMoney(scope.row.total_settlement) }}</span>
+                <span v-else class="cell-placeholder">-</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="sign_date" label="签约时间" width="120" align="center" />
+            <el-table-column prop="completion_date" label="完工时间" width="120" align="center" />
+            <el-table-column prop="archive_number" label="合同原件档案号" width="140" align="center" show-overflow-tooltip />
+            
+            <el-table-column label="合同文件" width="120" align="center">
+              <template #default="scope">
+                 <el-button v-if="scope.row.contract_file_path" link type="primary" icon="Document" @click="openPdfInNewTab(scope.row.contract_file_path)">查看</el-button>
+                 <span v-else class="cell-placeholder">-</span>
+              </template>
+            </el-table-column>
+            
+            <el-table-column label="开工报告" width="120" align="center">
+              <template #default="scope">
+                 <el-button v-if="scope.row.start_report_path" link type="primary" icon="Document" @click="openPdfInNewTab(scope.row.start_report_path)">查看</el-button>
+                 <span v-else class="cell-placeholder">-</span>
+              </template>
+            </el-table-column>
+            
+            <el-table-column label="竣工报告" width="120" align="center">
+              <template #default="scope">
+                 <el-button v-if="scope.row.completion_report_path" link type="primary" icon="Document" @click="openPdfInNewTab(scope.row.completion_report_path)">查看</el-button>
+                 <span v-else class="cell-placeholder">-</span>
+              </template>
+            </el-table-column>
+            
+             <el-table-column label="结算审核文件" width="140" align="center">
+              <template #default="scope">
+                 <el-button v-if="scope.row.audit_report_path" link type="primary" icon="Document" @click="openPdfInNewTab(scope.row.audit_report_path)">查看</el-button>
+                 <span v-else class="cell-placeholder">-</span>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <!-- Pagination -->
+          <div class="pagination-container">
+            <el-pagination
+              v-model:current-page="queryParams.page"
+              v-model:page-size="queryParams.page_size"
+              :page-sizes="[10, 20, 50, 100]"
+              layout="total, sizes, prev, pager, next, jumper"
+              :total="total"
+              @size-change="getList"
+              @current-change="getList"
+            />
+          </div>
+          </AppDataTable>
+        </AppSectionCard>
+        <AppSectionCard v-else class="upstream-table-section">
+          <template #header>基础信息列表</template>
+          <AppEmptyState
+            v-if="!loading && !contractList.length"
+            title="暂无基础信息"
+          />
+          <div v-else class="card-list">
+            <el-card v-for="item in contractList" :key="`basic-${item.id}`" class="contract-card" shadow="hover">
+              <div class="card-header">
+                <div class="title">{{ item.contract_name }}</div>
+                <el-tag :type="getStatusType(item.status)" size="small">{{ item.status }}</el-tag>
+              </div>
+              <div class="card-body">
+                <div class="info-row">
+                  <span class="label">合同编号:</span>
+                  <span class="value">{{ item.contract_code }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">甲方:</span>
+                  <span class="value">{{ item.party_a_name }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">签约金额:</span>
+                  <span class="value amount">¥ {{ formatMoney(item.contract_amount) }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">签约时间:</span>
+                  <span class="value">{{ item.sign_date }}</span>
+                </div>
+              </div>
+              <div class="card-footer">
+                <el-button
+                  v-if="item.contract_file_path"
+                  size="small"
+                  @click="openPdfInNewTab(item.contract_file_path)"
+                >
+                  文件
+                </el-button>
+                <el-button size="small" @click="handleDetail(item)">详情</el-button>
+              </div>
+            </el-card>
+            <div class="pagination-container">
+              <el-pagination
+                v-model:current-page="queryParams.page"
+                v-model:page-size="queryParams.page_size"
+                :page-sizes="[10, 20, 50]"
+                layout="total, prev, pager, next"
+                :total="total"
+                small
+                @size-change="getList"
+                @current-change="getList"
+              />
+            </div>
+          </div>
+        </AppSectionCard>
+      </el-tab-pane>
+        </el-tabs>
+      </div>
+    </AppWorkspacePanel>
+
+    <!-- Edit/Create Dialog -->
+    <el-dialog
+      :title="dialog.title"
+      v-model="dialog.visible"
+      width="850px"
+      :fullscreen="isMobile"
+      append-to-body
+      :close-on-click-modal="false"
+    >
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="110px">
+        <!-- Contract Serial Number (Editable) -->
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="合同序号" prop="serial_number">
+              <el-input-number 
+                v-model="form.serial_number" 
+                :disabled="false"
+                placeholder="请输入合同序号（正整数）" 
+                :controls="false"
+                :min="1"
+                :step="1"
+                :precision="0"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="签约日期" prop="sign_date">
+              <SmartDateInput 
+                v-model="form.sign_date" 
+                style="width: 100%" 
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="20">
+          <el-col :span="12">
+             <el-form-item label="合同编号" prop="contract_code">
+              <el-input v-model="form.contract_code" placeholder="留空则自动生成 (S-年-月-序号)">
+              </el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12" v-if="dialog.isEdit">
+            <el-form-item label="合同状态" prop="status">
+              <el-select v-model="form.status" placeholder="请选择状态" style="width: 100%">
+                <el-option label="执行中" value="执行中" />
+                <el-option label="已完工" value="已完工" />
+                <el-option label="已结算" value="已结算" />
+                <el-option label="质保到期" value="质保到期" />
+                <el-option label="合同终止" value="合同终止" />
+                <el-option label="合同中止" value="合同中止" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="20">
+          <el-col :span="24">
+            <el-form-item label="合同名称" prop="contract_name">
+              <el-input v-model="form.contract_name" placeholder="请输入合同名称" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="甲方单位" prop="party_a_name">
+              <SmartAutocomplete v-model="form.party_a_name" placeholder="输入甲方名称" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="乙方单位" prop="party_b_name">
+              <SmartAutocomplete v-model="form.party_b_name" placeholder="请输入乙方名称" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="签约金额" prop="contract_amount">
+              <FormulaInput 
+                v-model="form.contract_amount" 
+                placeholder="支持公式计算"
+                show-icon
+                style="width: 100%" 
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="计价模式" prop="pricing_mode">
+              <DictSelect v-model="form.pricing_mode" category="pricing_mode" placeholder="请选择" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="合同类别" prop="category">
+              <DictSelect v-model="form.category" category="contract_category" placeholder="请选择" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="公司合同分类" prop="company_category">
+              <DictSelect v-model="form.company_category" category="project_category" placeholder="请选择" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="管理模式" prop="management_mode">
+              <DictSelect v-model="form.management_mode" category="management_mode" placeholder="请选择" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+             <el-form-item label="合同负责人" prop="responsible_person">
+              <el-input v-model="form.responsible_person" placeholder="请输入合同负责人姓名" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+             <el-form-item label="合同经办人" prop="contract_handler">
+              <el-input v-model="form.contract_handler" placeholder="请输入合同经办人姓名" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+             <el-form-item label="合同原件档案号" prop="archive_number">
+              <el-input v-model="form.archive_number" placeholder="请输入合同原件档案号" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <!-- File Upload -->
+        <el-form-item label="合同文件" prop="contract_file_path">
+          <el-upload
+            class="upload-demo"
+            action="#"
+            :http-request="handleUploadRequest"
+            :limit="1"
+            :on-remove="handleRemoveFile"
+            :file-list="fileList"
+            accept=".pdf"
+          >
+            <template #trigger>
+              <el-button type="primary">选择文件 (PDF)</el-button>
+            </template>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持PDF文件
+              </div>
+            </template>
+          </el-upload>
+        </el-form-item>
+
+        <el-form-item label="备注">
+          <el-input v-model="form.notes" type="textarea" :rows="3" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="dialog.visible = false">取 消</el-button>
+          <el-button type="primary" @click="submitForm" :loading="uploading">确 定</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- PDF Viewer Dialog -->
+    <el-dialog 
+      v-model="pdfDialog.visible" 
+      title="合同附件预览" 
+      fullscreen 
+      destroy-on-close
+      append-to-body
+    >
+      <PdfViewer :source="pdfDialog.url" />
+    </el-dialog>
+
+    <!-- Hidden file input for import -->
+    <input 
+      ref="importFileInput"
+      type="file" 
+      accept=".xlsx,.xls" 
+      style="display: none;"
+      @change="handleImportFileChange"
+    />
+
+    <!-- Import Result Dialog -->
+    <el-dialog
+      v-model="importResult.visible"
+      title="导入结果"
+      width="500px"
+      append-to-body
+    >
+      <div class="import-result">
+        <el-result v-if="importResult.success_count > 0 && importResult.error_count === 0" icon="success" title="导入成功">
+          <template #sub-title>
+            <p>成功导入 {{ importResult.success_count }} 条合同记录</p>
+          </template>
+        </el-result>
+        <el-result v-else-if="importResult.success_count === 0 && importResult.error_count > 0" icon="error" title="导入失败">
+          <template #sub-title>
+            <p>全部 {{ importResult.error_count }} 条记录导入失败</p>
+          </template>
+        </el-result>
+        <el-result v-else icon="warning" title="部分导入成功">
+          <template #sub-title>
+            <p>成功: {{ importResult.success_count }} 条，失败: {{ importResult.error_count }} 条</p>
+          </template>
+        </el-result>
+        
+        <div v-if="importResult.errors && importResult.errors.length > 0" class="error-list">
+          <el-divider>错误详情</el-divider>
+          <el-table :data="importResult.errors" max-height="200" size="small">
+            <el-table-column prop="row" label="行号" width="80" />
+            <el-table-column prop="error" label="错误信息" show-overflow-tooltip />
+          </el-table>
+        </div>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="importResult.visible = false">确 定</el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup>
+import { defineAsyncComponent, ref, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { getContracts, createContract, updateContract, deleteContract, exportContracts, downloadImportTemplate, importContracts, getNextSerialNumber } from '@/api/contractUpstream'
+import { uploadFile } from '@/api/common'
+import { openProtectedFile } from '@/utils/protectedFiles'
+import { downloadExcel } from '@/utils/download'
+import { useContractList, useTableSummary, useMobileDetection } from '@/composables/useContractList'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { ArrowDown, Download, More, Search, Refresh, Upload, Plus } from '@element-plus/icons-vue'
+import DictSelect from '@/components/DictSelect.vue'
+import SmartDateInput from '@/components/SmartDateInput.vue'
+import { useUserStore } from '@/stores/user'
+import { useSystemStore } from '@/stores/system'
+import AppSectionCard from '@/components/ui/AppSectionCard.vue'
+import AppFilterBar from '@/components/ui/AppFilterBar.vue'
+import AppDataTable from '@/components/ui/AppDataTable.vue'
+import AppEmptyState from '@/components/ui/AppEmptyState.vue'
+import AppRangeField from '@/components/ui/AppRangeField.vue'
+import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
+import ContractQueryBot from '@/components/ContractQueryBot.vue'
+
+const SmartAutocomplete = defineAsyncComponent(() => import('@/components/SmartAutocomplete.vue'))
+const PdfViewer = defineAsyncComponent(() => import('@/components/PdfViewer.vue'))
+const FormulaInput = defineAsyncComponent(() => import('@/components/FormulaInput.vue'))
+
+const userStore = useUserStore()
+const systemStore = useSystemStore()
+const router = useRouter()
+const route = useRoute()
+const { getSummaries: baseGetSummaries, footerCellStyle } = useTableSummary()
+const { isMobile, checkIsMobile } = useMobileDetection()
+
+const getSummaries = (param) => {
+  return baseGetSummaries(param, ['contract_amount', 'total_receivable', 'total_invoiced', 'total_received', 'total_settlement'])
+}
+
+const {
+  loading,
+  list: contractList,
+  total,
+  queryParams,
+  getList: fetchList,
+  handleQuery: baseHandleQuery,
+  resetQuery: baseResetQuery,
+  handleDelete: baseHandleDelete,
+  handleExport: baseHandleExport,
+  formatMoney,
+  getStatusType
+} = useContractList({
+  api: {
+    getContracts,
+    deleteContract: (id) => deleteContract(id, { suppressGlobalErrorMessage: true }),
+    exportContracts
+  },
+  contractType: '上游合同',
+  exportPrefix: '上游合同列表',
+  onDeleteError: async (error, row) => {
+    const detail = error?.response?.data?.detail
+    const appError = detail && typeof detail === 'object' ? detail : null
+    const relatedRecords = appError?.data?.related_records
+    if (error?.response?.status !== 409 || !relatedRecords) {
+      return false
+    }
+
+    const relatedGroups = [
+      {
+        label: '下游合同',
+        items: (relatedRecords.downstream_contracts || []).map(item => [item.contract_code, item.contract_name].filter(Boolean).join(' '))
+      },
+      {
+        label: '管理合同',
+        items: (relatedRecords.management_contracts || []).map(item => [item.contract_code, item.contract_name].filter(Boolean).join(' '))
+      },
+      {
+        label: '无合同费用',
+        items: (relatedRecords.non_contract_expenses || []).map(item => [item.expense_code, item.description].filter(Boolean).join(' '))
+      },
+      {
+        label: '零星用工',
+        items: (relatedRecords.zero_hour_labors || []).map(item => [item.labor_date, item.dispatch_unit || `总金额 ¥${formatMoney(item.total_amount || 0)}`].filter(Boolean).join(' '))
+      }
+    ].filter(group => group.items.length)
+
+    systemStore.pushNotification({
+      id: `upstream-delete-blocked-${row.id}`,
+      type: 'general',
+      title: `上游合同“${row.contract_name}”无法删除`,
+      subtitle: '存在关联的下游合同、管理合同、无合同费用或零星用工',
+      content: '请先删除以下关联记录后，再删除该上游合同。',
+      relatedGroups
+    })
+    ElMessage.warning(appError?.message || '该上游合同存在关联数据，已生成通知清单')
+    return true
+  }
+})
+
+const handleDelete = (row) => baseHandleDelete(row)
+
+const TAB_MANAGEMENT = 'management'
+const TAB_QUERY = 'query'
+const TAB_BASIC_INFO = 'basic_info'
+const TAB_NAMES = new Set([TAB_MANAGEMENT, TAB_QUERY, TAB_BASIC_INFO])
+
+const activeTab = ref(TAB_MANAGEMENT)
+const dateRange = ref([])
+const monthRange = ref([])
+
+const dialog = reactive({
+  title: '',
+  visible: false,
+  isEdit: false
+})
+
+const pdfDialog = reactive({
+  visible: false,
+  url: ''
+})
+
+// Import functionality
+const importResult = reactive({
+  visible: false,
+  success_count: 0,
+  error_count: 0,
+  errors: []
+})
+const importFileInput = ref(null)
+const importLoading = ref(false)
+const uploading = ref(false)
+
+const formRef = ref(null)
+const fileList = ref([])
+const originalId = ref(null)
+
+const form = reactive({
+  serial_number: undefined,
+  id: undefined,  // Keep ID for internal tracking if needed
+  contract_code: '',
+  contract_name: '',
+  party_a_name: '',
+  party_b_name: '',
+  party_a_contact: '',
+  party_a_phone: '',
+  contract_amount: 0,
+  sign_date: '',
+  start_date: '',
+  end_date: '',
+  category: '',
+  company_category: '', // 公司合同分类
+  pricing_mode: '',     // 计价模式
+  management_mode: '',  // 管理模式
+  responsible_person: '', // 合同负责人
+  contract_handler: '',   // 合同经办人
+  archive_number: '',     // 合同原件档案号
+  notes: '',
+  status: '执行中',
+  contract_file_path: '',
+  contract_file_key: ''
+})
+
+const rules = {
+  serial_number: [
+    { required: true, message: '请输入合同序号', trigger: 'blur' },
+    { type: 'number', message: '合同序号必须是数字', trigger: 'blur' },
+    { validator: (rule, value, callback) => {
+        if (value && value <= 0) {
+          callback(new Error('合同序号必须大于0'))
+        } else {
+          callback()
+        }
+      }, trigger: 'blur' }
+  ],
+  // contract_code is now optional - auto-generated if empty
+  contract_name: [{ required: true, message: '请输入合同名称', trigger: 'blur' }],
+  party_a_name: [{ required: true, message: '请输入甲方名称', trigger: 'blur' }],
+  party_b_name: [{ required: true, message: '请输入乙方名称', trigger: 'blur' }],
+  contract_amount: [{ required: true, message: '请输入合同金额', trigger: 'blur' }]
+}
+
+// Check if mobile
+const handleResize = () => {
+  checkIsMobile()
+}
+
+const syncRangesForQuery = () => {
+  const [startDate, endDate] = dateRange.value || []
+  if (activeTab.value === 'basic_info') {
+    queryParams.start_date = startDate || undefined
+    queryParams.end_date = endDate || undefined
+  } else {
+    queryParams.start_date = undefined
+    queryParams.end_date = undefined
+  }
+
+  const [managementStartDate, managementEndDate] = monthRange.value || []
+  if (activeTab.value === 'management') {
+    queryParams.start_date = managementStartDate || undefined
+    queryParams.end_date = managementEndDate || undefined
+    queryParams.start_month = undefined
+    queryParams.end_month = undefined
+  } else {
+    queryParams.start_month = undefined
+    queryParams.end_month = undefined
+  }
+}
+
+const getList = () => {
+  syncRangesForQuery()
+  fetchList()
+}
+
+const handleExport = async () => {
+  syncRangesForQuery()
+  await baseHandleExport()
+}
+
+function getRouteTab() {
+  const tab = typeof route.query.tab === 'string' ? route.query.tab : TAB_MANAGEMENT
+  return TAB_NAMES.has(tab) ? tab : TAB_MANAGEMENT
+}
+
+function syncRouteTab(tab) {
+  const nextQuery = { ...route.query }
+  if (tab === TAB_MANAGEMENT) {
+    delete nextQuery.tab
+  } else {
+    nextQuery.tab = tab
+  }
+  router.replace({ query: nextQuery })
+}
+
+const handleTabChange = (nextTab) => {
+  syncRouteTab(nextTab)
+  if (nextTab === TAB_QUERY) {
+    activeTab.value = TAB_QUERY
+    return
+  }
+
+  activeTab.value = nextTab
+  queryParams.page = 1
+  queryParams.keyword = ''
+  queryParams.status = ''
+  queryParams.company_category = ''
+  queryParams.category = ''
+  queryParams.management_mode = ''
+  dateRange.value = []
+  monthRange.value = []
+  getList()
+}
+
+const handleQuery = () => {
+  queryParams.page = 1
+  getList()
+}
+
+const resetQuery = () => {
+  dateRange.value = []
+  monthRange.value = []
+  queryParams.company_category = ''
+  queryParams.category = ''
+  queryParams.management_mode = ''
+  
+  // Clear date/month params explicitly
+  queryParams.start_date = undefined
+  queryParams.end_date = undefined
+  queryParams.start_month = undefined
+  queryParams.end_month = undefined
+
+  baseResetQuery()
+}
+
+
+// File Upload Logic
+const handleUploadRequest = async (option) => {
+  uploading.value = true
+  try {
+    const serial = form.serial_number || '000'
+    const customName = `${serial}_${option.file.name}`
+    
+    const res = await uploadFile(option.file, {
+      subdir: 'upstream/contract',
+      custom_filename: customName
+    })
+    
+    if (res && res.path) {
+      form.contract_file_path = res.path
+      if (res.key) form.contract_file_key = res.key
+      // Update file list to display the name
+      fileList.value = [{
+        name: option.file.name,
+        url: res.path
+      }]
+      ElMessage.success('上传成功')
+    } else {
+      throw new Error('上传返回路径为空')
+    }
+  } catch (e) {
+    ElMessage.error('上传失败')
+    option.onError(e)
+  } finally {
+    uploading.value = false
+  }
+}
+
+const handleRemoveFile = () => {
+  form.contract_file_path = ''
+  fileList.value = []
+}
+
+// PDF Preview
+const handlePreview = (path) => {
+  if (!path) return
+  pdfDialog.url = path 
+  pdfDialog.visible = true
+}
+
+// Open PDF in new tab
+// Open PDF in new tab
+const openPdfInNewTab = async (path) => {
+  if (!path) return
+  await openProtectedFile(path)
+}
+
+// Form handling
+const resetForm = () => {
+  form.serial_number = undefined
+  form.id = undefined
+  form.contract_code = ''
+  form.contract_name = ''
+  form.party_a_name = ''
+  form.party_b_name = ''
+  form.party_a_contact = ''
+  form.party_a_phone = ''
+  form.contract_amount = 0
+  form.sign_date = new Date().toISOString().split('T')[0]
+  form.start_date = ''
+  form.end_date = ''
+  form.category = ''
+  form.company_category = ''
+  form.pricing_mode = ''
+  form.management_mode = ''
+  form.responsible_person = ''
+  form.contract_handler = ''
+  form.archive_number = ''
+  form.notes = ''
+  form.status = '执行中'
+  form.contract_file_path = ''
+  fileList.value = []
+}
+
+const handleAdd = async () => {
+  resetForm()
+  dialog.title = '新建上游合同'
+  dialog.isEdit = false
+  dialog.visible = true
+  
+  // Auto-fetch next serial number
+  try {
+    const res = await getNextSerialNumber()
+    if (res && res.serial_number) {
+      form.serial_number = res.serial_number
+    }
+  } catch (e) {
+    console.error('Failed to get next serial number:', e)
+  }
+}
+
+const handleEdit = (row) => {
+  resetForm()
+  Object.assign(form, row)
+  originalId.value = row.id
+  
+  if (row.contract_file_path) {
+    // Use contract name as display name instead of UUID filename
+    const displayName = row.contract_name ? `${row.contract_name}.pdf` : '合同文件.pdf'
+    fileList.value = [{
+      name: displayName,
+      url: row.contract_file_path
+    }]
+  }
+  
+  dialog.title = '编辑合同'
+  dialog.isEdit = true
+  dialog.visible = true
+}
+
+const submitForm = async () => {
+  if (!formRef.value) return
+  await formRef.value.validate(async (valid) => {
+    if (valid) {
+      // Sanitize data: convert empty strings to null for optional API fields
+      const dataToSubmit = { ...form }
+      if (!dataToSubmit.start_date) dataToSubmit.start_date = null
+      if (!dataToSubmit.end_date) dataToSubmit.end_date = null
+      if (!dataToSubmit.category) dataToSubmit.category = null
+      if (!dataToSubmit.company_category) dataToSubmit.company_category = null
+      if (!dataToSubmit.pricing_mode) dataToSubmit.pricing_mode = null
+      if (!dataToSubmit.management_mode) dataToSubmit.management_mode = null
+      if (!dataToSubmit.responsible_person) dataToSubmit.responsible_person = null
+      if (!dataToSubmit.notes) dataToSubmit.notes = null
+      if (!dataToSubmit.party_a_contact) dataToSubmit.party_a_contact = null
+      if (!dataToSubmit.party_a_phone) dataToSubmit.party_a_phone = null
+      if (!dataToSubmit.contract_file_path) dataToSubmit.contract_file_path = null
+      
+      try {
+        if (dialog.isEdit) {
+            // Use the original ID for the URL, because the new ID might be different
+            await updateContract(originalId.value, dataToSubmit)
+            ElMessage.success('更新成功')
+        } else {
+            await createContract(dataToSubmit)
+            ElMessage.success('创建成功')
+        }
+        dialog.visible = false
+        getList()
+      } catch (error) {
+        console.error('Submit error:', error)
+      }
+    }
+  })
+}
+
+
+const handleDetail = (row) => {
+  const preservedTab = activeTab.value === TAB_MANAGEMENT ? undefined : activeTab.value
+  router.push({ 
+    name: 'UpstreamDetail', 
+    params: { id: row.id },
+    query: {
+      page: queryParams.page,
+      keyword: queryParams.keyword || undefined,
+      status: queryParams.status || undefined,
+      tab: preservedTab
+    }
+  })
+}
+
+
+// Import functionality
+const handleImportCommand = (command) => {
+  if (command === 'template') {
+    handleDownloadTemplate()
+  } else if (command === 'import') {
+    importFileInput.value?.click()
+  }
+}
+
+const handleDownloadTemplate = async () => {
+  try {
+    ElMessage.info('正在下载模板...')
+    const res = await downloadImportTemplate()
+    downloadExcel(res, '上游合同导入模板.xlsx')
+    ElMessage.success('模板下载成功')
+  } catch (e) {
+    console.error('Template download error details:', e)
+    ElMessage.error('模板下载失败: ' + (e.message || '未知错误'))
+  }
+}
+
+const handleImportFileChange = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+  
+  // Reset file input for next use
+  event.target.value = ''
+  
+  try {
+    importLoading.value = true
+    ElMessage.info('正在导入数据...')
+    
+    const result = await importContracts(file)
+    
+    // Show result dialog
+    importResult.success_count = result.success_count || 0
+    importResult.error_count = result.error_count || 0
+    importResult.errors = result.errors || []
+    importResult.visible = true
+    
+    // Refresh list if any successful imports
+    if (result.success_count > 0) {
+      getList()
+    }
+  } catch (e) {
+    ElMessage.error('导入失败: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    importLoading.value = false
+  }
+}
+
+onMounted(() => {
+  activeTab.value = getRouteTab()
+  if (activeTab.value !== TAB_QUERY) {
+    if (route.query.page) {
+      queryParams.page = parseInt(route.query.page, 10)
+    }
+    if (route.query.keyword) {
+      queryParams.keyword = route.query.keyword
+    }
+    if (route.query.status) {
+      queryParams.status = route.query.status
+    }
+    getList()
+  }
+
+  checkIsMobile()
+  window.addEventListener('resize', handleResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
+})
+</script>
+
+<style scoped lang="scss">
+
+.upstream-page-shell {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.contract-surface {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.contract-tabs :deep(.el-tabs__header) {
+  margin-bottom: var(--space-5);
+}
+
+.contract-surface :deep(.app-section-card) {
+  border-radius: calc(var(--radius) + 2px);
+}
+
+.contract-surface :deep(.el-table__inner-wrapper::before) {
+  display: none;
+}
+
+.contract-surface :deep(.el-table td.el-table__cell),
+.contract-surface :deep(.el-table th.el-table__cell) {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.contract-surface :deep(.el-table__header th.el-table__cell) {
+  background: color-mix(in srgb, var(--surface-panel-muted) 72%, var(--surface-panel) 28%);
+}
+
+.contract-surface :deep(.el-table) {
+  --el-table-border-color: var(--border-subtle);
+  --el-table-header-text-color: var(--text-secondary);
+  --el-table-text-color: var(--text-primary);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--surface-panel-muted) 58%, var(--surface-panel) 42%);
+}
+
+:deep(.contract-table--dense .el-table__cell) {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  vertical-align: top;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.contract-cell--wrap {
+  white-space: normal !important;
+  word-break: break-word;
+  line-height: 1.45;
+  display: block;
+}
+
+.contract-cell--amount {
+  white-space: nowrap;
+}
+
+.upstream-filter-section,
+.upstream-table-section {
+  gap: var(--space-4);
+}
+
+.upstream-filter-section :deep(.app-filter-bar) {
+  margin-top: 2px;
+}
+
+.upstream-filter-section :deep(.filter-control--compact) {
+  grid-column: span 2;
+}
+
+.upstream-table-section :deep(.app-data-table) {
+  gap: var(--space-4);
+}
+
+.filter-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.mobile-actions {
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 10px;
+  
+  .el-button {
+    margin-left: 0 !important;
+  }
+  
+  .action-item {
+    margin-left: 0;
+  }
+}
+
+.pagination-container {
+  margin-top: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.card-list .contract-card {
+  border-radius: calc(var(--radius) + 2px);
+  background: var(--surface-panel-elevated);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Mobile Card View */
+.card-list {
+  display: grid;
+  gap: 16px;
+
+  .contract-card {
+    border: 1px solid var(--border-subtle);
+    border-radius: calc(var(--radius) + 2px);
+    background: var(--surface-panel-elevated);
+    box-shadow: var(--shadow-soft);
+    
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      
+      .title {
+        font-weight: bold;
+        font-size: 15px;
+        color: var(--text-primary);
+        flex: 1;
+        margin-right: 10px;
+      }
+    }
+    
+    .card-body {
+      .info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        font-size: 14px;
+        
+        .label {
+          color: var(--text-secondary);
+          min-width: 80px;
+        }
+        
+        .value {
+          color: var(--text-primary);
+          font-weight: 500;
+          text-align: right;
+          flex: 1;
+          
+          &.amount {
+            color: var(--brand-primary-strong);
+            font-weight: bold;
+          }
+        }
+      }
+    }
+    
+    .card-footer {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+  }
+}
+
+:deep(.amount-input-right .el-input__inner) {
+  text-align: right;
+}
+
+/* Summary Row Styling removed in favor of footer-cell-style prop */
+
+/* Multi-line cell display for long text */
+.contract-name-cell {
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.5;
+  display: block;
+}
+
+.multi-line-cell {
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.4;
+  display: block;
+}
+
+.cell-placeholder {
+  color: var(--text-muted);
+}
+</style>
+
+<style>
+.custom-footer-table.contract-table--dense .el-table__footer-wrapper tbody td,
+.custom-footer-table.contract-table--dense .el-table__fixed-footer-wrapper tbody td,
+.custom-footer-table.contract-table--dense .el-table__footer-wrapper tbody tr,
+.custom-footer-table.contract-table--dense .el-table__fixed-footer-wrapper tbody tr {
+  background-color: color-mix(in srgb, var(--surface-panel-muted) 76%, var(--surface-panel) 24%) !important;
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+  font-size: 14px !important;
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--surface-panel-muted) 76%, var(--surface-panel) 24%) !important;
+}
+.custom-footer-table.contract-table--dense .el-table__footer-wrapper tbody td .cell,
+.custom-footer-table.contract-table--dense .el-table__fixed-footer-wrapper tbody td .cell {
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
+}
+
+/* Keep default table cells single-line; allow specific cells to override */
+.custom-footer-table.contract-table--dense td .cell {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.custom-footer-table.contract-table--dense .el-table__row {
+  height: auto !important;
+}
+
+.custom-footer-table.contract-table--dense td.el-table__cell {
+  height: auto !important;
+  vertical-align: top !important;
+}
+
+.multi-line-cell {
+  white-space: normal !important;
+  word-break: break-word !important;
+  word-wrap: break-word !important;
+  line-height: 1.5 !important;
+  display: block !important;
+}
+</style>
