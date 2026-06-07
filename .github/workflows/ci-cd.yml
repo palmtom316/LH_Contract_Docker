@@ -5,9 +5,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop, 1.6 ]
+    branches: [ main, develop, 1.6, release/1.7.0 ]
   pull_request:
-    branches: [ main, develop, 1.6 ]
+    branches: [ main, develop, 1.6, release/1.7.0 ]
 
 jobs:
   # Backend Tests
@@ -108,7 +108,7 @@ jobs:
     - name: Run linting
       run: |
         cd frontend
-        npm run lint || true
+        npm run lint
     
     - name: Build frontend
       run: |
@@ -124,7 +124,7 @@ jobs:
   build:
     needs: [backend-test, frontend-test]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release/1.7.0')
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
@@ -200,7 +200,7 @@ jobs:
       if: ${{ env.DEPLOY_HOST != '' && env.DEPLOY_USER != '' && env.DEPLOY_KEY != '' && env.DEPLOY_URL != '' }}
       run: |
         sleep 10
-        curl -f ${{ secrets.DEPLOY_URL }}/health || exit 1
+        curl -f ${{ secrets.DEPLOY_URL }}/health/ready || exit 1
     
     - name: Notify deployment
       if: ${{ success() && env.DEPLOY_HOST != '' && env.DEPLOY_USER != '' && env.DEPLOY_KEY != '' && env.DEPLOY_URL != '' }}

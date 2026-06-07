@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import request from '@/utils/request'
-import { fetchProtectedFileBlob, openProtectedFile } from '@/utils/protectedFiles'
+import { buildProtectedFileUrl, fetchProtectedFileBlob, openProtectedFile } from '@/utils/protectedFiles'
 
 vi.mock('@/utils/request', () => ({
   default: { get: vi.fn() }
@@ -8,6 +8,7 @@ vi.mock('@/utils/request', () => ({
 
 describe('protectedFiles', () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
     vi.clearAllMocks()
     if (!URL.createObjectURL) {
       URL.createObjectURL = vi.fn()
@@ -39,5 +40,29 @@ describe('protectedFiles', () => {
 
     expect(createObjectURL).toHaveBeenCalled()
     expect(openSpy).toHaveBeenCalledWith(objectUrl, '_blank', 'noopener')
+  })
+
+  it('normalizes legacy local upload prefixes', () => {
+    expect(buildProtectedFileUrl('/uploads/contracts/2026/04/demo.pdf')).toBe(
+      '/common/files/contracts/2026/04/demo.pdf'
+    )
+    expect(buildProtectedFileUrl('/app/uploads/contracts/2026/04/demo.pdf')).toBe(
+      '/common/files/contracts/2026/04/demo.pdf'
+    )
+  })
+
+  it('fetches already-built protected API URLs with auth transport', async () => {
+    request.get.mockResolvedValue(new Blob(['demo'], { type: 'application/pdf' }))
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:demo')
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+
+    await openProtectedFile('/api/v1/common/files/uploads/contracts/2026/04/demo.pdf')
+
+    expect(request.get).toHaveBeenCalledWith(
+      '/common/files/contracts/2026/04/demo.pdf',
+      expect.objectContaining({ responseType: 'blob' })
+    )
+    expect(createObjectURL).toHaveBeenCalled()
+    expect(openSpy).toHaveBeenCalledWith('blob:demo', '_blank', 'noopener')
   })
 })

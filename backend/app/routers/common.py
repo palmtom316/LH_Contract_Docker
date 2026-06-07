@@ -23,7 +23,7 @@ from app.models.contract_management import ContractManagement
 from app.services.auth import get_current_active_user
 from app.core.errors import ValidationError, DatabaseError, PermissionDeniedError, AuthenticationError
 from app.core.validators import FileValidators
-from app.services.file_authorization import user_can_access_file_path
+from app.services.file_authorization import normalize_file_reference, user_can_access_file_path
 from app.utils.file_validator import validate_file_upload
 
 router = APIRouter()
@@ -66,6 +66,8 @@ logger = logging.getLogger(__name__)
 async def upload_file(
     file: UploadFile = File(...),
     upload_dir: str = Form(default=None),
+    subdir: str = Form(default=None),
+    custom_filename: str = Form(default=None),
     current_user: User = Depends(get_current_active_user)
 ):
     """
@@ -73,8 +75,10 @@ async def upload_file(
     
     Args:
         file: The file to upload
-        upload_dir: Not strictly used for folders in MinIO, but used for prefixing if needed.
-                    Allowed: contracts, invoices, receipts, settlements, expenses, etc.
+        upload_dir: Top-level object prefix. Allowed: contracts, invoices, receipts,
+                    settlements, expenses, docs.
+        subdir: Optional controlled subfolder under an allowed top-level prefix.
+        custom_filename: Optional filename suffix after sanitization.
     
     Returns: 
         {
@@ -84,7 +88,14 @@ async def upload_file(
             "content_type": str
         }
     """
-    logger.info(f"[UPLOAD] Start: filename={file.filename}, content_type={file.content_type}, upload_dir={upload_dir}, user={current_user.username}")
+    logger.info(
+        "[UPLOAD] Start: filename=%s, content_type=%s, upload_dir=%s, subdir=%s, user=%s",
+        file.filename,
+        file.content_type,
+        upload_dir,
+        subdir,
+        current_user.username,
+    )
 
     # 1. Validate filename, extension, MIME signature, and size
     safe_name = await validate_file_upload(file)
@@ -94,24 +105,45 @@ async def upload_file(
     # Format: {year}/{month}/{uuid}.{ext} to avoid flat folder limit issues
     now = datetime.now()
     unique_id = str(uuid.uuid4())
-    object_name = f"{now.year}/{now.month:02d}/{unique_id}.{ext}"
-    
-    # If upload_dir provided, maybe prefix it? 
-    # For now, let's keep all in one bucket but maybe prefix by type if helpful, 
-    # but strictly following V1.5 plan, we just need a unique key.
-    # Let's add the type as prefix for better organization: {type}/{year}/{month}/{uuid}.{ext}
-    
+
     type_prefix = "others"
-    allowed_dirs = ['contracts', 'invoices', 'receipts', 'settlements', 'expenses', 'docs']
-    
-    if upload_dir and upload_dir in allowed_dirs:
-        type_prefix = upload_dir
+    allowed_dirs = {"contracts", "invoices", "receipts", "settlements", "expenses", "docs"}
+    allowed_subdirs = {
+        "upstream/contract": "contracts/upstream",
+        "downstream/contract": "contracts/downstream",
+        "management/contract": "contracts/management",
+    }
+
+    upload_dir_value = upload_dir.strip("/") if isinstance(upload_dir, str) else None
+    subdir_value = subdir.strip("/") if isinstance(subdir, str) else None
+    custom_filename_value = custom_filename if isinstance(custom_filename, str) else None
+
+    if upload_dir_value and upload_dir_value in allowed_dirs:
+        type_prefix = upload_dir_value
     else:
         if ext in ['pdf']: type_prefix = "contracts"
         elif ext in ['jpg', 'jpeg', 'png']: type_prefix = "receipts"
         elif ext in ['xlsx', 'xls']: type_prefix = "docs"
-        
-    final_object_name = f"{type_prefix}/{object_name}"
+
+    if subdir_value:
+        mapped_subdir = allowed_subdirs.get(subdir_value)
+        if not mapped_subdir:
+            raise ValidationError(
+                message="上传目录无效",
+                field_errors={"subdir": "不支持的上传子目录"}
+            )
+        type_prefix = mapped_subdir
+
+    object_filename = f"{unique_id}.{ext}"
+    if custom_filename_value:
+        from app.utils.file_validator import secure_filename
+
+        safe_custom_filename = secure_filename(custom_filename_value)
+        custom_ext = safe_custom_filename.rsplit(".", 1)[-1].lower() if "." in safe_custom_filename else ""
+        if safe_custom_filename and custom_ext == ext:
+            object_filename = f"{unique_id}_{safe_custom_filename}"
+
+    final_object_name = f"{type_prefix}/{now.year}/{now.month:02d}/{object_filename}"
 
     # 3. Upload to MinIO
     try:
@@ -190,7 +222,7 @@ async def get_file(
     current_user = None
     # Validate path to prevent traversal
     try:
-        safe_path = FileValidators.validate_file_path(path)
+        safe_path = FileValidators.validate_file_path(normalize_file_reference(path))
     except ValueError:
         raise ValidationError(
             message="非法的文件路径",

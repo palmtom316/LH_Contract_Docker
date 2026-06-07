@@ -2,8 +2,15 @@ import request from '@/utils/request'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
+function isProtectedFileReference(path) {
+  const rawPath = String(path || '')
+  return rawPath.includes('/api/v1/common/files/')
+    || rawPath.startsWith(`${API_BASE_URL}/common/files/`)
+    || rawPath.startsWith('/common/files/')
+}
+
 function isBrowserFileUrl(path) {
-  return /^(blob:|data:|https?:)/.test(path) || path.startsWith('/api/')
+  return !isProtectedFileReference(path) && (/^(blob:|data:|https?:)/.test(path) || path.startsWith('/api/'))
 }
 
 function revokeObjectUrlLater(url) {
@@ -11,23 +18,25 @@ function revokeObjectUrlLater(url) {
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
-function normalizeProtectedPath(path) {
+export function normalizeProtectedPath(path) {
   let cleanPath = String(path || '').trim()
 
   if (!cleanPath) return ''
   if (cleanPath.startsWith(`${API_BASE_URL}/common/files/`)) {
     cleanPath = cleanPath.slice(`${API_BASE_URL}/common/files/`.length)
+  } else if (cleanPath.includes('/api/v1/common/files/')) {
+    cleanPath = cleanPath.slice(cleanPath.indexOf('/api/v1/common/files/') + '/api/v1/common/files/'.length)
   } else if (cleanPath.startsWith('/common/files/')) {
     cleanPath = cleanPath.slice('/common/files/'.length)
   }
 
   cleanPath = cleanPath.replace(/^\/+/, '')
-  cleanPath = cleanPath.replace(/^uploads\//, '')
+  cleanPath = cleanPath.replace(/^(app\/uploads|backend\/uploads|uploads)\//, '')
 
   return cleanPath
 }
 
-function buildProtectedFileUrl(path) {
+export function buildProtectedFileUrl(path) {
   const cleanPath = normalizeProtectedPath(path)
   if (!cleanPath) {
     throw new Error('缺少受保护文件路径')

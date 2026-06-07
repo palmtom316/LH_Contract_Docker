@@ -9,7 +9,7 @@ from sqlalchemy import text
 from typing import Dict, Any
 import asyncio
 
-from app.database import get_db
+from app.database import get_db, verify_required_schema
 from app.core.cache import cache_manager
 from app.config import settings
 
@@ -17,10 +17,11 @@ router = APIRouter()
 
 
 async def check_database(db: AsyncSession) -> Dict[str, Any]:
-    """Check database connectivity and performance"""
+    """Check database connectivity, latency, and required schema."""
     try:
         start = asyncio.get_event_loop().time()
         await db.execute(text("SELECT 1"))
+        await verify_required_schema(db)
         latency = (asyncio.get_event_loop().time() - start) * 1000
 
         return {
@@ -116,14 +117,17 @@ async def health_check_detailed(db: AsyncSession = Depends(get_db)):
 @router.get("/health/ready")
 async def readiness_check(db: AsyncSession = Depends(get_db)):
     """Kubernetes readiness probe"""
-    db_check = await check_database(db)
+    checks = {
+        "database": await check_database(db),
+        "minio": await check_minio(),
+    }
 
-    if db_check["status"] == "healthy":
+    if all(check["status"] == "healthy" for check in checks.values()):
         return {"status": "ready"}
 
     return JSONResponse(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        content={"status": "not_ready"},
+        content={"status": "not_ready", "checks": checks},
     )
 
 

@@ -196,6 +196,7 @@ npm test --prefix frontend
 - [`docs/API_DOCUMENTATION.md`](docs/API_DOCUMENTATION.md)
 - [`docs/USER_OPERATION_MANUAL.md`](docs/USER_OPERATION_MANUAL.md)
 - [`docs/PVE_BACKUP_GUIDE.md`](docs/PVE_BACKUP_GUIDE.md)
+- [`docs/PVE_1_6_4_TO_1_7_RESTORE.md`](docs/PVE_1_6_4_TO_1_7_RESTORE.md)
 - [`backend/docs/N+1_QUERY_OPTIMIZATION.md`](backend/docs/N+1_QUERY_OPTIMIZATION.md)
 - [`frontend/docs/COMPONENT_REFACTORING_GUIDE.md`](frontend/docs/COMPONENT_REFACTORING_GUIDE.md)
 

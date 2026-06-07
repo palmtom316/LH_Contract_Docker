@@ -158,8 +158,18 @@ def normalize_file_reference(path: str) -> str:
     normalized = normalized.split("?", 1)[0]
     normalized = normalized.replace("\\", "/")
     normalized = normalized.lstrip("/")
-    if normalized.startswith("uploads/"):
-        normalized = normalized[len("uploads/"):]
+
+    for prefix in (
+        "api/v1/common/files/",
+        "common/files/",
+        "app/uploads/",
+        "backend/uploads/",
+        "uploads/",
+    ):
+        if normalized.startswith(prefix):
+            normalized = normalized[len(prefix):]
+            break
+
     return normalized
 
 
@@ -173,6 +183,10 @@ def _file_reference_candidates(path: str) -> tuple[str, ...]:
         f"/{normalized}",
         f"uploads/{normalized}",
         f"/uploads/{normalized}",
+        f"app/uploads/{normalized}",
+        f"/app/uploads/{normalized}",
+        f"backend/uploads/{normalized}",
+        f"/backend/uploads/{normalized}",
     )
 
 

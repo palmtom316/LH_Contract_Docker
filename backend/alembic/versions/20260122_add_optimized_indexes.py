@@ -17,17 +17,35 @@ depends_on = None
 
 
 def upgrade() -> None:
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    existing_indexes = {
+        table: {idx["name"] for idx in inspector.get_indexes(table)}
+        for table in [
+            "contracts_upstream",
+            "contracts_downstream",
+            "contracts_management",
+        ]
+        if table in inspector.get_table_names()
+    }
+
+    def create_index_if_missing(index_name: str, table_name: str, columns: list[str]) -> None:
+        if table_name not in existing_indexes:
+            return
+        if index_name not in existing_indexes[table_name]:
+            op.create_index(index_name, table_name, columns, unique=False)
+
     # 1. Upstream Contracts
-    op.create_index(op.f('ix_contracts_upstream_contract_name'), 'contracts_upstream', ['contract_name'], unique=False)
-    op.create_index(op.f('ix_contracts_upstream_sign_date'), 'contracts_upstream', ['sign_date'], unique=False)
+    create_index_if_missing(op.f('ix_contracts_upstream_contract_name'), 'contracts_upstream', ['contract_name'])
+    create_index_if_missing(op.f('ix_contracts_upstream_sign_date'), 'contracts_upstream', ['sign_date'])
 
     # 2. Downstream Contracts
-    op.create_index(op.f('ix_contracts_downstream_contract_name'), 'contracts_downstream', ['contract_name'], unique=False)
-    op.create_index(op.f('ix_contracts_downstream_sign_date'), 'contracts_downstream', ['sign_date'], unique=False)
+    create_index_if_missing(op.f('ix_contracts_downstream_contract_name'), 'contracts_downstream', ['contract_name'])
+    create_index_if_missing(op.f('ix_contracts_downstream_sign_date'), 'contracts_downstream', ['sign_date'])
 
     # 3. Management Contracts
-    op.create_index(op.f('ix_contracts_management_contract_name'), 'contracts_management', ['contract_name'], unique=False)
-    op.create_index(op.f('ix_contracts_management_sign_date'), 'contracts_management', ['sign_date'], unique=False)
+    create_index_if_missing(op.f('ix_contracts_management_contract_name'), 'contracts_management', ['contract_name'])
+    create_index_if_missing(op.f('ix_contracts_management_sign_date'), 'contracts_management', ['sign_date'])
 
 
 def downgrade() -> None:

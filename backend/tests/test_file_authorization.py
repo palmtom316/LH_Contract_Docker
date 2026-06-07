@@ -59,6 +59,28 @@ async def test_upstream_contract_file_allows_matching_view_permission(test_db: A
 
 
 @pytest.mark.asyncio
+async def test_legacy_absolute_upload_path_allows_normalized_request(test_db: AsyncSession):
+    viewer = await _create_user(test_db, username="legacy-path-viewer", role=UserRole.BIDDING)
+    contract = ContractUpstream(
+        contract_code="UP-ACCESS-LEGACY-001",
+        contract_name="Legacy Absolute Attachment",
+        party_a_name="甲方",
+        party_b_name="乙方",
+        contract_file_path="/app/uploads/contracts/2026/04/legacy-contract.pdf",
+    )
+    test_db.add(contract)
+    await test_db.commit()
+
+    allowed = await user_can_access_file_path(
+        "uploads/contracts/2026/04/legacy-contract.pdf",
+        test_db,
+        viewer,
+    )
+
+    assert allowed is True
+
+
+@pytest.mark.asyncio
 async def test_downstream_contract_file_denies_user_without_matching_permission(test_db: AsyncSession):
     viewer = await _create_user(test_db, username="upstream-only", role=UserRole.BIDDING)
     contract = ContractDownstream(

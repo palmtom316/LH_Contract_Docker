@@ -7,6 +7,7 @@ from app.routers.audit import list_archives
 from app.routers.contracts_upstream import download_import_template
 from app.services import audit_archive_service
 from app.config import settings
+from app.main import app
 
 
 @pytest.mark.asyncio
@@ -31,3 +32,13 @@ async def test_download_import_template_creates_excel_file_without_name_error(tm
     assert isinstance(response, FileResponse)
     assert Path(response.path).exists()
     assert Path(response.path).name == "upstream_contracts_import_template.xlsx"
+
+
+def test_upstream_static_template_route_is_not_shadowed_by_contract_id_route():
+    routes = {route.path for route in app.routes}
+
+    assert "/api/v1/contracts/upstream/template/excel" in routes
+    assert "/api/v1/contracts/upstream/{contract_id:int}" in routes
+    assert "/api/v1/contracts/upstream/{contract_id}" not in routes
+    assert "/api/v1/contracts/upstream/{contract_id:int}/receivables" in routes
+    assert "/api/v1/contracts/upstream/{contract_id}/receivables" not in routes

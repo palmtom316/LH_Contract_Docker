@@ -38,3 +38,49 @@ def test_deployment_checklist_references_existing_compose_services():
     legacy_admin_password = "admin" + "123"
     assert legacy_admin_phrase not in content
     assert legacy_admin_password not in content
+
+
+def test_production_images_and_startup_match_release_17_contract():
+    backend_dockerfile = (REPO_ROOT / "backend" / "Dockerfile.production").read_text(encoding="utf-8")
+    frontend_dockerfile = (REPO_ROOT / "frontend" / "Dockerfile.production").read_text(encoding="utf-8")
+    frontend_package = (REPO_ROOT / "frontend" / "package.json").read_text(encoding="utf-8")
+
+    assert 'LABEL version="1.7.0"' in backend_dockerfile
+    assert 'LABEL version="1.7.0"' in frontend_dockerfile
+    assert '"version": "1.7.0"' in frontend_package
+    assert "alembic upgrade head && uvicorn" in backend_dockerfile
+
+
+def test_production_compose_variants_configure_minio_for_backend():
+    compose_files = [
+        "docker-compose.production.yml",
+        "docker-compose.prod.yml",
+        "docker-compose.prod.balanced.yml",
+        "docker-compose.prod.lowmem.yml",
+        "docker-compose.pve-prod.yml",
+    ]
+
+    for compose_file in compose_files:
+        content = (REPO_ROOT / compose_file).read_text(encoding="utf-8")
+        assert "\n  minio:" in content
+        assert "MINIO_ENDPOINT: minio:9000" in content
+        assert "MINIO_ACCESS_KEY:" in content
+        assert "MINIO_SECRET_KEY:" in content
+        assert "MINIO_BUCKET_CONTRACTS:" in content
+        assert "minio_data:" in content
+
+
+def test_compose_files_use_current_contract_bucket_env_name():
+    compose_files = [
+        "docker-compose.yml",
+        "docker-compose.production.yml",
+        "docker-compose.prod.yml",
+        "docker-compose.prod.balanced.yml",
+        "docker-compose.prod.lowmem.yml",
+        "docker-compose.pve-prod.yml",
+    ]
+
+    for compose_file in compose_files:
+        content = (REPO_ROOT / compose_file).read_text(encoding="utf-8")
+        assert "MINIO_BUCKET_CONTRACTS" in content
+        assert "MINIO_BUCKET_ACTIVE" not in content

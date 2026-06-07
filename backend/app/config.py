@@ -133,10 +133,10 @@ class Settings(BaseSettings):
     
     # MinIO / S3 Storage
     MINIO_ENDPOINT: str = os.getenv("MINIO_ENDPOINT", "")
-    MINIO_ACCESS_KEY: str = os.getenv("MINIO_ACCESS_KEY", "")
-    MINIO_SECRET_KEY: str = os.getenv("MINIO_SECRET_KEY", "")
+    MINIO_ACCESS_KEY: str = Field(default_factory=lambda: os.getenv("MINIO_ROOT_USER", ""))
+    MINIO_SECRET_KEY: str = Field(default_factory=lambda: os.getenv("MINIO_ROOT_PASSWORD", ""))
     MINIO_SECURE: bool = os.getenv("MINIO_SECURE", "false").lower() == "true"
-    MINIO_BUCKET_CONTRACTS: str = os.getenv("MINIO_BUCKET_CONTRACTS", "contracts-active")
+    MINIO_BUCKET_CONTRACTS: str = Field(default_factory=lambda: os.getenv("MINIO_BUCKET_ACTIVE", "contracts-active"))
     
     # Redis Cache (Optional - falls back to memory cache if not available)
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")

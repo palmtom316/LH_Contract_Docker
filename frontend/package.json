@@ -6,6 +6,7 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
+        "lint": "node scripts/check-release-lint.mjs",
         "preview": "vite preview",
         "test": "vitest run --environment jsdom",
         "test:watch": "vitest --environment jsdom"

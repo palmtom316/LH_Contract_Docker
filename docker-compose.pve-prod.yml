@@ -79,6 +79,9 @@ services:
       BACKUP_TMP_DIR: /tmp/lh_contract_backups
       DEBUG: "false"
       MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET_CONTRACTS: ${MINIO_BUCKET_CONTRACTS:-contracts-active}
     volumes:
       - /mnt/data/contract_uploads:/app/uploads
       - /opt/lh-contract/logs:/app/logs
@@ -116,6 +119,9 @@ services:
       UPLOAD_DIR: /app/uploads
       BACKUP_TMP_DIR: /tmp/lh_contract_backups
       MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET_CONTRACTS: ${MINIO_BUCKET_CONTRACTS:-contracts-active}
     volumes:
       - /mnt/data/contract_uploads:/app/uploads
       - /opt/lh-contract/logs:/app/logs

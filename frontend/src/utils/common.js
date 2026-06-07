@@ -2,6 +2,7 @@
 /**
  * Common utility functions
  */
+import { buildProtectedFileUrl } from '@/utils/protectedFiles'
 
 /**
  * Get full file URL from relative path
@@ -10,20 +11,15 @@
  */
 export const getFileUrl = (path) => {
     if (!path) return ''
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1'
+    const isProtectedFileApiUrl = path.includes('/api/v1/common/files/')
+        || path.startsWith('/common/files/')
+        || path.startsWith(`${apiUrl}/common/files/`)
+
+    if (isProtectedFileApiUrl) return `${apiUrl}${buildProtectedFileUrl(path)}`
     if (path.startsWith('http') || path.startsWith('blob:') || path.startsWith('data:') || path.startsWith('/api/')) return path
 
-    // Use VITE_API_BASE_URL if available
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1'
-
-    // Legacy local files (start with /uploads)
-    if (path.startsWith('/uploads') || path.startsWith('uploads')) {
-        // Strip '/api/v1' suffix to get the root URL
-        const baseUrl = apiUrl.replace(/\/api\/v1\/?$/, '')
-        const cleanPath = path.startsWith('/') ? path : `/${path}`
-        return `${baseUrl}${cleanPath}`
-    }
-
-    return path.startsWith('/') ? path : `/${path}`
+    return `${apiUrl}${buildProtectedFileUrl(path)}`
 }
 
 /**

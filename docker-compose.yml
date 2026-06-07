@@ -79,8 +79,7 @@ services:
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
-      MINIO_BUCKET_ACTIVE: contracts-active
-      MINIO_BUCKET_ARCHIVE: contracts-archive
+      MINIO_BUCKET_CONTRACTS: ${MINIO_BUCKET_CONTRACTS:-contracts-active}
     volumes:
       - ./backend/app:/app/app
       - ${HOST_UPLOAD_DIR:-./backend/uploads}:/app/uploads

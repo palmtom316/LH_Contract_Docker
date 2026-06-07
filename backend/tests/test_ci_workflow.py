@@ -4,10 +4,10 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_ci_workflow_tracks_main_and_16_branch_pushes():
+def test_ci_workflow_tracks_release_17_branch_pushes_and_prs():
     workflow = (REPO_ROOT / ".github" / "workflows" / "ci-cd.yml").read_text(encoding="utf-8")
 
-    assert "branches: [ main, develop, 1.6 ]" in workflow
+    assert "branches: [ main, develop, 1.6, release/1.7.0 ]" in workflow
 
 
 def test_ci_workflow_uses_supported_node_version_for_vite_7():
@@ -27,6 +27,20 @@ def test_ci_workflow_does_not_swallow_frontend_test_failures():
 
     assert "npm run test || true" not in workflow
     assert "npm run test" in workflow
+
+
+def test_ci_workflow_does_not_swallow_frontend_lint_failures():
+    workflow = (REPO_ROOT / ".github" / "workflows" / "ci-cd.yml").read_text(encoding="utf-8")
+
+    assert "npm run lint || true" not in workflow
+    assert "npm run lint" in workflow
+
+
+def test_ci_workflow_builds_release_17_branch_and_checks_readiness():
+    workflow = (REPO_ROOT / ".github" / "workflows" / "ci-cd.yml").read_text(encoding="utf-8")
+
+    assert "refs/heads/release/1.7.0" in workflow
+    assert "${{ secrets.DEPLOY_URL }}/health/ready" in workflow
 
 
 def test_ci_workflow_skips_docker_publish_when_registry_secrets_are_missing():

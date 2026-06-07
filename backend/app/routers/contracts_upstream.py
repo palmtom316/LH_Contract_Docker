@@ -219,7 +219,7 @@ async def create_contract(
         raise DatabaseError(message="服务器内部错误", detail=str(e))
 
 
-@router.get("/{contract_id}", response_model=ContractUpstreamResponse)
+@router.get("/{contract_id:int}", response_model=ContractUpstreamResponse)
 async def get_contract(
     contract_id: int,
     current_user: User = Depends(require_permission(Permission.VIEW_UPSTREAM_BASIC_INFO)),
@@ -235,7 +235,7 @@ async def get_contract(
     return contract
 
 
-@router.get("/{contract_id}/summary")
+@router.get("/{contract_id:int}/summary")
 async def get_contract_summary(
     contract_id: int,
     current_user: User = Depends(can_view_upstream_basic),
@@ -257,7 +257,7 @@ async def get_contract_summary(
     }
 
 
-@router.put("/{contract_id}")
+@router.put("/{contract_id:int}")
 async def update_contract(
     contract_id: int,
     contract_in: ContractUpstreamUpdate,
@@ -276,7 +276,7 @@ async def update_contract(
         raise DatabaseError(message="更新合同失败", detail=str(e))
 
 
-@router.delete("/{contract_id}")
+@router.delete("/{contract_id:int}")
 async def delete_contract(
     contract_id: int,
     current_user: User = Depends(require_permission(Permission.DELETE_UPSTREAM_CONTRACTS)),
@@ -293,7 +293,7 @@ async def delete_contract(
 # 1. Receivables (应收款)
 # Category is now stored as a string directly from the dictionary
 
-@router.post("/{contract_id}/receivables", response_model=ReceivableResponse)
+@router.post("/{contract_id:int}/receivables", response_model=ReceivableResponse)
 async def create_receivable(
     contract_id: int,
     receivable_in: ReceivableCreate,
@@ -325,7 +325,7 @@ async def create_receivable(
         raise DatabaseError(message="数据库错误", detail=str(e))
 
 
-@router.get("/{contract_id}/receivables", response_model=List[ReceivableResponse])
+@router.get("/{contract_id:int}/receivables", response_model=List[ReceivableResponse])
 async def list_receivables(
     contract_id: int,
     current_user: User = Depends(can_view_receivables),
@@ -336,7 +336,7 @@ async def list_receivables(
     return result.scalars().all()
 
 
-@router.put("/{contract_id}/receivables/{receivable_id}", response_model=ReceivableResponse)
+@router.put("/{contract_id:int}/receivables/{receivable_id:int}", response_model=ReceivableResponse)
 async def update_receivable(
     contract_id: int,
     receivable_id: int,
@@ -369,7 +369,7 @@ async def update_receivable(
     return receivable
 
 
-@router.delete("/{contract_id}/receivables/{receivable_id}")
+@router.delete("/{contract_id:int}/receivables/{receivable_id:int}")
 async def delete_receivable(
     contract_id: int,
     receivable_id: int,
@@ -396,7 +396,7 @@ async def delete_receivable(
 
 
 # 2. Invoices (开票)
-@router.post("/{contract_id}/invoices", response_model=InvoiceUpstreamResponse)
+@router.post("/{contract_id:int}/invoices", response_model=InvoiceUpstreamResponse)
 async def create_invoice(
     contract_id: int,
     invoice_in: InvoiceUpstreamCreate,
@@ -413,7 +413,7 @@ async def create_invoice(
     return invoice
 
 
-@router.get("/{contract_id}/invoices", response_model=List[InvoiceUpstreamResponse])
+@router.get("/{contract_id:int}/invoices", response_model=List[InvoiceUpstreamResponse])
 async def list_invoices(
     contract_id: int,
     current_user: User = Depends(can_view_invoices),
@@ -424,7 +424,7 @@ async def list_invoices(
     return result.scalars().all()
 
 
-@router.put("/{contract_id}/invoices/{invoice_id}", response_model=InvoiceUpstreamResponse)
+@router.put("/{contract_id:int}/invoices/{invoice_id:int}", response_model=InvoiceUpstreamResponse)
 async def update_invoice(
     contract_id: int,
     invoice_id: int,
@@ -449,7 +449,7 @@ async def update_invoice(
     return invoice
 
 
-@router.delete("/{contract_id}/invoices/{invoice_id}")
+@router.delete("/{contract_id:int}/invoices/{invoice_id:int}")
 async def delete_invoice(
     contract_id: int,
     invoice_id: int,
@@ -471,7 +471,7 @@ async def delete_invoice(
 
 
 # 3. Receipts (收款)
-@router.post("/{contract_id}/receipts", response_model=ReceiptResponse)
+@router.post("/{contract_id:int}/receipts", response_model=ReceiptResponse)
 async def create_receipt(
     contract_id: int,
     receipt_in: ReceiptCreate,
@@ -493,7 +493,7 @@ async def create_receipt(
     return receipt
 
 
-@router.get("/{contract_id}/receipts", response_model=List[ReceiptResponse])
+@router.get("/{contract_id:int}/receipts", response_model=List[ReceiptResponse])
 async def list_receipts(
     contract_id: int,
     current_user: User = Depends(can_view_payments),
@@ -504,7 +504,7 @@ async def list_receipts(
     return result.scalars().all()
 
 
-@router.put("/{contract_id}/receipts/{receipt_id}", response_model=ReceiptResponse)
+@router.put("/{contract_id:int}/receipts/{receipt_id:int}", response_model=ReceiptResponse)
 async def update_receipt(
     contract_id: int,
     receipt_id: int,
@@ -534,7 +534,7 @@ async def update_receipt(
     return receipt
 
 
-@router.delete("/{contract_id}/receipts/{receipt_id}")
+@router.delete("/{contract_id:int}/receipts/{receipt_id:int}")
 async def delete_receipt(
     contract_id: int,
     receipt_id: int,
@@ -561,7 +561,7 @@ async def delete_receipt(
 
 
 # 4. Settlements (结算)
-@router.post("/{contract_id}/settlements", response_model=SettlementResponse)
+@router.post("/{contract_id:int}/settlements", response_model=SettlementResponse)
 async def create_settlement(
     contract_id: int,
     settlement_in: SettlementCreate,
@@ -583,7 +583,7 @@ async def create_settlement(
     return settlement
 
 
-@router.get("/{contract_id}/settlements", response_model=List[SettlementResponse])
+@router.get("/{contract_id:int}/settlements", response_model=List[SettlementResponse])
 async def list_settlements(
     contract_id: int,
     current_user: User = Depends(can_view_settlements),
@@ -594,7 +594,7 @@ async def list_settlements(
     return result.scalars().all()
 
 
-@router.put("/{contract_id}/settlements/{settlement_id}", response_model=SettlementResponse)
+@router.put("/{contract_id:int}/settlements/{settlement_id:int}", response_model=SettlementResponse)
 async def update_settlement(
     contract_id: int,
     settlement_id: int,
@@ -624,7 +624,7 @@ async def update_settlement(
     return settlement
 
 
-@router.delete("/{contract_id}/settlements/{settlement_id}")
+@router.delete("/{contract_id:int}/settlements/{settlement_id:int}")
 async def delete_settlement(
     contract_id: int,
     settlement_id: int,

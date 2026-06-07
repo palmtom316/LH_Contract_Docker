@@ -17,14 +17,24 @@ depends_on = None
 
 
 def upgrade() -> None:
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    if 'zero_hour_labor' not in inspector.get_table_names():
+        return
+
+    existing_columns = {col['name'] for col in inspector.get_columns('zero_hour_labor')}
+
     # Add description field
-    op.add_column('zero_hour_labor', sa.Column('description', sa.Text(), nullable=True))
+    if 'description' not in existing_columns:
+        op.add_column('zero_hour_labor', sa.Column('description', sa.Text(), nullable=True))
 
     # Add tax_rate field (percentage, max 100.00)
-    op.add_column('zero_hour_labor', sa.Column('tax_rate', sa.Numeric(precision=5, scale=2), server_default='0', nullable=False))
+    if 'tax_rate' not in existing_columns:
+        op.add_column('zero_hour_labor', sa.Column('tax_rate', sa.Numeric(precision=5, scale=2), server_default='0', nullable=False))
 
     # Add tax_amount field
-    op.add_column('zero_hour_labor', sa.Column('tax_amount', sa.Numeric(precision=15, scale=2), server_default='0', nullable=False))
+    if 'tax_amount' not in existing_columns:
+        op.add_column('zero_hour_labor', sa.Column('tax_amount', sa.Numeric(precision=15, scale=2), server_default='0', nullable=False))
 
 
 def downgrade() -> None:

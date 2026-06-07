@@ -87,14 +87,14 @@ if ! has_command docker; then
     exit 1
 fi
 
-if RESOLVED_DB_CONTAINER="$(find_container "${DB_CONTAINER}" lh_db_prod lh_contract_db_prod db)"; then
+if RESOLVED_DB_CONTAINER="$(find_container "${DB_CONTAINER}" lh_contract_db lh_db_prod lh_contract_db_prod db)"; then
     log "数据库容器: ${RESOLVED_DB_CONTAINER}"
 else
     log "✗ 未找到数据库容器，请通过 DB_CONTAINER 指定"
     exit 1
 fi
 
-if RESOLVED_BACKEND_CONTAINER="$(find_container "${BACKEND_CONTAINER}" lh_backend_prod lh_contract_backend_prod backend)"; then
+if RESOLVED_BACKEND_CONTAINER="$(find_container "${BACKEND_CONTAINER}" lh_contract_backend lh_backend_prod lh_contract_backend_prod backend)"; then
     log "后端容器: ${RESOLVED_BACKEND_CONTAINER}"
 else
     warn "未找到后端容器，将仅尝试从主机目录备份 uploads"
@@ -160,11 +160,25 @@ else
 fi
 
 OBJECT_SNAPSHOT_FILE="${OBJECT_STORE_DIR}/minio_snapshot_${DATE}.txt"
+OBJECT_BACKUP_DIR="${OBJECT_STORE_DIR}/minio_${MINIO_BUCKET}_${DATE}"
+OBJECT_BACKUP_FILE="${OBJECT_STORE_DIR}/minio_${MINIO_BUCKET}_${DATE}.tar.gz"
 log "正在采集对象存储摘要..."
 if has_command mc; then
     if mc du --json "${MINIO_ALIAS}/${MINIO_BUCKET}" > "${OBJECT_SNAPSHOT_FILE}" 2>/dev/null \
         && mc ls --recursive "${MINIO_ALIAS}/${MINIO_BUCKET}" 2>/dev/null | awk 'END {print "object_count=" NR}' >> "${OBJECT_SNAPSHOT_FILE}"; then
         log "✓ MinIO 摘要采集完成: ${OBJECT_SNAPSHOT_FILE}"
+        log "正在备份 MinIO 对象..."
+        rm -rf "${OBJECT_BACKUP_DIR}"
+        if mc mirror --overwrite "${MINIO_ALIAS}/${MINIO_BUCKET}" "${OBJECT_BACKUP_DIR}" \
+            && tar -czf "${OBJECT_BACKUP_FILE}" -C "${OBJECT_BACKUP_DIR}" . \
+            && rm -rf "${OBJECT_BACKUP_DIR}"; then
+            OBJECT_SIZE="$(du -h "${OBJECT_BACKUP_FILE}" | cut -f1)"
+            log "✓ MinIO 对象备份完成: ${OBJECT_BACKUP_FILE} (大小: ${OBJECT_SIZE})"
+        else
+            rm -rf "${OBJECT_BACKUP_DIR}"
+            warn "MinIO 对象备份失败（数据库中的 MinIO 文件恢复会缺对象）"
+            WARNINGS=$((WARNINGS + 1))
+        fi
     else
         {
             echo "status=skipped"
@@ -202,11 +216,14 @@ log "✓ 基线统计已输出: ${BASELINE_FILE}"
 log "正在清理 ${RETENTION_DAYS} 天前的旧备份..."
 DELETED_DB="$(find "${DB_BACKUP_DIR}" -name "*.sql.gz" -mtime +"${RETENTION_DAYS}" -print -delete | wc -l | tr -d ' ')"
 DELETED_FILES="$(find "${FILES_BACKUP_DIR}" -name "*.tar.gz" -mtime +"${RETENTION_DAYS}" -print -delete | wc -l | tr -d ' ')"
+DELETED_OBJECTS="$(find "${OBJECT_STORE_DIR}" -name "minio_*.tar.gz" -mtime +"${RETENTION_DAYS}" -print -delete | wc -l | tr -d ' ')"
 log "✓ 删除了 ${DELETED_DB} 个旧数据库备份"
 log "✓ 删除了 ${DELETED_FILES} 个旧文件备份"
+log "✓ 删除了 ${DELETED_OBJECTS} 个旧 MinIO 对象备份"
 
 DB_COUNT="$(find "${DB_BACKUP_DIR}" -name "*.sql.gz" | wc -l | tr -d ' ')"
 FILES_COUNT="$(find "${FILES_BACKUP_DIR}" -name "*.tar.gz" | wc -l | tr -d ' ')"
+OBJECT_COUNT="$(find "${OBJECT_STORE_DIR}" -name "minio_*.tar.gz" | wc -l | tr -d ' ')"
 TOTAL_SIZE="$(du -sh "${BACKUP_ROOT}" | cut -f1)"
 
 log "========================================="
@@ -214,6 +231,7 @@ log "备份统计信息"
 log "========================================="
 log "数据库备份数量: ${DB_COUNT}"
 log "文件备份数量: ${FILES_COUNT}"
+log "MinIO 对象备份数量: ${OBJECT_COUNT}"
 log "备份总大小: ${TOTAL_SIZE}"
 log "警告数量: ${WARNINGS}"
 log "关键失败数量: ${CRITICAL_FAILURES}"
