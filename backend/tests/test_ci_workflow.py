@@ -43,12 +43,18 @@ def test_ci_workflow_builds_release_17_branch_and_checks_readiness():
     assert "${{ secrets.DEPLOY_URL }}/health/ready" in workflow
 
 
-def test_ci_workflow_skips_docker_publish_when_registry_secrets_are_missing():
+def test_ci_workflow_publishes_release_images_to_ghcr_without_dockerhub_secrets():
     workflow = (REPO_ROOT / ".github" / "workflows" / "ci-cd.yml").read_text(encoding="utf-8")
 
-    assert "DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}" in workflow
-    assert "DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}" in workflow
-    assert "if: ${{ env.DOCKER_USERNAME != '' && env.DOCKER_PASSWORD != '' }}" in workflow
+    assert "permissions:" in workflow
+    assert "packages: write" in workflow
+    assert "registry: ${{ env.REGISTRY }}" in workflow
+    assert "password: ${{ secrets.GITHUB_TOKEN }}" in workflow
+    assert "ghcr.io" in workflow
+    assert "lh-contract-backend:${{ env.IMAGE_VERSION }}" in workflow
+    assert "lh-contract-frontend:${{ env.IMAGE_VERSION }}" in workflow
+    assert "DOCKER_USERNAME" not in workflow
+    assert "DOCKER_PASSWORD" not in workflow
 
 
 def test_ci_workflow_skips_deploy_steps_when_server_secrets_are_missing():

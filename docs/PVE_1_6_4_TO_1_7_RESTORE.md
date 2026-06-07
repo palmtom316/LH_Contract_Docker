@@ -26,10 +26,15 @@ mkdir -p /mnt/data/contract_uploads /opt/lh-contract/backups /opt/lh-contract/lo
 docker network create lh-contract_lh_network 2>/dev/null || true
 ```
 
+以下命令默认使用 `.env.production`。如果 1.7.0 镜像已由 GitHub Actions 发布，PVE 会直接拉取：
+
+- `ghcr.io/palmtom316/lh-contract-backend:1.7.0`
+- `ghcr.io/palmtom316/lh-contract-frontend:1.7.0`
+
 先只启动基础服务：
 
 ```bash
-docker compose -f docker-compose.pve-prod.yml up -d db redis minio
+docker compose --env-file .env.production -f docker-compose.pve-prod.yml up -d db redis minio
 ```
 
 恢复数据库到空库：
@@ -60,7 +65,8 @@ mc mirror --overwrite /tmp/lh_restore_minio lhminio/contracts-active
 启动 1.7：
 
 ```bash
-docker compose -f docker-compose.pve-prod.yml up -d
+docker compose --env-file .env.production -f docker-compose.pve-prod.yml pull backend sync-worker frontend
+docker compose --env-file .env.production -f docker-compose.pve-prod.yml up -d
 ```
 
 后端容器会自动执行数据库迁移。
@@ -68,7 +74,7 @@ docker compose -f docker-compose.pve-prod.yml up -d
 ## 恢复后检查
 
 ```bash
-docker compose -f docker-compose.pve-prod.yml exec backend \
+docker compose --env-file .env.production -f docker-compose.pve-prod.yml exec backend \
   python -m app.scripts.check_pve_restore_compat
 ```
 
