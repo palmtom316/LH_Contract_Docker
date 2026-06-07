@@ -407,8 +407,8 @@ import { defineAsyncComponent, ref, reactive, onMounted, onBeforeUnmount } from 
 import { useRouter, useRoute } from 'vue-router'
 import { getContracts, createContract, updateContract, deleteContract, exportContracts } from '@/api/contractDownstream'
 import { getContracts as getUpstreamContracts, getContractSummary } from '@/api/contractUpstream'
-import { uploadFile } from '@/api/common'
 import { useContractList, useTableSummary, useMobileDetection } from '@/composables/useContractList'
+import { createUploadRequestHandler } from '@/composables/useUploadRequest'
 import { openProtectedFile } from '@/utils/protectedFiles'
 
 // Open PDF in new tab
@@ -609,19 +609,13 @@ const handleUpstreamSelect = async (val) => {
 }
 
 // Upload
-const handleUpload = async (option) => {
-  try {
-    const result = await uploadFile(option.file)
-    form.contract_file_path = result.path
-    if (result.key) form.contract_file_key = result.key
-    fileList.value = [{ name: option.file.name, url: result.path }]
-    option.onSuccess(result)
-    ElMessage.success('上传成功')
-  } catch (e) {
-    ElMessage.error('上传失败')
-    option.onError(e)
-  }
-}
+const handleUpload = createUploadRequestHandler({
+  target: form,
+  pathField: 'contract_file_path',
+  keyField: 'contract_file_key',
+  fileListRef: fileList,
+  callOptionSuccess: true
+})
 
 // Form handling
 const resetForm = () => {

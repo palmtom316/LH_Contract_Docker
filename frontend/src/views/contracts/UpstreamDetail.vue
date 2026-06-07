@@ -478,7 +478,7 @@ import {
   getSettlements, createSettlement, updateSettlement, deleteSettlement, getContractSummary,
   getCostAllocations
 } from '@/api/contractUpstream'
-import { uploadFile } from '@/api/common'
+import { createUploadRequestHandler } from '@/composables/useUploadRequest'
 import { formatMoney, getStatusType } from '@/utils/common'
 import { openProtectedFile } from '@/utils/protectedFiles'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -674,50 +674,33 @@ const formatApprovalStatus = (status) => {
   return map[status] || status
 }
 
-const handleUploadRequest = async (option) => {
-  try {
-    const res = await uploadFile(option.file)
-    financeForm.file_path = res.path
-    fileList.value = [{ name: option.file.name, url: res.path }]
-    option.onSuccess(res)
-    ElMessage.success('上传成功')
-  } catch (e) {
-    console.error('Upload error:', e)
-    ElMessage.error('上传失败')
-    option.onError(e)
-  }
+const handleFinanceFileUpload = createUploadRequestHandler({
+  target: financeForm,
+  keyField: null
+})
+
+const settlementFileLists = {
+  audit_report_path: auditReportFileList,
+  start_report_path: startReportFileList,
+  completion_report_path: completionReportFileList
 }
 
-const handleInvoiceUpload = async (option) => {
-  try {
-    const res = await uploadFile(option.file)
-    financeForm.file_path = res.path
-    invoiceFileList.value = [{ name: option.file.name, url: res.path }]
-    ElMessage.success('上传成功')
-  } catch (e) {
-    ElMessage.error('上传失败')
-    option.onError(e)
-  }
-}
+const handleUploadRequest = (option) => handleFinanceFileUpload(option, {
+  pathField: 'file_path',
+  fileListRef: fileList,
+  callOptionSuccess: true,
+  logError: true
+})
 
-const handleSettlementUpload = async (option, fieldName) => {
-  try {
-    const res = await uploadFile(option.file)
-    financeForm[fieldName] = res.path
-    const fileData = [{ name: option.file.name, url: res.path }]
-    if (fieldName === 'audit_report_path') {
-      auditReportFileList.value = fileData
-    } else if (fieldName === 'start_report_path') {
-      startReportFileList.value = fileData
-    } else if (fieldName === 'completion_report_path') {
-      completionReportFileList.value = fileData
-    }
-    ElMessage.success('上传成功')
-  } catch (e) {
-    ElMessage.error('上传失败')
-    option.onError(e)
-  }
-}
+const handleInvoiceUpload = (option) => handleFinanceFileUpload(option, {
+  pathField: 'file_path',
+  fileListRef: invoiceFileList
+})
+
+const handleSettlementUpload = (option, fieldName) => handleFinanceFileUpload(option, {
+  pathField: fieldName,
+  fileListRef: settlementFileLists[fieldName]
+})
 
 // Actions
 const openAttachment = async (path) => {

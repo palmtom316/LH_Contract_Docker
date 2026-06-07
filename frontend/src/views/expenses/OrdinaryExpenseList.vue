@@ -338,7 +338,7 @@ import { defineAsyncComponent, ref, reactive, onMounted, onUnmounted } from 'vue
 import { useRoute } from 'vue-router'
 import { getExpenses, createExpense, updateExpense, deleteExpense, exportExpenses } from '@/api/expense'
 import { getContracts, getContract } from '@/api/contractUpstream'
-import { uploadFile } from '@/api/common'
+import { createUploadRequestHandler } from '@/composables/useUploadRequest'
 import { formatMoney } from '@/utils/common'
 import { openProtectedFile } from '@/utils/protectedFiles'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -654,19 +654,14 @@ const searchUpstreamContractsForFilter = async (query) => {
   }
 }
 
-const handleUploadRequest = async (option) => {
-  try {
-    const result = await uploadFile(option.file, 'expenses')
-    form.file_path = result.path
-    if (result.key) form.file_key = result.key
-    fileList.value = [{ name: option.file.name, url: result.path }]
-    ElMessage.success('上传成功')
-  } catch (e) {
-    console.error('Upload error:', e)
-    ElMessage.error('上传失败')
-    option.onError(e)
-  }
-}
+const handleUploadRequest = createUploadRequestHandler({
+  target: form,
+  uploadOptions: 'expenses',
+  pathField: 'file_path',
+  keyField: 'file_key',
+  fileListRef: fileList,
+  logError: true
+})
 
 const handleExceed = (files) => {
   ElMessage.warning('只能上传一个文件，请先删除旧文件')

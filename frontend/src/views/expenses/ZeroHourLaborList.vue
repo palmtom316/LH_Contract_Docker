@@ -421,12 +421,12 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { getZeroHourLaborList, createZeroHourLabor, updateZeroHourLabor, deleteZeroHourLabor, exportZeroHourLabor } from '@/api/zeroHourLabor'
 import { getContracts } from '@/api/contractUpstream'
-import { uploadFile } from '@/api/common'
 import { formatMoney } from '@/utils/common'
 import { openProtectedFile } from '@/utils/protectedFiles'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Upload, Document, Plus, Delete, Search, Refresh, Download, More } from '@element-plus/icons-vue'
 import { useMobileDetection } from '@/composables/useContractList'
+import { createUploadRequestHandler } from '@/composables/useUploadRequest'
 import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import AppFilterBar from '@/components/ui/AppFilterBar.vue'
 import AppDataTable from '@/components/ui/AppDataTable.vue'
@@ -885,17 +885,14 @@ const searchUpstreamContracts = async (query) => {
     }
 }
 
-const handleUploadRequest = async (option) => {
-    try {
-        const result = await uploadFile(option.file, 'expenses')
-    form.dispatch_file_path = result.path
-    if (result.key) form.dispatch_file_key = result.key
-    fileList.value = [{ name: option.file.name, url: result.path }]
-        ElMessage.success('上传成功')
-    } catch (e) {
-        ElMessage.error('上传失败')
-    }
-}
+const handleUploadRequest = createUploadRequestHandler({
+    target: form,
+    uploadOptions: 'expenses',
+    pathField: 'dispatch_file_path',
+    keyField: 'dispatch_file_key',
+    fileListRef: fileList,
+    callOptionError: false
+})
 
 const handleExceed = () => {
     ElMessage.warning('只能上传一个文件')

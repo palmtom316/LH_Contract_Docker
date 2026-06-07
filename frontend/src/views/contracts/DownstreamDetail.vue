@@ -497,7 +497,7 @@ import {
   getAllocations, setAllocations, clearAllocations
 } from '@/api/contractDownstream'
 import { getContracts as getUpstreamContracts } from '@/api/contractUpstream'
-import { uploadFile } from '@/api/common'
+import { createUploadRequestHandler } from '@/composables/useUploadRequest'
 import { formatMoney, getStatusType } from '@/utils/common'
 import { openProtectedFile } from '@/utils/protectedFiles'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -747,19 +747,14 @@ const confirmClearAllocations = async () => {
   }
 }
 
-const handleUpload = async (option) => {
-  try {
-    const result = await uploadFile(option.file)
-    financeForm.file_path = result.path
-    fileList.value = [{ name: option.file.name, url: result.path }]
-    option.onSuccess(result)
-    ElMessage.success('上传成功')
-  } catch (e) {
-    console.error('Upload error:', e)
-    ElMessage.error('上传失败')
-    option.onError(e)
-  }
-}
+const handleUpload = createUploadRequestHandler({
+  target: financeForm,
+  pathField: 'file_path',
+  keyField: null,
+  fileListRef: fileList,
+  callOptionSuccess: true,
+  logError: true
+})
 
 const openFinanceDialog = (type) => {
   financeDialog.type = type

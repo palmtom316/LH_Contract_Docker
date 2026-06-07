@@ -411,7 +411,7 @@ import {
   getPayments, createPayment, updatePayment, deletePayment,
   getSettlements, createSettlement, updateSettlement, deleteSettlement
 } from '@/api/contractManagement'
-import { uploadFile } from '@/api/common'
+import { createUploadRequestHandler } from '@/composables/useUploadRequest'
 import { formatMoney, getStatusType } from '@/utils/common'
 import { openProtectedFile } from '@/utils/protectedFiles'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -558,19 +558,14 @@ const loadSettlements = async () => {
   settlements.value = await getSettlements(contractId)
 }
 
-const handleUploadRequest = async (option) => {
-  try {
-    const res = await uploadFile(option.file)
-    financeForm.file_path = res.path
-    fileList.value = [{ name: option.file.name, url: res.path }]
-    option.onSuccess(res)
-    ElMessage.success('上传成功')
-  } catch (e) {
-    console.error('Upload error:', e)
-    ElMessage.error('上传失败')
-    option.onError(e)
-  }
-}
+const handleUploadRequest = createUploadRequestHandler({
+  target: financeForm,
+  pathField: 'file_path',
+  keyField: null,
+  fileListRef: fileList,
+  callOptionSuccess: true,
+  logError: true
+})
 
 const openFinanceDialog = (type) => {
   financeDialog.type = type

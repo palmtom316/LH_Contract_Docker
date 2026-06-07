@@ -613,10 +613,10 @@
 import { defineAsyncComponent, ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getContracts, createContract, updateContract, deleteContract, exportContracts, downloadImportTemplate, importContracts, getNextSerialNumber } from '@/api/contractUpstream'
-import { uploadFile } from '@/api/common'
 import { openProtectedFile } from '@/utils/protectedFiles'
 import { downloadExcel } from '@/utils/download'
 import { useContractList, useTableSummary, useMobileDetection } from '@/composables/useContractList'
+import { createUploadRequestHandler } from '@/composables/useUploadRequest'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown, Download, More, Search, Refresh, Upload, Plus } from '@element-plus/icons-vue'
 import DictSelect from '@/components/DictSelect.vue'
@@ -882,36 +882,22 @@ const resetQuery = () => {
 
 
 // File Upload Logic
-const handleUploadRequest = async (option) => {
-  uploading.value = true
-  try {
+const handleUploadRequest = createUploadRequestHandler({
+  target: form,
+  pathField: 'contract_file_path',
+  keyField: 'contract_file_key',
+  fileListRef: fileList,
+  loadingRef: uploading,
+  uploadOptions: ({ option }) => {
     const serial = form.serial_number || '000'
     const customName = `${serial}_${option.file.name}`
-    
-    const res = await uploadFile(option.file, {
+
+    return {
       subdir: 'upstream/contract',
       custom_filename: customName
-    })
-    
-    if (res && res.path) {
-      form.contract_file_path = res.path
-      if (res.key) form.contract_file_key = res.key
-      // Update file list to display the name
-      fileList.value = [{
-        name: option.file.name,
-        url: res.path
-      }]
-      ElMessage.success('上传成功')
-    } else {
-      throw new Error('上传返回路径为空')
     }
-  } catch (e) {
-    ElMessage.error('上传失败')
-    option.onError(e)
-  } finally {
-    uploading.value = false
   }
-}
+})
 
 const handleRemoveFile = () => {
   form.contract_file_path = ''
