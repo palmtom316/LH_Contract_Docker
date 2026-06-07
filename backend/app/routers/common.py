@@ -16,7 +16,7 @@ from datetime import datetime
 
 from app.database import get_db
 from app.config import settings
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.contract_upstream import ContractUpstream
 from app.models.contract_downstream import ContractDownstream
 from app.models.contract_management import ContractManagement
@@ -61,6 +61,23 @@ async def get_companies(
 
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_local_upload_path(safe_path: str) -> str:
+    local_path = os.path.normpath(os.path.join(settings.UPLOAD_DIR, safe_path))
+    local_real_path = os.path.realpath(local_path)
+    uploads_root_real = os.path.realpath(settings.UPLOAD_DIR)
+    if local_real_path != uploads_root_real and not local_real_path.startswith(uploads_root_real + os.sep):
+        raise ValidationError(
+            message="非法的文件路径",
+            field_errors={"path": "文件路径非法"}
+        )
+    return local_real_path
+
+
+def _can_use_legacy_local_upload_fallback(current_user: User, local_real_path: str) -> bool:
+    is_admin = getattr(current_user, "is_superuser", False) or getattr(current_user, "role", None) == UserRole.ADMIN
+    return bool(is_admin and os.path.exists(local_real_path) and os.path.isfile(local_real_path))
 
 @router.post("/upload", response_model=dict)
 async def upload_file(
@@ -248,13 +265,22 @@ async def get_file(
         err.headers = {"WWW-Authenticate": "Bearer"}
         raise err
 
-    if not await user_can_access_file_path(safe_path, db, current_user):
+    local_real_path = _resolve_local_upload_path(safe_path)
+    has_business_access = await user_can_access_file_path(safe_path, db, current_user)
+    has_legacy_local_access = (
+        not has_business_access
+        and _can_use_legacy_local_upload_fallback(current_user, local_real_path)
+    )
+    if not has_business_access and not has_legacy_local_access:
         raise PermissionDeniedError(
             message="无权访问该文件",
             detail="该文件未授权给当前用户"
         )
 
     logger.info(f"[FILE_GET] Request: path={safe_path}, user={current_user.username}")
+
+    if has_legacy_local_access:
+        return FileResponse(local_real_path)
     
     # 1. Try MinIO first
     try:
@@ -302,14 +328,6 @@ async def get_file(
         # Continue to local fallback
     
     # 2. Local fallback
-    local_path = os.path.normpath(os.path.join(settings.UPLOAD_DIR, safe_path))
-    local_real_path = os.path.realpath(local_path)
-    uploads_root_real = os.path.realpath(settings.UPLOAD_DIR)
-    if local_real_path != uploads_root_real and not local_real_path.startswith(uploads_root_real + os.sep):
-        raise ValidationError(
-            message="非法的文件路径",
-            field_errors={"path": "文件路径非法"}
-        )
     if os.path.exists(local_real_path) and os.path.isfile(local_real_path):
         return FileResponse(local_real_path)
     

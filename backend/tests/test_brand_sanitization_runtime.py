@@ -2,10 +2,11 @@ from pathlib import Path
 
 
 def test_backend_defaults_and_templates_have_no_brand_terms():
+    backend_root = Path(__file__).resolve().parents[1]
     files = [
-        Path("backend/app/routers/system.py"),
-        Path("backend/app/routers/auth.py"),
-        Path("backend/app/routers/contracts_upstream.py"),
+        backend_root / "app/routers/system.py",
+        backend_root / "app/routers/auth.py",
+        backend_root / "app/routers/contracts_upstream.py",
     ]
     blocked_terms = [
         "蓝海合同管理系统",

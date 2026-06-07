@@ -16,6 +16,7 @@ from starlette.responses import FileResponse, StreamingResponse
 
 from app.config import settings
 from app.main import app
+from app.models.user import UserRole
 from app.models.system import SystemConfig
 from app.routers import common, system as system_router
 from app.database import get_db
@@ -110,6 +111,77 @@ async def test_legacy_uploads_path_still_downloads_with_auth_header(monkeypatch,
     assert isinstance(response, FileResponse)
     assert response.status_code == 200
     assert response.path == str(local_file)
+
+
+@pytest.mark.asyncio
+async def test_admin_can_download_unlinked_legacy_local_upload(monkeypatch, tmp_path):
+    original_upload_dir = settings.UPLOAD_DIR
+    legacy_relative_path = "legacy/contracts/2025/admin-scan.pdf"
+    local_file = tmp_path / legacy_relative_path
+    local_file.parent.mkdir(parents=True, exist_ok=True)
+    local_file.write_bytes(b"legacy")
+
+    async def fake_get_user_from_token(token, db):
+        return SimpleNamespace(username="admin", is_active=True, is_superuser=False, role=UserRole.ADMIN)
+
+    class MissingMinioClient:
+        def stat_object(self, bucket, path):
+            raise RuntimeError("not found")
+
+    async def fake_user_can_access_file_path(path, db, current_user):
+        return False
+
+    monkeypatch.setattr(common, "get_user_from_token", fake_get_user_from_token)
+    monkeypatch.setattr(common, "user_can_access_file_path", fake_user_can_access_file_path)
+    monkeypatch.setattr(common, "get_minio_client", lambda: MissingMinioClient())
+    monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path))
+
+    try:
+        response = await common.get_file(
+            path=legacy_relative_path,
+            request=_build_request({"authorization": "Bearer token-123"}),
+            db=object(),
+        )
+    finally:
+        monkeypatch.setattr(settings, "UPLOAD_DIR", original_upload_dir)
+
+    assert isinstance(response, FileResponse)
+    assert response.status_code == 200
+    assert response.path == str(local_file)
+
+
+@pytest.mark.asyncio
+async def test_non_admin_cannot_download_unlinked_legacy_local_upload(monkeypatch, tmp_path):
+    original_upload_dir = settings.UPLOAD_DIR
+    legacy_relative_path = "legacy/contracts/2025/user-scan.pdf"
+    local_file = tmp_path / legacy_relative_path
+    local_file.parent.mkdir(parents=True, exist_ok=True)
+    local_file.write_bytes(b"legacy")
+
+    async def fake_get_user_from_token(token, db):
+        return SimpleNamespace(username="tester", is_active=True, is_superuser=False, role=UserRole.BIDDING)
+
+    class MissingMinioClient:
+        def stat_object(self, bucket, path):
+            raise RuntimeError("not found")
+
+    async def fake_user_can_access_file_path(path, db, current_user):
+        return False
+
+    monkeypatch.setattr(common, "get_user_from_token", fake_get_user_from_token)
+    monkeypatch.setattr(common, "user_can_access_file_path", fake_user_can_access_file_path)
+    monkeypatch.setattr(common, "get_minio_client", lambda: MissingMinioClient())
+    monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path))
+
+    try:
+        with pytest.raises(common.PermissionDeniedError):
+            await common.get_file(
+                path=legacy_relative_path,
+                request=_build_request({"authorization": "Bearer token-123"}),
+                db=object(),
+            )
+    finally:
+        monkeypatch.setattr(settings, "UPLOAD_DIR", original_upload_dir)
 
 
 @pytest.mark.asyncio
