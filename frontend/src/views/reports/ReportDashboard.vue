@@ -433,6 +433,7 @@ const downInvDateRange = ref([])
 const upReceiptDateRange = ref([])
 const upReceiptCompanyCategory = ref('')
 const downPayDateRange = ref([])
+const downPayCompanyCategory = ref('')
 const expPayDateRange = ref([])
 const expPayUpstreamContractName = ref('')
 const expPayCompanyCategory = ref('')
@@ -583,7 +584,10 @@ async function handleExportUpReceipt() {
 async function handleExportDownPay() {
   downPayLoading.value = true
   try {
-    const params = buildExportParams({ dateRange: downPayDateRange.value })
+    const params = buildExportParams({
+      dateRange: downPayDateRange.value,
+      companyCategory: downPayCompanyCategory.value
+    })
     const res = await downloadDownstreamPaymentsReport(params)
     downloadFile(res, `下游及管理合同付款报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
     ElMessage.success('导出成功')
@@ -768,8 +772,11 @@ const exportCards = computed(() => [
     title: '下游及管理合同付款报表导出',
     description: '按付款时间范围导出实际付款记录。',
     footnote: '导出内容包含：金额、日期、方式、备注等付款明细。',
-    type: 'daterange',
-    fields: [dateRangeField('downstream-payment-date', downPayDateRange)],
+    type: 'daterange-with-category',
+    fields: [
+      dateRangeField('downstream-payment-date', downPayDateRange),
+      companyCategoryField('downstream-payment-company-category', downPayCompanyCategory)
+    ],
     loading: downPayLoading,
     action: handleExportDownPay
   },

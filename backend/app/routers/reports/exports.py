@@ -256,6 +256,41 @@ def _build_zero_hour_expense_payment_row(idx: int, labor: ZeroHourLabor) -> dict
     }
 
 
+def _apply_company_category_filter(stmt, contract_model, company_category: str | None):
+    if company_category:
+        return stmt.where(contract_model.company_category == company_category)
+    return stmt
+
+
+def _build_downstream_payment_row(idx: int, pay: FinanceDownstreamPayment, contract: ContractDownstream) -> dict:
+    return {
+        "序号": idx,
+        "类型": "下游合同",
+        "合同编号": contract.contract_code,
+        "合同名称": contract.contract_name,
+        "公司合同分类": contract.company_category or "",
+        "付款日期": pay.payment_date,
+        "付款金额": float(pay.amount or 0),
+        "付款方式": pay.payment_method or "",
+        "收款方名称": getattr(pay, 'payee_name', '') or "",
+        "备注": getattr(pay, 'description', '') or ""
+    }
+
+
+def _build_management_payment_row(idx: int, pay: FinanceManagementPayment, contract: ContractManagement) -> dict:
+    return {
+        "序号": idx,
+        "类型": "管理合同",
+        "合同编号": contract.contract_code,
+        "合同名称": contract.contract_name,
+        "公司合同分类": contract.company_category or "",
+        "付款日期": pay.payment_date,
+        "付款金额": float(pay.amount or 0),
+        "付款方式": pay.payment_method or "",
+        "备注": getattr(pay, 'description', '') or ""
+    }
+
+
 def _build_zero_hour_labor_report_row(labor: ZeroHourLabor) -> dict:
     return {
         "用工时间": labor.labor_date,
@@ -687,6 +722,7 @@ async def export_upstream_receipts(
 async def export_downstream_payments(
     start_date: date = None,
     end_date: date = None,
+    company_category: str = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -700,41 +736,24 @@ async def export_downstream_payments(
         stmt_down = stmt_down.where(FinanceDownstreamPayment.payment_date >= start_date)
     if end_date:
         stmt_down = stmt_down.where(FinanceDownstreamPayment.payment_date <= end_date)
-    
+    stmt_down = _apply_company_category_filter(stmt_down, ContractDownstream, company_category)
+
     res_down = await db.execute(stmt_down)
     for pay, contract in res_down.all():
-        data_list.append({
-            "序号": idx_counter,
-            "类型": "下游合同",
-            "合同编号": contract.contract_code,
-            "合同名称": contract.contract_name,
-            "付款日期": pay.payment_date,
-            "付款金额": float(pay.amount or 0),
-            "付款方式": pay.payment_method or "",
-            "收款方名称": getattr(pay, 'payee_name', '') or "",
-            "备注": getattr(pay, 'description', '') or ""
-        })
+        data_list.append(_build_downstream_payment_row(idx_counter, pay, contract))
         idx_counter += 1
-        
+
     # Management
     stmt_mgmt = select(FinanceManagementPayment, ContractManagement).join(ContractManagement)
     if start_date:
         stmt_mgmt = stmt_mgmt.where(FinanceManagementPayment.payment_date >= start_date)
     if end_date:
         stmt_mgmt = stmt_mgmt.where(FinanceManagementPayment.payment_date <= end_date)
-        
+    stmt_mgmt = _apply_company_category_filter(stmt_mgmt, ContractManagement, company_category)
+
     res_mgmt = await db.execute(stmt_mgmt)
     for pay, contract in res_mgmt.all():
-        data_list.append({
-            "序号": idx_counter,
-            "类型": "管理合同",
-            "合同编号": contract.contract_code,
-            "合同名称": contract.contract_name,
-            "付款日期": pay.payment_date,
-            "付款金额": float(pay.amount or 0),
-            "付款方式": pay.payment_method or "",
-            "备注": getattr(pay, 'description', '') or ""
-        })
+        data_list.append(_build_management_payment_row(idx_counter, pay, contract))
         idx_counter += 1
         
     df = pd.DataFrame(data_list)

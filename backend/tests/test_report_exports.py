@@ -1,9 +1,15 @@
 from datetime import date
 from decimal import Decimal
+import io
 
+import pandas as pd
+
+from app.models.contract_downstream import ContractDownstream, FinanceDownstreamPayment
+from app.models.contract_management import ContractManagement, FinanceManagementPayment
 from app.models.contract_upstream import ContractUpstream, FinanceUpstreamReceipt
 from app.models.expense import ExpenseNonContract
 from app.models.zero_hour_labor import ZeroHourLabor, ZeroHourLaborMaterial
+from app.routers.reports import exports
 from app.routers.reports.exports import (
     _build_association_base_info,
     _build_comprehensive_row,
@@ -149,3 +155,106 @@ def test_build_zero_hour_labor_report_row_uses_requested_columns():
     assert row["用车费用"] == 20.0
     assert row["材料费用"] == 30.0
     assert row["总计"] == 150.0
+
+
+def test_downstream_payment_rows_include_company_category_before_payment_date():
+    downstream_contract = ContractDownstream(
+        id=10,
+        contract_code="DS-001",
+        contract_name="下游合同一",
+        party_a_name="甲方",
+        party_b_name="乙方",
+        company_category="市政工程",
+        contract_amount=Decimal("1000.00"),
+    )
+    downstream_payment = FinanceDownstreamPayment(
+        payment_date=date(2026, 5, 10),
+        amount=Decimal("300.00"),
+        payment_method="银行转账",
+        payee_name="乙方",
+    )
+    management_contract = ContractManagement(
+        id=11,
+        contract_code="MG-001",
+        contract_name="管理合同一",
+        party_a_name="甲方",
+        party_b_name="管理方",
+        company_category="房建工程",
+        contract_amount=Decimal("2000.00"),
+    )
+    management_payment = FinanceManagementPayment(
+        payment_date=date(2026, 5, 11),
+        amount=Decimal("500.00"),
+        payment_method="现金",
+    )
+
+    downstream_row = exports._build_downstream_payment_row(1, downstream_payment, downstream_contract)
+    management_row = exports._build_management_payment_row(2, management_payment, management_contract)
+
+    assert downstream_row["公司合同分类"] == "市政工程"
+    assert management_row["公司合同分类"] == "房建工程"
+    assert list(downstream_row).index("公司合同分类") < list(downstream_row).index("付款日期")
+    assert list(management_row).index("公司合同分类") < list(management_row).index("付款日期")
+
+
+async def test_export_downstream_payments_filters_by_company_category(
+    client,
+    test_db,
+    admin_token,
+):
+    matching_downstream = ContractDownstream(
+        contract_code="DS-MATCH",
+        contract_name="匹配下游合同",
+        party_a_name="甲方",
+        party_b_name="乙方一",
+        company_category="市政工程",
+        contract_amount=Decimal("1000.00"),
+    )
+    other_downstream = ContractDownstream(
+        contract_code="DS-OTHER",
+        contract_name="其他下游合同",
+        party_a_name="甲方",
+        party_b_name="乙方二",
+        company_category="房建工程",
+        contract_amount=Decimal("1000.00"),
+    )
+    matching_management = ContractManagement(
+        contract_code="MG-MATCH",
+        contract_name="匹配管理合同",
+        party_a_name="甲方",
+        party_b_name="管理方",
+        company_category="市政工程",
+        contract_amount=Decimal("1000.00"),
+    )
+    test_db.add_all([matching_downstream, other_downstream, matching_management])
+    await test_db.flush()
+    test_db.add_all([
+        FinanceDownstreamPayment(
+            contract_id=matching_downstream.id,
+            payment_date=date(2026, 5, 10),
+            amount=Decimal("100.00"),
+        ),
+        FinanceDownstreamPayment(
+            contract_id=other_downstream.id,
+            payment_date=date(2026, 5, 11),
+            amount=Decimal("200.00"),
+        ),
+        FinanceManagementPayment(
+            contract_id=matching_management.id,
+            payment_date=date(2026, 5, 12),
+            amount=Decimal("300.00"),
+        ),
+    ])
+    await test_db.commit()
+
+    response = await client.get(
+        "/api/v1/reports/export/payments/downstream",
+        params={"company_category": "市政工程"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 200
+    df = pd.read_excel(io.BytesIO(response.content))
+    assert "公司合同分类" in df.columns
+    assert set(df["合同编号"]) == {"DS-MATCH", "MG-MATCH"}
+    assert set(df["公司合同分类"]) == {"市政工程"}

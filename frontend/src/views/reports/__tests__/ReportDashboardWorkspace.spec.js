@@ -100,4 +100,9 @@ describe('Report dashboard workspace shell', () => {
     expect(reportDashboardSource).toContain('margin-top: auto;')
     expect(reportDashboardSource).toContain('align-self: end;')
   })
+
+  it('adds company category filtering to downstream payment export', () => {
+    expect(reportDashboardSource).toContain('companyCategory: downPayCompanyCategory.value')
+    expect(reportDashboardSource).toContain("companyCategoryField('downstream-payment-company-category', downPayCompanyCategory)")
+  })
 })
