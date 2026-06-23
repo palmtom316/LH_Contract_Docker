@@ -122,18 +122,11 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.production
     container_name: lh_contract_frontend
     restart: always
-    environment:
-      # Relative path to support Nginx proxy on Port 80
-      VITE_API_BASE_URL: /api/v1
-      API_PROXY_TARGET: http://backend:8000
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
     ports:
-      - "3000:3000"
+      - "3000:80"
     networks:
       - lh_network
     depends_on:
