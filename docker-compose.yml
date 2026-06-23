@@ -20,7 +20,7 @@ services:
     networks:
       - lh_network
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lh_admin} -d ${POSTGRES_DB:-lh_contract_db}" ]
       interval: 10s
@@ -35,7 +35,7 @@ services:
     networks:
       - lh_network
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
 
   # MinIO (S3-compatible Object Storage) - V1.5 NEW
   minio:
@@ -49,8 +49,8 @@ services:
     volumes:
       - minio_data:/data
     ports:
-      - "9000:9000"   # S3 API
-      - "9001:9001"   # MinIO Console
+      - "127.0.0.1:9000:9000"   # S3 API
+      - "127.0.0.1:9001:9001"   # MinIO Console
     networks:
       - lh_network
     healthcheck:
@@ -84,7 +84,7 @@ services:
       - ./backend/app:/app/app
       - ${HOST_UPLOAD_DIR:-./backend/uploads}:/app/uploads
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     networks:
       - lh_network
     depends_on:
@@ -126,7 +126,7 @@ services:
     container_name: lh_contract_frontend
     restart: always
     ports:
-      - "3000:80"
+      - "127.0.0.1:3000:80"
     networks:
       - lh_network
     depends_on:
