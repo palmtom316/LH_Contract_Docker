@@ -5,7 +5,7 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-说明：版本号表示产品维护记录，不等同于仓库一定存在同名 Git tag。当前维护版本为 1.7.1；1.7.0 对应 `release/1.7.0` 分支，只有发布流程创建 tag 后，才使用对应 `tags/v*`。
+说明：版本号表示产品维护记录，不等同于仓库一定存在同名 Git tag。当前维护版本为 1.7.1；1.7.1 对应 `release/1.7.1` 分支，只有发布流程创建 tag 后，才使用对应 `tags/v*`。
 
 ---
 
@@ -211,7 +211,7 @@
 
 ## 升级指南
 
-### 从 1.6.x 升级到 1.7.0
+### 从 1.6.x 升级到 1.7.1
 
 **影响**: 低
 **数据库迁移**: 否
@@ -220,11 +220,11 @@
 
 ```bash
 # 1. 备份数据
-docker exec lh_contract_db_prod pg_dump -U lh_admin lh_contract_db > backup_pre_1.7.0.sql
+docker exec lh_contract_db_prod pg_dump -U lh_admin lh_contract_db > backup_pre_1.7.1.sql
 
 # 2. 拉取最新代码
 git fetch --all --tags
-git checkout release/1.7.0
+git checkout release/1.7.1
 
 # 3. 停止服务
 docker compose -f docker-compose.prod.yml down

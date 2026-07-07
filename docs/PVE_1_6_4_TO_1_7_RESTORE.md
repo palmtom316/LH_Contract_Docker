@@ -26,10 +26,10 @@ mkdir -p /mnt/data/contract_uploads /opt/lh-contract/backups /opt/lh-contract/lo
 docker network create lh-contract_lh_network 2>/dev/null || true
 ```
 
-以下命令默认使用 `.env.production`。如果 1.7.0 镜像已由 GitHub Actions 发布，PVE 会直接拉取：
+以下命令默认使用 `.env.production`。如果 1.7.1 镜像已由 GitHub Actions 发布，PVE 会直接拉取：
 
-- `ghcr.io/palmtom316/lh-contract-backend:1.7.0`
-- `ghcr.io/palmtom316/lh-contract-frontend:1.7.0`
+- `ghcr.io/palmtom316/lh-contract-backend:1.7.1`
+- `ghcr.io/palmtom316/lh-contract-frontend:1.7.1`
 
 先只启动基础服务：
 

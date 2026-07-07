@@ -160,10 +160,10 @@ git clone https://github.com/palmtom316/LH_Contract_Docker.git
 cd LH_Contract_Docker
 
 # 切换到稳定分支
-git checkout release/1.7.0  # 或使用已发布的稳定分支/提交
+git checkout release/1.7.1  # 或使用已发布的稳定分支/提交
 ```
 
-当前仓库本地没有 `v1.7.0` tag；只有在发布流程创建了对应 tag 后，才使用 `git checkout tags/v1.7.0`。
+当前仓库本地没有 `v1.7.1` tag；只有在发布流程创建了对应 tag 后，才使用 `git checkout tags/v1.7.1`。
 
 ### 3.2 配置环境变量
 
@@ -597,7 +597,7 @@ git branch -a
 git tag -l
 
 # 3. 切换到目标版本
-git checkout release/1.7.0
+git checkout release/1.7.1
 
 # 4. 对比环境变量变化
 diff .env.production.example .env.production
