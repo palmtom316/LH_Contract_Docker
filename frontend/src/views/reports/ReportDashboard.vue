@@ -232,6 +232,7 @@ import {
   downloadUpstreamInvoicesReport,
   downloadDownstreamInvoicesReport,
   downloadUpstreamReceiptsReport,
+  downloadUpstreamInvoiceReceiptComprehensiveReport,
   downloadDownstreamPaymentsReport,
   downloadExpensePaymentsReport,
   downloadUpstreamSettlementsReport,
@@ -432,6 +433,8 @@ const upInvCompanyCategory = ref('')
 const downInvDateRange = ref([])
 const upReceiptDateRange = ref([])
 const upReceiptCompanyCategory = ref('')
+const upInvoiceReceiptComprehensiveDateRange = ref([])
+const upInvoiceReceiptComprehensiveCompanyCategory = ref('')
 const downPayDateRange = ref([])
 const downPayCompanyCategory = ref('')
 const expPayDateRange = ref([])
@@ -450,6 +453,7 @@ const payLoading = ref(false)
 const upInvLoading = ref(false)
 const downInvLoading = ref(false)
 const upReceiptLoading = ref(false)
+const upInvoiceReceiptComprehensiveLoading = ref(false)
 const downPayLoading = ref(false)
 const expPayLoading = ref(false)
 const upSettlementLoading = ref(false)
@@ -578,6 +582,24 @@ async function handleExportUpReceipt() {
     ElMessage.error('导出失败')
   } finally {
     upReceiptLoading.value = false
+  }
+}
+
+async function handleExportUpInvoiceReceiptComprehensive() {
+  upInvoiceReceiptComprehensiveLoading.value = true
+  try {
+    const params = buildExportParams({
+      dateRange: upInvoiceReceiptComprehensiveDateRange.value,
+      companyCategory: upInvoiceReceiptComprehensiveCompanyCategory.value
+    })
+    const res = await downloadUpstreamInvoiceReceiptComprehensiveReport(params)
+    downloadFile(res, `上游合同挂账付款综合报表_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('导出失败')
+  } finally {
+    upInvoiceReceiptComprehensiveLoading.value = false
   }
 }
 
@@ -767,6 +789,26 @@ const exportCards = computed(() => [
     ],
     loading: upReceiptLoading,
     action: handleExportUpReceipt
+  },
+  {
+    title: '上游合同挂账付款综合报表导出',
+    description: '按挂账或收款日期筛选合同，导出合同级综合明细。',
+    footnote: '导出内容包含：合同基础信息、签约结算信息、筛选期内挂账与收款汇总。',
+    type: 'daterange-with-category',
+    fields: [
+      dateRangeField(
+        'upstream-invoice-receipt-comprehensive-date',
+        upInvoiceReceiptComprehensiveDateRange,
+        '挂账/收款开始日期',
+        '挂账/收款结束日期'
+      ),
+      companyCategoryField(
+        'upstream-invoice-receipt-comprehensive-company-category',
+        upInvoiceReceiptComprehensiveCompanyCategory
+      )
+    ],
+    loading: upInvoiceReceiptComprehensiveLoading,
+    action: handleExportUpInvoiceReceiptComprehensive
   },
   {
     title: '下游及管理合同付款报表导出',

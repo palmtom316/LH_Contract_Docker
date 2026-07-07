@@ -65,7 +65,7 @@ services:
           - minio
 
   backend:
-    image: ${BACKEND_IMAGE:-ghcr.io/palmtom316/lh-contract-backend:1.7.0}
+    image: ${BACKEND_IMAGE:-ghcr.io/palmtom316/lh-contract-backend:1.7.1}
     build:
       context: ./backend
       dockerfile: Dockerfile.production
@@ -106,7 +106,7 @@ services:
           - backend
 
   sync-worker:
-    image: ${BACKEND_IMAGE:-ghcr.io/palmtom316/lh-contract-backend:1.7.0}
+    image: ${BACKEND_IMAGE:-ghcr.io/palmtom316/lh-contract-backend:1.7.1}
     build:
       context: ./backend
       dockerfile: Dockerfile.production
@@ -142,7 +142,7 @@ services:
           - sync-worker
 
   frontend:
-    image: ${FRONTEND_IMAGE:-ghcr.io/palmtom316/lh-contract-frontend:1.7.0}
+    image: ${FRONTEND_IMAGE:-ghcr.io/palmtom316/lh-contract-frontend:1.7.1}
     build:
       context: ./frontend
       dockerfile: Dockerfile.production

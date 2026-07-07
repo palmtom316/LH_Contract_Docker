@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy import select, func, or_, cast, String
+from sqlalchemy import select, func, or_, and_, cast, String
 from datetime import datetime, date
 import logging
 import pandas as pd
@@ -59,6 +59,22 @@ ZERO_HOUR_LABOR_REPORT_COLUMNS = [
     "用车费用",
     "材料费用",
     "总计",
+]
+
+UPSTREAM_INVOICE_RECEIPT_COMPREHENSIVE_COLUMNS = [
+    "合同序号",
+    "合同名称",
+    "合同甲方单位",
+    "公司合同分类",
+    "管理模式",
+    "合同签约时间",
+    "合同签约金额",
+    "合同结算时间",
+    "合同结算金额",
+    "合同挂账日期",
+    "合同挂账金额",
+    "合同收款日期",
+    "合同收款金额",
 ]
 
 
@@ -303,12 +319,83 @@ def _build_zero_hour_labor_report_row(labor: ZeroHourLabor) -> dict:
     }
 
 
+def _item_in_date_range(item_date, start_date: date | None, end_date: date | None) -> bool:
+    if item_date is None:
+        return False
+    if start_date and item_date < start_date:
+        return False
+    if end_date and item_date > end_date:
+        return False
+    return True
+
+
+def _filter_items_by_date_range(items, date_attr: str, start_date: date | None, end_date: date | None) -> list:
+    filtered = [
+        item
+        for item in items
+        if _item_in_date_range(getattr(item, date_attr, None), start_date, end_date)
+    ]
+    return sorted(filtered, key=lambda item: getattr(item, date_attr) or date.min)
+
+
+def _format_date_list(items, date_attr: str) -> str:
+    dates = [getattr(item, date_attr, None) for item in items]
+    return "\n".join(item_date.isoformat() for item_date in dates if item_date)
+
+
+def _latest_project_settlement(contract: ContractUpstream):
+    if not contract.settlements:
+        return None
+    return sorted(
+        contract.settlements,
+        key=lambda item: (item.settlement_date or date.min, item.id or 0),
+        reverse=True,
+    )[0]
+
+
+def _build_upstream_invoice_receipt_comprehensive_row(
+    contract: ContractUpstream,
+    start_date: date | None = None,
+    end_date: date | None = None,
+) -> dict:
+    invoices = _filter_items_by_date_range(contract.invoices, "invoice_date", start_date, end_date)
+    receipts = _filter_items_by_date_range(contract.receipts, "receipt_date", start_date, end_date)
+    settlement = _latest_project_settlement(contract)
+
+    return {
+        "合同序号": contract.serial_number,
+        "合同名称": contract.contract_name,
+        "合同甲方单位": contract.party_a_name,
+        "公司合同分类": contract.company_category or "",
+        "管理模式": contract.management_mode or "",
+        "合同签约时间": contract.sign_date,
+        "合同签约金额": float(contract.contract_amount or 0),
+        "合同结算时间": settlement.settlement_date if settlement else None,
+        "合同结算金额": float(settlement.settlement_amount or 0) if settlement else 0,
+        "合同挂账日期": _format_date_list(invoices, "invoice_date"),
+        "合同挂账金额": sum(float(item.amount or 0) for item in invoices),
+        "合同收款日期": _format_date_list(receipts, "receipt_date"),
+        "合同收款金额": sum(float(item.amount or 0) for item in receipts),
+    }
+
+
 def _apply_upstream_text_filters(stmt, company_category: str | None = None, upstream_contract_name: str | None = None):
     if company_category:
         stmt = stmt.where(ContractUpstream.company_category == company_category)
     if upstream_contract_name:
         stmt = stmt.where(ContractUpstream.contract_name.ilike(f"%{upstream_contract_name}%"))
     return stmt
+
+
+def _build_date_range_condition(column, start_date: date | None, end_date: date | None):
+    filters = []
+    if start_date:
+        filters.append(column >= start_date)
+    if end_date:
+        filters.append(column <= end_date)
+    if not filters:
+        return None
+    return and_(*filters)
 
 
 def _data_frame_with_columns(rows: list[dict], columns: list[str]) -> pd.DataFrame:
@@ -716,6 +803,59 @@ async def export_upstream_receipts(
     df = pd.DataFrame(data_list)
     filename = f"上游合同收款报表_{datetime.now().strftime('%Y%m%d')}.xlsx"
     return _create_excel_response(df, '收款明细', filename)
+
+
+@router.get("/export/upstream-invoice-receipt-comprehensive")
+async def export_upstream_invoice_receipt_comprehensive(
+    start_date: date = None,
+    end_date: date = None,
+    company_category: str = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Export upstream contract invoice/receipt comprehensive report."""
+    stmt = select(ContractUpstream).options(
+        selectinload(ContractUpstream.invoices),
+        selectinload(ContractUpstream.receipts),
+        selectinload(ContractUpstream.settlements),
+    )
+
+    if company_category:
+        stmt = stmt.where(ContractUpstream.company_category == company_category)
+
+    invoice_date_condition = _build_date_range_condition(
+        FinanceUpstreamInvoice.invoice_date,
+        start_date,
+        end_date,
+    )
+    receipt_date_condition = _build_date_range_condition(
+        FinanceUpstreamReceipt.receipt_date,
+        start_date,
+        end_date,
+    )
+    if invoice_date_condition is not None and receipt_date_condition is not None:
+        stmt = stmt.where(
+            or_(
+                ContractUpstream.invoices.any(invoice_date_condition),
+                ContractUpstream.receipts.any(receipt_date_condition),
+            )
+        )
+
+    stmt = stmt.order_by(ContractUpstream.serial_number, ContractUpstream.id)
+    result = await db.execute(stmt)
+    contracts = result.scalars().all()
+
+    data_list = [
+        _build_upstream_invoice_receipt_comprehensive_row(contract, start_date, end_date)
+        for contract in contracts
+    ]
+    df = _data_frame_with_columns(data_list, UPSTREAM_INVOICE_RECEIPT_COMPREHENSIVE_COLUMNS)
+    for col in ["合同签约时间", "合同结算时间"]:
+        if col in df.columns and not df.empty:
+            df[col] = pd.to_datetime(df[col]).dt.date
+
+    filename = f"上游合同挂账付款综合报表_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    return _create_excel_response(df, '挂账付款综合', filename)
 
 
 @router.get("/export/payments/downstream")

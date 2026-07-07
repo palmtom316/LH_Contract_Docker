@@ -45,17 +45,17 @@ def test_production_images_and_startup_match_release_17_contract():
     frontend_dockerfile = (REPO_ROOT / "frontend" / "Dockerfile.production").read_text(encoding="utf-8")
     frontend_package = (REPO_ROOT / "frontend" / "package.json").read_text(encoding="utf-8")
 
-    assert 'LABEL version="1.7.0"' in backend_dockerfile
-    assert 'LABEL version="1.7.0"' in frontend_dockerfile
-    assert '"version": "1.7.0"' in frontend_package
+    assert 'LABEL version="1.7.1"' in backend_dockerfile
+    assert 'LABEL version="1.7.1"' in frontend_dockerfile
+    assert '"version": "1.7.1"' in frontend_package
     assert "alembic upgrade head && uvicorn" in backend_dockerfile
 
 
 def test_pve_compose_defaults_to_release_17_ghcr_images():
     content = (REPO_ROOT / "docker-compose.pve-prod.yml").read_text(encoding="utf-8")
 
-    assert "ghcr.io/palmtom316/lh-contract-backend:1.7.0" in content
-    assert "ghcr.io/palmtom316/lh-contract-frontend:1.7.0" in content
+    assert "ghcr.io/palmtom316/lh-contract-backend:1.7.1" in content
+    assert "ghcr.io/palmtom316/lh-contract-frontend:1.7.1" in content
     assert "BACKEND_IMAGE" in content
     assert "FRONTEND_IMAGE" in content
 

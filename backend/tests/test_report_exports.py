@@ -6,7 +6,12 @@ import pandas as pd
 
 from app.models.contract_downstream import ContractDownstream, FinanceDownstreamPayment
 from app.models.contract_management import ContractManagement, FinanceManagementPayment
-from app.models.contract_upstream import ContractUpstream, FinanceUpstreamReceipt
+from app.models.contract_upstream import (
+    ContractUpstream,
+    FinanceUpstreamInvoice,
+    FinanceUpstreamReceipt,
+    ProjectSettlement,
+)
 from app.models.expense import ExpenseNonContract
 from app.models.zero_hour_labor import ZeroHourLabor, ZeroHourLaborMaterial
 from app.routers.reports import exports
@@ -14,6 +19,7 @@ from app.routers.reports.exports import (
     _build_association_base_info,
     _build_comprehensive_row,
     _build_expense_payment_row,
+    _build_upstream_invoice_receipt_comprehensive_row,
     _build_zero_hour_labor_report_row,
 )
 
@@ -157,6 +163,48 @@ def test_build_zero_hour_labor_report_row_uses_requested_columns():
     assert row["总计"] == 150.0
 
 
+def test_build_upstream_invoice_receipt_comprehensive_row_filters_date_range():
+    contract = ContractUpstream(
+        id=6,
+        serial_number=606,
+        contract_code="UP-606",
+        contract_name="上游合同六",
+        party_a_name="甲方六",
+        party_b_name="乙方六",
+        company_category="市政工程",
+        management_mode="自营",
+        contract_amount=Decimal("100000.00"),
+        sign_date=date(2026, 5, 1),
+    )
+    contract.invoices = [
+        FinanceUpstreamInvoice(invoice_date=date(2026, 4, 30), amount=Decimal("1000.00")),
+        FinanceUpstreamInvoice(invoice_date=date(2026, 5, 10), amount=Decimal("2000.00")),
+    ]
+    contract.receipts = [
+        FinanceUpstreamReceipt(receipt_date=date(2026, 5, 15), amount=Decimal("3000.00")),
+        FinanceUpstreamReceipt(receipt_date=date(2026, 6, 1), amount=Decimal("4000.00")),
+    ]
+    contract.settlements = [
+        ProjectSettlement(settlement_date=date(2026, 5, 20), settlement_amount=Decimal("90000.00"))
+    ]
+
+    row = _build_upstream_invoice_receipt_comprehensive_row(
+        contract,
+        start_date=date(2026, 5, 1),
+        end_date=date(2026, 5, 31),
+    )
+
+    assert list(row.keys()) == exports.UPSTREAM_INVOICE_RECEIPT_COMPREHENSIVE_COLUMNS
+    assert row["合同序号"] == 606
+    assert row["管理模式"] == "自营"
+    assert row["合同挂账日期"] == "2026-05-10"
+    assert row["合同挂账金额"] == 2000.0
+    assert row["合同收款日期"] == "2026-05-15"
+    assert row["合同收款金额"] == 3000.0
+    assert row["合同结算时间"] == date(2026, 5, 20)
+    assert row["合同结算金额"] == 90000.0
+
+
 def test_downstream_payment_rows_include_company_category_before_payment_date():
     downstream_contract = ContractDownstream(
         id=10,
@@ -258,3 +306,114 @@ async def test_export_downstream_payments_filters_by_company_category(
     assert "公司合同分类" in df.columns
     assert set(df["合同编号"]) == {"DS-MATCH", "MG-MATCH"}
     assert set(df["公司合同分类"]) == {"市政工程"}
+
+
+async def test_export_upstream_invoice_receipt_comprehensive_filters_by_invoice_or_receipt_date_and_category(
+    client,
+    test_db,
+    admin_token,
+):
+    invoice_match = ContractUpstream(
+        serial_number=701,
+        contract_code="UP-INV-MATCH",
+        contract_name="挂账命中合同",
+        party_a_name="甲方一",
+        party_b_name="乙方一",
+        company_category="市政工程",
+        management_mode="自营",
+        contract_amount=Decimal("100000.00"),
+        sign_date=date(2026, 5, 1),
+    )
+    receipt_match = ContractUpstream(
+        serial_number=702,
+        contract_code="UP-REC-MATCH",
+        contract_name="收款命中合同",
+        party_a_name="甲方二",
+        party_b_name="乙方二",
+        company_category="市政工程",
+        management_mode="联营",
+        contract_amount=Decimal("200000.00"),
+        sign_date=date(2026, 5, 2),
+    )
+    date_miss = ContractUpstream(
+        serial_number=703,
+        contract_code="UP-DATE-MISS",
+        contract_name="日期不命中合同",
+        party_a_name="甲方三",
+        party_b_name="乙方三",
+        company_category="市政工程",
+        contract_amount=Decimal("300000.00"),
+    )
+    category_miss = ContractUpstream(
+        serial_number=704,
+        contract_code="UP-CATEGORY-MISS",
+        contract_name="分类不命中合同",
+        party_a_name="甲方四",
+        party_b_name="乙方四",
+        company_category="房建工程",
+        contract_amount=Decimal("400000.00"),
+    )
+    test_db.add_all([invoice_match, receipt_match, date_miss, category_miss])
+    await test_db.flush()
+    test_db.add_all([
+        FinanceUpstreamInvoice(
+            contract_id=invoice_match.id,
+            invoice_date=date(2026, 5, 10),
+            amount=Decimal("11000.00"),
+        ),
+        FinanceUpstreamReceipt(
+            contract_id=invoice_match.id,
+            receipt_date=date(2026, 4, 20),
+            amount=Decimal("12000.00"),
+        ),
+        ProjectSettlement(
+            contract_id=invoice_match.id,
+            settlement_date=date(2026, 5, 30),
+            settlement_amount=Decimal("90000.00"),
+        ),
+        FinanceUpstreamReceipt(
+            contract_id=receipt_match.id,
+            receipt_date=date(2026, 5, 12),
+            amount=Decimal("21000.00"),
+        ),
+        FinanceUpstreamInvoice(
+            contract_id=date_miss.id,
+            invoice_date=date(2026, 4, 10),
+            amount=Decimal("31000.00"),
+        ),
+        FinanceUpstreamReceipt(
+            contract_id=date_miss.id,
+            receipt_date=date(2026, 6, 10),
+            amount=Decimal("32000.00"),
+        ),
+        FinanceUpstreamInvoice(
+            contract_id=category_miss.id,
+            invoice_date=date(2026, 5, 15),
+            amount=Decimal("41000.00"),
+        ),
+    ])
+    await test_db.commit()
+
+    response = await client.get(
+        "/api/v1/reports/export/upstream-invoice-receipt-comprehensive",
+        params={
+            "start_date": "2026-05-01",
+            "end_date": "2026-05-31",
+            "company_category": "市政工程",
+        },
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 200
+    df = pd.read_excel(io.BytesIO(response.content))
+    assert list(df.columns) == exports.UPSTREAM_INVOICE_RECEIPT_COMPREHENSIVE_COLUMNS
+    assert set(df["合同名称"]) == {"挂账命中合同", "收款命中合同"}
+
+    rows = {row["合同名称"]: row for _, row in df.iterrows()}
+    assert rows["挂账命中合同"]["合同挂账日期"] == "2026-05-10"
+    assert rows["挂账命中合同"]["合同挂账金额"] == 11000
+    assert rows["挂账命中合同"]["合同收款金额"] == 0
+    assert pd.to_datetime(rows["挂账命中合同"]["合同结算时间"]).date() == date(2026, 5, 30)
+    assert rows["收款命中合同"]["合同收款日期"] == "2026-05-12"
+    assert rows["收款命中合同"]["合同收款金额"] == 21000
+    assert rows["收款命中合同"]["合同挂账金额"] == 0

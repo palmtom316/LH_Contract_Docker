@@ -1,6 +1,6 @@
 # 合同管理系统 / Contract Management System
 
-[![Version](https://img.shields.io/badge/version-1.7.0-blue.svg)](https://github.com/palmtom316/LH_Contract_Docker)
+[![Version](https://img.shields.io/badge/version-1.7.1-blue.svg)](https://github.com/palmtom316/LH_Contract_Docker)
 [![License](https://img.shields.io/badge/license-Proprietary-red.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)](docker-compose.yml)
 
@@ -342,7 +342,7 @@ npm run test
 
 | 变量名 | 说明 | 默认值 | 必填 |
 |--------|------|--------|------|
-| `APP_VERSION` | 应用版本号 | 1.7.0 | 否 |
+| `APP_VERSION` | 应用版本号 | 1.7.1 | 否 |
 | `DEBUG` | 调试模式 | false | 否 |
 | `SECRET_KEY` | 应用密钥 | - | **是** |
 | `DATABASE_URL` | 数据库连接字符串 | - | **是** |
@@ -369,6 +369,10 @@ npm run test
 ---
 
 ## 🔄 版本历史
+
+### v1.7.1 (2026-07-07)
+- ✨ 新增上游合同挂账付款综合报表
+- 🔖 系统版本号更新至 1.7.1
 
 ### v1.7.0 (2026-06-24)
 - ✨ 增强付款报表分类筛选功能

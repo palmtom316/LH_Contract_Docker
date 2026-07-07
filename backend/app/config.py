@@ -4,7 +4,7 @@ Application Configuration
 All sensitive values should be set via environment variables.
 See .env.example for configuration template.
 """
-from pydantic import Field, model_validator
+from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings
 from typing import List
 import hashlib
@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     """Application settings"""
     # Application
     APP_NAME: str = "LH Contract Management System"
-    APP_VERSION: str = "1.7.0"
+    APP_VERSION: str = "1.7.1"
     DEBUG: bool = False  # Default to False for security
     
     # Database - MUST be set via environment variable
@@ -93,6 +93,10 @@ class Settings(BaseSettings):
         if any(minio_values) and not all(minio_values):
             raise ValueError("MINIO_ENDPOINT、MINIO_ACCESS_KEY、MINIO_SECRET_KEY 必须同时配置")
 
+        legacy_bucket = os.getenv("MINIO_BUCKET_ACTIVE")
+        if "MINIO_BUCKET_CONTRACTS" not in os.environ and legacy_bucket:
+            self.MINIO_BUCKET_CONTRACTS = legacy_bucket
+
         upload_dir_abs = os.path.abspath(self.UPLOAD_DIR)
         backup_tmp_dir_abs = os.path.abspath(self.BACKUP_TMP_DIR)
         upload_dir_real = os.path.realpath(self.UPLOAD_DIR)
@@ -136,7 +140,10 @@ class Settings(BaseSettings):
     MINIO_ACCESS_KEY: str = Field(default_factory=lambda: os.getenv("MINIO_ROOT_USER", ""))
     MINIO_SECRET_KEY: str = Field(default_factory=lambda: os.getenv("MINIO_ROOT_PASSWORD", ""))
     MINIO_SECURE: bool = os.getenv("MINIO_SECURE", "false").lower() == "true"
-    MINIO_BUCKET_CONTRACTS: str = Field(default_factory=lambda: os.getenv("MINIO_BUCKET_ACTIVE", "contracts-active"))
+    MINIO_BUCKET_CONTRACTS: str = Field(
+        default="contracts-active",
+        validation_alias=AliasChoices("MINIO_BUCKET_CONTRACTS", "MINIO_BUCKET_ACTIVE"),
+    )
     
     # Redis Cache (Optional - falls back to memory cache if not available)
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")

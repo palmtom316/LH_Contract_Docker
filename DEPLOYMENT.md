@@ -1,6 +1,6 @@
 # 合同管理系统 - 生产环境部署指南
 
-**版本**: 1.7.0
+**版本**: 1.7.1
 **更新日期**: 2026-06-24
 **适用环境**: Ubuntu 20.04/22.04 LTS, Debian 11+, CentOS 7/8
 
@@ -179,7 +179,7 @@ nano .env.production  # 或使用 vim
 
 ```bash
 # 应用配置
-APP_VERSION=1.7.0
+APP_VERSION=1.7.1
 DEBUG=false
 
 # 数据库配置（修改密码！）
@@ -249,7 +249,7 @@ curl http://localhost/health/ready
 | 变量名 | 说明 | 默认值 | 必填 |
 |--------|------|--------|------|
 | `APP_NAME` | 应用名称 | LH Contract Management System | 否 |
-| `APP_VERSION` | 版本号 | 1.7.0 | 否 |
+| `APP_VERSION` | 版本号 | 1.7.1 | 否 |
 | `DEBUG` | 调试模式 | false | 否 |
 | `SECRET_KEY` | 应用签名密钥（至少 64 字节） | - | **是** |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | 访问令牌过期时间 | 480（生产模板） | 否 |
@@ -799,6 +799,6 @@ docker system prune -a
 
 ---
 
-**文档版本**: 1.7.0
+**文档版本**: 1.7.1
 **最后更新**: 2026-06-24
 **维护者**: 技术团队

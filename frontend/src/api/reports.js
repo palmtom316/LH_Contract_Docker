@@ -103,6 +103,15 @@ export function downloadUpstreamReceiptsReport(params) {
     })
 }
 
+export function downloadUpstreamInvoiceReceiptComprehensiveReport(params) {
+    return request({
+        url: '/reports/export/upstream-invoice-receipt-comprehensive',
+        method: 'get',
+        params,
+        responseType: 'blob'
+    })
+}
+
 export function downloadDownstreamPaymentsReport(params) {
     return request({
         url: '/reports/export/payments/downstream',

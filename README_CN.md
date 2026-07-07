@@ -1,6 +1,6 @@
 # 合同管理系统
 
-[![版本](https://img.shields.io/badge/版本-1.7.0-blue.svg)](https://github.com/palmtom316/LH_Contract_Docker)
+[![版本](https://img.shields.io/badge/版本-1.7.1-blue.svg)](https://github.com/palmtom316/LH_Contract_Docker)
 [![许可证](https://img.shields.io/badge/许可证-专有-red.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)](docker-compose.yml)
 
@@ -249,7 +249,11 @@ npm run test
 
 ## 🔄 版本历史
 
-### v1.7.0 (2026-06-24) - 当前版本
+### v1.7.1 (2026-07-07) - 当前版本
+- ✨ 新增上游合同挂账付款综合报表
+- 🔖 系统版本号更新至 1.7.1
+
+### v1.7.0 (2026-06-24)
 - ✨ 增强付款报表分类筛选
 - 🐛 修复生产环境前端加载异常
 - 🔒 收敛内部服务端口暴露
