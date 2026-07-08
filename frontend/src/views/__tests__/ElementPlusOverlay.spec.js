@@ -40,6 +40,7 @@ describe('Element Plus overlay positioning', () => {
     expect(stylesSource).toContain('align-items: center;')
     expect(stylesSource).toContain('justify-content: center;')
     expect(stylesSource).toContain('.el-message-box {')
+    expect(stylesSource).toContain('width: min(420px, calc(100vw - 32px));')
     expect(stylesSource).toContain('max-width: calc(100vw - 32px);')
   })
 

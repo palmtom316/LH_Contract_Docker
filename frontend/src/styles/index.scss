@@ -521,6 +521,7 @@ a:focus-visible,
 }
 
 .el-message-box {
+    width: min(420px, calc(100vw - 32px));
     max-width: calc(100vw - 32px);
     border: 1px solid var(--workspace-panel-border);
     border-radius: calc(var(--radius) + 2px);

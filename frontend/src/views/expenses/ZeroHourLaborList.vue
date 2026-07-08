@@ -213,9 +213,9 @@
                 </el-col>
             </el-row>
 
-            <div v-if="form.attribution === 'PROJECT'" class="dialog-subsection">
+            <div class="dialog-subsection">
                  <el-row :gutter="20">
-                    <el-col :span="12">
+                    <el-col v-if="form.attribution === 'PROJECT'" :span="12">
                         <el-form-item label="关联上游合同" prop="upstream_contract_id">
                              <el-select
                                 v-model="form.upstream_contract_id"
@@ -236,9 +236,9 @@
                               </el-select>
                         </el-form-item>
                     </el-col>
-                    <el-col :span="12">
+                    <el-col :span="form.attribution === 'PROJECT' ? 12 : 24">
                         <el-form-item label="派工单位名称" prop="dispatch_unit">
-                            <el-input v-model="form.dispatch_unit" />
+                            <el-input v-model="form.dispatch_unit" placeholder="请输入派工单位名称" />
                         </el-form-item>
                     </el-col>
                 </el-row>

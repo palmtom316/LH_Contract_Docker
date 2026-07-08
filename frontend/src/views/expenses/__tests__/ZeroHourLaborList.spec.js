@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ref, reactive } from 'vue'
+import { nextTick, ref, reactive } from 'vue'
 import ZeroHourLaborList from '@/views/expenses/ZeroHourLaborList.vue'
 
 const routeState = reactive({ query: {} })
@@ -89,11 +89,14 @@ const mountPage = () =>
         ElTableColumn: true,
         ElTag: true,
         ElCard: true,
-        ElDialog: true,
-        ElForm: true,
-        ElFormItem: true,
-        ElRow: true,
-        ElCol: true,
+        ElDialog: { template: '<div><slot /></div>' },
+        ElForm: { template: '<form><slot /></form>' },
+        ElFormItem: {
+          props: ['label'],
+          template: '<div><span>{{ label }}</span><slot /></div>'
+        },
+        ElRow: { template: '<div><slot /></div>' },
+        ElCol: { template: '<div><slot /></div>' },
         ElUpload: true,
         ElTooltip: true,
         ElIcon: true
@@ -122,5 +125,15 @@ describe('ZeroHourLaborList route filters', () => {
         upstream_contract_id: 58
       })
     )
+  })
+
+  it('shows dispatch unit field for company labor entries', async () => {
+    const wrapper = mountPage()
+    await flushPromises()
+
+    wrapper.vm.form.attribution = 'COMPANY'
+    await nextTick()
+
+    expect(wrapper.text()).toContain('派工单位名称')
   })
 })
