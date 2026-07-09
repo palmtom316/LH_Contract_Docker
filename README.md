@@ -430,3 +430,14 @@ npm run test
 - [Element Plus](https://element-plus.org/)
 - [PostgreSQL](https://www.postgresql.org/)
 - [MinIO](https://min.io/)
+
+## Electronic Invoice Import
+
+The system supports uploading an electronic invoice batch archive. Each invoice inside the batch should be an individual zip containing XML and may include PDF/OFD attachments. The system parses invoice fields from XML, detects upstream/downstream direction, recommends contract candidates, and posts formal invoice records only after an operator confirms allocations.
+
+Production environments must configure:
+
+- `COMPANY_NAME`
+- `COMPANY_TAX_NO`
+
+The first release does not support non-contract expense invoices, OCR, automatic amount splitting, or automatic posting without operator confirmation.
