@@ -22,7 +22,9 @@ class ContractDownstream(Base):
     
     # Parties
     party_a_name = Column(String(200), nullable=False)    # 甲方 (Usually Us)
+    party_a_tax_no = Column(String(50), nullable=True, index=True)
     party_b_name = Column(String(200), nullable=False, index=True)    # 乙方 (Supplier/Subcontractor)
+    party_b_tax_no = Column(String(50), nullable=True, index=True)
     
     # Link to upstream contract
     upstream_contract_id = Column(Integer, ForeignKey("contracts_upstream.id", ondelete="SET NULL", onupdate="CASCADE"), nullable=True, index=True)
@@ -168,6 +170,8 @@ class FinanceDownstreamInvoice(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    source_import_item_id = Column(Integer, ForeignKey("invoice_import_items.id"), nullable=True, index=True)
+    source_import_allocation_id = Column(Integer, ForeignKey("invoice_import_allocations.id"), nullable=True, index=True)
     
     # Relationships
     contract = relationship("ContractDownstream", back_populates="invoices")

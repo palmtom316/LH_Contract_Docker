@@ -39,6 +39,13 @@ from app.models.audit_log import AuditLog
 from app.models.system import SysDictionary, SystemConfig
 from app.models.refresh_token import RefreshToken
 
+from app.models.invoice_import import (
+    InvoiceImportAllocation,
+    InvoiceImportBatch,
+    InvoiceImportItem,
+    InvoiceImportMatchCandidate,
+)
+
 __all__ = [
     # User
     "User",
@@ -77,6 +84,10 @@ __all__ = [
     "SysDictionary",
     "SystemConfig",
     # Auth
-    "RefreshToken"
+    "RefreshToken",
+    "InvoiceImportBatch",
+    "InvoiceImportItem",
+    "InvoiceImportAllocation",
+    "InvoiceImportMatchCandidate"
 ]
 
