@@ -39,7 +39,8 @@ class InvoiceImportBatch(Base):
 
     @property
     def confirmed_items(self) -> int:
-        return sum(1 for item in self.items if item.confirmation_status == "confirmed") if self.items else 0
+        # Set by InvoiceImportService list/get queries. Avoid async lazy-loading self.items during response serialization.
+        return int(getattr(self, "_confirmed_items_count", 0) or 0)
 
     @property
     def completed_at(self):

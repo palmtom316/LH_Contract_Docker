@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import List
 
 from sqlalchemy import or_, select
+from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.contract_downstream import ContractDownstream
@@ -15,6 +16,19 @@ from app.services.invoice_import.parser import ParsedInvoice
 
 def _norm(value: object) -> str:
     return str(value or "").strip()
+
+
+def _like_pattern(value: object) -> str | None:
+    text = _norm(value)
+    if not text:
+        return None
+    escaped = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
+def _or_nonempty(*conditions: tuple[object, ColumnElement[bool]]) -> ColumnElement[bool] | None:
+    active = [condition for raw_value, condition in conditions if _norm(raw_value)]
+    return or_(*active) if active else None
 
 
 def build_dedupe_key(parsed: ParsedInvoice) -> str:
@@ -61,13 +75,16 @@ class InvoiceMatchService:
         return []
 
     async def _find_upstream_candidates(self, item: InvoiceImportItem) -> List[InvoiceImportMatchCandidate]:
-        query = select(ContractUpstream).where(
-            or_(
-                ContractUpstream.party_a_tax_no == item.buyer_tax_no,
-                ContractUpstream.party_a_name.ilike(f"%{item.buyer_name or ''}%"),
-                ContractUpstream.contract_code.ilike(f"%{item.remarks or ''}%"),
-            )
-        ).limit(20)
+        buyer_name_pattern = _like_pattern(item.buyer_name)
+        remarks_pattern = _like_pattern(item.remarks)
+        predicate = _or_nonempty(
+            (item.buyer_tax_no, ContractUpstream.party_a_tax_no == item.buyer_tax_no),
+            (item.buyer_name, ContractUpstream.party_a_name.ilike(buyer_name_pattern, escape="\\") if buyer_name_pattern else None),
+            (item.remarks, ContractUpstream.contract_code.ilike(remarks_pattern, escape="\\") if remarks_pattern else None),
+        )
+        if predicate is None:
+            return []
+        query = select(ContractUpstream).where(predicate).limit(20)
         result = await self.db.execute(query)
         candidates = []
         for contract in result.scalars().all():
@@ -80,8 +97,7 @@ class InvoiceMatchService:
             if name_score:
                 score += name_score
                 signals["party_a_name"] = name_score
-            keyword_text = " ".join([item.remarks or "", contract.contract_code or "", contract.contract_name or "", contract.project_name or ""])
-            keyword_score = self._text_score(contract.contract_code, keyword_text, 20)
+            keyword_score = self._text_score(contract.contract_code, item.remarks or "", 20)
             if keyword_score:
                 score += keyword_score
                 signals["contract_code"] = keyword_score
@@ -89,13 +105,16 @@ class InvoiceMatchService:
         return sorted(candidates, key=lambda c: c.score, reverse=True)
 
     async def _find_downstream_candidates(self, item: InvoiceImportItem) -> List[InvoiceImportMatchCandidate]:
-        query = select(ContractDownstream).where(
-            or_(
-                ContractDownstream.party_b_tax_no == item.seller_tax_no,
-                ContractDownstream.party_b_name.ilike(f"%{item.seller_name or ''}%"),
-                ContractDownstream.contract_code.ilike(f"%{item.remarks or ''}%"),
-            )
-        ).limit(20)
+        seller_name_pattern = _like_pattern(item.seller_name)
+        remarks_pattern = _like_pattern(item.remarks)
+        predicate = _or_nonempty(
+            (item.seller_tax_no, ContractDownstream.party_b_tax_no == item.seller_tax_no),
+            (item.seller_name, ContractDownstream.party_b_name.ilike(seller_name_pattern, escape="\\") if seller_name_pattern else None),
+            (item.remarks, ContractDownstream.contract_code.ilike(remarks_pattern, escape="\\") if remarks_pattern else None),
+        )
+        if predicate is None:
+            return []
+        query = select(ContractDownstream).where(predicate).limit(20)
         result = await self.db.execute(query)
         candidates = []
         for contract in result.scalars().all():
@@ -108,8 +127,7 @@ class InvoiceMatchService:
             if name_score:
                 score += name_score
                 signals["party_b_name"] = name_score
-            keyword_text = " ".join([item.remarks or "", contract.contract_code or "", contract.contract_name or ""])
-            keyword_score = self._text_score(contract.contract_code, keyword_text, 20)
+            keyword_score = self._text_score(contract.contract_code, item.remarks or "", 20)
             if keyword_score:
                 score += keyword_score
                 signals["contract_code"] = keyword_score

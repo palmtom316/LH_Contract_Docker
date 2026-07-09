@@ -43,15 +43,24 @@ class AllocationCreate(BaseModel):
         if self.direction == InvoiceDirection.DOWNSTREAM:
             if not self.downstream_contract_id or self.upstream_contract_id:
                 raise ValueError("下游分摊必须且只能选择下游合同")
+        if self.direction == InvoiceDirection.UNKNOWN:
+            raise ValueError("分摊方向必须为上游或下游")
         return self
 
 
 class AllocationUpdate(BaseModel):
+    direction: Optional[InvoiceDirection] = None
     upstream_contract_id: Optional[int] = Field(None, gt=0)
     downstream_contract_id: Optional[int] = Field(None, gt=0)
     amount: Optional[Decimal] = Field(None, gt=0)
     tax_amount: Optional[Decimal] = Field(None, ge=0)
     description: Optional[str] = Field(None, max_length=300)
+
+    @model_validator(mode="after")
+    def validate_direction_when_present(self) -> "AllocationUpdate":
+        if self.direction == InvoiceDirection.UNKNOWN:
+            raise ValueError("分摊方向必须为上游或下游")
+        return self
 
 
 class MatchCandidateResponse(BaseModel):

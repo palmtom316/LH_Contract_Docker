@@ -1,5 +1,8 @@
 from decimal import Decimal
 
+import pytest
+from pydantic import ValidationError as PydanticValidationError
+
 from app.schemas.invoice_import import AllocationCreate, InvoiceDirection
 
 
@@ -15,3 +18,8 @@ def test_invoice_direction_values_are_stable():
     assert InvoiceDirection.UPSTREAM.value == "upstream"
     assert InvoiceDirection.DOWNSTREAM.value == "downstream"
     assert InvoiceDirection.UNKNOWN.value == "unknown"
+
+
+def test_allocation_create_rejects_unknown_direction():
+    with pytest.raises(PydanticValidationError):
+        AllocationCreate(direction="unknown", amount="10.00")

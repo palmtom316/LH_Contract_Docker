@@ -61,3 +61,24 @@ def test_parse_invoice_xml_with_basic_fields():
     assert parsed.seller_tax_no == "SELLER123"
     assert parsed.buyer_tax_no == "BUYER123"
     assert parsed.total_amount == Decimal("106.00")
+
+
+def test_parse_invoice_xml_accepts_common_chinese_date_formats():
+    parsed_yyyymmdd = parse_invoice_xml(b"<Invoice><Kprq>20240115</Kprq></Invoice>")
+    parsed_chinese = parse_invoice_xml("<Invoice><Kprq>2024年01月15日</Kprq></Invoice>".encode("utf-8"))
+
+    assert parsed_yyyymmdd.invoice_date.isoformat() == "2024-01-15"
+    assert parsed_chinese.invoice_date.isoformat() == "2024-01-15"
+
+
+def test_parse_invoice_xml_rejects_xml_entities():
+    xml = b"""
+    <!DOCTYPE lolz [
+      <!ENTITY lol "lol">
+      <!ENTITY lol1 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">
+    ]>
+    <Invoice><InvoiceNumber>&lol1;</InvoiceNumber></Invoice>
+    """
+
+    with pytest.raises(Exception):
+        parse_invoice_xml(xml)

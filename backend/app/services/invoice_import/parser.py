@@ -3,9 +3,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date
+import re
 from decimal import Decimal
 from typing import Any, Dict, Optional
 import xml.etree.ElementTree as ET
+try:
+    from defusedxml.ElementTree import ParseError, fromstring as safe_xml_fromstring
+except ImportError:  # pragma: no cover - dependency fallback for constrained installs
+    from xml.etree.ElementTree import ParseError
+
+    def safe_xml_fromstring(xml_bytes: bytes):
+        if b"<!DOCTYPE" in xml_bytes.upper() or b"<!ENTITY" in xml_bytes.upper():
+            raise ParseError("XML entities and DOCTYPE declarations are not allowed")
+        return ET.fromstring(xml_bytes)
 
 
 @dataclass(frozen=True)
@@ -58,12 +68,31 @@ def _to_decimal(value: Optional[str]) -> Optional[Decimal]:
 def _to_date(value: Optional[str]) -> Optional[date]:
     if not value:
         return None
-    normalized = value.strip().replace("/", "-")
+    normalized = value.strip()
+    if not normalized:
+        return None
+
+    # Common Chinese e-invoice formats include YYYYMMDD and YYYY年MM月DD日.
+    compact = re.fullmatch(r"(\d{4})(\d{2})(\d{2})", normalized)
+    if compact:
+        year, month, day = compact.groups()
+        return date(int(year), int(month), int(day))
+
+    chinese = re.search(r"(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?", normalized)
+    if chinese:
+        year, month, day = chinese.groups()
+        return date(int(year), int(month), int(day))
+
+    normalized = normalized.replace("/", "-").replace(".", "-")
+    iso_prefix = re.match(r"\d{4}-\d{1,2}-\d{1,2}", normalized)
+    if iso_prefix:
+        year, month, day = iso_prefix.group(0).split("-")
+        return date(int(year), int(month), int(day))
     return date.fromisoformat(normalized[:10])
 
 
 def parse_invoice_xml(xml_bytes: bytes) -> ParsedInvoice:
-    root = ET.fromstring(xml_bytes)
+    root = safe_xml_fromstring(xml_bytes)
     values = {key: _text_by_alias(root, aliases) for key, aliases in ALIASES.items()}
     payload = {key: value for key, value in values.items() if value is not None}
 
