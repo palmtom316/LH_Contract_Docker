@@ -1,0 +1,79 @@
+"""Electronic invoice import workbench API."""
+from fastapi import APIRouter, Depends, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.permissions import Permission, require_permission
+from app.database import get_db
+from app.models.user import User
+from app.schemas.invoice_import import (
+    AllocationCreate,
+    AllocationResponse,
+    AllocationUpdate,
+    BatchResponse,
+    ConfirmItemRequest,
+    ImportItemResponse,
+)
+from app.services.invoice_import.posting import InvoicePostingService
+from app.services.invoice_import.service import InvoiceImportService
+
+router = APIRouter()
+
+
+def get_import_service(db: AsyncSession = Depends(get_db)) -> InvoiceImportService:
+    return InvoiceImportService(db)
+
+
+@router.get("/batches", response_model=list[BatchResponse])
+async def list_batches(
+    current_user: User = Depends(require_permission(Permission.VIEW_INVOICES)),
+    service: InvoiceImportService = Depends(get_import_service),
+):
+    return await service.list_batches()
+
+
+@router.get("/batches/{batch_id}", response_model=BatchResponse)
+async def get_batch(
+    batch_id: int,
+    current_user: User = Depends(require_permission(Permission.VIEW_INVOICES)),
+    service: InvoiceImportService = Depends(get_import_service),
+):
+    return await service.get_batch(batch_id)
+
+
+@router.get("/batches/{batch_id}/items", response_model=list[ImportItemResponse])
+async def list_items(
+    batch_id: int,
+    current_user: User = Depends(require_permission(Permission.VIEW_INVOICES)),
+    service: InvoiceImportService = Depends(get_import_service),
+):
+    return await service.list_items(batch_id)
+
+
+@router.post("/items/{item_id}/allocations", response_model=AllocationResponse, status_code=status.HTTP_201_CREATED)
+async def create_allocation(
+    item_id: int,
+    allocation_in: AllocationCreate,
+    current_user: User = Depends(require_permission(Permission.CREATE_INVOICES)),
+    service: InvoiceImportService = Depends(get_import_service),
+):
+    return await service.create_allocation(item_id, allocation_in, current_user)
+
+
+@router.put("/allocations/{allocation_id}", response_model=AllocationResponse)
+async def update_allocation(
+    allocation_id: int,
+    allocation_in: AllocationUpdate,
+    current_user: User = Depends(require_permission(Permission.EDIT_INVOICES)),
+    service: InvoiceImportService = Depends(get_import_service),
+):
+    return await service.update_allocation(allocation_id, allocation_in)
+
+
+@router.post("/items/{item_id}/confirm", response_model=ImportItemResponse)
+async def confirm_item(
+    item_id: int,
+    request: ConfirmItemRequest,
+    current_user: User = Depends(require_permission(Permission.CREATE_INVOICES)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await InvoicePostingService(db).confirm_item(item_id, current_user, request.override_duplicate)
