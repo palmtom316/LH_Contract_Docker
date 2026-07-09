@@ -61,6 +61,9 @@ class Settings(BaseSettings):
         if not self.DATABASE_URL and not self.DEBUG:
             raise ValueError("DATABASE_URL 环境变量在生产环境中必须设置")
 
+        if not self.DEBUG and not self.COMPANY_TAX_NO:
+            raise ValueError("COMPANY_TAX_NO 环境变量在生产环境中必须设置，用于电子发票上下游方向判断")
+
         if not self.SECRET_KEY:
             if not self.DEBUG:
                 raise ValueError(
@@ -149,6 +152,12 @@ class Settings(BaseSettings):
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     CACHE_DEFAULT_TTL: int = 300  # 5 minutes
     CACHE_ENABLED: bool = os.getenv("CACHE_ENABLED", "true").lower() == "true"
+
+    # Electronic invoice import
+    COMPANY_NAME: str = os.getenv("COMPANY_NAME", "")
+    COMPANY_TAX_NO: str = os.getenv("COMPANY_TAX_NO", "")
+    INVOICE_IMPORT_MAX_ARCHIVE_SIZE: int = int(os.getenv("INVOICE_IMPORT_MAX_ARCHIVE_SIZE", str(200 * 1024 * 1024)))
+    INVOICE_IMPORT_MAX_FILE_SIZE: int = int(os.getenv("INVOICE_IMPORT_MAX_FILE_SIZE", str(50 * 1024 * 1024)))
 
     # Admin initialization (production should require a token)
     INIT_ADMIN_TOKEN: str = os.getenv("INIT_ADMIN_TOKEN", "")
