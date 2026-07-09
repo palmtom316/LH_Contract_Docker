@@ -79,6 +79,7 @@ jobs:
         TEST_DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/test_db
         REDIS_URL: redis://localhost:6379/0
         SECRET_KEY: test_secret_key_for_ci_cd_only
+        COMPANY_TAX_NO: 91310000TESTTAXNO01
       run: |
         cd backend
         pytest tests/ -v --cov=app --cov-report=xml --cov-report=term

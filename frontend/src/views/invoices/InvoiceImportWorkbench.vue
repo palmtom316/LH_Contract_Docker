@@ -57,7 +57,7 @@
       </el-table>
     </el-drawer>
 
-    <el-dialog v-model="allocationDialogVisible" title="新增分摊" width="520px">
+    <el-dialog v-model="allocationDialogVisible" title="新增分摊" width="520px" append-to-body>
       <el-form label-width="100px">
         <el-form-item label="方向">
           <el-input v-model="allocationForm.direction" disabled />
