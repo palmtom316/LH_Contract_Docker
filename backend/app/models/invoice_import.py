@@ -29,6 +29,26 @@ class InvoiceImportBatch(Base):
 
     items = relationship("InvoiceImportItem", back_populates="batch", cascade="all, delete-orphan")
 
+    @property
+    def batch_code(self) -> str:
+        return self.batch_number
+
+    @property
+    def error_items(self) -> int:
+        return self.failed_items
+
+    @property
+    def confirmed_items(self) -> int:
+        return sum(1 for item in self.items if item.confirmation_status == "confirmed") if self.items else 0
+
+    @property
+    def completed_at(self):
+        return self.processed_at
+
+    @property
+    def error_message(self):
+        return None
+
 
 class InvoiceImportItem(Base):
     """Single invoice item extracted from a batch."""
