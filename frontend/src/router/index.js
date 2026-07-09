@@ -72,6 +72,12 @@ const routes = [
                 meta: { title: '报表统计', icon: 'DataAnalysis' }
             },
             {
+                path: 'invoice-imports',
+                name: 'InvoiceImportWorkbench',
+                component: () => import('@/views/invoices/InvoiceImportWorkbench.vue'),
+                meta: { title: '电子发票导入', icon: 'DocumentAdd' }
+            },
+            {
                 path: 'notifications',
                 name: 'NotificationCenter',
                 component: () => import('@/views/notifications/NotificationCenter.vue'),
