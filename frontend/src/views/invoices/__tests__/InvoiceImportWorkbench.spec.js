@@ -17,6 +17,8 @@ vi.mock('@/api/invoiceImport', () => ({
     },
   ]),
   listBatchItems: vi.fn().mockResolvedValue([]),
+  createAllocation: vi.fn().mockResolvedValue({}),
+  confirmItem: vi.fn().mockResolvedValue({}),
 }))
 
 describe('InvoiceImportWorkbench', () => {
@@ -28,4 +30,32 @@ describe('InvoiceImportWorkbench', () => {
     expect(wrapper.text()).toContain('电子发票导入')
     expect(wrapper.text()).toContain('INVIMP-202607080001')
   })
+})
+
+it('shows item states after selecting a batch', async () => {
+  const api = await import('@/api/invoiceImport')
+  api.listBatchItems.mockResolvedValueOnce([
+    {
+      id: 10,
+      invoice_number: 'INV-001',
+      seller_name: '我方公司',
+      buyer_name: '客户A',
+      total_amount: '106.00',
+      direction: 'upstream',
+      parse_status: 'parsed',
+      match_status: 'multiple_candidates',
+      confirmation_status: 'draft',
+      allocations: [],
+      candidates: [],
+    },
+  ])
+
+  const wrapper = mount(InvoiceImportWorkbench)
+  await Promise.resolve()
+  await Promise.resolve()
+  await wrapper.find('button').trigger('click')
+  await Promise.resolve()
+
+  expect(wrapper.text()).toContain('INV-001')
+  expect(wrapper.text()).toContain('upstream')
 })
