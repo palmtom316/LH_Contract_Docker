@@ -51,7 +51,12 @@
         <el-table-column label="操作" width="160">
           <template #default="{ row }">
             <el-button link type="primary" @click="openAllocation(row)">分摊</el-button>
-            <el-button link type="success" @click="handleConfirm(row)">确认</el-button>
+            <el-button
+              link
+              type="success"
+              :disabled="row.confirmation_status === 'confirmed'"
+              @click="handleConfirm(row)"
+            >确认</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -60,10 +65,41 @@
     <el-dialog v-model="allocationDialogVisible" title="新增分摊" width="520px" append-to-body>
       <el-form label-width="100px">
         <el-form-item label="方向">
-          <el-input v-model="allocationForm.direction" disabled />
+          <el-radio-group v-model="allocationForm.direction" @change="handleDirectionChange">
+            <el-radio-button value="upstream">上游</el-radio-button>
+            <el-radio-button value="downstream">下游</el-radio-button>
+          </el-radio-group>
         </el-form-item>
-        <el-form-item label="合同ID">
-          <el-input-number v-model="allocationForm.contract_id" :min="1" style="width: 100%" />
+        <el-form-item label="关联合同">
+          <el-select
+            v-model="allocationForm.contract_id"
+            filterable
+            remote
+            clearable
+            :remote-method="searchContracts"
+            :loading="contractLoading"
+            placeholder="输入合同序号、编号或名称搜索"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="contract in contractOptions"
+              :key="contract.id"
+              :label="contractOptionLabel(contract)"
+              :value="contract.id"
+            />
+          </el-select>
+          <div v-if="candidateOptions.length" class="candidate-hint">
+            系统候选：
+            <el-button
+              v-for="candidate in candidateOptions"
+              :key="candidate.id"
+              link
+              type="primary"
+              @click="selectCandidate(candidate)"
+            >
+              {{ candidateLabel(candidate) }}（{{ candidate.score }} 分）
+            </el-button>
+          </div>
         </el-form-item>
         <el-form-item label="分摊金额">
           <el-input-number v-model="allocationForm.amount" :min="0.01" :precision="2" style="width: 100%" />
@@ -81,11 +117,13 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import AppPageHeader from '@/components/ui/AppPageHeader.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 import { confirmItem, createAllocation, listBatchItems, listBatches, uploadBatch } from '@/api/invoiceImport'
+import { getContract as getUpstreamContract, getContracts as getUpstreamContracts } from '@/api/contractUpstream'
+import { getContract as getDownstreamContract, getContracts as getDownstreamContracts } from '@/api/contractDownstream'
 
 const batches = ref([])
 const selectedBatch = ref(null)
@@ -93,6 +131,8 @@ const selectedItem = ref(null)
 const items = ref([])
 const itemDrawerVisible = ref(false)
 const allocationDialogVisible = ref(false)
+const contractLoading = ref(false)
+const contractOptions = ref([])
 const allocationForm = reactive({
   direction: 'upstream',
   contract_id: null,
@@ -116,17 +156,79 @@ async function selectBatch(row) {
   itemDrawerVisible.value = true
 }
 
-function openAllocation(row) {
+async function openAllocation(row) {
   selectedItem.value = row
-  allocationForm.direction = row.direction
+  allocationForm.direction = row.direction === 'downstream' ? 'downstream' : 'upstream'
   allocationForm.contract_id = null
   allocationForm.amount = Number(row.total_amount || 0)
   allocationForm.description = row.remarks || ''
+  contractOptions.value = []
   allocationDialogVisible.value = true
+  const getter = allocationForm.direction === 'upstream'
+    ? getUpstreamContract
+    : getDownstreamContract
+  const ids = candidateOptions.value.map((candidate) => candidate.contractId)
+  const candidates = await Promise.all(ids.map(async (id) => {
+    try {
+      return await getter(id)
+    } catch {
+      return null
+    }
+  }))
+  contractOptions.value = candidates.filter(Boolean)
+}
+
+const candidateOptions = computed(() => (selectedItem.value?.candidates || [])
+  .filter((candidate) => candidate.direction === allocationForm.direction)
+  .map((candidate) => ({
+    ...candidate,
+    contractId: candidate.direction === 'upstream'
+      ? candidate.upstream_contract_id
+      : candidate.downstream_contract_id
+  }))
+  .filter((candidate) => candidate.contractId))
+
+function contractOptionLabel(contract) {
+  return `[${contract.serial_number || '-'}] ${contract.contract_name} (${contract.contract_code || '-'})`
+}
+
+function candidateLabel(candidate) {
+  const contract = contractOptions.value.find((option) => option.id === candidate.contractId)
+  return contract ? contractOptionLabel(contract) : '候选合同'
+}
+
+function handleDirectionChange() {
+  allocationForm.contract_id = null
+  contractOptions.value = []
+}
+
+function selectCandidate(candidate) {
+  allocationForm.contract_id = candidate.contractId
+}
+
+async function searchContracts(query) {
+  if (!query) {
+    contractOptions.value = []
+    return
+  }
+  contractLoading.value = true
+  try {
+    const loader = allocationForm.direction === 'upstream'
+      ? getUpstreamContracts
+      : getDownstreamContracts
+    const response = await loader({ keyword: query, page: 1, page_size: 20 })
+    contractOptions.value = response.items || []
+  } finally {
+    contractLoading.value = false
+  }
 }
 
 async function saveAllocation() {
   if (!selectedItem.value) return
+  if (!allocationForm.contract_id) {
+    ElMessage.warning('请选择关联合同')
+    return
+  }
   const data = {
     direction: allocationForm.direction,
     amount: allocationForm.amount,
@@ -160,6 +262,12 @@ onMounted(loadBatches)
 .invoice-import-workbench {
   display: grid;
   gap: 18px;
+}
+
+.candidate-hint {
+  margin-top: 8px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.5;
 }
 
 .workbench-toolbar {

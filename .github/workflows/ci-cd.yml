@@ -5,9 +5,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop, 1.6, release/1.7.1 ]
+    branches: [ main, develop, 1.6, release/1.8 ]
   pull_request:
-    branches: [ main, develop, 1.6, release/1.7.1 ]
+    branches: [ main, develop, 1.6, release/1.8 ]
 
 permissions:
   contents: read
@@ -129,10 +129,10 @@ jobs:
   build:
     needs: [backend-test, frontend-test]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release/1.7.1')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release/1.8')
     env:
       REGISTRY: ghcr.io
-      IMAGE_VERSION: 1.7.1
+      IMAGE_VERSION: 1.8.0
     
     steps:
     - uses: actions/checkout@v4

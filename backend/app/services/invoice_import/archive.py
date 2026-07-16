@@ -34,6 +34,12 @@ def _assert_size(info: zipfile.ZipInfo, limit: int) -> None:
         raise UnsafeArchiveError(f"Archive member exceeds configured size limit: {info.filename}")
 
 
+def _nested_archive_stats(nested_bytes: bytes) -> tuple[int, int]:
+    with zipfile.ZipFile(io.BytesIO(nested_bytes)) as nested:
+        files = [info for info in nested.infolist() if not info.is_dir()]
+        return len(files), sum(info.file_size for info in files)
+
+
 def _extract_nested_invoice(source_archive_name: str, nested_bytes: bytes, target_dir: Path) -> ExtractedInvoicePackage:
     target_dir.mkdir(parents=True, exist_ok=True)
     xml_paths: list[Path] = []
@@ -41,7 +47,13 @@ def _extract_nested_invoice(source_archive_name: str, nested_bytes: bytes, targe
     ofd_path: Optional[Path] = None
 
     with zipfile.ZipFile(io.BytesIO(nested_bytes)) as nested:
-        for info in nested.infolist():
+        members = nested.infolist()
+        files = [info for info in members if not info.is_dir()]
+        if len(files) > settings.INVOICE_IMPORT_MAX_FILES:
+            raise UnsafeArchiveError("Invoice archive contains too many files")
+        if sum(info.file_size for info in files) > settings.INVOICE_IMPORT_MAX_ARCHIVE_SIZE:
+            raise UnsafeArchiveError("Invoice archive expanded size exceeds configured limit")
+        for info in members:
             _assert_safe_member_name(info.filename)
             _assert_size(info, settings.INVOICE_IMPORT_MAX_FILE_SIZE)
             if info.is_dir():
@@ -72,8 +84,16 @@ def _extract_nested_invoice(source_archive_name: str, nested_bytes: bytes, targe
 
 def extract_invoice_archives(batch_zip: BinaryIO, work_dir: Path) -> list[ExtractedInvoicePackage]:
     packages: list[ExtractedInvoicePackage] = []
+    total_expanded_size = 0
+    total_nested_files = 0
     with zipfile.ZipFile(batch_zip) as batch:
-        for index, info in enumerate(batch.infolist(), start=1):
+        members = batch.infolist()
+        files = [info for info in members if not info.is_dir()]
+        if len(files) > settings.INVOICE_IMPORT_MAX_FILES:
+            raise UnsafeArchiveError("Batch archive contains too many files")
+        if sum(info.file_size for info in files) > settings.INVOICE_IMPORT_MAX_ARCHIVE_SIZE:
+            raise UnsafeArchiveError("Batch archive expanded size exceeds configured limit")
+        for index, info in enumerate(members, start=1):
             _assert_safe_member_name(info.filename)
             _assert_size(info, settings.INVOICE_IMPORT_MAX_ARCHIVE_SIZE)
             if info.is_dir():
@@ -81,6 +101,13 @@ def extract_invoice_archives(batch_zip: BinaryIO, work_dir: Path) -> list[Extrac
             if Path(info.filename).suffix.lower() != ".zip":
                 raise UnsafeArchiveError("Top-level archive may contain invoice zip files only")
             nested_bytes = batch.read(info)
+            nested_file_count, nested_expanded_size = _nested_archive_stats(nested_bytes)
+            total_nested_files += nested_file_count
+            total_expanded_size += nested_expanded_size
+            if total_nested_files > settings.INVOICE_IMPORT_MAX_FILES:
+                raise UnsafeArchiveError("Batch recursive file count exceeds configured limit")
+            if total_expanded_size > settings.INVOICE_IMPORT_MAX_ARCHIVE_SIZE:
+                raise UnsafeArchiveError("Batch recursive expanded size exceeds configured limit")
             package_dir = work_dir / f"invoice_{index:04d}"
             packages.append(_extract_nested_invoice(info.filename, nested_bytes, package_dir))
     return packages

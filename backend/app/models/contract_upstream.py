@@ -182,7 +182,13 @@ class FinanceUpstreamInvoice(Base):
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     source_import_item_id = Column(Integer, ForeignKey("invoice_import_items.id"), nullable=True, index=True)
-    source_import_allocation_id = Column(Integer, ForeignKey("invoice_import_allocations.id"), nullable=True, index=True)
+    source_import_allocation_id = Column(
+        Integer,
+        ForeignKey("invoice_import_allocations.id"),
+        nullable=True,
+        unique=True,
+        index=True,
+    )
     
     # Relationships
     contract = relationship("ContractUpstream", back_populates="invoices")
@@ -271,4 +277,3 @@ class ProjectSettlement(Base):
     
     def __repr__(self):
         return f"<ProjectSettlement(id={self.id}, amount={self.settlement_amount})>"
-

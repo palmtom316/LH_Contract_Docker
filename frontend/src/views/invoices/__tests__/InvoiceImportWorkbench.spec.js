@@ -19,6 +19,17 @@ vi.mock('@/api/invoiceImport', () => ({
   listBatchItems: vi.fn().mockResolvedValue([]),
   createAllocation: vi.fn().mockResolvedValue({}),
   confirmItem: vi.fn().mockResolvedValue({}),
+  uploadBatch: vi.fn().mockResolvedValue({}),
+}))
+
+vi.mock('@/api/contractUpstream', () => ({
+  getContracts: vi.fn().mockResolvedValue({ items: [] }),
+  getContract: vi.fn().mockResolvedValue({ id: 1, serial_number: 1, contract_name: '上游候选合同', contract_code: 'UP-001' }),
+}))
+
+vi.mock('@/api/contractDownstream', () => ({
+  getContracts: vi.fn().mockResolvedValue({ items: [] }),
+  getContract: vi.fn().mockResolvedValue({ id: 1, serial_number: 1, contract_name: '下游候选合同', contract_code: 'DOWN-001' }),
 }))
 
 describe('InvoiceImportWorkbench', () => {

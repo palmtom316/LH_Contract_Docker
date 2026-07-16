@@ -40,24 +40,46 @@ def test_deployment_checklist_references_existing_compose_services():
     assert legacy_admin_password not in content
 
 
-def test_production_images_and_startup_match_release_17_contract():
+def test_production_images_and_startup_match_release_18_contract():
     backend_dockerfile = (REPO_ROOT / "backend" / "Dockerfile.production").read_text(encoding="utf-8")
     frontend_dockerfile = (REPO_ROOT / "frontend" / "Dockerfile.production").read_text(encoding="utf-8")
     frontend_package = (REPO_ROOT / "frontend" / "package.json").read_text(encoding="utf-8")
 
-    assert 'LABEL version="1.7.1"' in backend_dockerfile
-    assert 'LABEL version="1.7.1"' in frontend_dockerfile
-    assert '"version": "1.7.1"' in frontend_package
+    assert 'LABEL version="1.8.0"' in backend_dockerfile
+    assert 'LABEL version="1.8.0"' in frontend_dockerfile
+    assert '"version": "1.8.0"' in frontend_package
     assert "alembic upgrade head && uvicorn" in backend_dockerfile
 
 
-def test_pve_compose_defaults_to_release_17_ghcr_images():
+def test_pve_compose_defaults_to_release_18_ghcr_images():
     content = (REPO_ROOT / "docker-compose.pve-prod.yml").read_text(encoding="utf-8")
 
-    assert "ghcr.io/palmtom316/lh-contract-backend:1.7.1" in content
-    assert "ghcr.io/palmtom316/lh-contract-frontend:1.7.1" in content
+    assert "ghcr.io/palmtom316/lh-contract-backend:1.8.0" in content
+    assert "ghcr.io/palmtom316/lh-contract-frontend:1.8.0" in content
     assert "BACKEND_IMAGE" in content
     assert "FRONTEND_IMAGE" in content
+
+
+def test_pve_minio_ports_are_loopback_only():
+    content = (REPO_ROOT / "docker-compose.pve-prod.yml").read_text(encoding="utf-8")
+
+    assert '"127.0.0.1:9000:9000"' in content
+    assert '"127.0.0.1:9001:9001"' in content
+
+
+def test_release_18_preflight_checks_schema_and_required_environment():
+    content = (REPO_ROOT / "scripts/preflight_1.8.sh").read_text(encoding="utf-8")
+
+    assert "20260527_add_zero_hour_tax_description" in content
+    assert "version_width" in content
+    assert "COMPANY_TAX_NO" in content
+
+
+def test_upgrade_backup_requires_minio_object_backup():
+    content = (REPO_ROOT / "scripts/backup.sh").read_text(encoding="utf-8")
+
+    assert "无法创建升级所需的 MinIO 对象备份" in content
+    assert "CRITICAL_FAILURES=$((CRITICAL_FAILURES + 1))" in content
 
 
 def test_production_compose_variants_configure_minio_for_backend():

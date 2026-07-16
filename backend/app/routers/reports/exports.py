@@ -13,7 +13,7 @@ import pandas as pd
 import io
 from urllib.parse import quote
 
-from .summary import _build_cost_report_payload
+from .summary import _build_cost_report_payload, _build_settlement_report_payload
 
 from app.database import get_db
 from app.models.user import User
@@ -118,6 +118,13 @@ def _create_excel_multi_sheet_response(sheets: dict[str, pd.DataFrame], filename
             "下游及管理合同-结算",
             "零星用工",
             "无合同费用",
+            "合同签约金额",
+            "合同结算金额",
+            "合同已收款金额",
+            "下游合同+管理合同结算金额",
+            "下游合同+管理合同已付款总金额",
+            "无合同费用总金额",
+            "零星用工总金额",
         }
         for sheet_name, df in sheets.items():
             df.to_excel(writer, index=False, sheet_name=sheet_name)
@@ -172,6 +179,34 @@ def _build_cost_export_df(rows: list[dict], total: dict) -> pd.DataFrame:
         result_rows.append(result)
 
     return pd.DataFrame(result_rows)
+
+
+SETTLEMENT_EXPORT_COLUMNS = [
+    ("serial_number", "合同序号"),
+    ("contract_name", "合同名称"),
+    ("company_category", "公司合同分类"),
+    ("party_a_name", "合同甲方单位"),
+    ("contract_amount", "合同签约金额"),
+    ("settlement_date", "合同结算时间"),
+    ("settlement_amount", "合同结算金额"),
+    ("received_amount", "合同已收款金额"),
+    ("down_mgmt_settlement_amount", "下游合同+管理合同结算金额"),
+    ("down_mgmt_paid_amount", "下游合同+管理合同已付款总金额"),
+    ("non_contract_expense_amount", "无合同费用总金额"),
+    ("zero_hour_labor_amount", "零星用工总金额"),
+]
+
+
+def _build_settlement_export_df(rows: list[dict]) -> pd.DataFrame:
+    records = []
+    amount_keys = {key for key, _ in SETTLEMENT_EXPORT_COLUMNS[4:] if key != "settlement_date"}
+    for row in rows:
+        record = {}
+        for key, header in SETTLEMENT_EXPORT_COLUMNS:
+            value = row.get(key)
+            record[header] = float(value or 0) if key in amount_keys else value
+        records.append(record)
+    return pd.DataFrame(records, columns=[header for _, header in SETTLEMENT_EXPORT_COLUMNS])
 
 
 def _build_comprehensive_row(
@@ -406,6 +441,7 @@ def _data_frame_with_columns(rows: list[dict], columns: list[str]) -> pd.DataFra
 async def export_cost_monthly_quarterly_report(
     year: int = None,
     month: int = None,
+    period_type: str = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -421,16 +457,43 @@ async def export_cost_monthly_quarterly_report(
     half_yearly_df = _build_cost_export_df(payload["half_yearly"]["rows"], payload["half_yearly"]["total"])
     yearly_df = _build_cost_export_df(payload["yearly"]["rows"], payload["yearly"]["total"])
 
+    sheets = {
+        "monthly": ("月度成本报表", monthly_df),
+        "quarterly": ("季度成本报表", quarterly_df),
+        "half_yearly": ("半年度成本报表", half_yearly_df),
+        "yearly": ("年度成本报表", yearly_df),
+    }
+    selected_sheets = sheets.values() if period_type not in sheets else [sheets[period_type]]
     filename = f"成本报表_{year}年{month:02d}月.xlsx"
-    return _create_excel_multi_sheet_response(
-        {
-            "月度成本报表": monthly_df,
-            "季度成本报表": quarterly_df,
-            "半年度成本报表": half_yearly_df,
-            "年度成本报表": yearly_df,
-        },
-        filename,
-    )
+    return _create_excel_multi_sheet_response(dict(selected_sheets), filename)
+
+
+@router.get("/export/settlement/monthly-quarterly")
+async def export_settlement_monthly_quarterly_report(
+    year: int = None,
+    month: int = None,
+    period_type: str = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Export contracts completed by settlement date for the selected reporting period."""
+    now = datetime.now()
+    year = year or now.year
+    month = max(1, min(12, int(month or now.month)))
+    payload = await _build_settlement_report_payload(db, year, month)
+    sheet_names = {
+        "monthly": "月度结算报表",
+        "quarterly": "季度结算报表",
+        "half_yearly": "半年度结算报表",
+        "yearly": "年度结算报表",
+    }
+    keys = [period_type] if period_type in sheet_names else list(sheet_names)
+    sheets = {
+        sheet_names[key]: _build_settlement_export_df(payload[key]["rows"])
+        for key in keys
+    }
+    filename = f"结算报表_{year}年{month:02d}月.xlsx"
+    return _create_excel_multi_sheet_response(sheets, filename)
 
 
 @router.get("/export/comprehensive")

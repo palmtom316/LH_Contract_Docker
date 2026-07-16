@@ -52,9 +52,10 @@ ALIASES = {
 
 
 def _text_by_alias(root: ET.Element, aliases: list[str]) -> Optional[str]:
-    for alias in aliases:
-        node = root.find(f".//{alias}")
-        if node is not None and node.text and node.text.strip():
+    aliases_set = set(aliases)
+    for node in root.iter():
+        local_name = node.tag.rsplit("}", 1)[-1] if isinstance(node.tag, str) else ""
+        if local_name in aliases_set and node.text and node.text.strip():
             return node.text.strip()
     return None
 

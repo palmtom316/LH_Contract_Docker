@@ -4,8 +4,16 @@ import io
 
 import pandas as pd
 
-from app.models.contract_downstream import ContractDownstream, FinanceDownstreamPayment
-from app.models.contract_management import ContractManagement, FinanceManagementPayment
+from app.models.contract_downstream import (
+    ContractDownstream,
+    DownstreamSettlement,
+    FinanceDownstreamPayment,
+)
+from app.models.contract_management import (
+    ContractManagement,
+    FinanceManagementPayment,
+    ManagementSettlement,
+)
 from app.models.contract_upstream import (
     ContractUpstream,
     FinanceUpstreamInvoice,
@@ -22,6 +30,7 @@ from app.routers.reports.exports import (
     _build_upstream_invoice_receipt_comprehensive_row,
     _build_zero_hour_labor_report_row,
 )
+from app.routers.reports.summary import _build_settlement_report_row
 
 
 def test_build_comprehensive_row_includes_company_category():
@@ -243,6 +252,165 @@ def test_downstream_payment_rows_include_company_category_before_payment_date():
     assert management_row["公司合同分类"] == "房建工程"
     assert list(downstream_row).index("公司合同分类") < list(downstream_row).index("付款日期")
     assert list(management_row).index("公司合同分类") < list(management_row).index("付款日期")
+
+
+def test_build_settlement_report_row_uses_requested_columns_and_combines_related_amounts():
+    contract = ContractUpstream(
+        serial_number=709,
+        contract_code="UP-SETTLEMENT-709",
+        contract_name="结算合同",
+        party_a_name="甲方单位",
+        party_b_name="本公司",
+        company_category="市政工程",
+        contract_amount=Decimal("100000.00"),
+    )
+    settlement = ProjectSettlement(
+        settlement_date=date(2026, 5, 20),
+        settlement_amount=Decimal("98000.00"),
+    )
+
+    row = _build_settlement_report_row(
+        contract,
+        settlement,
+        received_amount=60000,
+        downstream_settlement_amount=45000,
+        management_settlement_amount=18000,
+        downstream_paid_amount=30000,
+        management_paid_amount=12000,
+        non_contract_expense_amount=3000,
+        zero_hour_labor_amount=2000,
+    )
+
+    assert list(row) == [
+        "serial_number",
+        "contract_name",
+        "company_category",
+        "party_a_name",
+        "contract_amount",
+        "settlement_date",
+        "settlement_amount",
+        "received_amount",
+        "down_mgmt_settlement_amount",
+        "down_mgmt_paid_amount",
+        "non_contract_expense_amount",
+        "zero_hour_labor_amount",
+    ]
+    assert row["down_mgmt_settlement_amount"] == 63000.0
+    assert row["down_mgmt_paid_amount"] == 42000.0
+
+
+async def test_settlement_report_filters_upstream_settlement_date_and_aggregates_related_amounts(
+    client,
+    test_db,
+    admin_token,
+):
+    settled_contract = ContractUpstream(
+        serial_number=707,
+        contract_code="UP-SETTLED-707",
+        contract_name="本月结算合同",
+        party_a_name="甲方单位",
+        party_b_name="本公司",
+        company_category="市政工程",
+        contract_amount=Decimal("100000.00"),
+    )
+    outside_contract = ContractUpstream(
+        serial_number=708,
+        contract_code="UP-SETTLED-708",
+        contract_name="上月结算合同",
+        party_a_name="其他甲方",
+        party_b_name="本公司",
+        contract_amount=Decimal("200000.00"),
+    )
+    test_db.add_all([settled_contract, outside_contract])
+    await test_db.flush()
+
+    downstream = ContractDownstream(
+        contract_code="DS-SETTLED-707",
+        contract_name="关联下游合同",
+        party_a_name="本公司",
+        party_b_name="下游单位",
+        upstream_contract_id=settled_contract.id,
+        contract_amount=Decimal("50000.00"),
+    )
+    management = ContractManagement(
+        contract_code="MG-SETTLED-707",
+        contract_name="关联管理合同",
+        party_a_name="本公司",
+        party_b_name="管理单位",
+        upstream_contract_id=settled_contract.id,
+        contract_amount=Decimal("20000.00"),
+    )
+    test_db.add_all([downstream, management])
+    await test_db.flush()
+    test_db.add_all([
+        ProjectSettlement(
+            contract_id=settled_contract.id,
+            settlement_date=date(2026, 5, 20),
+            settlement_amount=Decimal("98000.00"),
+        ),
+        ProjectSettlement(
+            contract_id=outside_contract.id,
+            settlement_date=date(2026, 4, 30),
+            settlement_amount=Decimal("190000.00"),
+        ),
+        FinanceUpstreamReceipt(
+            contract_id=settled_contract.id,
+            receipt_date=date(2026, 6, 1),
+            amount=Decimal("60000.00"),
+        ),
+        DownstreamSettlement(
+            contract_id=downstream.id,
+            settlement_date=date(2026, 4, 1),
+            settlement_amount=Decimal("45000.00"),
+        ),
+        ManagementSettlement(
+            contract_id=management.id,
+            settlement_date=date(2026, 4, 2),
+            settlement_amount=Decimal("18000.00"),
+        ),
+        FinanceDownstreamPayment(
+            contract_id=downstream.id,
+            payment_date=date(2026, 4, 3),
+            amount=Decimal("30000.00"),
+        ),
+        FinanceManagementPayment(
+            contract_id=management.id,
+            payment_date=date(2026, 4, 4),
+            amount=Decimal("12000.00"),
+        ),
+        ExpenseNonContract(
+            expense_code="EXP-SETTLED-707",
+            category="项目费用",
+            amount=Decimal("3000.00"),
+            expense_date=date(2026, 3, 1),
+            upstream_contract_id=settled_contract.id,
+        ),
+        ZeroHourLabor(
+            labor_date=date(2026, 3, 2),
+            attribution="PROJECT",
+            upstream_contract_id=settled_contract.id,
+            total_amount=Decimal("2000.00"),
+        ),
+    ])
+    await test_db.commit()
+
+    response = await client.get(
+        "/api/v1/reports/settlement/monthly-quarterly",
+        params={"year": 2026, "month": 5, "skip_cache": True},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 200
+    monthly_rows = response.json()["monthly"]["rows"]
+    assert len(monthly_rows) == 1
+    row = monthly_rows[0]
+    assert row["serial_number"] == 707
+    assert row["settlement_amount"] == 98000.0
+    assert row["received_amount"] == 60000.0
+    assert row["down_mgmt_settlement_amount"] == 63000.0
+    assert row["down_mgmt_paid_amount"] == 42000.0
+    assert row["non_contract_expense_amount"] == 3000.0
+    assert row["zero_hour_labor_amount"] == 2000.0
 
 
 async def test_export_downstream_payments_filters_by_company_category(

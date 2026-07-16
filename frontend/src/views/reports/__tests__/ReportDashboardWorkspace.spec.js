@@ -18,17 +18,27 @@ vi.mock('@/api/reports', () => ({
     yearly: { rows: [], total: {} }
   }),
   downloadCostMonthlyQuarterlyReport: vi.fn(),
+  getSettlementMonthlyQuarterlyReport: vi.fn().mockResolvedValue({
+    period: { year: 2026, month: 4, quarter: 2, half_year: 1 },
+    monthly: { rows: [] },
+    quarterly: { rows: [] },
+    half_yearly: { rows: [] },
+    yearly: { rows: [] }
+  }),
+  downloadSettlementMonthlyQuarterlyReport: vi.fn(),
   downloadComprehensiveReport: vi.fn(),
   downloadReceivablesReport: vi.fn(),
   downloadPayablesReport: vi.fn(),
   downloadUpstreamInvoicesReport: vi.fn(),
   downloadDownstreamInvoicesReport: vi.fn(),
   downloadUpstreamReceiptsReport: vi.fn(),
+  downloadUpstreamInvoiceReceiptComprehensiveReport: vi.fn(),
   downloadDownstreamPaymentsReport: vi.fn(),
   downloadExpensePaymentsReport: vi.fn(),
   downloadUpstreamSettlementsReport: vi.fn(),
   downloadDownstreamSettlementsReport: vi.fn(),
-  downloadAssociationReport: vi.fn()
+  downloadAssociationReport: vi.fn(),
+  downloadZeroHourLaborReport: vi.fn()
 }))
 
 vi.mock('element-plus', async (importOriginal) => {

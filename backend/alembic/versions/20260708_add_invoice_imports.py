@@ -16,6 +16,18 @@ depends_on = None
 
 
 def upgrade() -> None:
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    existing_tables = set(inspector.get_table_names())
+    invoice_tables = {
+        "invoice_import_batches",
+        "invoice_import_items",
+        "invoice_import_allocations",
+        "invoice_import_match_candidates",
+    }
+    if invoice_tables.issubset(existing_tables):
+        return
+
     op.add_column("contracts_upstream", sa.Column("party_a_tax_no", sa.String(length=50), nullable=True))
     op.add_column("contracts_upstream", sa.Column("party_b_tax_no", sa.String(length=50), nullable=True))
     op.create_index("ix_contracts_upstream_party_a_tax_no", "contracts_upstream", ["party_a_tax_no"])
@@ -159,31 +171,37 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_finance_downstream_invoices_source_import_allocation_id", table_name="finance_downstream_invoices")
-    op.drop_index("ix_finance_downstream_invoices_source_import_item_id", table_name="finance_downstream_invoices")
-    op.drop_constraint("fk_finance_downstream_invoices_source_import_allocation", "finance_downstream_invoices", type_="foreignkey")
-    op.drop_constraint("fk_finance_downstream_invoices_source_import_item", "finance_downstream_invoices", type_="foreignkey")
-    op.drop_column("finance_downstream_invoices", "source_import_allocation_id")
-    op.drop_column("finance_downstream_invoices", "source_import_item_id")
+    conn = op.get_bind()
 
-    op.drop_index("ix_finance_upstream_invoices_source_import_allocation_id", table_name="finance_upstream_invoices")
-    op.drop_index("ix_finance_upstream_invoices_source_import_item_id", table_name="finance_upstream_invoices")
-    op.drop_constraint("fk_finance_upstream_invoices_source_import_allocation", "finance_upstream_invoices", type_="foreignkey")
-    op.drop_constraint("fk_finance_upstream_invoices_source_import_item", "finance_upstream_invoices", type_="foreignkey")
-    op.drop_column("finance_upstream_invoices", "source_import_allocation_id")
-    op.drop_column("finance_upstream_invoices", "source_import_item_id")
+    def drop_source_columns(table_name: str) -> None:
+        inspector = sa.inspect(conn)
+        existing_columns = {column["name"] for column in inspector.get_columns(table_name)}
+        for column_name in ("source_import_allocation_id", "source_import_item_id"):
+            if column_name not in existing_columns:
+                continue
+            for foreign_key in inspector.get_foreign_keys(table_name):
+                if foreign_key.get("constrained_columns") == [column_name] and foreign_key.get("name"):
+                    op.drop_constraint(foreign_key["name"], table_name, type_="foreignkey")
+            indexes = {index["name"] for index in sa.inspect(conn).get_indexes(table_name)}
+            index_name = f"ix_{table_name}_{column_name}"
+            if index_name in indexes:
+                op.drop_index(index_name, table_name=table_name)
+            op.drop_column(table_name, column_name)
+
+    drop_source_columns("finance_downstream_invoices")
+    drop_source_columns("finance_upstream_invoices")
 
     op.drop_table("invoice_import_match_candidates")
     op.drop_table("invoice_import_allocations")
-    op.drop_index("uq_invoice_import_items_active_dedupe", table_name="invoice_import_items")
     op.drop_table("invoice_import_items")
     op.drop_table("invoice_import_batches")
 
-    op.drop_index("ix_contracts_downstream_party_b_tax_no", table_name="contracts_downstream")
-    op.drop_index("ix_contracts_downstream_party_a_tax_no", table_name="contracts_downstream")
-    op.drop_column("contracts_downstream", "party_b_tax_no")
-    op.drop_column("contracts_downstream", "party_a_tax_no")
-    op.drop_index("ix_contracts_upstream_party_b_tax_no", table_name="contracts_upstream")
-    op.drop_index("ix_contracts_upstream_party_a_tax_no", table_name="contracts_upstream")
-    op.drop_column("contracts_upstream", "party_b_tax_no")
-    op.drop_column("contracts_upstream", "party_a_tax_no")
+    for table_name in ("contracts_downstream", "contracts_upstream"):
+        existing_columns = {column["name"] for column in sa.inspect(conn).get_columns(table_name)}
+        for column_name in ("party_b_tax_no", "party_a_tax_no"):
+            if column_name in existing_columns:
+                index_name = f"ix_{table_name}_{column_name}"
+                indexes = {index["name"] for index in sa.inspect(conn).get_indexes(table_name)}
+                if index_name in indexes:
+                    op.drop_index(index_name, table_name=table_name)
+                op.drop_column(table_name, column_name)

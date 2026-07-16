@@ -1,7 +1,7 @@
 # 合同管理系统 - 生产环境部署指南
 
-**版本**: 1.7.1
-**更新日期**: 2026-06-24
+**版本**: 1.8.0
+**更新日期**: 2026-07-16
 **适用环境**: Ubuntu 20.04/22.04 LTS, Debian 11+, CentOS 7/8
 
 本文默认部署路径为 `docker-compose.prod.yml` + `.env.production`。该路径由容器内 Nginx 对外暴露 80/443，后端、PostgreSQL、Redis、MinIO 均保持 Docker 网络内访问。
@@ -160,10 +160,10 @@ git clone https://github.com/palmtom316/LH_Contract_Docker.git
 cd LH_Contract_Docker
 
 # 切换到稳定分支
-git checkout release/1.7.1  # 或使用已发布的稳定分支/提交
+git checkout release/1.8  # 或使用已发布的稳定分支/提交
 ```
 
-当前仓库本地没有 `v1.7.1` tag；只有在发布流程创建了对应 tag 后，才使用 `git checkout tags/v1.7.1`。
+只有在发布流程创建了对应 tag 后，才使用 `git checkout tags/v1.8.0`。
 
 ### 3.2 配置环境变量
 
@@ -179,7 +179,7 @@ nano .env.production  # 或使用 vim
 
 ```bash
 # 应用配置
-APP_VERSION=1.7.1
+APP_VERSION=1.8.0
 DEBUG=false
 
 # 数据库配置（修改密码！）
@@ -249,7 +249,7 @@ curl http://localhost/health/ready
 | 变量名 | 说明 | 默认值 | 必填 |
 |--------|------|--------|------|
 | `APP_NAME` | 应用名称 | LH Contract Management System | 否 |
-| `APP_VERSION` | 版本号 | 1.7.1 | 否 |
+| `APP_VERSION` | 版本号 | 1.8.0 | 否 |
 | `DEBUG` | 调试模式 | false | 否 |
 | `SECRET_KEY` | 应用签名密钥（至少 64 字节） | - | **是** |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | 访问令牌过期时间 | 480（生产模板） | 否 |
@@ -597,7 +597,7 @@ git branch -a
 git tag -l
 
 # 3. 切换到目标版本
-git checkout release/1.7.1
+git checkout release/1.8
 
 # 4. 对比环境变量变化
 diff .env.production.example .env.production
@@ -799,6 +799,6 @@ docker system prune -a
 
 ---
 
-**文档版本**: 1.7.1
-**最后更新**: 2026-06-24
+**文档版本**: 1.8.0
+**最后更新**: 2026-07-16
 **维护者**: 技术团队

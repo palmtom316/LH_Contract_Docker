@@ -5,15 +5,7 @@
     <AppSectionCard>
       <template #header>月度 / 季度成本报表</template>
       <AppFilterBar>
-        <el-date-picker
-          v-model="costMonth"
-          class="filter-control--time"
-          type="month"
-          value-format="YYYY-MM"
-          format="YYYY年MM月"
-          placeholder="选择月份"
-          clearable
-        />
+        <ReportPeriodFilter :period-type="costActiveTab" :selection="costPeriodSelection" />
         <template #actions>
         <el-button type="primary" :loading="costLoading" @click="handleQueryCostReport">查询报表</el-button>
         <el-button type="primary" plain :loading="costExportLoading" @click="handleExportCostReport">导出</el-button>
@@ -21,18 +13,23 @@
       </AppFilterBar>
 
       <el-tabs v-model="costActiveTab" class="cost-tabs app-tabs--line">
-        <el-tab-pane label="月度成本报表" name="monthly">
-          <div class="cost-title">{{ monthlyTitle }}</div>
-          <AppDataTable v-if="monthlyRowCount > 0">
+        <el-tab-pane
+          v-for="period in REPORT_PERIODS"
+          :key="period.key"
+          :label="`${period.label}成本报表`"
+          :name="period.key"
+        >
+          <div class="cost-title">{{ costTitle(period.key) }}</div>
+          <AppDataTable v-if="costRowCount(period.key) > 0">
             <el-table
-              :data="monthlyTableData"
+              :data="costTableData(period.key)"
               border
               v-loading="costLoading"
               :row-class-name="costRowClassName"
               :cell-style="costCellStyle"
               class="cost-report-table"
             >
-              <el-table-column prop="company_category" label="公司合同分类" fixed min-width="140" />
+              <el-table-column prop="company_category" label="公司合同分类" :fixed="isMobile ? false : true" min-width="140" />
               <el-table-column label="上游合同">
                 <el-table-column prop="upstream_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
                 <el-table-column prop="upstream_receivable" label="应收款" min-width="110" :formatter="amountFormatter" />
@@ -53,115 +50,55 @@
           </AppDataTable>
           <AppEmptyState
             v-else-if="!costLoading"
-            title="暂无月度成本数据"
+            :title="`暂无${period.label}成本数据`"
           />
         </el-tab-pane>
+      </el-tabs>
+    </AppSectionCard>
 
-        <el-tab-pane label="季度成本报表" name="quarterly">
-          <div class="cost-title">{{ quarterlyTitle }}</div>
-          <AppDataTable v-if="quarterlyRowCount > 0">
+    <AppSectionCard class="settlement-report-card">
+      <template #header>月度 / 季度结算报表</template>
+      <AppFilterBar>
+        <ReportPeriodFilter :period-type="settlementActiveTab" :selection="settlementPeriodSelection" />
+        <template #actions>
+          <el-button type="primary" :loading="settlementLoading" @click="handleQuerySettlementReport">查询报表</el-button>
+          <el-button type="primary" plain :loading="settlementExportLoading" @click="handleExportSettlementReport">导出</el-button>
+        </template>
+      </AppFilterBar>
+
+      <el-tabs v-model="settlementActiveTab" class="settlement-tabs app-tabs--line">
+        <el-tab-pane
+          v-for="period in REPORT_PERIODS"
+          :key="period.key"
+          :label="`${period.label}结算报表`"
+          :name="period.key"
+        >
+          <div class="cost-title">{{ settlementTitle(period.key) }}</div>
+          <AppDataTable v-if="settlementRowCount(period.key) > 0">
             <el-table
-              :data="quarterlyTableData"
+              :data="settlementTableData(period.key)"
               border
-              v-loading="costLoading"
-              :row-class-name="costRowClassName"
-              :cell-style="costCellStyle"
-              class="cost-report-table"
+              v-loading="settlementLoading"
+              :cell-style="settlementCellStyle"
+              class="settlement-report-table"
             >
-              <el-table-column prop="company_category" label="公司合同分类" fixed min-width="140" />
-              <el-table-column label="上游合同">
-                <el-table-column prop="upstream_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
-                <el-table-column prop="upstream_receivable" label="应收款" min-width="110" :formatter="amountFormatter" />
-                <el-table-column prop="upstream_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
-                <el-table-column prop="upstream_receipt" label="收款" min-width="110" :formatter="amountFormatter" />
-                <el-table-column prop="upstream_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
-              </el-table-column>
-              <el-table-column label="下游及管理合同">
-                <el-table-column prop="down_mgmt_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
-                <el-table-column prop="down_mgmt_payable" label="应付款" min-width="110" :formatter="amountFormatter" />
-                <el-table-column prop="down_mgmt_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
-                <el-table-column prop="down_mgmt_payment" label="付款" min-width="110" :formatter="amountFormatter" />
-                <el-table-column prop="down_mgmt_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
-              </el-table-column>
-              <el-table-column prop="zero_hour_labor" label="零星用工" min-width="120" :formatter="amountFormatter" />
-              <el-table-column prop="non_contract_expense" label="无合同费用" min-width="120" :formatter="amountFormatter" />
+              <el-table-column prop="serial_number" label="合同序号" :fixed="isMobile ? false : true" min-width="100" />
+              <el-table-column prop="contract_name" label="合同名称" :fixed="isMobile ? false : true" min-width="210" show-overflow-tooltip />
+              <el-table-column prop="company_category" label="公司合同分类" min-width="140" />
+              <el-table-column prop="party_a_name" label="合同甲方单位" min-width="190" show-overflow-tooltip />
+              <el-table-column prop="contract_amount" label="合同签约金额" min-width="145" :formatter="amountFormatter" />
+              <el-table-column prop="settlement_date" label="合同结算时间" min-width="130" />
+              <el-table-column prop="settlement_amount" label="合同结算金额" min-width="145" :formatter="amountFormatter" />
+              <el-table-column prop="received_amount" label="合同已收款金额" min-width="150" :formatter="amountFormatter" />
+              <el-table-column prop="down_mgmt_settlement_amount" label="下游合同+管理合同结算金额" min-width="220" :formatter="amountFormatter" />
+              <el-table-column prop="down_mgmt_paid_amount" label="下游合同+管理合同已付款总金额" min-width="240" :formatter="amountFormatter" />
+              <el-table-column prop="non_contract_expense_amount" label="无合同费用总金额" min-width="160" :formatter="amountFormatter" />
+              <el-table-column prop="zero_hour_labor_amount" label="零星用工总金额" min-width="160" :formatter="amountFormatter" />
             </el-table>
           </AppDataTable>
           <AppEmptyState
-            v-else-if="!costLoading"
-            title="暂无季度成本数据"
-          />
-        </el-tab-pane>
-
-        <el-tab-pane label="半年度成本报表" name="half_yearly">
-          <div class="cost-title">{{ halfYearlyTitle }}</div>
-          <AppDataTable v-if="halfYearlyRowCount > 0">
-            <el-table
-              :data="halfYearlyTableData"
-              border
-              v-loading="costLoading"
-              :row-class-name="costRowClassName"
-              :cell-style="costCellStyle"
-              class="cost-report-table"
-            >
-              <el-table-column prop="company_category" label="公司合同分类" fixed min-width="140" />
-              <el-table-column label="上游合同">
-                <el-table-column prop="upstream_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
-                <el-table-column prop="upstream_receivable" label="应收款" min-width="110" :formatter="amountFormatter" />
-                <el-table-column prop="upstream_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
-                <el-table-column prop="upstream_receipt" label="收款" min-width="110" :formatter="amountFormatter" />
-                <el-table-column prop="upstream_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
-              </el-table-column>
-              <el-table-column label="下游及管理合同">
-                <el-table-column prop="down_mgmt_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
-                <el-table-column prop="down_mgmt_payable" label="应付款" min-width="110" :formatter="amountFormatter" />
-                <el-table-column prop="down_mgmt_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
-                <el-table-column prop="down_mgmt_payment" label="付款" min-width="110" :formatter="amountFormatter" />
-                <el-table-column prop="down_mgmt_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
-              </el-table-column>
-              <el-table-column prop="zero_hour_labor" label="零星用工" min-width="120" :formatter="amountFormatter" />
-              <el-table-column prop="non_contract_expense" label="无合同费用" min-width="120" :formatter="amountFormatter" />
-            </el-table>
-          </AppDataTable>
-          <AppEmptyState
-            v-else-if="!costLoading"
-            title="暂无半年度成本数据"
-          />
-        </el-tab-pane>
-
-        <el-tab-pane label="年度成本报表" name="yearly">
-          <div class="cost-title">{{ yearlyTitle }}</div>
-          <AppDataTable v-if="yearlyRowCount > 0">
-            <el-table
-              :data="yearlyTableData"
-              border
-              v-loading="costLoading"
-              :row-class-name="costRowClassName"
-              :cell-style="costCellStyle"
-              class="cost-report-table"
-            >
-              <el-table-column prop="company_category" label="公司合同分类" fixed min-width="140" />
-              <el-table-column label="上游合同">
-                <el-table-column prop="upstream_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
-                <el-table-column prop="upstream_receivable" label="应收款" min-width="110" :formatter="amountFormatter" />
-                <el-table-column prop="upstream_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
-                <el-table-column prop="upstream_receipt" label="收款" min-width="110" :formatter="amountFormatter" />
-                <el-table-column prop="upstream_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
-              </el-table-column>
-              <el-table-column label="下游及管理合同">
-                <el-table-column prop="down_mgmt_contract_amount" label="签约金额" min-width="120" :formatter="amountFormatter" />
-                <el-table-column prop="down_mgmt_payable" label="应付款" min-width="110" :formatter="amountFormatter" />
-                <el-table-column prop="down_mgmt_invoice" label="挂账" min-width="110" :formatter="amountFormatter" />
-                <el-table-column prop="down_mgmt_payment" label="付款" min-width="110" :formatter="amountFormatter" />
-                <el-table-column prop="down_mgmt_settlement" label="结算" min-width="110" :formatter="amountFormatter" />
-              </el-table-column>
-              <el-table-column prop="zero_hour_labor" label="零星用工" min-width="120" :formatter="amountFormatter" />
-              <el-table-column prop="non_contract_expense" label="无合同费用" min-width="120" :formatter="amountFormatter" />
-            </el-table>
-          </AppDataTable>
-          <AppEmptyState
-            v-else-if="!costLoading"
-            title="暂无年度成本数据"
+            v-else-if="!settlementLoading"
+            :title="`暂无${period.label}结算数据`"
           />
         </el-tab-pane>
       </el-tabs>
@@ -222,10 +159,21 @@ import AppEmptyState from '@/components/ui/AppEmptyState.vue'
 import AppRangeField from '@/components/ui/AppRangeField.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 import DictSelect from '@/components/DictSelect.vue'
+import { useDevice } from '@/composables/useDevice'
+import ReportPeriodFilter from '@/views/reports/ReportPeriodFilter.vue'
 import { buildExportParams } from '@/views/reports/reportDashboard.helpers'
+import {
+  REPORT_PERIODS,
+  createPeriodSelection,
+  formatPeriodLabel,
+  resolvePeriodAnchor,
+  syncPeriodSelection
+} from '@/views/reports/reportPeriod.helpers'
 import {
   getCostMonthlyQuarterlyReport,
   downloadCostMonthlyQuarterlyReport,
+  getSettlementMonthlyQuarterlyReport,
+  downloadSettlementMonthlyQuarterlyReport,
   downloadComprehensiveReport,
   downloadReceivablesReport,
   downloadPayablesReport,
@@ -256,12 +204,26 @@ const COST_FIELDS = [
   'non_contract_expense'
 ]
 
+const SETTLEMENT_AMOUNT_FIELDS = [
+  'contract_amount',
+  'settlement_amount',
+  'received_amount',
+  'down_mgmt_settlement_amount',
+  'down_mgmt_paid_amount',
+  'non_contract_expense_amount',
+  'zero_hour_labor_amount'
+]
+
 const now = new Date()
-const currentMonthValue = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-const costMonth = ref(currentMonthValue)
+const { isMobile } = useDevice()
+const costPeriodSelection = ref(createPeriodSelection(now))
 const costLoading = ref(false)
 const costExportLoading = ref(false)
 const costActiveTab = ref('monthly')
+const settlementPeriodSelection = ref(createPeriodSelection(now))
+const settlementLoading = ref(false)
+const settlementExportLoading = ref(false)
+const settlementActiveTab = ref('monthly')
 
 function buildEmptyCostRecord(companyCategory = '合计') {
   const record = { company_category: companyCategory }
@@ -284,74 +246,60 @@ const costReportData = ref({
   yearly: { rows: [], total: buildEmptyCostRecord('合计') }
 })
 
-const monthlyTitle = computed(() => {
-  const p = costReportData.value.period || {}
-  if (!p.year || !p.month) return '月度成本报表'
-  return `${p.year}年${p.month}月 月度成本报表`
+const settlementReportData = ref({
+  period: {
+    year: now.getFullYear(),
+    month: now.getMonth() + 1,
+    quarter: Math.floor(now.getMonth() / 3) + 1,
+    half_year: now.getMonth() + 1 <= 6 ? 1 : 2
+  },
+  monthly: { rows: [] },
+  quarterly: { rows: [] },
+  half_yearly: { rows: [] },
+  yearly: { rows: [] }
 })
 
-const quarterlyTitle = computed(() => {
-  const p = costReportData.value.period || {}
-  if (!p.year || !p.quarter) return '季度成本报表'
-  return `${p.year}年第${p.quarter}季度 成本报表`
-})
-
-const halfYearlyTitle = computed(() => {
-  const p = costReportData.value.period || {}
-  if (!p.year || !p.half_year) return '半年度成本报表'
-  return `${p.year}年${p.half_year === 1 ? '上半年' : '下半年'} 成本报表`
-})
-
-const yearlyTitle = computed(() => {
-  const p = costReportData.value.period || {}
-  if (!p.year) return '年度成本报表'
-  return `${p.year}年 年度成本报表`
-})
-
-const monthlyTableData = computed(() => {
-  const rows = (costReportData.value.monthly?.rows || []).map((row) => ({ ...buildEmptyCostRecord(row.company_category), ...row, is_total: false }))
-  const total = { ...buildEmptyCostRecord('合计'), ...(costReportData.value.monthly?.total || {}), company_category: '合计', is_total: true }
-  return [...rows, total]
-})
-const monthlyRowCount = computed(() => costReportData.value.monthly?.rows?.length || 0)
-
-const quarterlyTableData = computed(() => {
-  const rows = (costReportData.value.quarterly?.rows || []).map((row) => ({ ...buildEmptyCostRecord(row.company_category), ...row, is_total: false }))
-  const total = { ...buildEmptyCostRecord('合计'), ...(costReportData.value.quarterly?.total || {}), company_category: '合计', is_total: true }
-  return [...rows, total]
-})
-const quarterlyRowCount = computed(() => costReportData.value.quarterly?.rows?.length || 0)
-
-const halfYearlyTableData = computed(() => {
-  const rows = (costReportData.value.half_yearly?.rows || []).map((row) => ({ ...buildEmptyCostRecord(row.company_category), ...row, is_total: false }))
-  const total = { ...buildEmptyCostRecord('合计'), ...(costReportData.value.half_yearly?.total || {}), company_category: '合计', is_total: true }
-  return [...rows, total]
-})
-const halfYearlyRowCount = computed(() => costReportData.value.half_yearly?.rows?.length || 0)
-
-const yearlyTableData = computed(() => {
-  const rows = (costReportData.value.yearly?.rows || []).map((row) => ({ ...buildEmptyCostRecord(row.company_category), ...row, is_total: false }))
-  const total = { ...buildEmptyCostRecord('合计'), ...(costReportData.value.yearly?.total || {}), company_category: '合计', is_total: true }
-  return [...rows, total]
-})
-const yearlyRowCount = computed(() => costReportData.value.yearly?.rows?.length || 0)
-
-function parseYearMonth() {
-  const selected = costMonth.value || currentMonthValue
-  if (!selected) return { year: now.getFullYear(), month: now.getMonth() + 1 }
-  const [yearStr, monthStr] = selected.split('-')
-  const year = Number(yearStr)
-  const month = Number(monthStr)
-  if (!year || !month || month < 1 || month > 12) {
-    return { year: now.getFullYear(), month: now.getMonth() + 1 }
-  }
-  return { year, month }
+function periodMonth(periodType, period) {
+  if (periodType === 'monthly') return period.month
+  if (periodType === 'quarterly') return ((period.quarter || 1) - 1) * 3 + 1
+  if (periodType === 'half_yearly') return period.half_year === 2 ? 7 : 1
+  return 1
 }
+
+function reportTitle(reportData, periodType, suffix) {
+  const period = reportData.period || {}
+  if (!period.year) return `${suffix}报表`
+  return `${formatPeriodLabel(periodType, period.year, periodMonth(periodType, period))} ${suffix}报表`
+}
+
+const costTitle = (periodType) => reportTitle(costReportData.value, periodType, '成本')
+const settlementTitle = (periodType) => reportTitle(settlementReportData.value, periodType, '结算')
+
+function costTableData(periodType) {
+  const periodData = costReportData.value[periodType] || {}
+  const rows = (periodData.rows || []).map((row) => ({
+    ...buildEmptyCostRecord(row.company_category),
+    ...row,
+    is_total: false
+  }))
+  const total = {
+    ...buildEmptyCostRecord('合计'),
+    ...(periodData.total || {}),
+    company_category: '合计',
+    is_total: true
+  }
+  return [...rows, total]
+}
+
+const costRowCount = (periodType) => costReportData.value[periodType]?.rows?.length || 0
+const settlementTableData = (periodType) => settlementReportData.value[periodType]?.rows || []
+const settlementRowCount = (periodType) => settlementReportData.value[periodType]?.rows?.length || 0
 
 async function handleQueryCostReport() {
   costLoading.value = true
   try {
-    const { year, month } = parseYearMonth()
+    const { year, month } = resolvePeriodAnchor(costActiveTab.value, costPeriodSelection.value, now)
+    syncPeriodSelection(costPeriodSelection.value, year, month)
     const res = await getCostMonthlyQuarterlyReport(year, month)
     costReportData.value = {
       period: res.period || {
@@ -388,15 +336,62 @@ async function handleQueryCostReport() {
 async function handleExportCostReport() {
   costExportLoading.value = true
   try {
-    const { year, month } = parseYearMonth()
-    const res = await downloadCostMonthlyQuarterlyReport({ year, month })
-    downloadFile(res, `月度季度成本报表_${year}年${String(month).padStart(2, '0')}月.xlsx`)
+    const { year, month } = resolvePeriodAnchor(costActiveTab.value, costPeriodSelection.value, now)
+    syncPeriodSelection(costPeriodSelection.value, year, month)
+    const res = await downloadCostMonthlyQuarterlyReport({ year, month, period_type: costActiveTab.value })
+    downloadFile(res, `${formatPeriodLabel(costActiveTab.value, year, month)}成本报表.xlsx`)
     ElMessage.success('导出成功')
   } catch (error) {
     console.error(error)
     ElMessage.error('导出失败')
   } finally {
     costExportLoading.value = false
+  }
+}
+
+async function handleQuerySettlementReport() {
+  settlementLoading.value = true
+  try {
+    const { year, month } = resolvePeriodAnchor(settlementActiveTab.value, settlementPeriodSelection.value, now)
+    syncPeriodSelection(settlementPeriodSelection.value, year, month)
+    const res = await getSettlementMonthlyQuarterlyReport(year, month)
+    settlementReportData.value = {
+      period: res.period || {
+        year,
+        month,
+        quarter: Math.floor((month - 1) / 3) + 1,
+        half_year: month <= 6 ? 1 : 2
+      },
+      monthly: { rows: res.monthly?.rows || [] },
+      quarterly: { rows: res.quarterly?.rows || [] },
+      half_yearly: { rows: res.half_yearly?.rows || [] },
+      yearly: { rows: res.yearly?.rows || [] }
+    }
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('结算报表查询失败')
+  } finally {
+    settlementLoading.value = false
+  }
+}
+
+async function handleExportSettlementReport() {
+  settlementExportLoading.value = true
+  try {
+    const { year, month } = resolvePeriodAnchor(settlementActiveTab.value, settlementPeriodSelection.value, now)
+    syncPeriodSelection(settlementPeriodSelection.value, year, month)
+    const res = await downloadSettlementMonthlyQuarterlyReport({
+      year,
+      month,
+      period_type: settlementActiveTab.value
+    })
+    downloadFile(res, `${formatPeriodLabel(settlementActiveTab.value, year, month)}结算报表.xlsx`)
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('导出失败')
+  } finally {
+    settlementExportLoading.value = false
   }
 }
 
@@ -415,6 +410,13 @@ const costRowClassName = ({ row }) => (row.is_total ? 'cost-total-row' : '')
 
 function costCellStyle({ column }) {
   if (COST_FIELDS.includes(column.property)) {
+    return { textAlign: 'right' }
+  }
+  return {}
+}
+
+function settlementCellStyle({ column }) {
+  if (SETTLEMENT_AMOUNT_FIELDS.includes(column.property)) {
     return { textAlign: 'right' }
   }
   return {}
@@ -881,6 +883,7 @@ function downloadFile(response, filename) {
 
 onMounted(() => {
   handleQueryCostReport()
+  handleQuerySettlementReport()
 })
 </script>
 
@@ -888,15 +891,26 @@ onMounted(() => {
 .report-dashboard-shell {
   display: grid;
   gap: var(--space-5);
+  width: 100%;
+  min-width: 0;
 }
 
 .report-dashboard-panels {
   display: grid;
   gap: var(--space-5);
+  min-width: 0;
 }
 
 .report-dashboard-panel {
   gap: var(--space-4);
+  min-width: 0;
+}
+
+.cost-tabs,
+.settlement-tabs {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .report-dashboard-panel :deep(.app-section-card) {
@@ -910,13 +924,19 @@ onMounted(() => {
   color: var(--text-primary);
 }
 
-.cost-report-table :deep(th) {
+.cost-report-table :deep(th),
+.settlement-report-table :deep(th) {
   text-align: center;
   font-weight: 700;
 }
 
-.cost-report-table :deep(.el-table__cell) {
+.cost-report-table :deep(.el-table__cell),
+.settlement-report-table :deep(.el-table__cell) {
   padding: 10px 0;
+}
+
+.settlement-report-card {
+  margin-top: var(--space-5);
 }
 
 :deep(.cost-total-row td.el-table__cell) {

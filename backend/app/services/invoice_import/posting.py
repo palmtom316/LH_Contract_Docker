@@ -73,6 +73,7 @@ class InvoicePostingService:
             select(InvoiceImportItem)
             .options(selectinload(InvoiceImportItem.allocations), selectinload(InvoiceImportItem.candidates), selectinload(InvoiceImportItem.batch))
             .where(InvoiceImportItem.id == item_id)
+            .with_for_update()
         )
         item = result.scalar_one_or_none()
         if not item:
@@ -82,9 +83,12 @@ class InvoicePostingService:
         if item.duplicate_of_item_id and not override_duplicate:
             raise ValidationError(message="重复发票不能直接确认", field_errors={"invoice_number": "请核对重复发票"})
 
+        if item.confirmation_status == "confirmed":
+            return item
+
         draft_allocations = [a for a in item.allocations if a.status == "draft"]
         if not draft_allocations:
-            return item
+            raise ValidationError(message="发票尚未分摊，不能确认挂账", field_errors={"allocations": "请先添加分摊记录"})
 
         _validate_item_before_posting(item)
         for allocation in draft_allocations:

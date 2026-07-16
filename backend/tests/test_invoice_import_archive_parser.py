@@ -17,6 +17,15 @@ def _zip_bytes(files):
     return buffer
 
 
+def _compressed_zip_bytes(files):
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for name, content in files.items():
+            zf.writestr(name, content)
+    buffer.seek(0)
+    return buffer
+
+
 def test_rejects_path_traversal(tmp_path):
     nested = _zip_bytes({"../evil.xml": "<xml/>"}).getvalue()
     batch = _zip_bytes({"invoice_001.zip": nested})
@@ -69,6 +78,51 @@ def test_parse_invoice_xml_accepts_common_chinese_date_formats():
 
     assert parsed_yyyymmdd.invoice_date.isoformat() == "2024-01-15"
     assert parsed_chinese.invoice_date.isoformat() == "2024-01-15"
+
+
+def test_parse_invoice_xml_accepts_namespaced_fields():
+    xml = b"""
+    <Invoice xmlns="urn:cn:invoice">
+      <InvoiceNumber>NS-001</InvoiceNumber>
+      <SellerTaxNo>SELLER-NS</SellerTaxNo>
+      <TotalAmount>106.00</TotalAmount>
+    </Invoice>
+    """
+
+    parsed = parse_invoice_xml(xml)
+
+    assert parsed.invoice_number == "NS-001"
+    assert parsed.seller_tax_no == "SELLER-NS"
+    assert parsed.total_amount == Decimal("106.00")
+
+
+def test_rejects_batch_with_excessive_cumulative_expanded_size(tmp_path, monkeypatch):
+    monkeypatch.setattr("app.services.invoice_import.archive.settings.INVOICE_IMPORT_MAX_ARCHIVE_SIZE", 2000)
+    first = _compressed_zip_bytes({"invoice.xml": b"A" * 1200}).getvalue()
+    second = _compressed_zip_bytes({"invoice.xml": b"B" * 1200}).getvalue()
+    batch = _zip_bytes({"invoice_001.zip": first, "invoice_002.zip": second})
+
+    with pytest.raises(UnsafeArchiveError, match="recursive expanded size"):
+        extract_invoice_archives(batch, tmp_path)
+
+
+def test_rejects_batch_with_too_many_members(tmp_path, monkeypatch):
+    monkeypatch.setattr("app.services.invoice_import.archive.settings.INVOICE_IMPORT_MAX_FILES", 1)
+    nested = _zip_bytes({"invoice.xml": b"<Invoice/>"}).getvalue()
+    batch = _zip_bytes({"invoice_001.zip": nested, "invoice_002.zip": nested})
+
+    with pytest.raises(UnsafeArchiveError, match="too many files"):
+        extract_invoice_archives(batch, tmp_path)
+
+
+def test_rejects_excessive_recursive_member_count(tmp_path, monkeypatch):
+    monkeypatch.setattr("app.services.invoice_import.archive.settings.INVOICE_IMPORT_MAX_FILES", 3)
+    first = _zip_bytes({"invoice.xml": b"<Invoice/>", "invoice.pdf": b"pdf"}).getvalue()
+    second = _zip_bytes({"invoice.xml": b"<Invoice/>", "invoice.ofd": b"ofd"}).getvalue()
+    batch = _zip_bytes({"invoice_001.zip": first, "invoice_002.zip": second})
+
+    with pytest.raises(UnsafeArchiveError, match="recursive file count"):
+        extract_invoice_archives(batch, tmp_path)
 
 
 def test_parse_invoice_xml_rejects_xml_entities():

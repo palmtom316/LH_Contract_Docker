@@ -140,19 +140,25 @@ class InvoiceImportService:
         content_bytes = content.getvalue()
 
         now = datetime.utcnow()
+        batch_token = uuid.uuid4().hex
         object_key = f"invoices/imports/batches/{now.strftime('%Y/%m')}/{uuid.uuid4()}.zip"
         batch = InvoiceImportBatch(
-            batch_number=f"INVIMP-{now.strftime('%Y%m%d%H%M%S')}",
+            batch_number=f"INVIMP-{now.strftime('%Y%m%d%H%M%S')}-{batch_token[:12].upper()}",
             original_filename=filename,
             archive_file_path=object_key,
             archive_file_key=object_key,
             status="uploaded",
             uploaded_by=user.id,
         )
-        self.db.add(batch)
-        await self.db.commit()
-        await self.db.refresh(batch)
         await self._put_bytes_to_minio(batch.archive_file_key, content_bytes, "application/zip")
+        try:
+            self.db.add(batch)
+            await self.db.commit()
+            await self.db.refresh(batch)
+        except Exception:
+            await self.db.rollback()
+            self._remove_minio_object(batch.archive_file_key)
+            raise
         _apply_confirmed_count(batch, 0)
         return batch
 
@@ -295,6 +301,12 @@ class InvoiceImportService:
         bucket_name = settings.MINIO_BUCKET_CONTRACTS
         ensure_bucket_exists(client, bucket_name)
         client.put_object(bucket_name, object_key, BytesIO(content), length=len(content), content_type=content_type)
+
+    def _remove_minio_object(self, object_key: str) -> None:
+        try:
+            get_minio_client().remove_object(settings.MINIO_BUCKET_CONTRACTS, object_key)
+        except Exception:
+            pass
 
     async def _get_bytes_from_minio(self, object_key: str) -> bytes:
         client = get_minio_client()
