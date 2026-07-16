@@ -100,6 +100,11 @@ defineProps({
   justify-self: stretch;
 }
 
+.app-filter-bar__main :deep(.filter-control--period) {
+  grid-column: span 5;
+  align-self: end;
+}
+
 .app-filter-bar__main :deep(.filter-control--range-wide) {
   grid-column: span 5;
 }
@@ -181,6 +186,10 @@ defineProps({
     grid-column: span 2;
   }
 
+  .app-filter-bar__main :deep(.filter-control--period) {
+    grid-column: span 5;
+  }
+
   .app-filter-bar__actions--inline {
     grid-column: span 6;
   }
@@ -200,6 +209,7 @@ defineProps({
   }
 
   .app-filter-bar__main :deep(.filter-control--time),
+  .app-filter-bar__main :deep(.filter-control--period),
   .app-filter-bar__main :deep(.filter-control--range-wide) {
     grid-column: 1 / -1;
   }

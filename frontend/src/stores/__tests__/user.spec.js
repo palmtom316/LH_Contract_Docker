@@ -31,4 +31,20 @@ describe('user store bootstrap', () => {
     expect(store.user).toEqual({})
     expect(store.permissions).toEqual([])
   })
+
+  it('allows invoice viewers and invoice operators to open the import workbench', () => {
+    const store = useUserStore()
+
+    store.permissions = ['view_invoices']
+    expect(store.canViewInvoices).toBe(true)
+
+    store.permissions = ['create_invoices']
+    expect(store.canViewInvoices).toBe(true)
+
+    store.permissions = []
+    expect(store.canViewInvoices).toBe(false)
+
+    store.user = { is_superuser: true }
+    expect(store.canViewInvoices).toBe(true)
+  })
 })

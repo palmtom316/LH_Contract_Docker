@@ -23,3 +23,22 @@ export function buildExportParams(filters = {}) {
 
   return params
 }
+
+export function buildSettlementSummaries(columns = [], data = [], amountFields = []) {
+  const amountFieldSet = new Set(amountFields)
+
+  return columns.map((column, index) => {
+    if (index === 0) return '合计'
+    if (!amountFieldSet.has(column.property)) return ''
+
+    const total = data.reduce((sum, row) => {
+      const value = Number(row[column.property])
+      return Number.isFinite(value) ? sum + value : sum
+    }, 0)
+
+    return total.toLocaleString('zh-CN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })
+  })
+}

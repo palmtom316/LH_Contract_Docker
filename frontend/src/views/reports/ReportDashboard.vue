@@ -80,20 +80,22 @@
               border
               v-loading="settlementLoading"
               :cell-style="settlementCellStyle"
+              show-summary
+              :summary-method="settlementSummaryMethod"
               class="settlement-report-table"
             >
               <el-table-column prop="serial_number" label="合同序号" :fixed="isMobile ? false : true" min-width="100" />
-              <el-table-column prop="contract_name" label="合同名称" :fixed="isMobile ? false : true" min-width="210" show-overflow-tooltip />
+              <el-table-column prop="contract_name" label="合同名称" :fixed="isMobile ? false : true" min-width="230" class-name="settlement-text-column" />
               <el-table-column prop="company_category" label="公司合同分类" min-width="140" />
-              <el-table-column prop="party_a_name" label="合同甲方单位" min-width="190" show-overflow-tooltip />
-              <el-table-column prop="contract_amount" label="合同签约金额" min-width="145" :formatter="amountFormatter" />
-              <el-table-column prop="settlement_date" label="合同结算时间" min-width="130" />
-              <el-table-column prop="settlement_amount" label="合同结算金额" min-width="145" :formatter="amountFormatter" />
+              <el-table-column prop="party_a_name" label="甲方单位" min-width="210" class-name="settlement-text-column" />
+              <el-table-column prop="contract_amount" label="签约金额" min-width="130" :formatter="amountFormatter" />
+              <el-table-column prop="settlement_date" label="结算时间" min-width="120" />
+              <el-table-column prop="settlement_amount" label="结算金额" min-width="130" :formatter="amountFormatter" />
               <el-table-column prop="received_amount" label="合同已收款金额" min-width="150" :formatter="amountFormatter" />
-              <el-table-column prop="down_mgmt_settlement_amount" label="下游合同+管理合同结算金额" min-width="220" :formatter="amountFormatter" />
-              <el-table-column prop="down_mgmt_paid_amount" label="下游合同+管理合同已付款总金额" min-width="240" :formatter="amountFormatter" />
-              <el-table-column prop="non_contract_expense_amount" label="无合同费用总金额" min-width="160" :formatter="amountFormatter" />
-              <el-table-column prop="zero_hour_labor_amount" label="零星用工总金额" min-width="160" :formatter="amountFormatter" />
+              <el-table-column prop="down_mgmt_settlement_amount" label="下游合同结算" min-width="150" :formatter="amountFormatter" />
+              <el-table-column prop="down_mgmt_paid_amount" label="下游合同已付款" min-width="165" :formatter="amountFormatter" />
+              <el-table-column prop="non_contract_expense_amount" label="无合同费用" min-width="135" :formatter="amountFormatter" />
+              <el-table-column prop="zero_hour_labor_amount" label="零星用工" min-width="125" :formatter="amountFormatter" />
             </el-table>
           </AppDataTable>
           <AppEmptyState
@@ -161,7 +163,7 @@ import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 import DictSelect from '@/components/DictSelect.vue'
 import { useDevice } from '@/composables/useDevice'
 import ReportPeriodFilter from '@/views/reports/ReportPeriodFilter.vue'
-import { buildExportParams } from '@/views/reports/reportDashboard.helpers'
+import { buildExportParams, buildSettlementSummaries } from '@/views/reports/reportDashboard.helpers'
 import {
   REPORT_PERIODS,
   createPeriodSelection,
@@ -420,6 +422,10 @@ function settlementCellStyle({ column }) {
     return { textAlign: 'right' }
   }
   return {}
+}
+
+function settlementSummaryMethod({ columns, data }) {
+  return buildSettlementSummaries(columns, data, SETTLEMENT_AMOUNT_FIELDS)
 }
 
 const exportFilters = ref({
@@ -933,6 +939,24 @@ onMounted(() => {
 .cost-report-table :deep(.el-table__cell),
 .settlement-report-table :deep(.el-table__cell) {
   padding: 10px 0;
+}
+
+.settlement-report-table :deep(td.settlement-text-column .cell) {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+
+.settlement-report-table :deep(.el-table__footer-wrapper td.el-table__cell) {
+  background: color-mix(in srgb, var(--status-warning) 12%, var(--surface-panel));
+  font-weight: 700;
+}
+
+.settlement-report-table :deep(.el-table__footer-wrapper .cell) {
+  white-space: nowrap;
 }
 
 .settlement-report-card {

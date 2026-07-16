@@ -40,6 +40,8 @@ describe('InvoiceImportWorkbench', () => {
 
     expect(wrapper.text()).toContain('电子发票导入')
     expect(wrapper.text()).toContain('INVIMP-202607080001')
+    expect(wrapper.text()).toContain('上传压缩包')
+    expect(wrapper.text()).toContain('刷新')
   })
 })
 
@@ -64,7 +66,8 @@ it('shows item states after selecting a batch', async () => {
   const wrapper = mount(InvoiceImportWorkbench)
   await Promise.resolve()
   await Promise.resolve()
-  await wrapper.find('button').trigger('click')
+  const viewButton = wrapper.findAll('button').find((button) => button.text() === '查看')
+  await viewButton.trigger('click')
   await Promise.resolve()
 
   expect(wrapper.text()).toContain('INV-001')

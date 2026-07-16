@@ -299,6 +299,65 @@ def test_build_settlement_report_row_uses_requested_columns_and_combines_related
     assert row["down_mgmt_paid_amount"] == 42000.0
 
 
+def test_build_settlement_export_uses_concise_headers_and_appends_totals():
+    rows = [
+        {
+            "serial_number": 1,
+            "contract_name": "结算合同一",
+            "company_category": "市政工程",
+            "party_a_name": "甲方单位一",
+            "contract_amount": 100000,
+            "settlement_date": date(2026, 5, 20),
+            "settlement_amount": 98000,
+            "received_amount": 60000,
+            "down_mgmt_settlement_amount": 63000,
+            "down_mgmt_paid_amount": 42000,
+            "non_contract_expense_amount": 3000,
+            "zero_hour_labor_amount": 2000,
+        },
+        {
+            "serial_number": 2,
+            "contract_name": "结算合同二",
+            "company_category": "设备采购",
+            "party_a_name": "甲方单位二",
+            "contract_amount": 50000,
+            "settlement_date": date(2026, 5, 22),
+            "settlement_amount": 48000,
+            "received_amount": 40000,
+            "down_mgmt_settlement_amount": 30000,
+            "down_mgmt_paid_amount": 25000,
+            "non_contract_expense_amount": 1000,
+            "zero_hour_labor_amount": 500,
+        },
+    ]
+
+    dataframe = exports._build_settlement_export_df(rows)
+
+    assert list(dataframe.columns) == [
+        "合同序号",
+        "合同名称",
+        "公司合同分类",
+        "甲方单位",
+        "签约金额",
+        "结算时间",
+        "结算金额",
+        "合同已收款金额",
+        "下游合同结算",
+        "下游合同已付款",
+        "无合同费用",
+        "零星用工",
+    ]
+    total = dataframe.iloc[-1]
+    assert total["合同序号"] == "合计"
+    assert total["签约金额"] == 150000
+    assert total["结算金额"] == 146000
+    assert total["合同已收款金额"] == 100000
+    assert total["下游合同结算"] == 93000
+    assert total["下游合同已付款"] == 67000
+    assert total["无合同费用"] == 4000
+    assert total["零星用工"] == 2500
+
+
 async def test_settlement_report_filters_upstream_settlement_date_and_aggregates_related_amounts(
     client,
     test_db,

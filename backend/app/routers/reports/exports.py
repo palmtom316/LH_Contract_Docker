@@ -118,13 +118,13 @@ def _create_excel_multi_sheet_response(sheets: dict[str, pd.DataFrame], filename
             "下游及管理合同-结算",
             "零星用工",
             "无合同费用",
-            "合同签约金额",
-            "合同结算金额",
+            "签约金额",
+            "结算金额",
             "合同已收款金额",
-            "下游合同+管理合同结算金额",
-            "下游合同+管理合同已付款总金额",
-            "无合同费用总金额",
-            "零星用工总金额",
+            "下游合同结算",
+            "下游合同已付款",
+            "无合同费用",
+            "零星用工",
         }
         for sheet_name, df in sheets.items():
             df.to_excel(writer, index=False, sheet_name=sheet_name)
@@ -185,27 +185,44 @@ SETTLEMENT_EXPORT_COLUMNS = [
     ("serial_number", "合同序号"),
     ("contract_name", "合同名称"),
     ("company_category", "公司合同分类"),
-    ("party_a_name", "合同甲方单位"),
-    ("contract_amount", "合同签约金额"),
-    ("settlement_date", "合同结算时间"),
-    ("settlement_amount", "合同结算金额"),
+    ("party_a_name", "甲方单位"),
+    ("contract_amount", "签约金额"),
+    ("settlement_date", "结算时间"),
+    ("settlement_amount", "结算金额"),
     ("received_amount", "合同已收款金额"),
-    ("down_mgmt_settlement_amount", "下游合同+管理合同结算金额"),
-    ("down_mgmt_paid_amount", "下游合同+管理合同已付款总金额"),
-    ("non_contract_expense_amount", "无合同费用总金额"),
-    ("zero_hour_labor_amount", "零星用工总金额"),
+    ("down_mgmt_settlement_amount", "下游合同结算"),
+    ("down_mgmt_paid_amount", "下游合同已付款"),
+    ("non_contract_expense_amount", "无合同费用"),
+    ("zero_hour_labor_amount", "零星用工"),
 ]
 
 
 def _build_settlement_export_df(rows: list[dict]) -> pd.DataFrame:
     records = []
-    amount_keys = {key for key, _ in SETTLEMENT_EXPORT_COLUMNS[4:] if key != "settlement_date"}
+    amount_keys = {
+        "contract_amount",
+        "settlement_amount",
+        "received_amount",
+        "down_mgmt_settlement_amount",
+        "down_mgmt_paid_amount",
+        "non_contract_expense_amount",
+        "zero_hour_labor_amount",
+    }
     for row in rows:
         record = {}
         for key, header in SETTLEMENT_EXPORT_COLUMNS:
             value = row.get(key)
             record[header] = float(value or 0) if key in amount_keys else value
         records.append(record)
+
+    if records:
+        total_record = {header: "" for _, header in SETTLEMENT_EXPORT_COLUMNS}
+        total_record["合同序号"] = "合计"
+        for key, header in SETTLEMENT_EXPORT_COLUMNS:
+            if key in amount_keys:
+                total_record[header] = sum(float(row.get(key) or 0) for row in rows)
+        records.append(total_record)
+
     return pd.DataFrame(records, columns=[header for _, header in SETTLEMENT_EXPORT_COLUMNS])
 
 

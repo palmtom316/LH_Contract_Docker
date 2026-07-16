@@ -1,22 +1,20 @@
 <template>
   <div class="invoice-import-workbench">
-    <AppPageHeader title="电子发票导入" subtitle="上传发票压缩包，解析后确认挂账" />
+    <AppPageHeader title="电子发票导入" description="上传发票压缩包，解析后确认挂账" />
 
     <AppWorkspacePanel>
-      <template #header>
-        <div class="workbench-toolbar">
-          <div>
-            <h2>导入批次</h2>
-            <p>仅处理含 XML 的电子发票压缩包；确认前不会写入正式挂账。</p>
-          </div>
-          <div class="toolbar-actions">
-            <el-upload :auto-upload="false" :show-file-list="false" accept=".zip" :on-change="handleFileSelected">
-              <el-button type="primary">上传压缩包</el-button>
-            </el-upload>
-            <el-button @click="loadBatches">刷新</el-button>
-          </div>
+      <div class="workbench-toolbar">
+        <div>
+          <h2>导入批次</h2>
+          <p>仅处理含 XML 的电子发票压缩包；确认前不会写入正式挂账。</p>
         </div>
-      </template>
+        <div class="toolbar-actions">
+          <el-upload :auto-upload="false" :show-file-list="false" accept=".zip" :on-change="handleFileSelected">
+            <el-button type="primary">上传压缩包</el-button>
+          </el-upload>
+          <el-button @click="loadBatches">刷新</el-button>
+        </div>
+      </div>
 
       <el-table :data="batches" border class="batch-table">
         <el-table-column prop="batch_code" label="批次号" width="190" />

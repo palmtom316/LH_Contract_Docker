@@ -115,4 +115,28 @@ describe('Report dashboard workspace shell', () => {
     expect(reportDashboardSource).toContain('companyCategory: downPayCompanyCategory.value')
     expect(reportDashboardSource).toContain("companyCategoryField('downstream-payment-company-category', downPayCompanyCategory)")
   })
+
+  it('shows complete wrapped settlement text and a calculated total row', () => {
+    expect(reportDashboardSource).toContain('class-name="settlement-text-column"')
+    expect(reportDashboardSource).not.toContain('label="合同名称" :fixed="isMobile ? false : true" min-width="210" show-overflow-tooltip')
+    expect(reportDashboardSource).toContain('show-summary')
+    expect(reportDashboardSource).toContain(':summary-method="settlementSummaryMethod"')
+    expect(reportDashboardSource).toContain('white-space: normal;')
+    expect(reportDashboardSource).toContain('overflow-wrap: anywhere;')
+  })
+
+  it('uses the requested concise settlement column labels', () => {
+    for (const label of [
+      '甲方单位',
+      '签约金额',
+      '结算时间',
+      '结算金额',
+      '下游合同结算',
+      '下游合同已付款',
+      '无合同费用',
+      '零星用工'
+    ]) {
+      expect(reportDashboardSource).toContain(`label="${label}"`)
+    }
+  })
 })

@@ -26,4 +26,10 @@ describe('Layout sidebar shell', () => {
     expect(layoutSource).not.toContain('Project Stack')
     expect(layoutSource).not.toContain('AppDeveloperIcon')
   })
+
+  it('exposes the electronic invoice workbench from the primary navigation', () => {
+    expect(layoutSource).toContain("index: '/invoice-imports'")
+    expect(layoutSource).toContain("label: '电子发票'")
+    expect(layoutSource).toContain('userStore.canViewInvoices')
+  })
 })
