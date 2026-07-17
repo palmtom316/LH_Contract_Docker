@@ -71,6 +71,8 @@ class InvoiceImportItem(Base):
     total_amount = Column(Numeric(15, 2), nullable=True)
     invoice_type = Column(String(100), nullable=True)
     remarks = Column(Text, nullable=True)
+    project_name = Column(String(500), nullable=True)
+    construction_project_name = Column(String(500), nullable=True, index=True)
     dedupe_key = Column(String(255), nullable=True, index=True)
     duplicate_of_item_id = Column(Integer, ForeignKey("invoice_import_items.id"), nullable=True)
     direction = Column(String(50), nullable=False, default="unknown", index=True)
@@ -92,7 +94,12 @@ class InvoiceImportItem(Base):
 
     batch = relationship("InvoiceImportBatch", back_populates="items")
     allocations = relationship("InvoiceImportAllocation", back_populates="item", cascade="all, delete-orphan")
-    candidates = relationship("InvoiceImportMatchCandidate", back_populates="item", cascade="all, delete-orphan")
+    candidates = relationship(
+        "InvoiceImportMatchCandidate",
+        back_populates="item",
+        cascade="all, delete-orphan",
+        order_by="InvoiceImportMatchCandidate.score.desc()",
+    )
     duplicate_of = relationship("InvoiceImportItem", remote_side=[id])
 
 
@@ -135,3 +142,26 @@ class InvoiceImportMatchCandidate(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
     item = relationship("InvoiceImportItem", back_populates="candidates")
+    upstream_contract = relationship("ContractUpstream", foreign_keys=[upstream_contract_id], lazy="raise")
+    downstream_contract = relationship("ContractDownstream", foreign_keys=[downstream_contract_id], lazy="raise")
+
+    @property
+    def matched_contract(self):
+        if self.direction == "upstream":
+            return self.__dict__.get("upstream_contract")
+        return self.__dict__.get("downstream_contract")
+
+    @property
+    def contract_serial_number(self):
+        contract = self.matched_contract
+        return contract.serial_number if contract else None
+
+    @property
+    def contract_code(self):
+        contract = self.matched_contract
+        return contract.contract_code if contract else None
+
+    @property
+    def contract_name(self):
+        contract = self.matched_contract
+        return contract.contract_name if contract else None

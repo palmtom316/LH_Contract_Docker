@@ -13,6 +13,7 @@ import os
 import shutil
 import uuid
 from datetime import datetime
+from urllib.parse import quote
 
 from app.database import get_db
 from app.config import settings
@@ -63,6 +64,14 @@ async def get_companies(
 logger = logging.getLogger(__name__)
 
 
+def _build_inline_content_disposition(path: str) -> str:
+    filename = os.path.basename(path).replace("\r", "").replace("\n", "")
+    ascii_filename = filename.encode("ascii", errors="ignore").decode("ascii") or "download"
+    ascii_filename = ascii_filename.replace("\\", "_").replace('"', "_")
+    encoded_filename = quote(filename, safe="")
+    return f"inline; filename=\"{ascii_filename}\"; filename*=UTF-8''{encoded_filename}"
+
+
 def _resolve_local_upload_path(safe_path: str) -> str:
     local_path = os.path.normpath(os.path.join(settings.UPLOAD_DIR, safe_path))
     local_real_path = os.path.realpath(local_path)
@@ -92,8 +101,8 @@ async def upload_file(
     
     Args:
         file: The file to upload
-        upload_dir: Top-level object prefix. Allowed: contracts, invoices, receipts,
-                    settlements, expenses, docs.
+        upload_dir: Top-level object prefix. Allowed: contracts, receivables,
+                    payables, invoices, receipts, payments, settlements, expenses, docs.
         subdir: Optional controlled subfolder under an allowed top-level prefix.
         custom_filename: Optional filename suffix after sanitization.
     
@@ -124,11 +133,35 @@ async def upload_file(
     unique_id = str(uuid.uuid4())
 
     type_prefix = "others"
-    allowed_dirs = {"contracts", "invoices", "receipts", "settlements", "expenses", "docs"}
+    allowed_dirs = {
+        "contracts",
+        "receivables",
+        "payables",
+        "invoices",
+        "receipts",
+        "payments",
+        "settlements",
+        "expenses",
+        "docs",
+    }
     allowed_subdirs = {
         "upstream/contract": "contracts/upstream",
         "downstream/contract": "contracts/downstream",
         "management/contract": "contracts/management",
+        "upstream/receivable": "receivables/upstream",
+        "upstream/invoice": "invoices/upstream",
+        "upstream/receipt": "receipts/upstream",
+        "upstream/settlement/audit": "settlements/upstream/audit",
+        "upstream/settlement/start": "settlements/upstream/start",
+        "upstream/settlement/completion": "settlements/upstream/completion",
+        "downstream/payable": "payables/downstream",
+        "downstream/invoice": "invoices/downstream",
+        "downstream/payment": "payments/downstream",
+        "downstream/settlement": "settlements/downstream",
+        "management/payable": "payables/management",
+        "management/invoice": "invoices/management",
+        "management/payment": "payments/management",
+        "management/settlement": "settlements/management",
     }
 
     upload_dir_value = upload_dir.strip("/") if isinstance(upload_dir, str) else None
@@ -216,7 +249,8 @@ async def upload_file(
         "path": final_object_name,  # Frontend might show this or we return a view URL?
         "key": final_object_name,   # Explicit key
         "url": f"/api/v1/common/files/{final_object_name}", # Hypothetical proxy endpoint or direct minio link
-        "content_type": file.content_type
+        "content_type": file.content_type,
+        "storage_provider": "minio",
     }
 
 
@@ -290,15 +324,16 @@ async def get_file(
         # Check if object exists
         try:
             stat = client.stat_object(bucket_name, safe_path)
-            
-            # Get data stream
             response = client.get_object(bucket_name, safe_path)
-            
+        except Exception as e:
+            # Not found in MinIO or other storage error, fallback to local.
+            logger.debug(f"[FILE_GET] MinIO fallback: {e}")
+        else:
             # Guess mime type
             mime_type, _ = mimetypes.guess_type(safe_path)
             if not mime_type:
                 mime_type = "application/octet-stream"
-                
+
             # Use a generator to stream data in efficient chunks (1MB)
             def data_generator():
                 try:
@@ -314,14 +349,10 @@ async def get_file(
                 media_type=mime_type,
                 headers={
                     "Content-Length": str(stat.size),
-                    "Content-Disposition": f"inline; filename={os.path.basename(safe_path)}",
+                    "Content-Disposition": _build_inline_content_disposition(safe_path),
                     "Accept-Ranges": "bytes"
                 }
             )
-        except Exception as e:
-            # Not found in MinIO or other error, fallback to local
-            logger.debug(f"[FILE_GET] MinIO fallback: {e}")
-            pass
             
     except Exception as e:
         logger.error(f"[FILE_GET] MinIO error: {e}")

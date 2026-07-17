@@ -20,6 +20,13 @@ def test_formal_invoice_trace_columns_are_registered():
     assert "source_import_allocation_id" in downstream.c
 
 
+def test_invoice_project_name_columns_are_registered():
+    items = Base.metadata.tables["invoice_import_items"]
+
+    assert "project_name" in items.c
+    assert "construction_project_name" in items.c
+
+
 def test_contract_tax_number_columns_are_registered():
     upstream = Base.metadata.tables["contracts_upstream"]
     downstream = Base.metadata.tables["contracts_downstream"]

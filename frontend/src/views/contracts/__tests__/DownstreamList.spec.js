@@ -10,6 +10,14 @@ const downstreamListSource = readFileSync(
   'utf-8'
 )
 
+describe('downstream contract file storage', () => {
+  it('routes PDFs to the downstream prefix and clears all file metadata together', () => {
+    expect(downstreamListSource).toContain("subdir: 'downstream/contract'")
+    expect(downstreamListSource).toContain(':on-remove="handleRemoveFile"')
+    expect(downstreamListSource).toContain("form.contract_file_storage = 'local'")
+  })
+})
+
 const { getListMock, queryParamsState, getUpstreamContractsMock } = vi.hoisted(() => ({
   getListMock: vi.fn(),
   queryParamsState: { value: null },
@@ -185,6 +193,10 @@ describe('DownstreamList workspace shell', () => {
     expect(downstreamListSource).toContain('padding-top: 16px;')
     expect(downstreamListSource).toContain('border-top: 1px solid var(--border-subtle);')
     expect(downstreamListSource).not.toContain('background: transparent;')
+  })
+
+  it('stores new downstream contract PDFs in the downstream contract prefix', () => {
+    expect(downstreamListSource).toContain("subdir: 'downstream/contract'")
   })
 
   it('places upstream contract name and sign time before the downstream amount column', () => {

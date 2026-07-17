@@ -34,31 +34,74 @@
       </el-table>
     </AppWorkspacePanel>
 
-    <el-drawer v-model="itemDrawerVisible" size="60%" title="发票识别明细">
+    <el-drawer v-model="itemDrawerVisible" size="min(920px, 96vw)" title="发票识别明细">
       <div class="drawer-context" v-if="selectedBatch">
         <strong>{{ selectedBatch.batch_code }}</strong>
         <span>{{ selectedBatch.original_filename }}</span>
       </div>
-      <el-table :data="items" border>
-        <el-table-column prop="invoice_number" label="发票号" width="170" />
-        <el-table-column prop="direction" label="方向" width="100" />
-        <el-table-column prop="seller_name" label="销售方" min-width="180" />
-        <el-table-column prop="buyer_name" label="购买方" min-width="180" />
-        <el-table-column prop="total_amount" label="价税合计" width="120" align="right" />
-        <el-table-column prop="match_status" label="匹配" width="130" />
-        <el-table-column prop="confirmation_status" label="确认" width="120" />
-        <el-table-column label="操作" width="160">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="openAllocation(row)">分摊</el-button>
+      <div v-if="items.length" class="invoice-card-list">
+        <article v-for="item in items" :key="item.id" class="invoice-review-card">
+          <header class="invoice-card-header">
+            <div>
+              <span class="invoice-card-kicker">发票号码</span>
+              <h3>{{ item.invoice_number || '待补充' }}</h3>
+            </div>
+            <div class="invoice-card-statuses">
+              <el-tag size="small" effect="plain">{{ directionLabel(item.direction) }}</el-tag>
+              <el-tag size="small" :type="matchTagType(item.match_status)" effect="light">
+                {{ matchStatusLabel(item.match_status) }}
+              </el-tag>
+              <el-tag size="small" :type="item.confirmation_status === 'confirmed' ? 'success' : 'info'" effect="light">
+                {{ confirmationStatusLabel(item.confirmation_status) }}
+              </el-tag>
+            </div>
+            <div class="invoice-card-total">
+              <span>价税合计</span>
+              <strong>¥ {{ formatAmount(item.total_amount) }}</strong>
+            </div>
+          </header>
+
+          <section class="invoice-project-band">
+            <div>
+              <span>建筑项目名称</span>
+              <strong>{{ item.construction_project_name || '未识别' }}</strong>
+            </div>
+            <div>
+              <span>项目名称</span>
+              <strong>{{ item.project_name || '未识别' }}</strong>
+            </div>
+          </section>
+
+          <dl class="invoice-detail-grid">
+            <div><dt>销售方</dt><dd>{{ item.seller_name || '-' }}</dd></div>
+            <div><dt>购买方</dt><dd>{{ item.buyer_name || '-' }}</dd></div>
+            <div><dt>开票日期</dt><dd>{{ item.invoice_date || '-' }}</dd></div>
+            <div><dt>发票类型</dt><dd>{{ item.invoice_type || '-' }}</dd></div>
+          </dl>
+
+          <section class="invoice-match-panel" :class="{ 'is-empty': !item.candidates?.length }">
+            <span class="invoice-match-label">匹配合同</span>
+            <div v-if="item.candidates?.length" class="matched-contract-list">
+              <div v-for="candidate in item.candidates" :key="candidate.id" class="matched-contract">
+                <strong>[{{ candidate.contract_serial_number || '-' }}] {{ candidate.contract_name || '合同信息缺失' }}</strong>
+                <span v-if="candidate.contract_code">{{ candidate.contract_code }}</span>
+              </div>
+            </div>
+            <span v-else class="invoice-match-empty">未按建筑项目名称找到合同，可手动搜索选择</span>
+          </section>
+
+          <footer class="invoice-card-actions">
+            <el-button icon="Connection" @click="openAllocation(item)">分摊到合同</el-button>
             <el-button
-              link
               type="success"
-              :disabled="row.confirmation_status === 'confirmed'"
-              @click="handleConfirm(row)"
-            >确认</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+              icon="CircleCheck"
+              :disabled="item.confirmation_status === 'confirmed'"
+              @click="handleConfirm(item)"
+            >确认挂账</el-button>
+          </footer>
+        </article>
+      </div>
+      <el-empty v-else description="该批次暂无发票识别明细" />
     </el-drawer>
 
     <el-dialog v-model="allocationDialogVisible" title="新增分摊" width="520px" append-to-body>
@@ -121,8 +164,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import AppPageHeader from '@/components/ui/AppPageHeader.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 import { confirmItem, createAllocation, deleteBatch, listBatchItems, listBatches, uploadBatch } from '@/api/invoiceImport'
-import { getContract as getUpstreamContract, getContracts as getUpstreamContracts } from '@/api/contractUpstream'
-import { getContract as getDownstreamContract, getContracts as getDownstreamContracts } from '@/api/contractDownstream'
+import { getContracts as getUpstreamContracts } from '@/api/contractUpstream'
+import { getContracts as getDownstreamContracts } from '@/api/contractDownstream'
 
 const batches = ref([])
 const selectedBatch = ref(null)
@@ -180,21 +223,15 @@ async function openAllocation(row) {
   allocationForm.direction = row.direction === 'downstream' ? 'downstream' : 'upstream'
   allocationForm.contract_id = null
   allocationForm.amount = Number(row.total_amount || 0)
-  allocationForm.description = row.remarks || ''
-  contractOptions.value = []
+  allocationForm.description = row.construction_project_name || row.project_name || row.remarks || ''
   allocationDialogVisible.value = true
-  const getter = allocationForm.direction === 'upstream'
-    ? getUpstreamContract
-    : getDownstreamContract
-  const ids = candidateOptions.value.map((candidate) => candidate.contractId)
-  const candidates = await Promise.all(ids.map(async (id) => {
-    try {
-      return await getter(id)
-    } catch {
-      return null
-    }
+  contractOptions.value = candidateOptions.value.map((candidate) => ({
+    id: candidate.contractId,
+    serial_number: candidate.contract_serial_number,
+    contract_code: candidate.contract_code,
+    contract_name: candidate.contract_name,
   }))
-  contractOptions.value = candidates.filter(Boolean)
+  allocationForm.contract_id = candidateOptions.value[0]?.contractId || null
 }
 
 const candidateOptions = computed(() => (selectedItem.value?.candidates || [])
@@ -212,8 +249,29 @@ function contractOptionLabel(contract) {
 }
 
 function candidateLabel(candidate) {
-  const contract = contractOptions.value.find((option) => option.id === candidate.contractId)
-  return contract ? contractOptionLabel(contract) : '候选合同'
+  return `[${candidate.contract_serial_number || '-'}] ${candidate.contract_name || '候选合同'}`
+}
+
+function formatAmount(value) {
+  return Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function directionLabel(direction) {
+  if (direction === 'upstream') return '上游开票'
+  if (direction === 'downstream') return '下游收票'
+  return '方向待确认'
+}
+
+function matchStatusLabel(status) {
+  return status === 'matched' ? '已匹配' : '未匹配'
+}
+
+function matchTagType(status) {
+  return status === 'matched' ? 'success' : 'warning'
+}
+
+function confirmationStatusLabel(status) {
+  return status === 'confirmed' ? '已挂账' : '待确认'
 }
 
 function handleDirectionChange() {
@@ -329,5 +387,179 @@ onMounted(loadBatches)
 
 .drawer-context strong {
   color: var(--el-text-color-primary);
+}
+
+.invoice-card-list {
+  display: grid;
+  gap: 16px;
+}
+
+.invoice-review-card {
+  overflow: hidden;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 8px;
+  background: var(--el-bg-color);
+  box-shadow: 0 8px 24px rgb(31 45 61 / 6%);
+}
+
+.invoice-card-header {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+}
+
+.invoice-card-kicker,
+.invoice-card-total span,
+.invoice-project-band span,
+.invoice-match-label {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+
+.invoice-card-header h3 {
+  margin: 0;
+  color: var(--el-text-color-primary);
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.invoice-card-statuses {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.invoice-card-total {
+  min-width: 140px;
+  text-align: right;
+}
+
+.invoice-card-total strong {
+  color: var(--el-color-primary);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.invoice-project-band {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 16px 20px;
+  border-block: 1px solid var(--el-border-color-lighter);
+  background: var(--el-fill-color-light);
+}
+
+.invoice-project-band strong {
+  display: block;
+  color: var(--el-text-color-primary);
+  line-height: 1.55;
+}
+
+.invoice-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin: 0;
+  padding: 6px 20px;
+}
+
+.invoice-detail-grid div {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 8px;
+  padding: 9px 0;
+}
+
+.invoice-detail-grid dt {
+  color: var(--el-text-color-secondary);
+}
+
+.invoice-detail-grid dd {
+  margin: 0;
+  color: var(--el-text-color-primary);
+  overflow-wrap: anywhere;
+}
+
+.invoice-match-panel {
+  margin: 4px 20px 16px;
+  padding: 13px 15px;
+  border: 1px solid var(--el-color-success-light-7);
+  border-left: 4px solid var(--el-color-success);
+  border-radius: 6px;
+  background: var(--el-color-success-light-9);
+}
+
+.invoice-match-panel.is-empty {
+  border-color: var(--el-color-warning-light-7);
+  border-left-color: var(--el-color-warning);
+  background: var(--el-color-warning-light-9);
+}
+
+.matched-contract-list {
+  display: grid;
+  gap: 8px;
+}
+
+.matched-contract {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.matched-contract strong {
+  color: var(--el-text-color-primary);
+  line-height: 1.5;
+}
+
+.matched-contract span,
+.invoice-match-empty {
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+
+.invoice-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+@media (max-width: 720px) {
+  .invoice-card-header,
+  .invoice-project-band,
+  .invoice-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .invoice-card-statuses {
+    justify-content: flex-start;
+  }
+
+  .invoice-card-total {
+    text-align: left;
+  }
+
+  .matched-contract {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .invoice-card-actions {
+    justify-content: stretch;
+  }
+
+  .invoice-card-actions .el-button {
+    flex: 1;
+  }
 }
 </style>

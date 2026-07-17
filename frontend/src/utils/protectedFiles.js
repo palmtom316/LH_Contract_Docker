@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import { ElMessage } from 'element-plus'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
@@ -70,10 +71,24 @@ export async function createProtectedObjectUrl(path) {
 }
 
 export async function openProtectedFile(path) {
-  const objectUrl = await createProtectedObjectUrl(path)
-  window.open(objectUrl, '_blank', 'noopener')
-  revokeObjectUrlLater(objectUrl)
-  return objectUrl
+  const previewWindow = window.open('about:blank', '_blank')
+  if (!previewWindow) {
+    const error = new Error('浏览器阻止了文件窗口，请允许本站弹出窗口后重试')
+    ElMessage.error(error.message)
+    throw error
+  }
+
+  previewWindow.opener = null
+  try {
+    const objectUrl = await createProtectedObjectUrl(path)
+    previewWindow.location.replace(objectUrl)
+    revokeObjectUrlLater(objectUrl)
+    return objectUrl
+  } catch (error) {
+    previewWindow.close()
+    ElMessage.error(error?.message || '文件打开失败，请稍后重试')
+    throw error
+  }
 }
 
 export async function downloadProtectedFile(path, filename) {

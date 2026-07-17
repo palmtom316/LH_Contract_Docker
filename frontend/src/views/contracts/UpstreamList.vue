@@ -749,7 +749,8 @@ const form = reactive({
   notes: '',
   status: '执行中',
   contract_file_path: '',
-  contract_file_key: ''
+  contract_file_key: '',
+  contract_file_storage: 'local'
 })
 
 const rules = {
@@ -869,6 +870,7 @@ const handleUploadRequest = createUploadRequestHandler({
   target: form,
   pathField: 'contract_file_path',
   keyField: 'contract_file_key',
+  storageField: 'contract_file_storage',
   fileListRef: fileList,
   loadingRef: uploading,
   uploadOptions: ({ option }) => {
@@ -884,6 +886,8 @@ const handleUploadRequest = createUploadRequestHandler({
 
 const handleRemoveFile = () => {
   form.contract_file_path = ''
+  form.contract_file_key = ''
+  form.contract_file_storage = 'local'
   fileList.value = []
 }
 
@@ -917,6 +921,8 @@ const resetForm = () => {
   form.notes = ''
   form.status = '执行中'
   form.contract_file_path = ''
+  form.contract_file_key = ''
+  form.contract_file_storage = 'local'
   fileList.value = []
 }
 

@@ -32,6 +32,7 @@ export function createUploadRequestHandler(config = {}) {
       uploadOptions: 'contracts',
       pathField: 'file_path',
       keyField: 'file_key',
+      storageField: 'storage_provider',
       successMessage: '上传成功',
       errorMessage: '上传失败',
       callOptionSuccess: false,
@@ -64,6 +65,9 @@ export function createUploadRequestHandler(config = {}) {
       assignField(target, settings.pathField, result.path, context)
       if (result.key) {
         assignField(target, settings.keyField, result.key, context)
+      }
+      if (result.storage_provider) {
+        assignField(target, settings.storageField, result.storage_provider, context)
       }
       updateFileList(settings.fileListRef, context)
 

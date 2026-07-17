@@ -32,6 +32,8 @@ class ParsedInvoice:
     total_amount: Optional[Decimal]
     invoice_type: Optional[str]
     remarks: Optional[str]
+    project_name: Optional[str]
+    construction_project_name: Optional[str]
     payload: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -106,6 +108,13 @@ def parse_invoice_xml(xml_bytes: bytes) -> ParsedInvoice:
     values = {key: _text_by_alias(root, aliases) for key, aliases in ALIASES.items()}
     if not values["invoice_type"]:
         values["invoice_type"] = _child_text(root, "GeneralOrSpecialVAT", "LabelName")
+    project_name = (
+        _child_text(root, "IssuItemInformation", "MeaUnits")
+        or _child_text(root, "IssuItemInformation", "ItemName")
+    )
+    construction_project_name = _child_text(root, "ConstructionServices", "ItemName")
+    values["project_name"] = project_name
+    values["construction_project_name"] = construction_project_name
     payload = {key: value for key, value in values.items() if value is not None}
 
     return ParsedInvoice(
@@ -121,5 +130,7 @@ def parse_invoice_xml(xml_bytes: bytes) -> ParsedInvoice:
         total_amount=_to_decimal(values["total_amount"]),
         invoice_type=values["invoice_type"],
         remarks=values["remarks"],
+        project_name=project_name,
+        construction_project_name=construction_project_name,
         payload=payload,
     )

@@ -688,18 +688,29 @@ const settlementFileLists = {
 const handleUploadRequest = (option) => handleFinanceFileUpload(option, {
   pathField: 'file_path',
   fileListRef: fileList,
+  uploadOptions: financeDialog.type === 'receipt'
+    ? { subdir: 'upstream/receipt' }
+    : { subdir: 'upstream/receivable' },
   callOptionSuccess: true,
   logError: true
 })
 
 const handleInvoiceUpload = (option) => handleFinanceFileUpload(option, {
   pathField: 'file_path',
-  fileListRef: invoiceFileList
+  fileListRef: invoiceFileList,
+  uploadOptions: { subdir: 'upstream/invoice' }
 })
 
 const handleSettlementUpload = (option, fieldName) => handleFinanceFileUpload(option, {
   pathField: fieldName,
-  fileListRef: settlementFileLists[fieldName]
+  fileListRef: settlementFileLists[fieldName],
+  uploadOptions: {
+    subdir: {
+      audit_report_path: 'upstream/settlement/audit',
+      start_report_path: 'upstream/settlement/start',
+      completion_report_path: 'upstream/settlement/completion'
+    }[fieldName]
+  }
 })
 
 // Actions

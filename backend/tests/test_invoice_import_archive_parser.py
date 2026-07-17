@@ -132,6 +132,14 @@ def test_parse_invoice_xml_accepts_digital_invoice_fields():
           <TotalTaxAm>54875.23</TotalTaxAm>
           <TotalTax-includedAmount>664600.00</TotalTax-includedAmount>
         </BasicInformation>
+        <IssuItemInformation>
+          <MeaUnits>重庆九龙坡110kV劳动村变电站劳港线10kV配套送出工程</MeaUnits>
+        </IssuItemInformation>
+        <SpecificInformation>
+          <ConstructionServices>
+            <ItemName>重庆九龙坡110kV劳动村变电站劳港线10kV配套送出工程</ItemName>
+          </ConstructionServices>
+        </SpecificInformation>
       </EInvoiceData>
       <TaxSupervisionInfo>
         <InvoiceNumber>26502000001442925721</InvoiceNumber>
@@ -150,6 +158,8 @@ def test_parse_invoice_xml_accepts_digital_invoice_fields():
     assert parsed.tax_amount == Decimal("54875.23")
     assert parsed.total_amount == Decimal("664600.00")
     assert parsed.invoice_type == "增值税专用发票"
+    assert parsed.project_name == "重庆九龙坡110kV劳动村变电站劳港线10kV配套送出工程"
+    assert parsed.construction_project_name == "重庆九龙坡110kV劳动村变电站劳港线10kV配套送出工程"
 
 
 def test_rejects_batch_with_excessive_cumulative_expanded_size(tmp_path, monkeypatch):

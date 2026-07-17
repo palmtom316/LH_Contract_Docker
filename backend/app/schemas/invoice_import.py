@@ -70,6 +70,9 @@ class MatchCandidateResponse(BaseModel):
     downstream_contract_id: Optional[int] = None
     score: int
     matched_signals: Dict[str, Any]
+    contract_serial_number: Optional[int] = None
+    contract_code: Optional[str] = None
+    contract_name: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -108,6 +111,8 @@ class ImportItemResponse(BaseModel):
     total_amount: Optional[Decimal] = None
     invoice_type: Optional[str] = None
     remarks: Optional[str] = None
+    project_name: Optional[str] = None
+    construction_project_name: Optional[str] = None
     direction: InvoiceDirection
     parse_status: str
     match_status: str

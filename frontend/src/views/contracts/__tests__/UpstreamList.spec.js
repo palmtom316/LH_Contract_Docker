@@ -358,6 +358,12 @@ describe('UpstreamList filters', () => {
     expect(upstreamSource).not.toContain('<PdfViewer')
     expect(upstreamSource).not.toContain('pdfDialog')
   })
+
+  it('routes new PDFs to the upstream prefix and clears all file metadata together', () => {
+    expect(upstreamSource).toContain("subdir: 'upstream/contract'")
+    expect(upstreamSource).toContain(':on-remove="handleRemoveFile"')
+    expect(upstreamSource).toContain("form.contract_file_storage = 'local'")
+  })
 })
 
 describe('upstream workspace shell structure', () => {

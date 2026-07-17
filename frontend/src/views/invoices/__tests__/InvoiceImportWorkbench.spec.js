@@ -80,13 +80,25 @@ it('shows item states after selecting a batch', async () => {
       invoice_number: 'INV-001',
       seller_name: '我方公司',
       buyer_name: '客户A',
+      invoice_date: '2026-07-16',
+      invoice_type: '增值税专用发票',
+      project_name: '重庆九龙坡110kV劳动村变电站劳港线10kV配套送出工程',
+      construction_project_name: '重庆九龙坡110kV劳动村变电站劳港线10kV配套送出工程',
       total_amount: '106.00',
       direction: 'upstream',
       parse_status: 'parsed',
-      match_status: 'multiple_candidates',
+      match_status: 'matched',
       confirmation_status: 'draft',
       allocations: [],
-      candidates: [],
+      candidates: [{
+        id: 20,
+        direction: 'upstream',
+        upstream_contract_id: 8,
+        contract_serial_number: 1088,
+        contract_code: 'UP-2026-0088',
+        contract_name: '重庆九龙坡110kV劳动村变电站劳港线10kV配套送出工程施工合同',
+        score: 120,
+      }],
     },
   ])
 
@@ -98,5 +110,8 @@ it('shows item states after selecting a batch', async () => {
   await Promise.resolve()
 
   expect(wrapper.text()).toContain('INV-001')
-  expect(wrapper.text()).toContain('upstream')
+  expect(wrapper.text()).toContain('建筑项目名称')
+  expect(wrapper.text()).toContain('重庆九龙坡110kV劳动村变电站劳港线10kV配套送出工程')
+  expect(wrapper.text()).toContain('[1088] 重庆九龙坡110kV劳动村变电站劳港线10kV配套送出工程施工合同')
+  expect(wrapper.findAll('.invoice-review-card')).toHaveLength(1)
 })

@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 from app.core.errors import ResourceNotFoundError, ValidationError
 from app.models.contract_downstream import FinanceDownstreamInvoice
 from app.models.contract_upstream import FinanceUpstreamInvoice
-from app.models.invoice_import import InvoiceImportAllocation, InvoiceImportItem
+from app.models.invoice_import import InvoiceImportAllocation, InvoiceImportItem, InvoiceImportMatchCandidate
 from app.models.user import User, UserRole
 
 
@@ -69,9 +69,15 @@ class InvoicePostingService:
         self.db = db
 
     async def confirm_item(self, item_id: int, user: User, override_duplicate: bool = False) -> InvoiceImportItem:
+        candidate_contracts = selectinload(InvoiceImportItem.candidates)
         result = await self.db.execute(
             select(InvoiceImportItem)
-            .options(selectinload(InvoiceImportItem.allocations), selectinload(InvoiceImportItem.candidates), selectinload(InvoiceImportItem.batch))
+            .options(
+                selectinload(InvoiceImportItem.allocations),
+                candidate_contracts.selectinload(InvoiceImportMatchCandidate.upstream_contract),
+                candidate_contracts.selectinload(InvoiceImportMatchCandidate.downstream_contract),
+                selectinload(InvoiceImportItem.batch),
+            )
             .where(InvoiceImportItem.id == item_id)
             .with_for_update()
         )
@@ -142,9 +148,15 @@ class InvoicePostingService:
 
         item.confirmation_status = "confirmed"
         await self.db.commit()
+        candidate_contracts = selectinload(InvoiceImportItem.candidates)
         result = await self.db.execute(
             select(InvoiceImportItem)
-            .options(selectinload(InvoiceImportItem.allocations), selectinload(InvoiceImportItem.candidates), selectinload(InvoiceImportItem.batch))
+            .options(
+                selectinload(InvoiceImportItem.allocations),
+                candidate_contracts.selectinload(InvoiceImportMatchCandidate.upstream_contract),
+                candidate_contracts.selectinload(InvoiceImportMatchCandidate.downstream_contract),
+                selectinload(InvoiceImportItem.batch),
+            )
             .where(InvoiceImportItem.id == item_id)
         )
         return result.scalar_one()

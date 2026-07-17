@@ -43,6 +43,64 @@ def _ensure_backup_tmp_dir() -> str:
     return settings.BACKUP_TMP_DIR
 
 
+def _safe_backup_object_path(root: str, object_name: str) -> str:
+    normalized = str(object_name or "").replace("\\", "/").lstrip("/")
+    if not normalized:
+        raise ValueError("MinIO 对象名称为空")
+
+    target = os.path.realpath(os.path.join(root, *normalized.split("/")))
+    root_real = os.path.realpath(root)
+    if target == root_real or not target.startswith(root_real + os.sep):
+        raise ValueError(f"MinIO 对象路径非法: {object_name}")
+    return target
+
+
+def _backup_minio_bucket(destination_root: str) -> tuple[int, int]:
+    """Copy the configured MinIO bucket into a filesystem backup tree."""
+    from app.core.minio import get_minio_client
+
+    bucket_name = settings.MINIO_BUCKET_CONTRACTS
+    bucket_root = os.path.join(destination_root, bucket_name)
+    os.makedirs(bucket_root, exist_ok=True)
+
+    client = get_minio_client()
+    object_count = 0
+    total_bytes = 0
+    for item in client.list_objects(bucket_name, recursive=True):
+        if getattr(item, "is_dir", False):
+            continue
+
+        object_name = item.object_name
+        target_path = _safe_backup_object_path(bucket_root, object_name)
+        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+        response = client.get_object(bucket_name, object_name)
+        try:
+            with open(target_path, "wb") as output:
+                for chunk in response.stream(1024 * 1024):
+                    output.write(chunk)
+        finally:
+            response.close()
+            response.release_conn()
+
+        downloaded_size = os.path.getsize(target_path)
+        expected_size = getattr(item, "size", None)
+        if expected_size is not None and downloaded_size != expected_size:
+            raise IOError(
+                f"MinIO 对象备份大小不一致: {object_name} "
+                f"({downloaded_size} != {expected_size})"
+            )
+        object_count += 1
+        total_bytes += downloaded_size
+
+    manifest_path = os.path.join(destination_root, "manifest.txt")
+    with open(manifest_path, "w", encoding="utf-8") as manifest:
+        manifest.write(f"bucket={bucket_name}\n")
+        manifest.write(f"object_count={object_count}\n")
+        manifest.write(f"total_bytes={total_bytes}\n")
+
+    return object_count, total_bytes
+
+
 def _find_system_logo_path() -> str | None:
     system_dir = os.path.join(settings.UPLOAD_DIR, "system")
     candidates: list[tuple[int, str]] = []
@@ -159,7 +217,7 @@ async def backup_system(
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    Full system backup: Database + Uploaded files (ZIP)
+    Full system backup: Database + local uploads + MinIO objects (ZIP)
     """
     if not current_user.is_superuser:
         raise PermissionDeniedError(detail="需要超级管理员权限")
@@ -196,10 +254,21 @@ async def backup_system(
         if os.path.exists(uploads_src):
              shutil.copytree(uploads_src, uploads_dst, ignore=ignore_patterns)
 
-        # 3. Create ZIP
+        # 3. Copy MinIO objects. A full backup must fail if object storage
+        # cannot be copied; otherwise the archive would silently omit PDFs.
+        minio_dst = os.path.join(temp_dir, "minio")
+        object_count, total_bytes = _backup_minio_bucket(minio_dst)
+        logger.info(
+            "Full backup copied MinIO bucket %s: objects=%s, bytes=%s",
+            settings.MINIO_BUCKET_CONTRACTS,
+            object_count,
+            total_bytes,
+        )
+
+        # 4. Create ZIP
         shutil.make_archive(zip_filepath.removesuffix(".zip"), "zip", temp_dir)
-        
-        # 4. Cleanup temp folder (keep zip)
+
+        # 5. Cleanup temp folder (keep zip)
         shutil.rmtree(temp_dir)
         
         return FileResponse(
@@ -213,6 +282,7 @@ async def backup_system(
         logger.exception("Full system backup failed")
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
+        _safe_remove_file(zip_filepath)
         raise DatabaseError(message="系统备份失败", detail=str(e))
 
 @router.post("/logo")

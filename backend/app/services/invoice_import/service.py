@@ -15,7 +15,12 @@ from sqlalchemy.orm import selectinload
 from app.config import settings
 from app.core.errors import ResourceNotFoundError, ValidationError
 from app.core.minio import ensure_bucket_exists, get_minio_client
-from app.models.invoice_import import InvoiceImportAllocation, InvoiceImportBatch, InvoiceImportItem
+from app.models.invoice_import import (
+    InvoiceImportAllocation,
+    InvoiceImportBatch,
+    InvoiceImportItem,
+    InvoiceImportMatchCandidate,
+)
 from app.models.user import User, UserRole
 from app.schemas.invoice_import import AllocationCreate, AllocationUpdate, InvoiceDirection
 from app.services.invoice_import.archive import ExtractedInvoicePackage, UnsafeArchiveError, extract_invoice_archives
@@ -81,10 +86,15 @@ class InvoiceImportService:
         return _apply_confirmed_count(batch, count)
 
     async def list_items(self, batch_id: int, current_user: User | None = None) -> list[InvoiceImportItem]:
+        candidate_contracts = selectinload(InvoiceImportItem.candidates)
         query = (
             select(InvoiceImportItem)
             .join(InvoiceImportItem.batch)
-            .options(selectinload(InvoiceImportItem.allocations), selectinload(InvoiceImportItem.candidates))
+            .options(
+                selectinload(InvoiceImportItem.allocations),
+                candidate_contracts.selectinload(InvoiceImportMatchCandidate.upstream_contract),
+                candidate_contracts.selectinload(InvoiceImportMatchCandidate.downstream_contract),
+            )
             .where(InvoiceImportItem.batch_id == batch_id)
         )
         if current_user and not _can_access_all_imports(current_user):
@@ -280,6 +290,8 @@ class InvoiceImportService:
             total_amount=parsed.total_amount,
             invoice_type=parsed.invoice_type,
             remarks=parsed.remarks,
+            project_name=parsed.project_name,
+            construction_project_name=parsed.construction_project_name,
             dedupe_key=dedupe_key,
             duplicate_of_item_id=duplicate.id if duplicate else None,
             direction=direction,

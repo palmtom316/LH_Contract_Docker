@@ -7,7 +7,9 @@ from fastapi import UploadFile
 from sqlalchemy import func, select
 
 from app.core.errors import ValidationError
-from app.models.invoice_import import InvoiceImportBatch, InvoiceImportItem
+from app.models.contract_upstream import ContractUpstream
+from app.models.invoice_import import InvoiceImportBatch, InvoiceImportItem, InvoiceImportMatchCandidate
+from app.schemas.invoice_import import ImportItemResponse
 from app.services.invoice_import.service import InvoiceImportService
 from app.services.invoice_import.matching import build_dedupe_key
 from app.services.invoice_import.parser import ParsedInvoice
@@ -27,6 +29,8 @@ def test_import_dedupe_key_for_realistic_invoice():
         total_amount=Decimal("1060.00"),
         invoice_type="电子发票",
         remarks="项目合同 HT-2026-001",
+        project_name="项目名称",
+        construction_project_name="建筑项目名称",
         payload={},
     )
 
@@ -99,3 +103,52 @@ async def test_delete_confirmed_import_batch_is_rejected(test_db, test_admin):
         await InvoiceImportService(test_db).delete_batch(batch.id, test_admin)
 
     assert await test_db.get(InvoiceImportBatch, batch.id) is not None
+
+
+async def test_list_items_includes_matched_contract_identity(test_db, test_admin):
+    contract = ContractUpstream(
+        serial_number=9301,
+        contract_code="UP-CARD-001",
+        contract_name="建筑项目匹配合同",
+        party_a_name="甲方",
+        party_b_name="乙方",
+        contract_amount=Decimal("1000.00"),
+    )
+    batch = InvoiceImportBatch(
+        batch_number="INVIMP-CARD-001",
+        original_filename="card.zip",
+        status="completed",
+        uploaded_by=test_admin.id,
+    )
+    test_db.add_all([contract, batch])
+    await test_db.flush()
+    item = InvoiceImportItem(
+        batch_id=batch.id,
+        source_archive_name="invoice.zip",
+        invoice_number="CARD-001",
+        direction="upstream",
+        parse_status="parsed",
+        match_status="matched",
+        confirmation_status="draft",
+        project_name="项目名称",
+        construction_project_name="建筑项目名称",
+    )
+    test_db.add(item)
+    await test_db.flush()
+    test_db.add(InvoiceImportMatchCandidate(
+        item_id=item.id,
+        direction="upstream",
+        upstream_contract_id=contract.id,
+        score=100,
+        matched_signals={"construction_project_name": 100},
+    ))
+    await test_db.commit()
+
+    listed = await InvoiceImportService(test_db).list_items(batch.id, test_admin)
+    response = ImportItemResponse.model_validate(listed[0])
+
+    assert response.project_name == "项目名称"
+    assert response.construction_project_name == "建筑项目名称"
+    assert response.candidates[0].contract_serial_number == 9301
+    assert response.candidates[0].contract_code == "UP-CARD-001"
+    assert response.candidates[0].contract_name == "建筑项目匹配合同"
