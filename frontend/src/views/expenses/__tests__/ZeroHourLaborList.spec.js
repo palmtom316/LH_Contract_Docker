@@ -1,7 +1,14 @@
 import { mount } from '@vue/test-utils'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { nextTick, ref, reactive } from 'vue'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import ZeroHourLaborList from '@/views/expenses/ZeroHourLaborList.vue'
+
+const zeroHourLaborSource = readFileSync(
+  path.resolve(process.cwd(), 'src/views/expenses/ZeroHourLaborList.vue'),
+  'utf-8'
+)
 
 const routeState = reactive({ query: {} })
 const setRouteQuery = (nextQuery = {}) => {
@@ -135,5 +142,13 @@ describe('ZeroHourLaborList route filters', () => {
     await nextTick()
 
     expect(wrapper.text()).toContain('派工单位名称')
+  })
+
+  it('shows complete wrapped upstream contract names in the labor table', () => {
+    expect(zeroHourLaborSource).toContain('label="上游合同名称" min-width="220" class-name="labor-contract-column"')
+    expect(zeroHourLaborSource).toContain('class="labor-contract-name"')
+    expect(zeroHourLaborSource).toContain('white-space: normal;')
+    expect(zeroHourLaborSource).toContain('overflow-wrap: anywhere;')
+    expect(zeroHourLaborSource).not.toContain('label="上游合同" min-width="150" show-overflow-tooltip')
   })
 })

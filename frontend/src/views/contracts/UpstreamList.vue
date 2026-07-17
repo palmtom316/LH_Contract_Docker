@@ -123,7 +123,7 @@
                   type="primary" 
                   size="small"
                   icon="Document"
-                  @click="openPdfInNewTab(scope.row.contract_file_path)"
+                  @click="handlePreview(scope.row.contract_file_path)"
                 />
                 <span v-else class="cell-placeholder">-</span>
               </template>
@@ -280,28 +280,28 @@
             
             <el-table-column label="合同文件" width="120" align="center">
               <template #default="scope">
-                 <el-button v-if="scope.row.contract_file_path" link type="primary" icon="Document" @click="openPdfInNewTab(scope.row.contract_file_path)">查看</el-button>
+                 <el-button v-if="scope.row.contract_file_path" link type="primary" icon="Document" @click="handlePreview(scope.row.contract_file_path)">查看</el-button>
                  <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
             
             <el-table-column label="开工报告" width="120" align="center">
               <template #default="scope">
-                 <el-button v-if="scope.row.start_report_path" link type="primary" icon="Document" @click="openPdfInNewTab(scope.row.start_report_path)">查看</el-button>
+                 <el-button v-if="scope.row.start_report_path" link type="primary" icon="Document" @click="handlePreview(scope.row.start_report_path)">查看</el-button>
                  <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
             
             <el-table-column label="竣工报告" width="120" align="center">
               <template #default="scope">
-                 <el-button v-if="scope.row.completion_report_path" link type="primary" icon="Document" @click="openPdfInNewTab(scope.row.completion_report_path)">查看</el-button>
+                 <el-button v-if="scope.row.completion_report_path" link type="primary" icon="Document" @click="handlePreview(scope.row.completion_report_path)">查看</el-button>
                  <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
             
              <el-table-column label="结算审核文件" width="140" align="center">
               <template #default="scope">
-                 <el-button v-if="scope.row.audit_report_path" link type="primary" icon="Document" @click="openPdfInNewTab(scope.row.audit_report_path)">查看</el-button>
+                 <el-button v-if="scope.row.audit_report_path" link type="primary" icon="Document" @click="handlePreview(scope.row.audit_report_path)">查看</el-button>
                  <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
@@ -355,7 +355,7 @@
                 <el-button
                   v-if="item.contract_file_path"
                   size="small"
-                  @click="openPdfInNewTab(item.contract_file_path)"
+                  @click="handlePreview(item.contract_file_path)"
                 >
                   文件
                 </el-button>
@@ -613,7 +613,6 @@
 import { defineAsyncComponent, ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getContracts, createContract, updateContract, deleteContract, exportContracts, downloadImportTemplate, importContracts, getNextSerialNumber } from '@/api/contractUpstream'
-import { openProtectedFile } from '@/utils/protectedFiles'
 import { downloadExcel } from '@/utils/download'
 import { useContractList, useTableSummary, useMobileDetection } from '@/composables/useContractList'
 import { createUploadRequestHandler } from '@/composables/useUploadRequest'
@@ -909,13 +908,6 @@ const handlePreview = (path) => {
   if (!path) return
   pdfDialog.url = path 
   pdfDialog.visible = true
-}
-
-// Open PDF in new tab
-// Open PDF in new tab
-const openPdfInNewTab = async (path) => {
-  if (!path) return
-  await openProtectedFile(path)
 }
 
 // Form handling

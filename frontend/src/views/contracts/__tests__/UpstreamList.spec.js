@@ -341,6 +341,20 @@ describe('UpstreamList filters', () => {
     expect(signTimeIndex).toBeGreaterThan(companyCategoryIndex)
     expect(amountIndex).toBeGreaterThan(signTimeIndex)
   })
+
+  it('opens contract PDFs in the built-in preview dialog without relying on a popup', () => {
+    const wrapper = mountPage()
+
+    wrapper.vm.handlePreview('contracts/upstream/example.pdf')
+
+    expect(wrapper.vm.pdfDialog).toMatchObject({
+      visible: true,
+      url: 'contracts/upstream/example.pdf'
+    })
+    expect(upstreamSource).not.toContain('openProtectedFile')
+    expect(upstreamSource).not.toContain('openPdfInNewTab')
+    expect(upstreamSource).toContain('<PdfViewer :source="pdfDialog.url" />')
+  })
 })
 
 describe('upstream workspace shell structure', () => {
