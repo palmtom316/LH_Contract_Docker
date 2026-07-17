@@ -129,9 +129,11 @@
                 </el-tag>
             </template>
         </el-table-column>
-        <el-table-column label="上游合同" min-width="150" show-overflow-tooltip>
+        <el-table-column label="上游合同名称" min-width="220" class-name="labor-contract-column">
             <template #default="{ row }">
-                {{ row.upstream_contract ? row.upstream_contract.contract_name : '-' }}
+                <div class="labor-contract-name">
+                    {{ row.upstream_contract ? row.upstream_contract.contract_name : '-' }}
+                </div>
             </template>
         </el-table-column>
         <el-table-column prop="dispatch_unit" label="派工单位" min-width="120" show-overflow-tooltip />
@@ -997,6 +999,19 @@ onMounted(() => {
 .zero-hour-panel :deep(.el-table th.el-table__cell) {
   padding-top: 14px;
   padding-bottom: 14px;
+}
+
+.zero-hour-panel :deep(td.labor-contract-column .cell) {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+.labor-contract-name {
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
 }
 
 .pagination-container {

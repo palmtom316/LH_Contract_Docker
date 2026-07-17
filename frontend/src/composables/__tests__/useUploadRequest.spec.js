@@ -28,19 +28,28 @@ describe('createUploadRequestHandler', () => {
 
   it('uploads with default options and writes path, key, and file list', async () => {
     const option = makeUploadOption()
-    const target = reactive({ file_path: '', file_key: '' })
+    const target = reactive({ file_path: '', file_key: '', storage_provider: '' })
     const fileList = ref([])
-    uploadFile.mockResolvedValue({ path: '/uploads/contracts/demo.pdf', key: 'contracts/demo.pdf' })
+    uploadFile.mockResolvedValue({
+      path: '/uploads/contracts/demo.pdf',
+      key: 'contracts/demo.pdf',
+      storage_provider: 'minio'
+    })
 
     const result = await createUploadRequestHandler({
       target,
       fileListRef: fileList
     })(option)
 
-    expect(result).toEqual({ path: '/uploads/contracts/demo.pdf', key: 'contracts/demo.pdf' })
+    expect(result).toEqual({
+      path: '/uploads/contracts/demo.pdf',
+      key: 'contracts/demo.pdf',
+      storage_provider: 'minio'
+    })
     expect(uploadFile).toHaveBeenCalledWith(option.file, 'contracts')
     expect(target.file_path).toBe('/uploads/contracts/demo.pdf')
     expect(target.file_key).toBe('contracts/demo.pdf')
+    expect(target.storage_provider).toBe('minio')
     expect(fileList.value).toEqual([{ name: 'demo.pdf', url: '/uploads/contracts/demo.pdf' }])
     expect(option.onSuccess).not.toHaveBeenCalled()
     expect(option.onError).not.toHaveBeenCalled()

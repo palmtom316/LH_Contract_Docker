@@ -9,6 +9,7 @@ import io
 import zipfile
 from uuid import uuid4
 from httpx import AsyncClient
+from openpyxl import load_workbook
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
@@ -438,15 +439,16 @@ class TestContractSearchEndpoint:
         assert response.headers["content-type"].startswith(
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-        workbook = zipfile.ZipFile(io.BytesIO(response.content))
-        assert "[Content_Types].xml" in workbook.namelist()
-        workbook_text = "\n".join(
-            workbook.read(name).decode("utf-8", errors="ignore")
-            for name in workbook.namelist()
-            if name.endswith(".xml")
-        )
-        assert seeded["contract_name"] in workbook_text
-        assert seeded["excluded_contract_name"] not in workbook_text
+        workbook = load_workbook(io.BytesIO(response.content), read_only=True, data_only=True)
+        values = {
+            str(cell)
+            for worksheet in workbook.worksheets
+            for row in worksheet.iter_rows(values_only=True)
+            for cell in row
+            if cell is not None
+        }
+        assert seeded["contract_name"] in values
+        assert seeded["excluded_contract_name"] not in values
 
 @pytest.mark.asyncio
 class TestDashboardEndpoints:

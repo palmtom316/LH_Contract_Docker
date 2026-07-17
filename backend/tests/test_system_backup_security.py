@@ -98,6 +98,7 @@ async def test_full_backup_does_not_create_upload_temp_subdir(client, admin_toke
         return archive_path
 
     monkeypatch.setattr(system_router, "run_db_dump", fake_run_db_dump)
+    monkeypatch.setattr(system_router, "_backup_minio_bucket", lambda destination: (0, 0))
     monkeypatch.setattr(system_router.tempfile, "mkdtemp", fake_mkdtemp)
     monkeypatch.setattr(system_router.shutil, "make_archive", fake_make_archive)
 
@@ -106,3 +107,60 @@ async def test_full_backup_does_not_create_upload_temp_subdir(client, admin_toke
     assert captured["db_dump_output"].startswith(str(expected_temp_dir))
     assert captured["base_name"].startswith(str(backup_root))
     assert not os.path.exists(os.path.join(settings.UPLOAD_DIR, "temp"))
+
+
+def test_minio_backup_copies_objects_and_writes_manifest(monkeypatch, tmp_path):
+    import app.routers.system as system_router
+
+    objects = {
+        "contracts/upstream/2026/07/中文合同.pdf": b"%PDF-1.4\ncontent\n%%EOF",
+        "settlements/upstream/audit/2026/07/report.pdf": b"%PDF-1.4\naudit\n%%EOF",
+    }
+
+    class FakeResponse:
+        def __init__(self, payload):
+            self.payload = payload
+
+        def stream(self, _chunk_size):
+            yield self.payload
+
+        def close(self):
+            return None
+
+        def release_conn(self):
+            return None
+
+    class FakeMinioClient:
+        def list_objects(self, bucket_name, recursive):
+            assert bucket_name == "contracts-active"
+            assert recursive is True
+            return [
+                type("Object", (), {"object_name": name, "size": len(payload), "is_dir": False})
+                for name, payload in objects.items()
+            ]
+
+        def get_object(self, bucket_name, object_name):
+            assert bucket_name == "contracts-active"
+            return FakeResponse(objects[object_name])
+
+    monkeypatch.setattr(settings, "MINIO_BUCKET_CONTRACTS", "contracts-active")
+    monkeypatch.setattr("app.core.minio.get_minio_client", lambda: FakeMinioClient())
+
+    count, total_bytes = system_router._backup_minio_bucket(str(tmp_path / "minio"))
+
+    assert count == 2
+    assert total_bytes == sum(len(payload) for payload in objects.values())
+    for object_name, payload in objects.items():
+        target = tmp_path / "minio" / "contracts-active" / object_name
+        assert target.read_bytes() == payload
+
+    manifest = (tmp_path / "minio" / "manifest.txt").read_text(encoding="utf-8")
+    assert "bucket=contracts-active" in manifest
+    assert "object_count=2" in manifest
+
+
+def test_minio_backup_rejects_traversal_object_names(tmp_path):
+    import app.routers.system as system_router
+
+    with pytest.raises(ValueError, match="对象路径非法"):
+        system_router._safe_backup_object_path(str(tmp_path / "minio"), "../../outside.pdf")

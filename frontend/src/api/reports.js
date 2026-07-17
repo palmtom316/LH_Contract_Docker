@@ -49,6 +49,23 @@ export function downloadCostMonthlyQuarterlyReport(params) {
     })
 }
 
+export function getSettlementMonthlyQuarterlyReport(year, month) {
+    return request({
+        url: '/reports/settlement/monthly-quarterly',
+        method: 'get',
+        params: { year, month }
+    })
+}
+
+export function downloadSettlementMonthlyQuarterlyReport(params) {
+    return request({
+        url: '/reports/export/settlement/monthly-quarterly',
+        method: 'get',
+        params,
+        responseType: 'blob'
+    })
+}
+
 export function downloadComprehensiveReport(params) {
     return request({
         url: '/reports/export/comprehensive',

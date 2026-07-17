@@ -171,4 +171,14 @@ describe('Contract detail workspace shell', () => {
   it('preserves tab=query in upstream detail back-navigation source', () => {
     expect(detailSources[0]).toContain("if (query.tab) params.append('tab', query.tab)")
   })
+
+  it('routes new finance and project documents into stable category prefixes', () => {
+    expect(detailSources[0]).toContain("subdir: 'upstream/invoice'")
+    expect(detailSources[0]).toContain("start_report_path: 'upstream/settlement/start'")
+    expect(detailSources[0]).toContain("completion_report_path: 'upstream/settlement/completion'")
+    expect(detailSources[1]).toContain("invoice: 'management/invoice'")
+    expect(detailSources[1]).toContain("settlement: 'management/settlement'")
+    expect(detailSources[2]).toContain("invoice: 'downstream/invoice'")
+    expect(detailSources[2]).toContain("settlement: 'downstream/settlement'")
+  })
 })

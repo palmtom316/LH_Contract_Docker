@@ -358,7 +358,7 @@
           <el-form-item label="审批文件">
             <el-upload
               :file-list="fileList"
-              :http-request="handleUpload"
+              :http-request="(option) => handleUpload(option, 'payable')"
               :limit="1"
               accept=".pdf"
             >
@@ -400,7 +400,7 @@
           <el-form-item label="发票文件">
             <el-upload
               :file-list="fileList"
-              :http-request="handleUpload"
+              :http-request="(option) => handleUpload(option, 'invoice')"
               :limit="1"
               accept=".pdf,.jpg,.png"
             >
@@ -430,7 +430,7 @@
           <el-form-item label="支付凭证">
             <el-upload
               :file-list="fileList"
-              :http-request="handleUpload"
+              :http-request="(option) => handleUpload(option, 'payment')"
               :limit="1"
               accept=".pdf,.jpg,.png"
             >
@@ -462,7 +462,7 @@
           <el-form-item label="结算审批文件">
             <el-upload
               :file-list="fileList"
-              :http-request="handleUpload"
+              :http-request="(option) => handleUpload(option, 'settlement')"
               :limit="1"
               accept=".pdf"
             >
@@ -747,13 +747,24 @@ const confirmClearAllocations = async () => {
   }
 }
 
-const handleUpload = createUploadRequestHandler({
+const handleFinanceUpload = createUploadRequestHandler({
   target: financeForm,
   pathField: 'file_path',
   keyField: null,
   fileListRef: fileList,
   callOptionSuccess: true,
   logError: true
+})
+
+const handleUpload = (option, type) => handleFinanceUpload(option, {
+  uploadOptions: {
+    subdir: {
+      payable: 'downstream/payable',
+      invoice: 'downstream/invoice',
+      payment: 'downstream/payment',
+      settlement: 'downstream/settlement'
+    }[type]
+  }
 })
 
 const openFinanceDialog = (type) => {

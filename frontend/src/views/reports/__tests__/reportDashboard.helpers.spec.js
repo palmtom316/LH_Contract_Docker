@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { buildExportParams } from '@/views/reports/reportDashboard.helpers'
+import {
+  buildExportParams,
+  buildSettlementSummaries
+} from '@/views/reports/reportDashboard.helpers'
 
 describe('buildExportParams', () => {
   it('includes normalized date range and status when valid', () => {
@@ -38,5 +41,27 @@ describe('buildExportParams', () => {
       company_category: '市政工程',
       upstream_contract_name: '上游合同一'
     })
+  })
+})
+
+describe('buildSettlementSummaries', () => {
+  it('labels the first cell and totals only configured amount columns', () => {
+    const columns = [
+      { property: 'serial_number' },
+      { property: 'contract_name' },
+      { property: 'contract_amount' },
+      { property: 'settlement_amount' }
+    ]
+    const data = [
+      { contract_amount: 1000.5, settlement_amount: 900 },
+      { contract_amount: '2000', settlement_amount: null },
+      { contract_amount: 'invalid', settlement_amount: 850.25 }
+    ]
+
+    expect(buildSettlementSummaries(
+      columns,
+      data,
+      ['contract_amount', 'settlement_amount']
+    )).toEqual(['合计', '', '3,000.50', '1,750.25'])
   })
 })

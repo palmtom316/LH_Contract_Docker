@@ -294,3 +294,14 @@ npm run test
 - [Element Plus](https://element-plus.org/) - Vue 3 组件库
 - [PostgreSQL](https://www.postgresql.org/) - 强大的开源数据库
 - [MinIO](https://min.io/) - 高性能对象存储
+
+## 电子发票导入
+
+系统支持上传电子发票批次压缩包。压缩包内每张发票应为一个独立 zip，包含 XML，并可包含 PDF/OFD。系统从 XML 解析发票字段，判断上游/下游，推荐合同候选，并在操作人确认分摊后写入正式挂账记录。
+
+生产环境必须配置：
+
+- `COMPANY_NAME`
+- `COMPANY_TAX_NO`
+
+第一期不支持无合同费用发票、OCR、自动拆分金额或自动确认入账。

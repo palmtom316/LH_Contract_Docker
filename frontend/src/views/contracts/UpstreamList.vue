@@ -192,7 +192,7 @@
                 type="warning" 
                 icon="Document" 
                 circle
-                @click="handlePreview(item.contract_file_path)"
+                @click="openPdfInNewTab(item.contract_file_path)"
               />
               <el-button v-if="userStore.canManageUpstreamContracts" size="small" type="primary" @click="handleEdit(item)">编辑</el-button>
               <el-button size="small" @click="handleDetail(item)">详情</el-button>
@@ -550,17 +550,6 @@
       </template>
     </el-dialog>
 
-    <!-- PDF Viewer Dialog -->
-    <el-dialog 
-      v-model="pdfDialog.visible" 
-      title="合同附件预览" 
-      fullscreen 
-      destroy-on-close
-      append-to-body
-    >
-      <PdfViewer :source="pdfDialog.url" />
-    </el-dialog>
-
     <!-- Hidden file input for import -->
     <input 
       ref="importFileInput"
@@ -632,7 +621,6 @@ import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 import ContractQueryBot from '@/components/ContractQueryBot.vue'
 
 const SmartAutocomplete = defineAsyncComponent(() => import('@/components/SmartAutocomplete.vue'))
-const PdfViewer = defineAsyncComponent(() => import('@/components/PdfViewer.vue'))
 const FormulaInput = defineAsyncComponent(() => import('@/components/FormulaInput.vue'))
 
 const userStore = useUserStore()
@@ -723,11 +711,6 @@ const dialog = reactive({
   isEdit: false
 })
 
-const pdfDialog = reactive({
-  visible: false,
-  url: ''
-})
-
 // Import functionality
 const importResult = reactive({
   visible: false,
@@ -766,7 +749,8 @@ const form = reactive({
   notes: '',
   status: '执行中',
   contract_file_path: '',
-  contract_file_key: ''
+  contract_file_key: '',
+  contract_file_storage: 'local'
 })
 
 const rules = {
@@ -886,6 +870,7 @@ const handleUploadRequest = createUploadRequestHandler({
   target: form,
   pathField: 'contract_file_path',
   keyField: 'contract_file_key',
+  storageField: 'contract_file_storage',
   fileListRef: fileList,
   loadingRef: uploading,
   uploadOptions: ({ option }) => {
@@ -901,18 +886,12 @@ const handleUploadRequest = createUploadRequestHandler({
 
 const handleRemoveFile = () => {
   form.contract_file_path = ''
+  form.contract_file_key = ''
+  form.contract_file_storage = 'local'
   fileList.value = []
 }
 
-// PDF Preview
-const handlePreview = (path) => {
-  if (!path) return
-  pdfDialog.url = path 
-  pdfDialog.visible = true
-}
-
-// Open PDF in new tab
-// Open PDF in new tab
+// Keep contract file behavior aligned with downstream and management lists.
 const openPdfInNewTab = async (path) => {
   if (!path) return
   await openProtectedFile(path)
@@ -942,6 +921,8 @@ const resetForm = () => {
   form.notes = ''
   form.status = '执行中'
   form.contract_file_path = ''
+  form.contract_file_key = ''
+  form.contract_file_storage = 'local'
   fileList.value = []
 }
 

@@ -35,6 +35,7 @@ python-dateutil==2.8.2
 
 # Security Enhancements
 slowapi==0.1.9
+defusedxml>=0.7.1,<0.8.0
 
 
 # Performance & Caching

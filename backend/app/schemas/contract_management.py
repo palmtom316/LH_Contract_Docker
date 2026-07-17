@@ -80,6 +80,8 @@ class ContractManagementUpdate(BaseModel):
     status: Optional[str] = Field(None, max_length=50)
     notes: Optional[str] = None
     contract_file_path: Optional[str] = None
+    contract_file_key: Optional[str] = None
+    contract_file_storage: Optional[str] = None
 
 
 class ContractManagementResponse(ContractManagementBase):
@@ -149,6 +151,8 @@ class ManagementInvoiceBase(BaseModel):
     supplier_name: Optional[str] = Field(None, max_length=200)
     description: Optional[str] = Field(None, max_length=300)
     file_path: Optional[str] = None
+    file_key: Optional[str] = None
+    storage_provider: Optional[str] = "local"
 
 
 class ManagementInvoiceCreate(ManagementInvoiceBase):
@@ -175,6 +179,8 @@ class ManagementPaymentBase(BaseModel):
     payee_bank: Optional[str] = Field(None, max_length=200)
     description: Optional[str] = Field(None, max_length=300)
     file_path: Optional[str] = None
+    file_key: Optional[str] = None
+    storage_provider: Optional[str] = "local"
 
 
 class ManagementPaymentCreate(ManagementPaymentBase):

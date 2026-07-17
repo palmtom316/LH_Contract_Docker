@@ -366,6 +366,7 @@
             :http-request="handleUpload"
             :file-list="fileList"
             :limit="1"
+            :on-remove="handleRemoveFile"
             accept=".pdf"
           >
             <el-button type="primary" icon="Document">点击上传PDF</el-button>
@@ -536,6 +537,7 @@ const form = reactive({
   contract_manager: '',   // 合同负责人
   contract_file_path: '',
   contract_file_key: '',
+  contract_file_storage: 'local',
   notes: '',
   status: '执行中'
 })
@@ -613,9 +615,21 @@ const handleUpload = createUploadRequestHandler({
   target: form,
   pathField: 'contract_file_path',
   keyField: 'contract_file_key',
+  storageField: 'contract_file_storage',
   fileListRef: fileList,
-  callOptionSuccess: true
+  callOptionSuccess: true,
+  uploadOptions: ({ option }) => ({
+    subdir: 'downstream/contract',
+    custom_filename: `${form.serial_number || '000'}_${option.file.name}`
+  })
 })
+
+const handleRemoveFile = () => {
+  form.contract_file_path = ''
+  form.contract_file_key = ''
+  form.contract_file_storage = 'local'
+  fileList.value = []
+}
 
 // Form handling
 const resetForm = () => {
@@ -635,6 +649,8 @@ const resetForm = () => {
   form.contract_handler = ''
   form.contract_manager = ''
   form.contract_file_path = ''
+  form.contract_file_key = ''
+  form.contract_file_storage = 'local'
   form.notes = ''
   form.status = '执行中'
   

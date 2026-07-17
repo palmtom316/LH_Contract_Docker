@@ -10,9 +10,14 @@ const upstreamSource = readFileSync(
   'utf-8'
 )
 
-const { getListMock, queryParamsState } = vi.hoisted(() => ({
+const { getListMock, queryParamsState, openProtectedFileMock } = vi.hoisted(() => ({
   getListMock: vi.fn(),
-  queryParamsState: { value: null }
+  queryParamsState: { value: null },
+  openProtectedFileMock: vi.fn().mockResolvedValue('blob:contract-pdf')
+}))
+
+vi.mock('@/utils/protectedFiles', () => ({
+  openProtectedFile: openProtectedFileMock
 }))
 
 vi.mock('@/composables/useContractList', () => {
@@ -340,6 +345,24 @@ describe('UpstreamList filters', () => {
     expect(companyCategoryIndex).toBeGreaterThan(-1)
     expect(signTimeIndex).toBeGreaterThan(companyCategoryIndex)
     expect(amountIndex).toBeGreaterThan(signTimeIndex)
+  })
+
+  it('opens contract PDFs with the same protected-file flow used by downstream and management lists', async () => {
+    const wrapper = mountPage()
+
+    await wrapper.vm.openPdfInNewTab('contracts/upstream/example.pdf')
+
+    expect(openProtectedFileMock).toHaveBeenCalledWith('contracts/upstream/example.pdf')
+    expect(upstreamSource).toContain("import { openProtectedFile } from '@/utils/protectedFiles'")
+    expect(upstreamSource).toContain('await openProtectedFile(path)')
+    expect(upstreamSource).not.toContain('<PdfViewer')
+    expect(upstreamSource).not.toContain('pdfDialog')
+  })
+
+  it('routes new PDFs to the upstream prefix and clears all file metadata together', () => {
+    expect(upstreamSource).toContain("subdir: 'upstream/contract'")
+    expect(upstreamSource).toContain(':on-remove="handleRemoveFile"')
+    expect(upstreamSource).toContain("form.contract_file_storage = 'local'")
   })
 })
 

@@ -5,9 +5,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop, 1.6, release/1.7.1 ]
+    branches: [ main, develop, 1.6, release/1.8 ]
   pull_request:
-    branches: [ main, develop, 1.6, release/1.7.1 ]
+    branches: [ main, develop, 1.6, release/1.8 ]
 
 permissions:
   contents: read
@@ -79,6 +79,7 @@ jobs:
         TEST_DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/test_db
         REDIS_URL: redis://localhost:6379/0
         SECRET_KEY: test_secret_key_for_ci_cd_only
+        COMPANY_TAX_NO: 91310000TESTTAXNO01
       run: |
         cd backend
         pytest tests/ -v --cov=app --cov-report=xml --cov-report=term
@@ -128,10 +129,10 @@ jobs:
   build:
     needs: [backend-test, frontend-test]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release/1.7.1')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release/1.8')
     env:
       REGISTRY: ghcr.io
-      IMAGE_VERSION: 1.7.1
+      IMAGE_VERSION: 1.8.0
     
     steps:
     - uses: actions/checkout@v4

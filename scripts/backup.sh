@@ -176,8 +176,8 @@ if has_command mc; then
             log "✓ MinIO 对象备份完成: ${OBJECT_BACKUP_FILE} (大小: ${OBJECT_SIZE})"
         else
             rm -rf "${OBJECT_BACKUP_DIR}"
-            warn "MinIO 对象备份失败（数据库中的 MinIO 文件恢复会缺对象）"
-            WARNINGS=$((WARNINGS + 1))
+            log "✗ MinIO 对象备份失败（数据库中的 MinIO 文件恢复会缺对象）"
+            CRITICAL_FAILURES=$((CRITICAL_FAILURES + 1))
         fi
     else
         {
@@ -186,8 +186,8 @@ if has_command mc; then
             echo "alias=${MINIO_ALIAS}"
             echo "bucket=${MINIO_BUCKET}"
         } > "${OBJECT_SNAPSHOT_FILE}"
-        warn "mc 可用但 MinIO 摘要采集失败（请确认 alias/bucket 配置）"
-        WARNINGS=$((WARNINGS + 1))
+        log "✗ MinIO 摘要采集失败（请确认 alias/bucket 配置）"
+        CRITICAL_FAILURES=$((CRITICAL_FAILURES + 1))
     fi
 else
     {
@@ -196,8 +196,8 @@ else
         echo "alias=${MINIO_ALIAS}"
         echo "bucket=${MINIO_BUCKET}"
     } > "${OBJECT_SNAPSHOT_FILE}"
-    warn "未安装 mc，跳过 MinIO 摘要采集"
-    WARNINGS=$((WARNINGS + 1))
+    log "✗ 未安装 mc，无法创建升级所需的 MinIO 对象备份"
+    CRITICAL_FAILURES=$((CRITICAL_FAILURES + 1))
 fi
 
 BASELINE_FILE="${BASELINE_DIR}/baseline_${DATE}.txt"

@@ -1,6 +1,6 @@
 # 合同管理系统 / Contract Management System
 
-[![Version](https://img.shields.io/badge/version-1.7.1-blue.svg)](https://github.com/palmtom316/LH_Contract_Docker)
+[![Version](https://img.shields.io/badge/version-1.8.0-blue.svg)](https://github.com/palmtom316/LH_Contract_Docker)
 [![License](https://img.shields.io/badge/license-Proprietary-red.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)](docker-compose.yml)
 
@@ -342,12 +342,13 @@ npm run test
 
 | 变量名 | 说明 | 默认值 | 必填 |
 |--------|------|--------|------|
-| `APP_VERSION` | 应用版本号 | 1.7.1 | 否 |
+| `APP_VERSION` | 应用版本号 | 1.8.0 | 否 |
 | `DEBUG` | 调试模式 | false | 否 |
 | `SECRET_KEY` | 应用密钥 | - | **是** |
 | `DATABASE_URL` | 数据库连接字符串 | - | **是** |
 | `REDIS_URL` | Redis 连接字符串 | redis://redis:6379/0 | 否 |
 | `MINIO_ENDPOINT` | MinIO 内部端点 | minio:9000 | 否 |
+| `COMPANY_TAX_NO` | 本公司纳税人识别号，用于电子发票方向识别 | - | **是** |
 | `CORS_ORIGINS` | 允许的跨域源 | - | **是** |
 | `INIT_ADMIN_TOKEN` | 管理员初始化令牌 | - | **是**（首次） |
 | `ENABLE_API_DOCS` | 是否启用 API 文档 | false（生产） | 否 |
@@ -364,11 +365,18 @@ npm run test
 - **[API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md)** - API 接口文档
 - **[USER_OPERATION_MANUAL.md](docs/USER_OPERATION_MANUAL.md)** - 用户操作手册
 - **[PVE_BACKUP_GUIDE.md](docs/PVE_BACKUP_GUIDE.md)** - 备份恢复指南
+- **[PVE_1.7.1_TO_1.8.md](docs/PVE_1.7.1_TO_1.8.md)** - PVE 1.7.1 升级到 1.8.0
 - **[N+1_QUERY_OPTIMIZATION.md](backend/docs/N+1_QUERY_OPTIMIZATION.md)** - 数据库查询优化
 
 ---
 
 ## 🔄 版本历史
+
+### v1.8.0 (2026-07-16)
+- ✨ 新增电子发票批量导入、合同匹配、人工分摊与确认挂账
+- 📊 扩展成本报表周期并新增结算报表
+- 🔒 加固发票确认幂等性、压缩包解析与 PVE 网络暴露
+- 🔖 系统版本号更新至 1.8.0
 
 ### v1.7.1 (2026-07-07)
 - ✨ 新增上游合同挂账付款综合报表
@@ -430,3 +438,14 @@ npm run test
 - [Element Plus](https://element-plus.org/)
 - [PostgreSQL](https://www.postgresql.org/)
 - [MinIO](https://min.io/)
+
+## Electronic Invoice Import
+
+The system supports uploading an electronic invoice batch archive. Each invoice inside the batch should be an individual zip containing XML and may include PDF/OFD attachments. The system parses invoice fields from XML, detects upstream/downstream direction, recommends contract candidates, and posts formal invoice records only after an operator confirms allocations.
+
+Production environments must configure:
+
+- `COMPANY_NAME`
+- `COMPANY_TAX_NO`
+
+The first release does not support non-contract expense invoices, OCR, automatic amount splitting, or automatic posting without operator confirmation.

@@ -210,3 +210,12 @@ const contracts = await contractsResponse.json();
 如有问题，请联系：
 - 邮箱: support@example.com
 - GitHub Issues: https://github.com/yourusername/LH_Contract_Docker/issues
+
+### 电子发票导入
+
+- `POST /api/v1/invoice-imports/batches` 上传发票批次 zip
+- `GET /api/v1/invoice-imports/batches` 查看导入批次
+- `GET /api/v1/invoice-imports/batches/{batch_id}/items` 查看批次发票明细
+- `POST /api/v1/invoice-imports/items/{item_id}/allocations` 新增分摊
+- `PUT /api/v1/invoice-imports/allocations/{allocation_id}` 修改分摊
+- `POST /api/v1/invoice-imports/items/{item_id}/confirm` 确认挂账

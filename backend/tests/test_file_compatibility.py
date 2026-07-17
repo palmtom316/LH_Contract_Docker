@@ -74,6 +74,52 @@ async def test_upload_accepts_controlled_subdir_and_custom_filename(monkeypatch)
     assert re.match(r"^contracts/upstream/\d{4}/\d{2}/fixed-uuid_001_contract\.pdf$", captured["object_name"])
     assert response["path"] == captured["object_name"]
     assert response["key"] == captured["object_name"]
+    assert response["storage_provider"] == "minio"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("subdir", "expected_prefix"),
+    [
+        ("downstream/contract", "contracts/downstream"),
+        ("management/contract", "contracts/management"),
+        ("upstream/invoice", "invoices/upstream"),
+        ("upstream/settlement/start", "settlements/upstream/start"),
+        ("downstream/payment", "payments/downstream"),
+        ("management/settlement", "settlements/management"),
+    ],
+)
+async def test_upload_routes_documents_to_stable_category_prefixes(
+    monkeypatch,
+    subdir,
+    expected_prefix,
+):
+    captured = {}
+
+    class FakeMinioClient:
+        def put_object(self, bucket, object_name, data, length, content_type):
+            captured["object_name"] = object_name
+
+    async def fake_validate_file_upload(file):
+        return "document.pdf"
+
+    monkeypatch.setattr(common, "validate_file_upload", fake_validate_file_upload)
+    monkeypatch.setattr("app.core.minio.get_minio_client", lambda: FakeMinioClient())
+    monkeypatch.setattr("app.core.minio.ensure_bucket_exists", lambda client, bucket: None)
+    monkeypatch.setattr(common.uuid, "uuid4", lambda: "fixed-uuid")
+
+    upload = UploadFile(
+        filename="document.pdf",
+        file=io.BytesIO(b"%PDF-1.4\n%%EOF"),
+        headers={"content-type": "application/pdf"},
+    )
+    await common.upload_file(
+        file=upload,
+        subdir=subdir,
+        current_user=SimpleNamespace(username="tester"),
+    )
+
+    assert captured["object_name"].startswith(f"{expected_prefix}/")
 
 
 @pytest.mark.asyncio
@@ -269,6 +315,52 @@ async def test_minio_key_download_works_without_query_token(monkeypatch):
     assert response.status_code == 200
     assert response.headers["content-length"] == str(len(expected))
     assert response.media_type == "application/pdf"
+
+
+@pytest.mark.asyncio
+async def test_minio_download_supports_chinese_inline_filename(monkeypatch):
+    expected = b"pdf"
+    path = "contracts/upstream/2026/07/fixed-id_中文合同文件.pdf"
+
+    async def fake_get_user_from_token(token, db):
+        return SimpleNamespace(username="tester", is_active=True)
+
+    class FakeObjectResponse:
+        def stream(self, chunk_size):
+            yield expected
+
+        def close(self):
+            return None
+
+        def release_conn(self):
+            return None
+
+    class FakeMinioClient:
+        def stat_object(self, bucket, object_name):
+            assert object_name == path
+            return SimpleNamespace(size=len(expected))
+
+        def get_object(self, bucket, object_name):
+            assert object_name == path
+            return FakeObjectResponse()
+
+    async def fake_user_can_access_file_path(object_name, db, current_user):
+        return True
+
+    monkeypatch.setattr(common, "get_user_from_token", fake_get_user_from_token)
+    monkeypatch.setattr(common, "user_can_access_file_path", fake_user_can_access_file_path)
+    monkeypatch.setattr(common, "get_minio_client", lambda: FakeMinioClient())
+
+    response = await common.get_file(
+        path=path,
+        request=_build_request({"authorization": "Bearer header-token"}),
+        db=object(),
+    )
+
+    disposition = response.headers["content-disposition"]
+    assert disposition.startswith('inline; filename="fixed-id_.pdf";')
+    assert "filename*=UTF-8''fixed-id_%E4%B8%AD%E6%96%87" in disposition
+    disposition.encode("latin-1")
 
 
 @pytest.mark.asyncio

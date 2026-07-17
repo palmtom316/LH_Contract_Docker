@@ -10,6 +10,14 @@ const managementListSource = readFileSync(
   'utf-8'
 )
 
+describe('management contract file storage', () => {
+  it('routes PDFs to the management prefix and clears all file metadata together', () => {
+    expect(managementListSource).toContain("subdir: 'management/contract'")
+    expect(managementListSource).toContain(':on-remove="handleRemoveFile"')
+    expect(managementListSource).toContain("form.contract_file_storage = 'local'")
+  })
+})
+
 const { getListMock, queryParamsState, getUpstreamContractsMock } = vi.hoisted(() => ({
   getListMock: vi.fn(),
   queryParamsState: { value: null },
@@ -209,6 +217,10 @@ describe('ManagementList date range query', () => {
         }
       ]
     })
+  })
+
+  it('stores new management contract PDFs in the management contract prefix', () => {
+    expect(managementListSource).toContain("subdir: 'management/contract'")
   })
 
   it('renders management-specific workspace shell wrappers', () => {

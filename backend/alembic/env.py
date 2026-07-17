@@ -3,7 +3,7 @@ Alembic Environment Configuration
 Configured for LH Contract Management System
 """
 from logging.config import fileConfig
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, inspect, pool, text
 from alembic import context
 import os
 import sys
@@ -69,6 +69,12 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        existing_tables = inspect(connection).get_table_names()
+        if connection.dialect.name == "postgresql" and "alembic_version" in existing_tables:
+            connection.execute(text(
+                "ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128)"
+            ))
+        connection.commit()
         context.configure(
             connection=connection,
             target_metadata=target_metadata,

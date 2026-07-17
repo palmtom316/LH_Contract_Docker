@@ -34,12 +34,19 @@ describe('protectedFiles', () => {
     request.get.mockResolvedValue(new Blob(['demo'], { type: 'application/pdf' }))
     const objectUrl = 'blob:demo'
     const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue(objectUrl)
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const previewWindow = {
+      opener: window,
+      location: { replace: vi.fn() },
+      close: vi.fn()
+    }
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(previewWindow)
 
     await openProtectedFile('contracts/2026/04/demo.pdf')
 
     expect(createObjectURL).toHaveBeenCalled()
-    expect(openSpy).toHaveBeenCalledWith(objectUrl, '_blank', 'noopener')
+    expect(openSpy).toHaveBeenCalledWith('about:blank', '_blank')
+    expect(previewWindow.opener).toBeNull()
+    expect(previewWindow.location.replace).toHaveBeenCalledWith(objectUrl)
   })
 
   it('normalizes legacy local upload prefixes', () => {
@@ -54,7 +61,12 @@ describe('protectedFiles', () => {
   it('fetches already-built protected API URLs with auth transport', async () => {
     request.get.mockResolvedValue(new Blob(['demo'], { type: 'application/pdf' }))
     const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:demo')
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const previewWindow = {
+      opener: window,
+      location: { replace: vi.fn() },
+      close: vi.fn()
+    }
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(previewWindow)
 
     await openProtectedFile('/api/v1/common/files/uploads/contracts/2026/04/demo.pdf')
 
@@ -63,6 +75,29 @@ describe('protectedFiles', () => {
       expect.objectContaining({ responseType: 'blob' })
     )
     expect(createObjectURL).toHaveBeenCalled()
-    expect(openSpy).toHaveBeenCalledWith('blob:demo', '_blank', 'noopener')
+    expect(openSpy).toHaveBeenCalledWith('about:blank', '_blank')
+    expect(previewWindow.location.replace).toHaveBeenCalledWith('blob:demo')
+  })
+
+  it('opens the placeholder window before the protected request resolves', async () => {
+    let resolveRequest
+    request.get.mockReturnValue(new Promise((resolve) => {
+      resolveRequest = resolve
+    }))
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:deferred')
+    const previewWindow = {
+      opener: window,
+      location: { replace: vi.fn() },
+      close: vi.fn()
+    }
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(previewWindow)
+
+    const opening = openProtectedFile('contracts/2026/04/deferred.pdf')
+
+    expect(openSpy).toHaveBeenCalledWith('about:blank', '_blank')
+    expect(request.get).toHaveBeenCalled()
+    resolveRequest(new Blob(['demo'], { type: 'application/pdf' }))
+    await opening
+    expect(previewWindow.location.replace).toHaveBeenCalledWith('blob:deferred')
   })
 })

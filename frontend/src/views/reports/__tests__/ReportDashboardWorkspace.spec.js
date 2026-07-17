@@ -18,17 +18,27 @@ vi.mock('@/api/reports', () => ({
     yearly: { rows: [], total: {} }
   }),
   downloadCostMonthlyQuarterlyReport: vi.fn(),
+  getSettlementMonthlyQuarterlyReport: vi.fn().mockResolvedValue({
+    period: { year: 2026, month: 4, quarter: 2, half_year: 1 },
+    monthly: { rows: [] },
+    quarterly: { rows: [] },
+    half_yearly: { rows: [] },
+    yearly: { rows: [] }
+  }),
+  downloadSettlementMonthlyQuarterlyReport: vi.fn(),
   downloadComprehensiveReport: vi.fn(),
   downloadReceivablesReport: vi.fn(),
   downloadPayablesReport: vi.fn(),
   downloadUpstreamInvoicesReport: vi.fn(),
   downloadDownstreamInvoicesReport: vi.fn(),
   downloadUpstreamReceiptsReport: vi.fn(),
+  downloadUpstreamInvoiceReceiptComprehensiveReport: vi.fn(),
   downloadDownstreamPaymentsReport: vi.fn(),
   downloadExpensePaymentsReport: vi.fn(),
   downloadUpstreamSettlementsReport: vi.fn(),
   downloadDownstreamSettlementsReport: vi.fn(),
-  downloadAssociationReport: vi.fn()
+  downloadAssociationReport: vi.fn(),
+  downloadZeroHourLaborReport: vi.fn()
 }))
 
 vi.mock('element-plus', async (importOriginal) => {
@@ -104,5 +114,29 @@ describe('Report dashboard workspace shell', () => {
   it('adds company category filtering to downstream payment export', () => {
     expect(reportDashboardSource).toContain('companyCategory: downPayCompanyCategory.value')
     expect(reportDashboardSource).toContain("companyCategoryField('downstream-payment-company-category', downPayCompanyCategory)")
+  })
+
+  it('shows complete wrapped settlement text and a calculated total row', () => {
+    expect(reportDashboardSource).toContain('class-name="settlement-text-column"')
+    expect(reportDashboardSource).not.toContain('label="合同名称" :fixed="isMobile ? false : true" min-width="210" show-overflow-tooltip')
+    expect(reportDashboardSource).toContain('show-summary')
+    expect(reportDashboardSource).toContain(':summary-method="settlementSummaryMethod"')
+    expect(reportDashboardSource).toContain('white-space: normal;')
+    expect(reportDashboardSource).toContain('overflow-wrap: anywhere;')
+  })
+
+  it('uses the requested concise settlement column labels', () => {
+    for (const label of [
+      '甲方单位',
+      '签约金额',
+      '结算时间',
+      '结算金额',
+      '下游合同结算',
+      '下游合同已付款',
+      '无合同费用',
+      '零星用工'
+    ]) {
+      expect(reportDashboardSource).toContain(`label="${label}"`)
+    }
   })
 })

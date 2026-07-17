@@ -52,8 +52,8 @@ services:
     volumes:
       - minio_data:/data
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
@@ -65,7 +65,7 @@ services:
           - minio
 
   backend:
-    image: ${BACKEND_IMAGE:-ghcr.io/palmtom316/lh-contract-backend:1.7.1}
+    image: ${BACKEND_IMAGE:-ghcr.io/palmtom316/lh-contract-backend:1.8.0}
     build:
       context: ./backend
       dockerfile: Dockerfile.production
@@ -106,7 +106,7 @@ services:
           - backend
 
   sync-worker:
-    image: ${BACKEND_IMAGE:-ghcr.io/palmtom316/lh-contract-backend:1.7.1}
+    image: ${BACKEND_IMAGE:-ghcr.io/palmtom316/lh-contract-backend:1.8.0}
     build:
       context: ./backend
       dockerfile: Dockerfile.production
@@ -142,7 +142,7 @@ services:
           - sync-worker
 
   frontend:
-    image: ${FRONTEND_IMAGE:-ghcr.io/palmtom316/lh-contract-frontend:1.7.1}
+    image: ${FRONTEND_IMAGE:-ghcr.io/palmtom316/lh-contract-frontend:1.8.0}
     build:
       context: ./frontend
       dockerfile: Dockerfile.production

@@ -409,6 +409,181 @@ async def _build_cost_report_payload(db: AsyncSession, year: int, month: int) ->
     }
 
 
+async def _get_upstream_amount_map(db: AsyncSession, stmt) -> Dict[int, float]:
+    result = await db.execute(stmt)
+    return {upstream_id: float(amount or 0) for upstream_id, amount in result.all()}
+
+
+def _build_settlement_report_row(
+    contract: ContractUpstream,
+    settlement: ProjectSettlement,
+    received_amount: float = 0.0,
+    downstream_settlement_amount: float = 0.0,
+    management_settlement_amount: float = 0.0,
+    downstream_paid_amount: float = 0.0,
+    management_paid_amount: float = 0.0,
+    non_contract_expense_amount: float = 0.0,
+    zero_hour_labor_amount: float = 0.0,
+) -> Dict[str, object]:
+    return {
+        "serial_number": contract.serial_number,
+        "contract_name": contract.contract_name,
+        "company_category": contract.company_category or "",
+        "party_a_name": contract.party_a_name,
+        "contract_amount": float(contract.contract_amount or 0),
+        "settlement_date": settlement.settlement_date,
+        "settlement_amount": float(settlement.settlement_amount or 0),
+        "received_amount": float(received_amount or 0),
+        "down_mgmt_settlement_amount": (
+            float(downstream_settlement_amount or 0)
+            + float(management_settlement_amount or 0)
+        ),
+        "down_mgmt_paid_amount": (
+            float(downstream_paid_amount or 0)
+            + float(management_paid_amount or 0)
+        ),
+        "non_contract_expense_amount": float(non_contract_expense_amount or 0),
+        "zero_hour_labor_amount": float(zero_hour_labor_amount or 0),
+    }
+
+
+async def _build_settlement_period_rows(
+    db: AsyncSession,
+    year: int,
+    months: List[int],
+) -> List[Dict[str, object]]:
+    """Return upstream contracts whose latest settlement in the period completed in that period."""
+    result = await db.execute(
+        select(ContractUpstream, ProjectSettlement)
+        .join(ProjectSettlement, ProjectSettlement.contract_id == ContractUpstream.id)
+        .where(*_period_filters(ProjectSettlement.settlement_date, year, months))
+        .order_by(
+            ContractUpstream.serial_number,
+            ProjectSettlement.settlement_date.desc(),
+            ProjectSettlement.id.desc(),
+        )
+    )
+
+    latest_by_contract = {}
+    for contract, settlement in result.all():
+        latest_by_contract.setdefault(contract.id, (contract, settlement))
+
+    if not latest_by_contract:
+        return []
+
+    upstream_ids = list(latest_by_contract)
+    receipt_amounts = await _get_upstream_amount_map(
+        db,
+        select(
+            FinanceUpstreamReceipt.contract_id,
+            func.sum(FinanceUpstreamReceipt.amount),
+        )
+        .where(FinanceUpstreamReceipt.contract_id.in_(upstream_ids))
+        .group_by(FinanceUpstreamReceipt.contract_id),
+    )
+    downstream_settlements = await _get_upstream_amount_map(
+        db,
+        select(
+            ContractDownstream.upstream_contract_id,
+            func.sum(DownstreamSettlement.settlement_amount),
+        )
+        .join(DownstreamSettlement, DownstreamSettlement.contract_id == ContractDownstream.id)
+        .where(ContractDownstream.upstream_contract_id.in_(upstream_ids))
+        .group_by(ContractDownstream.upstream_contract_id),
+    )
+    management_settlements = await _get_upstream_amount_map(
+        db,
+        select(
+            ContractManagement.upstream_contract_id,
+            func.sum(ManagementSettlement.settlement_amount),
+        )
+        .join(ManagementSettlement, ManagementSettlement.contract_id == ContractManagement.id)
+        .where(ContractManagement.upstream_contract_id.in_(upstream_ids))
+        .group_by(ContractManagement.upstream_contract_id),
+    )
+    downstream_payments = await _get_upstream_amount_map(
+        db,
+        select(
+            ContractDownstream.upstream_contract_id,
+            func.sum(FinanceDownstreamPayment.amount),
+        )
+        .join(FinanceDownstreamPayment, FinanceDownstreamPayment.contract_id == ContractDownstream.id)
+        .where(ContractDownstream.upstream_contract_id.in_(upstream_ids))
+        .group_by(ContractDownstream.upstream_contract_id),
+    )
+    management_payments = await _get_upstream_amount_map(
+        db,
+        select(
+            ContractManagement.upstream_contract_id,
+            func.sum(FinanceManagementPayment.amount),
+        )
+        .join(FinanceManagementPayment, FinanceManagementPayment.contract_id == ContractManagement.id)
+        .where(ContractManagement.upstream_contract_id.in_(upstream_ids))
+        .group_by(ContractManagement.upstream_contract_id),
+    )
+    expense_amounts = await _get_upstream_amount_map(
+        db,
+        select(
+            ExpenseNonContract.upstream_contract_id,
+            func.sum(ExpenseNonContract.amount),
+        )
+        .where(ExpenseNonContract.upstream_contract_id.in_(upstream_ids))
+        .group_by(ExpenseNonContract.upstream_contract_id),
+    )
+    zero_hour_amounts = await _get_upstream_amount_map(
+        db,
+        select(
+            ZeroHourLabor.upstream_contract_id,
+            func.sum(ZeroHourLabor.total_amount),
+        )
+        .where(ZeroHourLabor.upstream_contract_id.in_(upstream_ids))
+        .group_by(ZeroHourLabor.upstream_contract_id),
+    )
+
+    rows = []
+    for contract, settlement in latest_by_contract.values():
+        contract_id = contract.id
+        rows.append(_build_settlement_report_row(
+            contract,
+            settlement,
+            received_amount=receipt_amounts.get(contract_id, 0.0),
+            downstream_settlement_amount=downstream_settlements.get(contract_id, 0.0),
+            management_settlement_amount=management_settlements.get(contract_id, 0.0),
+            downstream_paid_amount=downstream_payments.get(contract_id, 0.0),
+            management_paid_amount=management_payments.get(contract_id, 0.0),
+            non_contract_expense_amount=expense_amounts.get(contract_id, 0.0),
+            zero_hour_labor_amount=zero_hour_amounts.get(contract_id, 0.0),
+        ))
+    return rows
+
+
+async def _build_settlement_report_payload(db: AsyncSession, year: int, month: int) -> Dict[str, object]:
+    period_ctx = _get_cost_period_context(month)
+    return {
+        "period": {
+            "year": year,
+            "month": month,
+            "quarter": period_ctx["quarter"],
+            "quarter_months": period_ctx["quarter_months"],
+            "half_year": period_ctx["half_year"],
+            "half_year_months": period_ctx["half_year_months"],
+            "year_months": period_ctx["year_months"],
+        },
+        "monthly": {
+            "rows": await _build_settlement_period_rows(db, year, [month]),
+        },
+        "quarterly": {
+            "rows": await _build_settlement_period_rows(db, year, period_ctx["quarter_months"]),
+        },
+        "half_yearly": {
+            "rows": await _build_settlement_period_rows(db, year, period_ctx["half_year_months"]),
+        },
+        "yearly": {
+            "rows": await _build_settlement_period_rows(db, year, period_ctx["year_months"]),
+        },
+    }
+
+
 @router.post("/cache/invalidate")
 async def invalidate_cache(
     report_type: str = None,
@@ -879,5 +1054,29 @@ async def get_monthly_quarterly_cost_report(
 
     result = await _build_cost_report_payload(db, year, month)
 
+    await set_cached_report(cache_key, year, month, result)
+    return result
+
+
+@router.get("/settlement/monthly-quarterly")
+async def get_monthly_quarterly_settlement_report(
+    year: int = None,
+    month: int = None,
+    skip_cache: bool = False,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """List upstream contracts completed by settlement date for four reporting periods."""
+    now = datetime.now()
+    year = year or now.year
+    month = max(1, min(12, int(month or now.month)))
+    cache_key = "settlement_monthly_quarterly_v1"
+
+    if not skip_cache:
+        cached_data = await get_cached_report(cache_key, year, month)
+        if cached_data:
+            return cached_data
+
+    result = await _build_settlement_report_payload(db, year, month)
     await set_cached_report(cache_key, year, month, result)
     return result

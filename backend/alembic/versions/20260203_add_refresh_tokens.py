@@ -18,6 +18,8 @@ depends_on = None
 
 def upgrade() -> None:
     conn = op.get_bind()
+    if conn.dialect.name == "postgresql":
+        op.execute("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128)")
     inspector = sa.inspect(conn)
     table_names = inspector.get_table_names()
 

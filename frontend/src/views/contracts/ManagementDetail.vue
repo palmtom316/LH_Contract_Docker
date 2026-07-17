@@ -266,7 +266,7 @@
             <el-upload
               class="upload-demo"
               action="#"
-              :http-request="handleUploadRequest"
+              :http-request="(option) => handleUploadRequest(option, 'payable')"
               :limit="1"
               :file-list="fileList"
               accept=".pdf"
@@ -305,7 +305,7 @@
             <el-upload
               class="upload-demo"
               action="#"
-              :http-request="handleUploadRequest"
+              :http-request="(option) => handleUploadRequest(option, 'invoice')"
               :limit="1"
               :file-list="fileList"
               accept=".pdf"
@@ -339,7 +339,7 @@
             <el-upload
               class="upload-demo"
               action="#"
-              :http-request="handleUploadRequest"
+              :http-request="(option) => handleUploadRequest(option, 'payment')"
               :limit="1"
               :file-list="fileList"
               accept=".pdf"
@@ -372,7 +372,7 @@
             <el-upload
               class="upload-demo"
               action="#"
-              :http-request="handleUploadRequest"
+              :http-request="(option) => handleUploadRequest(option, 'settlement')"
               :limit="1"
               :file-list="fileList"
               accept=".pdf"
@@ -558,13 +558,24 @@ const loadSettlements = async () => {
   settlements.value = await getSettlements(contractId)
 }
 
-const handleUploadRequest = createUploadRequestHandler({
+const handleFinanceUpload = createUploadRequestHandler({
   target: financeForm,
   pathField: 'file_path',
   keyField: null,
   fileListRef: fileList,
   callOptionSuccess: true,
   logError: true
+})
+
+const handleUploadRequest = (option, type) => handleFinanceUpload(option, {
+  uploadOptions: {
+    subdir: {
+      payable: 'management/payable',
+      invoice: 'management/invoice',
+      payment: 'management/payment',
+      settlement: 'management/settlement'
+    }[type]
+  }
 })
 
 const openFinanceDialog = (type) => {
