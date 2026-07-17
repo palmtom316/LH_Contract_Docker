@@ -78,6 +78,10 @@ async def test_repeated_confirmation_is_idempotent(test_db, test_admin):
         parse_status="parsed",
         match_status="matched",
         confirmation_status="draft",
+        pdf_file_path="invoices/imports/items/INVIMP-IDEMPOTENT/invoice.pdf",
+        pdf_file_key="invoices/imports/items/INVIMP-IDEMPOTENT/invoice.pdf",
+        xml_file_path="invoices/imports/items/INVIMP-IDEMPOTENT/invoice.xml",
+        xml_file_key="invoices/imports/items/INVIMP-IDEMPOTENT/invoice.xml",
     )
     test_db.add(item)
     await test_db.flush()
@@ -97,3 +101,7 @@ async def test_repeated_confirmation_is_idempotent(test_db, test_admin):
 
     count = await test_db.scalar(select(func.count(FinanceUpstreamInvoice.id)))
     assert count == 1
+    formal_invoice = await test_db.scalar(select(FinanceUpstreamInvoice))
+    assert formal_invoice.file_path == "invoices/imports/items/INVIMP-IDEMPOTENT/invoice.pdf"
+    assert formal_invoice.file_key == "invoices/imports/items/INVIMP-IDEMPOTENT/invoice.pdf"
+    assert formal_invoice.storage_provider == "minio"

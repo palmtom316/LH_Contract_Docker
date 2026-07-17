@@ -25,9 +25,10 @@
         <el-table-column prop="duplicate_items" label="重复" width="80" />
         <el-table-column prop="error_items" label="异常" width="80" />
         <el-table-column prop="confirmed_items" label="已确认" width="90" />
-        <el-table-column label="操作" width="120">
+        <el-table-column label="操作" width="150">
           <template #default="{ row }">
             <el-button link type="primary" @click="selectBatch(row)">查看</el-button>
+            <el-button link type="danger" @click="handleDeleteBatch(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -116,10 +117,10 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import AppPageHeader from '@/components/ui/AppPageHeader.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
-import { confirmItem, createAllocation, listBatchItems, listBatches, uploadBatch } from '@/api/invoiceImport'
+import { confirmItem, createAllocation, deleteBatch, listBatchItems, listBatches, uploadBatch } from '@/api/invoiceImport'
 import { getContract as getUpstreamContract, getContracts as getUpstreamContracts } from '@/api/contractUpstream'
 import { getContract as getDownstreamContract, getContracts as getDownstreamContracts } from '@/api/contractDownstream'
 
@@ -152,6 +153,26 @@ async function selectBatch(row) {
   selectedBatch.value = row
   items.value = await listBatchItems(row.id)
   itemDrawerVisible.value = true
+}
+
+async function handleDeleteBatch(row) {
+  try {
+    await ElMessageBox.confirm(
+      `确定删除发票导入批次“${row.original_filename}”吗？`,
+      '删除确认',
+      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+    )
+  } catch {
+    return
+  }
+  await deleteBatch(row.id)
+  if (selectedBatch.value?.id === row.id) {
+    itemDrawerVisible.value = false
+    selectedBatch.value = null
+    items.value = []
+  }
+  ElMessage.success('发票导入批次已删除')
+  await loadBatches()
 }
 
 async function openAllocation(row) {

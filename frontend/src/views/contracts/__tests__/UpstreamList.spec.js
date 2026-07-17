@@ -10,9 +10,14 @@ const upstreamSource = readFileSync(
   'utf-8'
 )
 
-const { getListMock, queryParamsState } = vi.hoisted(() => ({
+const { getListMock, queryParamsState, openProtectedFileMock } = vi.hoisted(() => ({
   getListMock: vi.fn(),
-  queryParamsState: { value: null }
+  queryParamsState: { value: null },
+  openProtectedFileMock: vi.fn().mockResolvedValue('blob:contract-pdf')
+}))
+
+vi.mock('@/utils/protectedFiles', () => ({
+  openProtectedFile: openProtectedFileMock
 }))
 
 vi.mock('@/composables/useContractList', () => {
@@ -342,18 +347,16 @@ describe('UpstreamList filters', () => {
     expect(amountIndex).toBeGreaterThan(signTimeIndex)
   })
 
-  it('opens contract PDFs in the built-in preview dialog without relying on a popup', () => {
+  it('opens contract PDFs with the same protected-file flow used by downstream and management lists', async () => {
     const wrapper = mountPage()
 
-    wrapper.vm.handlePreview('contracts/upstream/example.pdf')
+    await wrapper.vm.openPdfInNewTab('contracts/upstream/example.pdf')
 
-    expect(wrapper.vm.pdfDialog).toMatchObject({
-      visible: true,
-      url: 'contracts/upstream/example.pdf'
-    })
-    expect(upstreamSource).not.toContain('openProtectedFile')
-    expect(upstreamSource).not.toContain('openPdfInNewTab')
-    expect(upstreamSource).toContain('<PdfViewer :source="pdfDialog.url" />')
+    expect(openProtectedFileMock).toHaveBeenCalledWith('contracts/upstream/example.pdf')
+    expect(upstreamSource).toContain("import { openProtectedFile } from '@/utils/protectedFiles'")
+    expect(upstreamSource).toContain('await openProtectedFile(path)')
+    expect(upstreamSource).not.toContain('<PdfViewer')
+    expect(upstreamSource).not.toContain('pdfDialog')
   })
 })
 

@@ -47,6 +47,20 @@ def test_extracts_one_invoice_package(tmp_path):
     assert packages[0].pdf_path.name == "invoice.pdf"
 
 
+def test_extracts_tax_authority_single_invoice_archive(tmp_path):
+    archive = _zip_bytes({
+        "dzfp_package/invoice.xml": b"<EInvoice><InvoiceNumber>26502000001442925721</InvoiceNumber></EInvoice>",
+        "dzfp_package/invoice.pdf": b"%PDF-1.4",
+    })
+
+    packages = extract_invoice_archives(archive, tmp_path, "dzfp_26502000001442925721.zip")
+
+    assert len(packages) == 1
+    assert packages[0].source_archive_name == "dzfp_26502000001442925721.zip"
+    assert packages[0].xml_path.name == "invoice.xml"
+    assert packages[0].pdf_path.name == "invoice.pdf"
+
+
 def test_parse_invoice_xml_with_basic_fields():
     xml = """
     <Invoice>
@@ -94,6 +108,48 @@ def test_parse_invoice_xml_accepts_namespaced_fields():
     assert parsed.invoice_number == "NS-001"
     assert parsed.seller_tax_no == "SELLER-NS"
     assert parsed.total_amount == Decimal("106.00")
+
+
+def test_parse_invoice_xml_accepts_digital_invoice_fields():
+    xml = """
+    <EInvoice>
+      <Header>
+        <InherentLabel>
+          <GeneralOrSpecialVAT><LabelName>增值税专用发票</LabelName></GeneralOrSpecialVAT>
+        </InherentLabel>
+      </Header>
+      <EInvoiceData>
+        <SellerInformation>
+          <SellerIdNum>91500107057774330E</SellerIdNum>
+          <SellerName>重庆蓝海电力工程有限责任公司</SellerName>
+        </SellerInformation>
+        <BuyerInformation>
+          <BuyerIdNum>91500000902846312Y</BuyerIdNum>
+          <BuyerName>国网重庆市电力公司市区供电分公司</BuyerName>
+        </BuyerInformation>
+        <BasicInformation>
+          <TotalAmWithoutTax>609724.77</TotalAmWithoutTax>
+          <TotalTaxAm>54875.23</TotalTaxAm>
+          <TotalTax-includedAmount>664600.00</TotalTax-includedAmount>
+        </BasicInformation>
+      </EInvoiceData>
+      <TaxSupervisionInfo>
+        <InvoiceNumber>26502000001442925721</InvoiceNumber>
+        <IssueTime>2026-07-16</IssueTime>
+      </TaxSupervisionInfo>
+    </EInvoice>
+    """.encode("utf-8")
+
+    parsed = parse_invoice_xml(xml)
+
+    assert parsed.invoice_number == "26502000001442925721"
+    assert parsed.invoice_date.isoformat() == "2026-07-16"
+    assert parsed.seller_tax_no == "91500107057774330E"
+    assert parsed.buyer_tax_no == "91500000902846312Y"
+    assert parsed.amount_without_tax == Decimal("609724.77")
+    assert parsed.tax_amount == Decimal("54875.23")
+    assert parsed.total_amount == Decimal("664600.00")
+    assert parsed.invoice_type == "增值税专用发票"
 
 
 def test_rejects_batch_with_excessive_cumulative_expanded_size(tmp_path, monkeypatch):

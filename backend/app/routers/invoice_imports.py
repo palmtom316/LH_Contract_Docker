@@ -1,5 +1,5 @@
 """Electronic invoice import workbench API."""
-from fastapi import APIRouter, BackgroundTasks, Depends, File, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.permissions import Permission, require_permission
@@ -64,6 +64,16 @@ async def list_items(
     service: InvoiceImportService = Depends(get_import_service),
 ):
     return await service.list_items(batch_id, current_user)
+
+
+@router.delete("/batches/{batch_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_batch(
+    batch_id: int,
+    current_user: User = Depends(require_permission(Permission.DELETE_INVOICES)),
+    service: InvoiceImportService = Depends(get_import_service),
+):
+    await service.delete_batch(batch_id, current_user)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/items/{item_id}/allocations", response_model=AllocationResponse, status_code=status.HTTP_201_CREATED)

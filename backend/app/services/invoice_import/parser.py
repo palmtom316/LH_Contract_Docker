@@ -38,14 +38,14 @@ class ParsedInvoice:
 ALIASES = {
     "invoice_number": ["InvoiceNumber", "InvoiceNo", "Fphm", "FpHm"],
     "invoice_code": ["InvoiceCode", "Fpdm", "FpDm"],
-    "invoice_date": ["InvoiceDate", "Kprq", "IssueDate"],
+    "invoice_date": ["InvoiceDate", "Kprq", "IssueDate", "IssueTime"],
     "seller_name": ["SellerName", "XsfMc", "Seller"],
-    "seller_tax_no": ["SellerTaxNo", "XsfNsrsbh", "SellerTaxID"],
+    "seller_tax_no": ["SellerTaxNo", "XsfNsrsbh", "SellerTaxID", "SellerIdNum"],
     "buyer_name": ["BuyerName", "GmfMc", "Buyer"],
-    "buyer_tax_no": ["BuyerTaxNo", "GmfNsrsbh", "BuyerTaxID"],
-    "amount_without_tax": ["AmountWithoutTax", "Hjje", "Amount"],
-    "tax_amount": ["TaxAmount", "Hjse", "Tax"],
-    "total_amount": ["TotalAmount", "Jshj", "Total"],
+    "buyer_tax_no": ["BuyerTaxNo", "GmfNsrsbh", "BuyerTaxID", "BuyerIdNum"],
+    "amount_without_tax": ["AmountWithoutTax", "Hjje", "Amount", "TotalAmWithoutTax"],
+    "tax_amount": ["TaxAmount", "Hjse", "Tax", "TotalTaxAm"],
+    "total_amount": ["TotalAmount", "Jshj", "Total", "TotalTax-includedAmount"],
     "invoice_type": ["InvoiceType", "Fplx"],
     "remarks": ["Remarks", "Bz", "Memo"],
 }
@@ -57,6 +57,15 @@ def _text_by_alias(root: ET.Element, aliases: list[str]) -> Optional[str]:
         local_name = node.tag.rsplit("}", 1)[-1] if isinstance(node.tag, str) else ""
         if local_name in aliases_set and node.text and node.text.strip():
             return node.text.strip()
+    return None
+
+
+def _child_text(root: ET.Element, parent_name: str, child_name: str) -> Optional[str]:
+    for parent in root.iter():
+        local_name = parent.tag.rsplit("}", 1)[-1] if isinstance(parent.tag, str) else ""
+        if local_name != parent_name:
+            continue
+        return _text_by_alias(parent, [child_name])
     return None
 
 
@@ -95,6 +104,8 @@ def _to_date(value: Optional[str]) -> Optional[date]:
 def parse_invoice_xml(xml_bytes: bytes) -> ParsedInvoice:
     root = safe_xml_fromstring(xml_bytes)
     values = {key: _text_by_alias(root, aliases) for key, aliases in ALIASES.items()}
+    if not values["invoice_type"]:
+        values["invoice_type"] = _child_text(root, "GeneralOrSpecialVAT", "LabelName")
     payload = {key: value for key, value in values.items() if value is not None}
 
     return ParsedInvoice(

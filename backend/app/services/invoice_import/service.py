@@ -93,6 +93,51 @@ class InvoiceImportService:
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
+    async def delete_batch(self, batch_id: int, current_user: User) -> None:
+        query = (
+            select(InvoiceImportBatch)
+            .options(
+                selectinload(InvoiceImportBatch.items).selectinload(InvoiceImportItem.allocations),
+                selectinload(InvoiceImportBatch.items).selectinload(InvoiceImportItem.candidates),
+            )
+            .where(InvoiceImportBatch.id == batch_id)
+        )
+        if not _can_access_all_imports(current_user):
+            query = query.where(InvoiceImportBatch.uploaded_by == current_user.id)
+        result = await self.db.execute(query)
+        batch = result.scalar_one_or_none()
+        if not batch:
+            raise ResourceNotFoundError(resource_type="发票导入批次", resource_id=batch_id)
+        if batch.status in {"uploaded", "processing"}:
+            raise ValidationError(
+                message="正在解析的导入批次不能删除",
+                field_errors={"batch": "请等待解析完成后重试"},
+            )
+        if any(
+            item.confirmation_status == "confirmed"
+            or any(allocation.status == "confirmed" or allocation.formal_invoice_id for allocation in item.allocations)
+            for item in batch.items
+        ):
+            raise ValidationError(
+                message="已确认挂账的导入批次不能删除",
+                field_errors={"batch": "请先在对应合同中处理已生成的挂账记录"},
+            )
+
+        object_keys = {
+            key
+            for key in [
+                batch.archive_file_key,
+                *(item.pdf_file_key for item in batch.items),
+                *(item.ofd_file_key for item in batch.items),
+                *(item.xml_file_key for item in batch.items),
+            ]
+            if key
+        }
+        await self.db.delete(batch)
+        await self.db.commit()
+        for object_key in object_keys:
+            self._remove_minio_object(object_key)
+
     async def create_allocation(self, item_id: int, allocation_in: AllocationCreate, user: User) -> InvoiceImportAllocation:
         item = await self._get_item_for_user(item_id, user)
         data = allocation_in.model_dump()
@@ -175,7 +220,7 @@ class InvoiceImportService:
         with tempfile.TemporaryDirectory(prefix="invoice-import-") as tmp:
             work_dir = Path(tmp)
             try:
-                packages = extract_invoice_archives(BytesIO(content), work_dir)
+                packages = extract_invoice_archives(BytesIO(content), work_dir, batch.original_filename)
             except UnsafeArchiveError as exc:
                 batch.status = "failed"
                 batch.failed_items = 1

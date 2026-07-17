@@ -19,6 +19,10 @@ export function listBatchItems(batchId) {
   return request({ url: `/invoice-imports/batches/${batchId}/items`, method: 'get' })
 }
 
+export function deleteBatch(batchId) {
+  return request({ url: `/invoice-imports/batches/${batchId}`, method: 'delete' })
+}
+
 export function createAllocation(itemId, data) {
   return request({ url: `/invoice-imports/items/${itemId}/allocations`, method: 'post', data })
 }

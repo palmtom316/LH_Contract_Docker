@@ -123,7 +123,7 @@
                   type="primary" 
                   size="small"
                   icon="Document"
-                  @click="handlePreview(scope.row.contract_file_path)"
+                  @click="openPdfInNewTab(scope.row.contract_file_path)"
                 />
                 <span v-else class="cell-placeholder">-</span>
               </template>
@@ -192,7 +192,7 @@
                 type="warning" 
                 icon="Document" 
                 circle
-                @click="handlePreview(item.contract_file_path)"
+                @click="openPdfInNewTab(item.contract_file_path)"
               />
               <el-button v-if="userStore.canManageUpstreamContracts" size="small" type="primary" @click="handleEdit(item)">编辑</el-button>
               <el-button size="small" @click="handleDetail(item)">详情</el-button>
@@ -280,28 +280,28 @@
             
             <el-table-column label="合同文件" width="120" align="center">
               <template #default="scope">
-                 <el-button v-if="scope.row.contract_file_path" link type="primary" icon="Document" @click="handlePreview(scope.row.contract_file_path)">查看</el-button>
+                 <el-button v-if="scope.row.contract_file_path" link type="primary" icon="Document" @click="openPdfInNewTab(scope.row.contract_file_path)">查看</el-button>
                  <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
             
             <el-table-column label="开工报告" width="120" align="center">
               <template #default="scope">
-                 <el-button v-if="scope.row.start_report_path" link type="primary" icon="Document" @click="handlePreview(scope.row.start_report_path)">查看</el-button>
+                 <el-button v-if="scope.row.start_report_path" link type="primary" icon="Document" @click="openPdfInNewTab(scope.row.start_report_path)">查看</el-button>
                  <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
             
             <el-table-column label="竣工报告" width="120" align="center">
               <template #default="scope">
-                 <el-button v-if="scope.row.completion_report_path" link type="primary" icon="Document" @click="handlePreview(scope.row.completion_report_path)">查看</el-button>
+                 <el-button v-if="scope.row.completion_report_path" link type="primary" icon="Document" @click="openPdfInNewTab(scope.row.completion_report_path)">查看</el-button>
                  <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
             
              <el-table-column label="结算审核文件" width="140" align="center">
               <template #default="scope">
-                 <el-button v-if="scope.row.audit_report_path" link type="primary" icon="Document" @click="handlePreview(scope.row.audit_report_path)">查看</el-button>
+                 <el-button v-if="scope.row.audit_report_path" link type="primary" icon="Document" @click="openPdfInNewTab(scope.row.audit_report_path)">查看</el-button>
                  <span v-else class="cell-placeholder">-</span>
               </template>
             </el-table-column>
@@ -355,7 +355,7 @@
                 <el-button
                   v-if="item.contract_file_path"
                   size="small"
-                  @click="handlePreview(item.contract_file_path)"
+                  @click="openPdfInNewTab(item.contract_file_path)"
                 >
                   文件
                 </el-button>
@@ -550,17 +550,6 @@
       </template>
     </el-dialog>
 
-    <!-- PDF Viewer Dialog -->
-    <el-dialog 
-      v-model="pdfDialog.visible" 
-      title="合同附件预览" 
-      fullscreen 
-      destroy-on-close
-      append-to-body
-    >
-      <PdfViewer :source="pdfDialog.url" />
-    </el-dialog>
-
     <!-- Hidden file input for import -->
     <input 
       ref="importFileInput"
@@ -613,6 +602,7 @@
 import { defineAsyncComponent, ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getContracts, createContract, updateContract, deleteContract, exportContracts, downloadImportTemplate, importContracts, getNextSerialNumber } from '@/api/contractUpstream'
+import { openProtectedFile } from '@/utils/protectedFiles'
 import { downloadExcel } from '@/utils/download'
 import { useContractList, useTableSummary, useMobileDetection } from '@/composables/useContractList'
 import { createUploadRequestHandler } from '@/composables/useUploadRequest'
@@ -631,7 +621,6 @@ import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 import ContractQueryBot from '@/components/ContractQueryBot.vue'
 
 const SmartAutocomplete = defineAsyncComponent(() => import('@/components/SmartAutocomplete.vue'))
-const PdfViewer = defineAsyncComponent(() => import('@/components/PdfViewer.vue'))
 const FormulaInput = defineAsyncComponent(() => import('@/components/FormulaInput.vue'))
 
 const userStore = useUserStore()
@@ -720,11 +709,6 @@ const dialog = reactive({
   title: '',
   visible: false,
   isEdit: false
-})
-
-const pdfDialog = reactive({
-  visible: false,
-  url: ''
 })
 
 // Import functionality
@@ -903,11 +887,10 @@ const handleRemoveFile = () => {
   fileList.value = []
 }
 
-// PDF Preview
-const handlePreview = (path) => {
+// Keep contract file behavior aligned with downstream and management lists.
+const openPdfInNewTab = async (path) => {
   if (!path) return
-  pdfDialog.url = path 
-  pdfDialog.visible = true
+  await openProtectedFile(path)
 }
 
 // Form handling

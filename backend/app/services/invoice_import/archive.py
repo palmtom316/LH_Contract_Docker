@@ -82,20 +82,37 @@ def _extract_nested_invoice(source_archive_name: str, nested_bytes: bytes, targe
     )
 
 
-def extract_invoice_archives(batch_zip: BinaryIO, work_dir: Path) -> list[ExtractedInvoicePackage]:
+def extract_invoice_archives(
+    batch_zip: BinaryIO,
+    work_dir: Path,
+    source_archive_name: str = "uploaded_invoice.zip",
+) -> list[ExtractedInvoicePackage]:
     packages: list[ExtractedInvoicePackage] = []
     total_expanded_size = 0
     total_nested_files = 0
-    with zipfile.ZipFile(batch_zip) as batch:
+    archive_bytes = batch_zip.read()
+    with zipfile.ZipFile(io.BytesIO(archive_bytes)) as batch:
         members = batch.infolist()
         files = [info for info in members if not info.is_dir()]
+        if not files:
+            raise UnsafeArchiveError("Invoice archive is empty")
         if len(files) > settings.INVOICE_IMPORT_MAX_FILES:
             raise UnsafeArchiveError("Batch archive contains too many files")
         if sum(info.file_size for info in files) > settings.INVOICE_IMPORT_MAX_ARCHIVE_SIZE:
             raise UnsafeArchiveError("Batch archive expanded size exceeds configured limit")
-        for index, info in enumerate(members, start=1):
+        for info in members:
             _assert_safe_member_name(info.filename)
             _assert_size(info, settings.INVOICE_IMPORT_MAX_ARCHIVE_SIZE)
+
+        # Tax authority downloads are commonly a single invoice archive whose
+        # root (or one directory below it) contains XML plus PDF/OFD directly.
+        # Keep supporting the existing batch format of nested invoice zips.
+        if files and not any(Path(info.filename).suffix.lower() == ".zip" for info in files):
+            return [
+                _extract_nested_invoice(source_archive_name, archive_bytes, work_dir / "invoice_0001")
+            ]
+
+        for index, info in enumerate(members, start=1):
             if info.is_dir():
                 continue
             if Path(info.filename).suffix.lower() != ".zip":
