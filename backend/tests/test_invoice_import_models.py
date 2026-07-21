@@ -27,6 +27,12 @@ def test_invoice_project_name_columns_are_registered():
     assert "construction_project_name" in items.c
 
 
+def test_invoice_tax_rate_column_is_registered():
+    items = Base.metadata.tables["invoice_import_items"]
+
+    assert "tax_rate" in items.c
+
+
 def test_contract_tax_number_columns_are_registered():
     upstream = Base.metadata.tables["contracts_upstream"]
     downstream = Base.metadata.tables["contracts_downstream"]

@@ -39,6 +39,7 @@ async def test_confirm_rejects_item_without_allocations(test_db, test_admin):
         invoice_number="EMPTY-001",
         invoice_date=date(2026, 7, 16),
         total_amount=Decimal("100.00"),
+        tax_rate=Decimal("9.00"),
         direction="upstream",
         parse_status="parsed",
         match_status="not_matched",
@@ -74,6 +75,7 @@ async def test_repeated_confirmation_is_idempotent(test_db, test_admin):
         invoice_number="IDEMPOTENT-001",
         invoice_date=date(2026, 7, 16),
         total_amount=Decimal("100.00"),
+        tax_rate=Decimal("9.00"),
         direction="upstream",
         parse_status="parsed",
         match_status="matched",
@@ -105,3 +107,4 @@ async def test_repeated_confirmation_is_idempotent(test_db, test_admin):
     assert formal_invoice.file_path == "invoices/imports/items/INVIMP-IDEMPOTENT/invoice.pdf"
     assert formal_invoice.file_key == "invoices/imports/items/INVIMP-IDEMPOTENT/invoice.pdf"
     assert formal_invoice.storage_provider == "minio"
+    assert formal_invoice.tax_rate == Decimal("9.00")

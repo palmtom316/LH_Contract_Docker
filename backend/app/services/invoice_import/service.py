@@ -286,6 +286,7 @@ class InvoiceImportService:
             buyer_name=parsed.buyer_name,
             buyer_tax_no=parsed.buyer_tax_no,
             amount_without_tax=parsed.amount_without_tax,
+            tax_rate=parsed.tax_rate,
             tax_amount=parsed.tax_amount,
             total_amount=parsed.total_amount,
             invoice_type=parsed.invoice_type,

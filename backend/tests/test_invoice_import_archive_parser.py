@@ -134,6 +134,7 @@ def test_parse_invoice_xml_accepts_digital_invoice_fields():
         </BasicInformation>
         <IssuItemInformation>
           <MeaUnits>重庆九龙坡110kV劳动村变电站劳港线10kV配套送出工程</MeaUnits>
+          <TaxRate>0.09</TaxRate>
         </IssuItemInformation>
         <SpecificInformation>
           <ConstructionServices>
@@ -155,11 +156,22 @@ def test_parse_invoice_xml_accepts_digital_invoice_fields():
     assert parsed.seller_tax_no == "91500107057774330E"
     assert parsed.buyer_tax_no == "91500000902846312Y"
     assert parsed.amount_without_tax == Decimal("609724.77")
+    assert parsed.tax_rate == Decimal("9.00")
     assert parsed.tax_amount == Decimal("54875.23")
     assert parsed.total_amount == Decimal("664600.00")
     assert parsed.invoice_type == "增值税专用发票"
     assert parsed.project_name == "重庆九龙坡110kV劳动村变电站劳港线10kV配套送出工程"
     assert parsed.construction_project_name == "重庆九龙坡110kV劳动村变电站劳港线10kV配套送出工程"
+
+
+@pytest.mark.parametrize(
+    ("xml_rate", "expected"),
+    [("0.09", Decimal("9.00")), ("9", Decimal("9.00")), ("9%", Decimal("9.00")), ("0", Decimal("0.00"))],
+)
+def test_parse_invoice_xml_normalizes_tax_rate_to_percentage(xml_rate, expected):
+    parsed = parse_invoice_xml(f"<Invoice><TaxRate>{xml_rate}</TaxRate></Invoice>".encode())
+
+    assert parsed.tax_rate == expected
 
 
 def test_rejects_batch_with_excessive_cumulative_expanded_size(tmp_path, monkeypatch):

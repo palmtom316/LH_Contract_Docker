@@ -107,6 +107,7 @@ class ImportItemResponse(BaseModel):
     buyer_name: Optional[str] = None
     buyer_tax_no: Optional[str] = None
     amount_without_tax: Optional[Decimal] = None
+    tax_rate: Optional[Decimal] = None
     tax_amount: Optional[Decimal] = None
     total_amount: Optional[Decimal] = None
     invoice_type: Optional[str] = None

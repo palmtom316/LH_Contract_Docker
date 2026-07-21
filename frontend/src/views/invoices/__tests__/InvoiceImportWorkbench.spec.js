@@ -82,6 +82,8 @@ it('shows item states after selecting a batch', async () => {
       buyer_name: '客户A',
       invoice_date: '2026-07-16',
       invoice_type: '增值税专用发票',
+      tax_rate: '9.00',
+      tax_amount: '8.76',
       project_name: '重庆九龙坡110kV劳动村变电站劳港线10kV配套送出工程',
       construction_project_name: '重庆九龙坡110kV劳动村变电站劳港线10kV配套送出工程',
       total_amount: '106.00',
@@ -111,6 +113,8 @@ it('shows item states after selecting a batch', async () => {
 
   expect(wrapper.text()).toContain('INV-001')
   expect(wrapper.text()).toContain('建筑项目名称')
+  expect(wrapper.text()).toContain('税率')
+  expect(wrapper.text()).toContain('9%')
   expect(wrapper.text()).toContain('重庆九龙坡110kV劳动村变电站劳港线10kV配套送出工程')
   expect(wrapper.text()).toContain('[1088] 重庆九龙坡110kV劳动村变电站劳港线10kV配套送出工程施工合同')
   expect(wrapper.findAll('.invoice-review-card')).toHaveLength(1)

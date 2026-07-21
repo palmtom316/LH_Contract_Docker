@@ -28,6 +28,7 @@ class ParsedInvoice:
     buyer_name: Optional[str]
     buyer_tax_no: Optional[str]
     amount_without_tax: Optional[Decimal]
+    tax_rate: Optional[Decimal]
     tax_amount: Optional[Decimal]
     total_amount: Optional[Decimal]
     invoice_type: Optional[str]
@@ -46,6 +47,7 @@ ALIASES = {
     "buyer_name": ["BuyerName", "GmfMc", "Buyer"],
     "buyer_tax_no": ["BuyerTaxNo", "GmfNsrsbh", "BuyerTaxID", "BuyerIdNum"],
     "amount_without_tax": ["AmountWithoutTax", "Hjje", "Amount", "TotalAmWithoutTax"],
+    "tax_rate": ["TaxRate", "Sl", "TaxRateValue"],
     "tax_amount": ["TaxAmount", "Hjse", "Tax", "TotalTaxAm"],
     "total_amount": ["TotalAmount", "Jshj", "Total", "TotalTax-includedAmount"],
     "invoice_type": ["InvoiceType", "Fplx"],
@@ -75,6 +77,20 @@ def _to_decimal(value: Optional[str]) -> Optional[Decimal]:
     if not value:
         return None
     return Decimal(value.replace(",", "").strip()).quantize(Decimal("0.01"))
+
+
+def _to_tax_rate(value: Optional[str]) -> Optional[Decimal]:
+    """Normalize XML tax rates to the percentage representation used by the app."""
+    if not value:
+        return None
+    normalized = value.replace(",", "").strip()
+    is_percentage = normalized.endswith("%")
+    if is_percentage:
+        normalized = normalized[:-1].strip()
+    rate = Decimal(normalized)
+    if not is_percentage and abs(rate) <= Decimal("1"):
+        rate *= Decimal("100")
+    return rate.quantize(Decimal("0.01"))
 
 
 def _to_date(value: Optional[str]) -> Optional[date]:
@@ -126,6 +142,7 @@ def parse_invoice_xml(xml_bytes: bytes) -> ParsedInvoice:
         buyer_name=values["buyer_name"],
         buyer_tax_no=values["buyer_tax_no"],
         amount_without_tax=_to_decimal(values["amount_without_tax"]),
+        tax_rate=_to_tax_rate(values["tax_rate"]),
         tax_amount=_to_decimal(values["tax_amount"]),
         total_amount=_to_decimal(values["total_amount"]),
         invoice_type=values["invoice_type"],

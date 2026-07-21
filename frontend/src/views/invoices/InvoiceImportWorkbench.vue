@@ -77,6 +77,8 @@
             <div><dt>购买方</dt><dd>{{ item.buyer_name || '-' }}</dd></div>
             <div><dt>开票日期</dt><dd>{{ item.invoice_date || '-' }}</dd></div>
             <div><dt>发票类型</dt><dd>{{ item.invoice_type || '-' }}</dd></div>
+            <div><dt>税率</dt><dd>{{ formatTaxRate(item.tax_rate) }}</dd></div>
+            <div><dt>税额</dt><dd>{{ formatOptionalAmount(item.tax_amount) }}</dd></div>
           </dl>
 
           <section class="invoice-match-panel" :class="{ 'is-empty': !item.candidates?.length }">
@@ -254,6 +256,16 @@ function candidateLabel(candidate) {
 
 function formatAmount(value) {
   return Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function formatTaxRate(value) {
+  if (value === null || value === undefined || value === '') return '-'
+  return `${Number(value).toLocaleString('zh-CN', { maximumFractionDigits: 2 })}%`
+}
+
+function formatOptionalAmount(value) {
+  if (value === null || value === undefined || value === '') return '-'
+  return `¥ ${formatAmount(value)}`
 }
 
 function directionLabel(direction) {

@@ -25,6 +25,7 @@ def test_import_dedupe_key_for_realistic_invoice():
         buyer_name="客户A",
         buyer_tax_no="913000000000000002",
         amount_without_tax=Decimal("1000.00"),
+        tax_rate=Decimal("6.00"),
         tax_amount=Decimal("60.00"),
         total_amount=Decimal("1060.00"),
         invoice_type="电子发票",

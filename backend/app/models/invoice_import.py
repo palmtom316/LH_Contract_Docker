@@ -67,6 +67,7 @@ class InvoiceImportItem(Base):
     buyer_name = Column(String(200), nullable=True, index=True)
     buyer_tax_no = Column(String(50), nullable=True, index=True)
     amount_without_tax = Column(Numeric(15, 2), nullable=True)
+    tax_rate = Column(Numeric(5, 2), nullable=True)
     tax_amount = Column(Numeric(15, 2), nullable=True)
     total_amount = Column(Numeric(15, 2), nullable=True)
     invoice_type = Column(String(100), nullable=True)

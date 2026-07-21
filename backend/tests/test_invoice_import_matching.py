@@ -17,6 +17,7 @@ def _parsed(**overrides):
         "buyer_name": "客户A",
         "buyer_tax_no": "BUYER-TAX",
         "amount_without_tax": Decimal("100.00"),
+        "tax_rate": Decimal("6.00"),
         "tax_amount": Decimal("6.00"),
         "total_amount": Decimal("106.00"),
         "invoice_type": "数电票",
