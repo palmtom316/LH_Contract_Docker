@@ -78,6 +78,12 @@ const routes = [
                 meta: { title: '电子发票导入', icon: 'DocumentAdd' }
             },
             {
+                path: 'expenses/zero-hour-labor/:id',
+                name: 'ZeroHourLaborDetail',
+                component: () => import('@/views/expenses/ZeroHourLaborDetail.vue'),
+                meta: { title: '零星用工详情', hidden: true }
+            },
+            {
                 path: 'notifications',
                 name: 'NotificationCenter',
                 component: () => import('@/views/notifications/NotificationCenter.vue'),

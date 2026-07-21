@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from datetime import date, datetime
 import pandas as pd
@@ -9,7 +11,7 @@ import urllib.parse
 
 from app.database import get_db
 from app.core.permissions import require_permission, Permission
-from app.core.errors import DatabaseError
+from app.core.errors import DatabaseError, ResourceNotFoundError, ValidationError
 from app.models.user import User
 from app.schemas.zero_hour_labor import (
     ZeroHourLaborCreate,
@@ -17,9 +19,47 @@ from app.schemas.zero_hour_labor import (
     ZeroHourLaborListResponse,
     ZeroHourLaborResponse
 )
+from app.schemas.zero_hour_labor import ZeroHourPayableCreate, ZeroHourInvoiceCreate, ZeroHourPaymentCreate, ZeroHourFinanceResponse
+from app.models.zero_hour_labor import ZeroHourLabor, ZeroHourLaborPayable, ZeroHourLaborInvoice, ZeroHourLaborPayment
 from app.services.zero_hour_labor_service import ZeroHourLaborService
 
 router = APIRouter()
+
+@router.get("/{id:int}/detail")
+async def detail(id:int, db:AsyncSession=Depends(get_db), current_user:User=Depends(require_permission(Permission.VIEW_EXPENSES))):
+    item=(await db.execute(select(ZeroHourLabor).options(selectinload(ZeroHourLabor.materials),selectinload(ZeroHourLabor.upstream_contract),selectinload(ZeroHourLabor.payables),selectinload(ZeroHourLabor.invoices),selectinload(ZeroHourLabor.payments)).where(ZeroHourLabor.id==id))).scalar_one_or_none()
+    if not item: raise ResourceNotFoundError(resource_type="零星用工",resource_id=id)
+    return {"labor": ZeroHourLaborResponse.model_validate(item), "payables": item.payables, "invoices": item.invoices, "payments": item.payments, "payable_total": sum((x.amount or 0 for x in item.payables),0), "invoiced_total": sum((x.amount or 0 for x in item.invoices),0), "paid_total": sum((x.amount or 0 for x in item.payments),0)}
+
+async def _add_finance(id,data,user,db,model):
+    if not await db.get(ZeroHourLabor,id): raise ResourceNotFoundError(resource_type="零星用工",resource_id=id)
+    obj=model(zero_hour_labor_id=id,created_by=user.id,**data.model_dump()); db.add(obj); await db.commit(); await db.refresh(obj); return obj
+@router.post("/{id:int}/payables",response_model=ZeroHourFinanceResponse,status_code=201)
+async def create_payable(id:int,data:ZeroHourPayableCreate,db:AsyncSession=Depends(get_db),user:User=Depends(require_permission(Permission.CREATE_PAYABLES))): return await _add_finance(id,data,user,db,ZeroHourLaborPayable)
+@router.post("/{id:int}/invoices",response_model=ZeroHourFinanceResponse,status_code=201)
+async def create_invoice(id:int,data:ZeroHourInvoiceCreate,db:AsyncSession=Depends(get_db),user:User=Depends(require_permission(Permission.CREATE_INVOICES))): return await _add_finance(id,data,user,db,ZeroHourLaborInvoice)
+@router.post("/{id:int}/payments",response_model=ZeroHourFinanceResponse,status_code=201)
+async def create_payment(id:int,data:ZeroHourPaymentCreate,db:AsyncSession=Depends(get_db),user:User=Depends(require_permission(Permission.CREATE_PAYMENTS))): return await _add_finance(id,data,user,db,ZeroHourLaborPayment)
+
+@router.put("/{id:int}/finance/{kind}/{record_id:int}",response_model=ZeroHourFinanceResponse)
+async def update_finance(id:int,kind:str,record_id:int,data:dict,db:AsyncSession=Depends(get_db),user:User=Depends(require_permission(Permission.EDIT_EXPENSES))):
+    model={"payables":ZeroHourLaborPayable,"invoices":ZeroHourLaborInvoice,"payments":ZeroHourLaborPayment}.get(kind)
+    if not model: raise ValidationError(message="财务明细类型无效")
+    obj=await db.get(model,record_id)
+    if not obj or obj.zero_hour_labor_id!=id: raise ResourceNotFoundError(resource_type="财务明细",resource_id=record_id)
+    allowed={column.name for column in model.__table__.columns}-{ "id","zero_hour_labor_id","created_by","created_at","source_import_item_id","source_bank_receipt_item_id"}
+    for key,value in data.items():
+        if key in allowed: setattr(obj,key,value)
+    if obj.amount is None or obj.amount<=0: raise ValidationError(message="金额必须大于 0")
+    await db.commit();await db.refresh(obj);return obj
+
+@router.delete("/{id:int}/finance/{kind}/{record_id:int}")
+async def delete_finance(id:int,kind:str,record_id:int,db:AsyncSession=Depends(get_db),user:User=Depends(require_permission(Permission.DELETE_EXPENSES))):
+    model={"payables":ZeroHourLaborPayable,"invoices":ZeroHourLaborInvoice,"payments":ZeroHourLaborPayment}.get(kind)
+    if not model: raise ValidationError(message="财务明细类型无效")
+    obj=await db.get(model,record_id)
+    if not obj or obj.zero_hour_labor_id!=id: raise ResourceNotFoundError(resource_type="财务明细",resource_id=record_id)
+    await db.delete(obj); await db.commit(); return {"status":"success"}
 
 @router.get("/export/excel", response_class=StreamingResponse)
 async def export_zero_hour_labor(

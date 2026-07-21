@@ -178,6 +178,10 @@ class FinanceDownstreamInvoice(Base):
         unique=True,
         index=True,
     )
+    posting_status = Column(String(20), nullable=False, default="active", index=True)
+    cleared_at = Column(DateTime(timezone=True), nullable=True)
+    clear_reason = Column(String(300), nullable=True)
+    original_amount = Column(Numeric(15, 2), nullable=True)
     
     # Relationships
     contract = relationship("ContractDownstream", back_populates="invoices")
@@ -214,6 +218,14 @@ class FinanceDownstreamPayment(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    source_bank_receipt_item_id = Column(Integer, ForeignKey("bank_receipt_items.id"), nullable=True, index=True)
+    source_bank_receipt_allocation_id = Column(Integer, ForeignKey("bank_receipt_allocations.id"), nullable=True, unique=True)
+    bank_serial_number = Column(String(150), nullable=True, index=True)
+    transaction_at = Column(DateTime(timezone=True), nullable=True)
+    posting_status = Column(String(20), nullable=False, default="active", index=True)
+    cleared_at = Column(DateTime(timezone=True), nullable=True)
+    clear_reason = Column(String(300), nullable=True)
+    original_amount = Column(Numeric(15, 2), nullable=True)
     
     # Relationships
     contract = relationship("ContractDownstream", back_populates="payments")

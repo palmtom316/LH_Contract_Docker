@@ -13,11 +13,16 @@ def test_invoice_import_tables_are_registered():
 def test_formal_invoice_trace_columns_are_registered():
     upstream = Base.metadata.tables["finance_upstream_invoices"]
     downstream = Base.metadata.tables["finance_downstream_invoices"]
+    management = Base.metadata.tables["finance_management_invoices"]
 
     assert "source_import_item_id" in upstream.c
     assert "source_import_allocation_id" in upstream.c
     assert "source_import_item_id" in downstream.c
     assert "source_import_allocation_id" in downstream.c
+    assert "source_import_item_id" in management.c
+    assert "source_import_allocation_id" in management.c
+    assert "posting_status" in upstream.c
+    assert "original_amount" in upstream.c
 
 
 def test_invoice_project_name_columns_are_registered():

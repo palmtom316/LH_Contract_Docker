@@ -8,7 +8,7 @@ from app.models.zero_hour_labor import ZeroHourLabor, ZeroHourLaborMaterial
 from app.models.user import User
 from app.schemas.zero_hour_labor import ZeroHourLaborCreate, ZeroHourLaborUpdate
 from app.services.audit_service import create_audit_log, AuditAction, ResourceType
-from app.core.errors import ResourceNotFoundError
+from app.core.errors import ResourceNotFoundError, ValidationError
 
 class ZeroHourLaborService:
     def __init__(self, db: AsyncSession):
@@ -153,6 +153,15 @@ class ZeroHourLaborService:
         obj = await self.get(id)
         if not obj:
             raise ResourceNotFoundError(resource_type="零星用工记录", resource_id=id)
+        from app.models.zero_hour_labor import ZeroHourLaborInvoice, ZeroHourLaborPayment
+        from sqlalchemy import select, or_
+        protected = await self.db.scalar(
+            select(ZeroHourLaborInvoice.id).where(ZeroHourLaborInvoice.zero_hour_labor_id == id).limit(1)
+        ) or await self.db.scalar(
+            select(ZeroHourLaborPayment.id).where(ZeroHourLaborPayment.zero_hour_labor_id == id).limit(1)
+        )
+        if protected:
+            raise ValidationError(message="该零星用工存在挂账或付款记录，必须先按财务撤销规则处理")
         
         resource_name = f"Labor-{obj.labor_date}"
         

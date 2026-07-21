@@ -32,7 +32,12 @@ from app.models.contract_upstream import (
 )
 from app.models.expense import ExpenseNonContract
 from app.models.user import User, UserRole
-from app.models.zero_hour_labor import ZeroHourLabor
+from app.models.zero_hour_labor import (
+    ZeroHourLabor,
+    ZeroHourLaborInvoice,
+    ZeroHourLaborPayable,
+    ZeroHourLaborPayment,
+)
 
 
 EXPENSE_VIEW_ALL_ROLES = frozenset(
@@ -148,6 +153,21 @@ FILE_ACCESS_RULES: tuple[FileAccessRule, ...] = (
     FileAccessRule(
         model=ZeroHourLabor,
         fields=("dispatch_file_path", "dispatch_file_key", "approval_pdf_path", "approval_pdf_key"),
+        permissions=(Permission.VIEW_EXPENSES,),
+    ),
+    FileAccessRule(
+        model=ZeroHourLaborPayable,
+        fields=("file_path", "file_key"),
+        permissions=(Permission.VIEW_EXPENSES,),
+    ),
+    FileAccessRule(
+        model=ZeroHourLaborInvoice,
+        fields=("file_path", "file_key"),
+        permissions=(Permission.VIEW_EXPENSES,),
+    ),
+    FileAccessRule(
+        model=ZeroHourLaborPayment,
+        fields=("file_path", "file_key"),
         permissions=(Permission.VIEW_EXPENSES,),
     ),
 )

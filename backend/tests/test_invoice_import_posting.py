@@ -18,6 +18,10 @@ def test_rejects_allocation_total_above_invoice_total():
 def test_accepts_allocation_total_equal_invoice_total():
     validate_allocation_total(Decimal("100.00"), [Decimal("60.00"), Decimal("40.00")])
 
+def test_rejects_allocation_total_below_invoice_total():
+    with pytest.raises(ValidationError):
+        validate_allocation_total(Decimal("100.00"), [Decimal("99.99")])
+
 
 def test_rejects_missing_invoice_total_with_validation_error():
     with pytest.raises(ValidationError):

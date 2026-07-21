@@ -34,3 +34,6 @@ export function updateAllocation(allocationId, data) {
 export function confirmItem(itemId, data = { override_duplicate: false }) {
   return request({ url: `/invoice-imports/items/${itemId}/confirm`, method: 'post', data })
 }
+export const ignoreInvoiceItem = (itemId, reason) => request.post(`/invoice-imports/items/${itemId}/ignore`, { reason })
+export const clearInvoiceItem = (itemId, reason) => request.post(`/invoice-imports/items/${itemId}/clear`, { reason })
+export const deleteFailedInvoiceItem = (itemId) => request.delete(`/invoice-imports/items/${itemId}`)

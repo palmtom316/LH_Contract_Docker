@@ -74,6 +74,9 @@ class ZeroHourLabor(Base):
     upstream_contract = relationship("ContractUpstream")
     creator = relationship("User", foreign_keys=[created_by])
     materials = relationship("ZeroHourLaborMaterial", back_populates="zero_hour_labor", cascade="all, delete-orphan")
+    payables = relationship("ZeroHourLaborPayable", back_populates="zero_hour_labor", cascade="all, delete-orphan")
+    invoices = relationship("ZeroHourLaborInvoice", back_populates="zero_hour_labor", cascade="all, delete-orphan")
+    payments = relationship("ZeroHourLaborPayment", back_populates="zero_hour_labor", cascade="all, delete-orphan")
 
     @property
     def material_price_total(self):
@@ -99,3 +102,21 @@ class ZeroHourLaborMaterial(Base):
     material_price_total = Column(Numeric(15, 2), default=0)
     
     zero_hour_labor = relationship("ZeroHourLabor", back_populates="materials")
+
+class ZeroHourLaborPayable(Base):
+    __tablename__ = "finance_zero_hour_payables"
+    id=Column(Integer,primary_key=True); zero_hour_labor_id=Column(Integer,ForeignKey("zero_hour_labor.id",ondelete="CASCADE"),nullable=False,index=True)
+    category=Column(String(100),nullable=False); amount=Column(Numeric(15,2),nullable=False); expected_date=Column(Date); description=Column(String(300)); file_path=Column(String(500)); file_key=Column(String(500)); created_by=Column(Integer,ForeignKey("users.id")); created_at=Column(DateTime(timezone=True),server_default=func.now())
+    zero_hour_labor=relationship("ZeroHourLabor",back_populates="payables")
+
+class ZeroHourLaborInvoice(Base):
+    __tablename__ = "finance_zero_hour_invoices"
+    id=Column(Integer,primary_key=True); zero_hour_labor_id=Column(Integer,ForeignKey("zero_hour_labor.id",ondelete="CASCADE"),nullable=False,index=True)
+    invoice_date=Column(Date,nullable=False); invoice_number=Column(String(100),nullable=False); amount=Column(Numeric(15,2),nullable=False); tax_amount=Column(Numeric(15,2),default=0); supplier=Column(String(200)); file_path=Column(String(500)); file_key=Column(String(500)); status=Column(String(30),default="active"); source_import_item_id=Column(Integer,ForeignKey("invoice_import_items.id"),nullable=True); created_by=Column(Integer,ForeignKey("users.id")); created_at=Column(DateTime(timezone=True),server_default=func.now())
+    zero_hour_labor=relationship("ZeroHourLabor",back_populates="invoices")
+
+class ZeroHourLaborPayment(Base):
+    __tablename__ = "finance_zero_hour_payments"
+    id=Column(Integer,primary_key=True); zero_hour_labor_id=Column(Integer,ForeignKey("zero_hour_labor.id",ondelete="CASCADE"),nullable=False,index=True)
+    payment_date=Column(Date,nullable=False); amount=Column(Numeric(15,2),nullable=False); payee_name=Column(String(200)); payee_account=Column(String(100)); payee_bank=Column(String(200)); payment_method=Column(String(50)); file_path=Column(String(500)); file_key=Column(String(500)); status=Column(String(30),default="active"); source_bank_receipt_item_id=Column(Integer,ForeignKey("bank_receipt_items.id"),nullable=True); created_by=Column(Integer,ForeignKey("users.id")); created_at=Column(DateTime(timezone=True),server_default=func.now())
+    zero_hour_labor=relationship("ZeroHourLabor",back_populates="payments")

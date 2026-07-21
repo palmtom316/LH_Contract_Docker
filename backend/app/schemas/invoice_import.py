@@ -31,6 +31,7 @@ class AllocationCreate(BaseModel):
     direction: InvoiceDirection
     upstream_contract_id: Optional[int] = Field(None, gt=0)
     downstream_contract_id: Optional[int] = Field(None, gt=0)
+    management_contract_id: Optional[int] = Field(None, gt=0)
     amount: Decimal = Field(..., gt=0)
     tax_amount: Optional[Decimal] = Field(None, ge=0)
     description: Optional[str] = Field(None, max_length=300)
@@ -41,8 +42,8 @@ class AllocationCreate(BaseModel):
             if not self.upstream_contract_id or self.downstream_contract_id:
                 raise ValueError("上游分摊必须且只能选择上游合同")
         if self.direction == InvoiceDirection.DOWNSTREAM:
-            if not self.downstream_contract_id or self.upstream_contract_id:
-                raise ValueError("下游分摊必须且只能选择下游合同")
+            if bool(self.downstream_contract_id) == bool(self.management_contract_id) or self.upstream_contract_id:
+                raise ValueError("进项发票分摊必须选择下游或管理合同之一")
         if self.direction == InvoiceDirection.UNKNOWN:
             raise ValueError("分摊方向必须为上游或下游")
         return self
@@ -52,6 +53,7 @@ class AllocationUpdate(BaseModel):
     direction: Optional[InvoiceDirection] = None
     upstream_contract_id: Optional[int] = Field(None, gt=0)
     downstream_contract_id: Optional[int] = Field(None, gt=0)
+    management_contract_id: Optional[int] = Field(None, gt=0)
     amount: Optional[Decimal] = Field(None, gt=0)
     tax_amount: Optional[Decimal] = Field(None, ge=0)
     description: Optional[str] = Field(None, max_length=300)
@@ -68,6 +70,7 @@ class MatchCandidateResponse(BaseModel):
     direction: InvoiceDirection
     upstream_contract_id: Optional[int] = None
     downstream_contract_id: Optional[int] = None
+    management_contract_id: Optional[int] = None
     score: int
     matched_signals: Dict[str, Any]
     contract_serial_number: Optional[int] = None
@@ -120,6 +123,9 @@ class ImportItemResponse(BaseModel):
     confirmation_status: str
     error_code: Optional[str] = None
     error_message: Optional[str] = None
+    ignored_reason: Optional[str] = None
+    clear_reason: Optional[str] = None
+    posting_version: int = 0
     allocations: List[AllocationResponse] = []
     candidates: List[MatchCandidateResponse] = []
 
@@ -151,3 +157,6 @@ class ConfirmItemRequest(BaseModel):
 
 class IgnoreItemRequest(BaseModel):
     reason: str = Field(..., min_length=2, max_length=300)
+
+class ClearInvoiceRequest(IgnoreItemRequest):
+    pass

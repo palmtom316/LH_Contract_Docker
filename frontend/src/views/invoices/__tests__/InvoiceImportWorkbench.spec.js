@@ -52,7 +52,7 @@ describe('InvoiceImportWorkbench', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    expect(wrapper.text()).toContain('电子发票导入')
+    expect(wrapper.text()).toContain('发票及回单')
     expect(wrapper.text()).toContain('INVIMP-202607080001')
     expect(wrapper.text()).toContain('上传压缩包')
     expect(wrapper.text()).toContain('刷新')

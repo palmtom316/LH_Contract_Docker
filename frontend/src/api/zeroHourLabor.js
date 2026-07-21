@@ -39,3 +39,8 @@ export function exportZeroHourLabor(params) {
         responseType: 'blob'
     })
 }
+export const getZeroHourLaborDetail = id => request.get(`/zero-hour-labor/${id}/detail`)
+export const createZeroHourFinance = (id,kind,data) => request.post(`/zero-hour-labor/${id}/${kind}`,data)
+export const updateZeroHourFinance = (id,kind,recordId,data) => request.put(`/zero-hour-labor/${id}/finance/${kind}/${recordId}`,data)
+export const deleteZeroHourFinance = (id,kind,recordId) => request.delete(`/zero-hour-labor/${id}/finance/${kind}/${recordId}`)
+export const fetchZeroHourFinanceFile = key => request.get(`/common/files/${key}`, { responseType: 'blob' })

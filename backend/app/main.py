@@ -103,7 +103,7 @@ async def app_exception_handler(request: Request, exc: AppException):
     )
 
 # Routers
-from app.routers import auth, users, contracts_upstream, contracts_downstream, contract_management, expenses, common, dashboard, reports, audit, system, health, invoice_imports
+from app.routers import auth, users, contracts_upstream, contracts_downstream, contract_management, expenses, common, dashboard, reports, audit, system, health, invoice_imports, bank_receipts
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
@@ -118,6 +118,7 @@ app.include_router(audit.router, prefix="/api/v1/audit", tags=["Audit Logs"])
 app.include_router(system.router, prefix="/api/v1/system", tags=["System Management"])
 app.include_router(health.router, tags=["Health"])
 app.include_router(invoice_imports.router, prefix="/api/v1/invoice-imports", tags=["Invoice Imports"])
+app.include_router(bank_receipts.router, prefix="/api/v1/bank-receipts", tags=["Bank Receipts"])
 
 # New Router
 from app.routers import zero_hour_labor

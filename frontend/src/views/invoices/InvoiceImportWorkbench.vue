@@ -1,6 +1,14 @@
 <template>
   <div class="invoice-import-workbench">
-    <AppPageHeader title="电子发票导入" description="上传发票压缩包，解析后确认挂账" />
+    <AppPageHeader title="发票及回单" description="识别、复核、分摊后再确认正式财务记录" />
+    <el-tabs v-model="activeTab" class="workspace-tabs">
+      <el-tab-pane label="发票识别入账" name="invoice" />
+      <el-tab-pane label="回单识别入账" name="receipt" lazy>
+        <BankReceiptWorkbench />
+      </el-tab-pane>
+    </el-tabs>
+
+    <template v-if="activeTab === 'invoice'">
 
     <AppWorkspacePanel>
       <div class="workbench-toolbar">
@@ -100,6 +108,9 @@
               :disabled="item.confirmation_status === 'confirmed'"
               @click="handleConfirm(item)"
             >确认挂账</el-button>
+            <el-button v-if="item.confirmation_status === 'draft' && item.parse_status !== 'failed'" @click="ignore(item)">忽略</el-button>
+            <el-button v-if="item.confirmation_status === 'confirmed'" type="danger" plain @click="clear(item)">清除挂账</el-button>
+            <el-button v-if="item.parse_status === 'failed' && item.confirmation_status === 'draft'" type="danger" plain @click="deleteFailed(item)">删除失败文件</el-button>
           </footer>
         </article>
       </div>
@@ -112,6 +123,12 @@
           <el-radio-group v-model="allocationForm.direction" @change="handleDirectionChange">
             <el-radio-button value="upstream">上游</el-radio-button>
             <el-radio-button value="downstream">下游</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="allocationForm.direction === 'downstream'" label="合同类型">
+          <el-radio-group v-model="allocationForm.contract_type" @change="handleDirectionChange">
+            <el-radio-button value="downstream">下游合同</el-radio-button>
+            <el-radio-button value="management">管理合同</el-radio-button>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="关联合同">
@@ -157,6 +174,7 @@
         <el-button type="primary" @click="saveAllocation">保存</el-button>
       </template>
     </el-dialog>
+    </template>
   </div>
 </template>
 
@@ -165,11 +183,14 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AppPageHeader from '@/components/ui/AppPageHeader.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
-import { confirmItem, createAllocation, deleteBatch, listBatchItems, listBatches, uploadBatch } from '@/api/invoiceImport'
+import BankReceiptWorkbench from './BankReceiptWorkbench.vue'
+import { clearInvoiceItem, confirmItem, createAllocation, deleteBatch, deleteFailedInvoiceItem, ignoreInvoiceItem, listBatchItems, listBatches, uploadBatch } from '@/api/invoiceImport'
 import { getContracts as getUpstreamContracts } from '@/api/contractUpstream'
 import { getContracts as getDownstreamContracts } from '@/api/contractDownstream'
+import { getContracts as getManagementContracts } from '@/api/contractManagement'
 
 const batches = ref([])
+const activeTab = ref('invoice')
 const selectedBatch = ref(null)
 const selectedItem = ref(null)
 const items = ref([])
@@ -177,8 +198,10 @@ const itemDrawerVisible = ref(false)
 const allocationDialogVisible = ref(false)
 const contractLoading = ref(false)
 const contractOptions = ref([])
+let contractSearchTimer
 const allocationForm = reactive({
   direction: 'upstream',
+  contract_type: 'downstream',
   contract_id: null,
   amount: 0.01,
   description: ''
@@ -223,16 +246,12 @@ async function handleDeleteBatch(row) {
 async function openAllocation(row) {
   selectedItem.value = row
   allocationForm.direction = row.direction === 'downstream' ? 'downstream' : 'upstream'
+  allocationForm.contract_type = 'downstream'
   allocationForm.contract_id = null
   allocationForm.amount = Number(row.total_amount || 0)
   allocationForm.description = row.construction_project_name || row.project_name || row.remarks || ''
   allocationDialogVisible.value = true
-  contractOptions.value = candidateOptions.value.map((candidate) => ({
-    id: candidate.contractId,
-    serial_number: candidate.contract_serial_number,
-    contract_code: candidate.contract_code,
-    contract_name: candidate.contract_name,
-  }))
+  contractOptions.value = recommendedContracts()
   allocationForm.contract_id = candidateOptions.value[0]?.contractId || null
 }
 
@@ -252,6 +271,21 @@ function contractOptionLabel(contract) {
 
 function candidateLabel(candidate) {
   return `[${candidate.contract_serial_number || '-'}] ${candidate.contract_name || '候选合同'}`
+}
+
+function recommendedContracts() {
+  return candidateOptions.value.map((candidate) => ({
+    id: candidate.contractId,
+    serial_number: candidate.contract_serial_number,
+    contract_code: candidate.contract_code,
+    contract_name: candidate.contract_name,
+  }))
+}
+
+function mergeContractOptions(...groups) {
+  const merged = new Map()
+  groups.flat().filter(Boolean).forEach((contract) => merged.set(contract.id, contract))
+  return [...merged.values()].slice(0, 20)
 }
 
 function formatAmount(value) {
@@ -288,28 +322,34 @@ function confirmationStatusLabel(status) {
 
 function handleDirectionChange() {
   allocationForm.contract_id = null
-  contractOptions.value = []
+  if (allocationForm.direction === 'upstream') allocationForm.contract_type = 'upstream'
+  contractOptions.value = recommendedContracts()
 }
 
 function selectCandidate(candidate) {
   allocationForm.contract_id = candidate.contractId
 }
 
-async function searchContracts(query) {
+function searchContracts(query) {
+  window.clearTimeout(contractSearchTimer)
   if (!query) {
-    contractOptions.value = []
+    const selected = contractOptions.value.find((contract) => contract.id === allocationForm.contract_id)
+    contractOptions.value = mergeContractOptions(recommendedContracts(), selected)
     return
   }
-  contractLoading.value = true
-  try {
-    const loader = allocationForm.direction === 'upstream'
-      ? getUpstreamContracts
-      : getDownstreamContracts
-    const response = await loader({ keyword: query, page: 1, page_size: 20 })
-    contractOptions.value = response.items || []
-  } finally {
-    contractLoading.value = false
-  }
+  contractSearchTimer = window.setTimeout(async () => {
+    contractLoading.value = true
+    try {
+      const loader = allocationForm.direction === 'upstream'
+        ? getUpstreamContracts
+        : allocationForm.contract_type === 'management' ? getManagementContracts : getDownstreamContracts
+      const response = await loader({ keyword: query, page: 1, page_size: 20 })
+      const selected = contractOptions.value.find((contract) => contract.id === allocationForm.contract_id)
+      contractOptions.value = mergeContractOptions(recommendedContracts(), selected, response.items || [])
+    } finally {
+      contractLoading.value = false
+    }
+  }, 300)
 }
 
 async function saveAllocation() {
@@ -326,7 +366,7 @@ async function saveAllocation() {
   if (allocationForm.direction === 'upstream') {
     data.upstream_contract_id = allocationForm.contract_id
   } else {
-    data.downstream_contract_id = allocationForm.contract_id
+    data[allocationForm.contract_type === 'management' ? 'management_contract_id' : 'downstream_contract_id'] = allocationForm.contract_id
   }
   await createAllocation(selectedItem.value.id, data)
   ElMessage.success('分摊已保存')
@@ -343,6 +383,10 @@ async function handleConfirm(row) {
     items.value = await listBatchItems(selectedBatch.value.id)
   }
 }
+async function refreshItems() { if (selectedBatch.value) items.value = await listBatchItems(selectedBatch.value.id) }
+async function ignore(row) { try { const result=await ElMessageBox.prompt('请输入忽略原因','忽略发票',{inputValidator:value=>value?.length>1}); await ignoreInvoiceItem(row.id,result.value); ElMessage.success('发票已忽略'); await refreshItems() } catch {} }
+async function clear(row) { try { const result=await ElMessageBox.prompt('请输入清除原因','清除挂账',{inputValidator:value=>value?.length>1}); await clearInvoiceItem(row.id,result.value); ElMessage.success('已清除挂账，可重新分摊'); await refreshItems() } catch {} }
+async function deleteFailed(row) { try { await ElMessageBox.confirm('仅删除识别失败且未入账的源文件。确定继续？','删除失败文件',{type:'warning'}); await deleteFailedInvoiceItem(row.id); ElMessage.success('失败文件已删除'); await refreshItems() } catch {} }
 
 onMounted(loadBatches)
 </script>
@@ -503,14 +547,12 @@ onMounted(loadBatches)
   margin: 4px 20px 16px;
   padding: 13px 15px;
   border: 1px solid var(--el-color-success-light-7);
-  border-left: 4px solid var(--el-color-success);
   border-radius: 6px;
   background: var(--el-color-success-light-9);
 }
 
 .invoice-match-panel.is-empty {
   border-color: var(--el-color-warning-light-7);
-  border-left-color: var(--el-color-warning);
   background: var(--el-color-warning-light-9);
 }
 

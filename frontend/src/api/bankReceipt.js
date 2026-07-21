@@ -1,0 +1,13 @@
+import request from '@/utils/request'
+export const listReceiptBatches = () => request.get('/bank-receipts/batches')
+export const listReceiptItems = (id) => request.get(`/bank-receipts/batches/${id}/items`)
+export const uploadReceipt = (file) => { const form = new FormData(); form.append('file', file); return request.post('/bank-receipts/batches', form) }
+export const createReceiptAllocation = (id, data) => request.post(`/bank-receipts/items/${id}/allocations`, data)
+export const confirmReceipt = (id) => request.post(`/bank-receipts/items/${id}/confirm`)
+export const clearReceipt = (id, reason) => request.post(`/bank-receipts/items/${id}/clear`, { reason })
+export const searchReceiptContracts = (q, direction) => request.get('/bank-receipts/contracts/search', { params: { q, direction } })
+export const reviewReceipt = (id, data) => request.put(`/bank-receipts/items/${id}`, data)
+export const ignoreReceipt = (id, reason) => request.post(`/bank-receipts/items/${id}/ignore`, { reason })
+export const deleteFailedReceipt = (id) => request.delete(`/bank-receipts/items/${id}`)
+export const fetchReceiptFile = (id) => request.get(`/bank-receipts/items/${id}/file`, { responseType: 'blob' })
+export const retryReceipt = id => request.post(`/bank-receipts/items/${id}/retry`)

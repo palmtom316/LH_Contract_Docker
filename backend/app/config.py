@@ -159,6 +159,7 @@ class Settings(BaseSettings):
     INVOICE_IMPORT_MAX_ARCHIVE_SIZE: int = int(os.getenv("INVOICE_IMPORT_MAX_ARCHIVE_SIZE", str(200 * 1024 * 1024)))
     INVOICE_IMPORT_MAX_FILE_SIZE: int = int(os.getenv("INVOICE_IMPORT_MAX_FILE_SIZE", str(50 * 1024 * 1024)))
     INVOICE_IMPORT_MAX_FILES: int = int(os.getenv("INVOICE_IMPORT_MAX_FILES", "2000"))
+    CONFIG_ENCRYPTION_KEY: str = os.getenv("CONFIG_ENCRYPTION_KEY", "")
 
     # Admin initialization (production should require a token)
     INIT_ADMIN_TOKEN: str = os.getenv("INIT_ADMIN_TOKEN", "")

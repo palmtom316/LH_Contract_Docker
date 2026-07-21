@@ -59,6 +59,12 @@ export const useSystemStore = defineStore('system', () => {
         system_name: '合同管理系统',
         system_name_line_2: '',
         system_logo: null
+        ,mineru_enabled: false,
+        mineru_api_url: '',
+        mineru_api_key_configured: false,
+        mineru_api_key_masked: '',
+        mineru_timeout_seconds: 60,
+        company_bank_accounts: ''
     })
 
     const dictionaries = ref({}) // key: category, value: Array of options
@@ -129,6 +135,12 @@ export const useSystemStore = defineStore('system', () => {
         } catch (e) {
             console.error('Failed to fetch system config', e)
         }
+    }
+
+    async function fetchAdminConfig() {
+        const res = await request.get('/system/config/admin')
+        config.value = res
+        return res
     }
 
     async function updateConfig(newConfig) {
@@ -263,6 +275,7 @@ export const useSystemStore = defineStore('system', () => {
         removeNotification,
         resetNotificationState,
         fetchConfig,
+        fetchAdminConfig,
         updateConfig,
         fetchOptions,
         fetchAllOptions,

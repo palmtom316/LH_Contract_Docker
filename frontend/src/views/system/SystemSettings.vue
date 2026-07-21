@@ -31,6 +31,20 @@
                 </el-form-item>
             </el-form>
         </AppSectionCard>
+        <AppSectionCard class="system-settings-card mineru-settings">
+          <template #header>银行回单识别（MinerU）</template>
+          <el-form :model="configForm" label-width="120px">
+            <el-form-item label="启用识别"><el-switch v-model="configForm.mineru_enabled" /></el-form-item>
+            <el-form-item label="API 地址"><el-input v-model="configForm.mineru_api_url" placeholder="https://mineru.example.com/api/parse" /></el-form-item>
+            <el-form-item label="API Key">
+              <el-input v-model="configForm.mineru_api_key" type="password" show-password :placeholder="configForm.mineru_api_key_configured ? '已配置；留空保持不变' : '请输入 API Key'" autocomplete="new-password" />
+              <span class="secret-state">{{ configForm.mineru_api_key_configured ? '已配置' : '未配置' }}</span>
+            </el-form-item>
+            <el-form-item label="超时（秒）"><el-input-number v-model="configForm.mineru_timeout_seconds" :min="5" :max="300" /></el-form-item>
+            <el-form-item label="公司银行账号"><el-input v-model="configForm.company_bank_accounts" type="textarea" :rows="2" placeholder="多个账号用英文逗号分隔，用于判断收款或付款方向" /></el-form-item>
+            <el-form-item><el-button @click="testMineru" :loading="testingMineru">测试连接</el-button><span v-if="mineruTestResult" class="connection-result">{{ mineruTestResult }}</span></el-form-item>
+          </el-form>
+        </AppSectionCard>
       </el-tab-pane>
 
       <el-tab-pane label="数据字典" name="dict">
@@ -125,8 +139,16 @@ const systemStore = useSystemStore()
 const configForm = ref({
     system_name: '',
     system_name_line_2: '',
-    system_logo: ''
+    system_logo: '',
+    mineru_enabled: false,
+    mineru_api_url: '',
+    mineru_api_key: '',
+    mineru_api_key_configured: false,
+    mineru_timeout_seconds: 60,
+    company_bank_accounts: ''
 })
+const testingMineru = ref(false)
+const mineruTestResult = ref('')
 // Headers for upload (if Auth needed, add Authorization header here)
 const headers = computed(() => {
     const token = localStorage.getItem('token') // Assuming stored here
@@ -139,10 +161,21 @@ function handleLogoSuccess(res) {
 }
 
 async function saveConfig() {
-    await systemStore.updateConfig(configForm.value)
+    const payload = { ...configForm.value }
+    delete payload.system_logo
+    delete payload.mineru_api_key_configured
+    delete payload.mineru_api_key_masked
+    if (!payload.mineru_api_key) delete payload.mineru_api_key
+    await systemStore.updateConfig(payload)
     ElMessage.success('配置已保存')
     // Maybe refresh page title immediately? 
     document.title = configForm.value.system_name
+}
+
+async function testMineru() {
+    testingMineru.value = true; mineruTestResult.value = ''
+    try { const result = await request.post('/system/config/mineru/test'); mineruTestResult.value = result.message; result.ok ? ElMessage.success(result.message) : ElMessage.warning(result.message) }
+    finally { testingMineru.value = false }
 }
 
 // Dictionary Logic
@@ -272,8 +305,9 @@ async function handleImportDict(options) {
 }
 
 onMounted(async () => {
-    await systemStore.fetchConfig()
+    await (systemStore.fetchAdminConfig || systemStore.fetchConfig)()
     configForm.value = { ...systemStore.config }
+    configForm.value.mineru_api_key = ''
     loadOptions()
 })
 </script>
@@ -299,6 +333,8 @@ onMounted(async () => {
 .upload-inline {
   display: inline-flex;
 }
+.mineru-settings { margin-top: var(--space-4); }
+.secret-state,.connection-result { margin-left: var(--space-3); color: var(--text-secondary); font-size: 13px; }
 
 .dict-layout {
   display: grid;

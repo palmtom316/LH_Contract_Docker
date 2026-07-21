@@ -23,6 +23,10 @@ from app.models.invoice_import import (
 )
 from app.models.user import User, UserRole
 from app.schemas.invoice_import import AllocationCreate, AllocationUpdate, InvoiceDirection
+from app.models.contract_upstream import FinanceUpstreamInvoice
+from app.models.contract_downstream import FinanceDownstreamInvoice
+from app.models.contract_management import FinanceManagementInvoice
+from app.services.audit_service import create_audit_log
 from app.services.invoice_import.archive import ExtractedInvoicePackage, UnsafeArchiveError, extract_invoice_archives
 from app.services.invoice_import.matching import InvoiceMatchService, build_dedupe_key, detect_direction
 from app.services.invoice_import.parser import parse_invoice_xml
@@ -150,6 +154,8 @@ class InvoiceImportService:
 
     async def create_allocation(self, item_id: int, allocation_in: AllocationCreate, user: User) -> InvoiceImportAllocation:
         item = await self._get_item_for_user(item_id, user)
+        if item.confirmation_status not in {"draft", "cleared"}:
+            raise ValidationError(message="当前状态不能修改分摊")
         data = allocation_in.model_dump()
         allocation = InvoiceImportAllocation(item_id=item.id, created_by=user.id, **data)
         self.db.add(allocation)
@@ -172,10 +178,49 @@ class InvoiceImportService:
         update_data = allocation_in.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(allocation, key, value)
-        self._validate_allocation_target(allocation.direction, allocation.upstream_contract_id, allocation.downstream_contract_id)
+        self._validate_allocation_target(allocation.direction, allocation.upstream_contract_id, allocation.downstream_contract_id, allocation.management_contract_id)
         await self.db.commit()
         await self.db.refresh(allocation)
         return allocation
+
+    async def ignore_item(self, item_id: int, reason: str, user: User) -> InvoiceImportItem:
+        item = await self._get_item_for_user(item_id, user)
+        if item.confirmation_status != "draft" or item.parse_status in {"processing", "failed"}:
+            raise ValidationError(message="当前状态不能忽略")
+        item.confirmation_status = "ignored"; item.ignored_reason = reason; item.ignored_by = user.id; item.ignored_at = datetime.utcnow()
+        await create_audit_log(self.db, user, "UPDATE", "发票导入", item.id, description=reason, new_values={"status":"ignored"})
+        await self.db.commit(); return item
+
+    async def clear_posting(self, item_id: int, reason: str, user: User) -> InvoiceImportItem:
+        result = await self.db.execute(select(InvoiceImportItem).options(selectinload(InvoiceImportItem.allocations),selectinload(InvoiceImportItem.batch)).where(InvoiceImportItem.id==item_id).with_for_update())
+        item=result.scalar_one_or_none()
+        if not item: raise ResourceNotFoundError(resource_type="导入发票",resource_id=item_id)
+        if item.confirmation_status == "cleared": return item
+        if item.confirmation_status != "confirmed": raise ValidationError(message="只有已挂账发票可以清除挂账")
+        snapshot=[]
+        for allocation in item.allocations:
+            if allocation.status != "confirmed": continue
+            table=FinanceUpstreamInvoice if allocation.direction=="upstream" else (FinanceDownstreamInvoice if allocation.downstream_contract_id else FinanceManagementInvoice)
+            snapshot.append({"allocation_id":allocation.id,"formal_invoice_id":allocation.formal_invoice_id,"amount":str(allocation.amount)})
+            if allocation.formal_invoice_id:
+                formal=await self.db.get(table,allocation.formal_invoice_id)
+                if formal:
+                    formal.original_amount=formal.amount; formal.amount=0; formal.posting_status="cleared"; formal.cleared_at=datetime.utcnow(); formal.clear_reason=reason
+            allocation.status="cleared"
+        item.confirmation_status="cleared"; item.clear_reason=reason; item.cleared_by=user.id; item.cleared_at=datetime.utcnow()
+        await create_audit_log(self.db,user,"DELETE","发票挂账",item.id,description=reason,old_values={"records":snapshot})
+        await self.db.commit(); return item
+
+    async def delete_failed_item(self, item_id: int, user: User) -> None:
+        item=await self._get_item_for_user(item_id,user)
+        if item.parse_status != "failed" or item.confirmation_status != "draft" or any(a.formal_invoice_id for a in item.allocations):
+            raise ValidationError(message="只有未生成正式记录的失败文件可以删除")
+        keys=[item.pdf_file_key,item.ofd_file_key,item.xml_file_key]
+        try:
+            for key in filter(None,keys): get_minio_client().remove_object(settings.MINIO_BUCKET_CONTRACTS,key)
+        except Exception as exc:
+            item.error_message=f"源文件删除失败，可重试：{type(exc).__name__}";await self.db.commit();raise ValidationError(message="源文件删除失败，数据库记录已保留，请重试")
+        await self.db.delete(item); await create_audit_log(self.db,user,"DELETE","发票失败文件",item_id); await self.db.commit()
 
     async def create_batch_from_upload(self, file: UploadFile, user: User) -> InvoiceImportBatch:
         filename = file.filename or ""
@@ -327,14 +372,14 @@ class InvoiceImportService:
             raise ResourceNotFoundError(resource_type="导入发票", resource_id=item_id)
         return item
 
-    def _validate_allocation_target(self, direction: str, upstream_contract_id: int | None, downstream_contract_id: int | None) -> None:
+    def _validate_allocation_target(self, direction: str, upstream_contract_id: int | None, downstream_contract_id: int | None, management_contract_id: int | None = None) -> None:
         if direction == InvoiceDirection.UPSTREAM or direction == "upstream":
-            if not upstream_contract_id or downstream_contract_id:
+            if not upstream_contract_id or downstream_contract_id or management_contract_id:
                 raise ValidationError(message="上游分摊必须且只能选择上游合同", field_errors={"upstream_contract_id": "请选择上游合同"})
             return
         if direction == InvoiceDirection.DOWNSTREAM or direction == "downstream":
-            if not downstream_contract_id or upstream_contract_id:
-                raise ValidationError(message="下游分摊必须且只能选择下游合同", field_errors={"downstream_contract_id": "请选择下游合同"})
+            if bool(downstream_contract_id) == bool(management_contract_id) or upstream_contract_id:
+                raise ValidationError(message="进项发票分摊目标无效", field_errors={"downstream_contract_id": "请选择下游或管理合同之一"})
             return
         raise ValidationError(message="分摊方向必须为上游或下游", field_errors={"direction": "分摊方向无效"})
 

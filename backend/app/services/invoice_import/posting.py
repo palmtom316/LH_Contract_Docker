@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 from app.core.errors import ResourceNotFoundError, ValidationError
 from app.models.contract_downstream import FinanceDownstreamInvoice
 from app.models.contract_upstream import FinanceUpstreamInvoice
+from app.models.contract_management import FinanceManagementInvoice
 from app.models.invoice_import import InvoiceImportAllocation, InvoiceImportItem, InvoiceImportMatchCandidate
 from app.models.user import User, UserRole
 
@@ -22,8 +23,8 @@ def validate_allocation_total(invoice_total: Decimal | None, allocation_amounts:
         raise ValidationError(message="分摊金额必须大于 0", field_errors={"amount": "分摊金额必须大于 0"})
     if invoice_total is None:
         raise ValidationError(message="发票价税合计缺失，不能确认", field_errors={"total_amount": "发票价税合计缺失"})
-    if total > invoice_total:
-        raise ValidationError(message="分摊金额超过发票价税合计", field_errors={"amount": "分摊金额超过发票价税合计"})
+    if total.quantize(Decimal("0.01")) != invoice_total.quantize(Decimal("0.01")):
+        raise ValidationError(message="分摊金额合计必须等于发票价税合计", field_errors={"amount": "分摊金额必须精确等于发票价税合计"})
 
 
 def _can_access_imports(user: User) -> bool:
@@ -58,8 +59,8 @@ def _validate_allocation(allocation: InvoiceImportAllocation) -> None:
             raise ValidationError(message="上游分摊必须且只能选择上游合同", field_errors={"upstream_contract_id": "请选择上游合同"})
         return
     if allocation.direction == "downstream":
-        if not allocation.downstream_contract_id or allocation.upstream_contract_id:
-            raise ValidationError(message="下游分摊必须且只能选择下游合同", field_errors={"downstream_contract_id": "请选择下游合同"})
+        if bool(allocation.downstream_contract_id) == bool(allocation.management_contract_id) or allocation.upstream_contract_id:
+            raise ValidationError(message="进项发票分摊必须选择下游或管理合同之一", field_errors={"downstream_contract_id": "请选择一个目标合同"})
         return
     raise ValidationError(message="分摊方向必须为上游或下游", field_errors={"direction": "分摊方向无效"})
 
@@ -99,7 +100,9 @@ class InvoicePostingService:
         _validate_item_before_posting(item)
         for allocation in draft_allocations:
             _validate_allocation(allocation)
-        validate_allocation_total(item.total_amount, [a.amount for a in item.allocations if a.status in {"draft", "confirmed"}])
+        # A cleared import keeps its former allocations and formal-record links for audit.
+        # Only the new draft version participates when the document is reposted.
+        validate_allocation_total(item.total_amount, [a.amount for a in draft_allocations])
 
         file_path, file_key = _invoice_file_fields(item)
         now = datetime.utcnow()
@@ -122,9 +125,28 @@ class InvoicePostingService:
                     created_by=user.id,
                     updated_by=user.id,
                 )
-            else:
+            elif allocation.downstream_contract_id:
                 formal = FinanceDownstreamInvoice(
                     contract_id=allocation.downstream_contract_id,
+                    invoice_number=item.invoice_number,
+                    invoice_date=item.invoice_date,
+                    amount=allocation.amount,
+                    tax_rate=item.tax_rate,
+                    tax_amount=allocation.tax_amount,
+                    invoice_type=item.invoice_type,
+                    supplier_name=item.seller_name,
+                    description=allocation.description or item.remarks,
+                    file_path=file_path,
+                    file_key=file_key,
+                    storage_provider="minio" if file_key else "local",
+                    source_import_item_id=item.id,
+                    source_import_allocation_id=allocation.id,
+                    created_by=user.id,
+                    updated_by=user.id,
+                )
+            else:
+                formal = FinanceManagementInvoice(
+                    contract_id=allocation.management_contract_id,
                     invoice_number=item.invoice_number,
                     invoice_date=item.invoice_date,
                     amount=allocation.amount,
@@ -149,6 +171,7 @@ class InvoicePostingService:
             allocation.formal_invoice_id = formal.id
 
         item.confirmation_status = "confirmed"
+        item.posting_version = (item.posting_version or 0) + 1
         await self.db.commit()
         candidate_contracts = selectinload(InvoiceImportItem.candidates)
         result = await self.db.execute(

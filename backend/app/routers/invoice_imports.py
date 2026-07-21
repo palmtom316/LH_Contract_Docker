@@ -11,6 +11,8 @@ from app.schemas.invoice_import import (
     AllocationUpdate,
     BatchResponse,
     ConfirmItemRequest,
+    IgnoreItemRequest,
+    ClearInvoiceRequest,
     ImportItemResponse,
 )
 from app.services.invoice_import.posting import InvoicePostingService
@@ -104,3 +106,15 @@ async def confirm_item(
     db: AsyncSession = Depends(get_db),
 ):
     return await InvoicePostingService(db).confirm_item(item_id, current_user, request.override_duplicate)
+
+@router.post("/items/{item_id}/ignore", response_model=ImportItemResponse)
+async def ignore_item(item_id:int, request:IgnoreItemRequest, current_user:User=Depends(require_permission(Permission.EDIT_INVOICES)), service:InvoiceImportService=Depends(get_import_service)):
+    return await service.ignore_item(item_id,request.reason,current_user)
+
+@router.post("/items/{item_id}/clear", response_model=ImportItemResponse)
+async def clear_item(item_id:int, request:ClearInvoiceRequest, current_user:User=Depends(require_permission(Permission.DELETE_INVOICES)), service:InvoiceImportService=Depends(get_import_service)):
+    return await service.clear_posting(item_id,request.reason,current_user)
+
+@router.delete("/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_failed_item(item_id:int,current_user:User=Depends(require_permission(Permission.DELETE_INVOICES)),service:InvoiceImportService=Depends(get_import_service)):
+    await service.delete_failed_item(item_id,current_user); return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -45,6 +45,8 @@ from app.models.invoice_import import (
     InvoiceImportItem,
     InvoiceImportMatchCandidate,
 )
+from app.models.bank_receipt import BankReceiptBatch, BankReceiptItem, BankReceiptAllocation, BankReceiptMatchCandidate
+from app.models.zero_hour_labor import ZeroHourLabor, ZeroHourLaborMaterial, ZeroHourLaborPayable, ZeroHourLaborInvoice, ZeroHourLaborPayment
 
 __all__ = [
     # User
@@ -88,6 +90,7 @@ __all__ = [
     "InvoiceImportBatch",
     "InvoiceImportItem",
     "InvoiceImportAllocation",
-    "InvoiceImportMatchCandidate"
+    "InvoiceImportMatchCandidate",
+    "BankReceiptBatch", "BankReceiptItem", "BankReceiptAllocation", "BankReceiptMatchCandidate",
+    "ZeroHourLabor", "ZeroHourLaborMaterial", "ZeroHourLaborPayable", "ZeroHourLaborInvoice", "ZeroHourLaborPayment"
 ]
-

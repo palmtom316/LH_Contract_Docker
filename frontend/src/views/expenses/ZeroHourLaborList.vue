@@ -89,6 +89,7 @@
               <el-button v-if="row.dispatch_file_path" link type="primary" size="small" :icon="Document" @click="viewFile(row.dispatch_file_path)">派工单</el-button>
             </div>
             <div class="labor-card__links">
+              <el-button link type="primary" size="small" @click="viewDetail(row)">查看详情</el-button>
               <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
               <el-button link type="danger" size="small" @click="handleDelete(row)">删除</el-button>
             </div>
@@ -167,8 +168,9 @@
             </template>
         </el-table-column>
         
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="220" fixed="right">
             <template #default="{ row }">
+                <el-button link type="primary" size="small" @click="viewDetail(row)">查看详情</el-button>
                 <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
                 <el-button link type="danger" size="small" @click="handleDelete(row)">删除</el-button>
             </template>
@@ -420,7 +422,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { getZeroHourLaborList, createZeroHourLabor, updateZeroHourLabor, deleteZeroHourLabor, exportZeroHourLabor } from '@/api/zeroHourLabor'
 import { getContracts } from '@/api/contractUpstream'
 import { formatMoney } from '@/utils/common'
@@ -438,6 +440,8 @@ import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 
 const { isMobile } = useMobileDetection()
 const route = useRoute()
+const router = useRouter()
+const viewDetail = row => router.push(`/expenses/zero-hour-labor/${row.id}`)
 
 const loading = ref(false)
 const exporting = ref(false)
