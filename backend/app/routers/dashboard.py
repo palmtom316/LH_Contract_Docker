@@ -53,7 +53,8 @@ async def get_dashboard_stats(
     # Annual Receipts (received in current year)
     res_receipts_annual = await db.execute(
         select(func.sum(FinanceUpstreamReceipt.amount)).where(
-            cast(extract('year', FinanceUpstreamReceipt.receipt_date), Integer) == current_year
+            cast(extract('year', FinanceUpstreamReceipt.receipt_date), Integer) == current_year,
+            FinanceUpstreamReceipt.posting_status == "active",
         )
     )
     annual_receipts_amount = res_receipts_annual.scalar() or 0
@@ -61,14 +62,16 @@ async def get_dashboard_stats(
     # Annual Payments (paid in current year)
     res_paid_down_annual = await db.execute(
         select(func.sum(FinanceDownstreamPayment.amount)).where(
-            cast(extract('year', FinanceDownstreamPayment.payment_date), Integer) == current_year
+            cast(extract('year', FinanceDownstreamPayment.payment_date), Integer) == current_year,
+            FinanceDownstreamPayment.posting_status == "active",
         )
     )
     annual_paid_down = res_paid_down_annual.scalar() or 0
     
     res_paid_mgmt_annual = await db.execute(
         select(func.sum(FinanceManagementPayment.amount)).where(
-            cast(extract('year', FinanceManagementPayment.payment_date), Integer) == current_year
+            cast(extract('year', FinanceManagementPayment.payment_date), Integer) == current_year,
+            FinanceManagementPayment.posting_status == "active",
         )
     )
     annual_paid_mgmt = res_paid_mgmt_annual.scalar() or 0
@@ -189,7 +192,8 @@ async def get_period_stats(
         res_receipts = await db.execute(
             select(func.coalesce(func.sum(FinanceUpstreamReceipt.amount), 0)).where(
                 FinanceUpstreamReceipt.receipt_date >= start_date,
-                FinanceUpstreamReceipt.receipt_date <= end_date
+                FinanceUpstreamReceipt.receipt_date <= end_date,
+                FinanceUpstreamReceipt.posting_status == "active"
             )
         )
         receipts_amount = float(res_receipts.scalar() or 0)
@@ -226,7 +230,8 @@ async def get_period_stats(
         res_downstream_payment = await db.execute(
             select(func.coalesce(func.sum(FinanceDownstreamPayment.amount), 0)).where(
                 FinanceDownstreamPayment.payment_date >= start_date,
-                FinanceDownstreamPayment.payment_date <= end_date
+                FinanceDownstreamPayment.payment_date <= end_date,
+                FinanceDownstreamPayment.posting_status == "active"
             )
         )
         downstream_payment = float(res_downstream_payment.scalar() or 0)
@@ -234,7 +239,8 @@ async def get_period_stats(
         res_management_payment = await db.execute(
             select(func.coalesce(func.sum(FinanceManagementPayment.amount), 0)).where(
                 FinanceManagementPayment.payment_date >= start_date,
-                FinanceManagementPayment.payment_date <= end_date
+                FinanceManagementPayment.payment_date <= end_date,
+                FinanceManagementPayment.posting_status == "active"
             )
         )
         management_payment = float(res_management_payment.scalar() or 0)
@@ -314,7 +320,8 @@ async def get_period_trend(
         func.sum(FinanceUpstreamReceipt.amount)
     ).where(
         FinanceUpstreamReceipt.receipt_date >= start_date,
-        FinanceUpstreamReceipt.receipt_date <= end_date
+        FinanceUpstreamReceipt.receipt_date <= end_date,
+        FinanceUpstreamReceipt.posting_status == "active"
     ).group_by(FinanceUpstreamReceipt.receipt_date)
     
     income_res = await db.execute(stmt_income)
@@ -347,7 +354,8 @@ async def get_period_trend(
         func.sum(FinanceDownstreamPayment.amount)
     ).where(
         FinanceDownstreamPayment.payment_date >= start_date,
-        FinanceDownstreamPayment.payment_date <= end_date
+        FinanceDownstreamPayment.payment_date <= end_date,
+        FinanceDownstreamPayment.posting_status == "active"
     ).group_by(FinanceDownstreamPayment.payment_date), downstream_map)
     
     # Management Payment
@@ -356,7 +364,8 @@ async def get_period_trend(
         func.sum(FinanceManagementPayment.amount)
     ).where(
         FinanceManagementPayment.payment_date >= start_date,
-        FinanceManagementPayment.payment_date <= end_date
+        FinanceManagementPayment.payment_date <= end_date,
+        FinanceManagementPayment.posting_status == "active"
     ).group_by(FinanceManagementPayment.payment_date), management_map)
     
     # Non-Contract Expense

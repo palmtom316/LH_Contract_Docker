@@ -247,8 +247,8 @@ def _build_comprehensive_row(
         "结算办结时间": settlement.settlement_date if settlement else None,
         "结算金额": float(settlement.settlement_amount or 0) if settlement else 0,
         "累计应收款": sum(float(item.amount or 0) for item in contract.receivables),
-        "累计挂账金额": sum(float(item.amount or 0) for item in contract.invoices),
-        "累计付款金额": sum(float(item.amount or 0) for item in contract.receipts),
+        "累计挂账金额": sum(float(item.amount or 0) for item in contract.invoices if item.posting_status == "active"),
+        "累计付款金额": sum(float(item.amount or 0) for item in contract.receipts if item.posting_status == "active"),
         "关联下游合同结算金额合计": downstream_totals["settlement"],
         "关联下游合同应付款合计": downstream_totals["payable"],
         "关联下游合同已付款合计": downstream_totals["paid"],
@@ -425,9 +425,9 @@ def _build_upstream_invoice_receipt_comprehensive_row(
         "合同结算时间": settlement.settlement_date if settlement else None,
         "合同结算金额": float(settlement.settlement_amount or 0) if settlement else 0,
         "合同挂账日期": _format_date_list(invoices, "invoice_date"),
-        "合同挂账金额": sum(float(item.amount or 0) for item in invoices),
+        "合同挂账金额": sum(float(item.amount or 0) for item in invoices if item.posting_status == "active"),
         "合同收款日期": _format_date_list(receipts, "receipt_date"),
-        "合同收款金额": sum(float(item.amount or 0) for item in receipts),
+        "合同收款金额": sum(float(item.amount or 0) for item in receipts if item.posting_status == "active"),
     }
 
 
@@ -563,13 +563,13 @@ async def export_comprehensive_report(
     
     stmt_down_pay = select(ContractDownstream.upstream_contract_id, func.sum(FinanceDownstreamInvoice.amount))\
         .join(FinanceDownstreamInvoice, FinanceDownstreamInvoice.contract_id == ContractDownstream.id)\
-        .where(ContractDownstream.upstream_contract_id.in_(upstream_ids))\
+        .where(ContractDownstream.upstream_contract_id.in_(upstream_ids), FinanceDownstreamInvoice.posting_status == "active")\
         .group_by(ContractDownstream.upstream_contract_id)
     map_down_pay = await get_agg(stmt_down_pay)
     
     stmt_down_paid = select(ContractDownstream.upstream_contract_id, func.sum(FinanceDownstreamPayment.amount))\
         .join(FinanceDownstreamPayment, FinanceDownstreamPayment.contract_id == ContractDownstream.id)\
-        .where(ContractDownstream.upstream_contract_id.in_(upstream_ids))\
+        .where(ContractDownstream.upstream_contract_id.in_(upstream_ids), FinanceDownstreamPayment.posting_status == "active")\
         .group_by(ContractDownstream.upstream_contract_id)
     map_down_paid = await get_agg(stmt_down_paid)
 
@@ -582,13 +582,13 @@ async def export_comprehensive_report(
     
     stmt_mgmt_pay = select(ContractManagement.upstream_contract_id, func.sum(FinanceManagementInvoice.amount))\
         .join(FinanceManagementInvoice, FinanceManagementInvoice.contract_id == ContractManagement.id)\
-        .where(ContractManagement.upstream_contract_id.in_(upstream_ids))\
+        .where(ContractManagement.upstream_contract_id.in_(upstream_ids), FinanceManagementInvoice.posting_status == "active")\
         .group_by(ContractManagement.upstream_contract_id)
     map_mgmt_pay = await get_agg(stmt_mgmt_pay)
     
     stmt_mgmt_paid = select(ContractManagement.upstream_contract_id, func.sum(FinanceManagementPayment.amount))\
         .join(FinanceManagementPayment, FinanceManagementPayment.contract_id == ContractManagement.id)\
-        .where(ContractManagement.upstream_contract_id.in_(upstream_ids))\
+        .where(ContractManagement.upstream_contract_id.in_(upstream_ids), FinanceManagementPayment.posting_status == "active")\
         .group_by(ContractManagement.upstream_contract_id)
     map_mgmt_paid = await get_agg(stmt_mgmt_paid)
 
@@ -1212,7 +1212,7 @@ async def export_association_report(
             up_settle_amount = float(latest.settlement_amount or 0)
             up_completion_date = latest.completion_date
              
-        up_received = sum(float(r.amount or 0) for r in up.receipts)
+        up_received = sum(float(r.amount or 0) for r in up.receipts if r.posting_status == "active")
         base_info = _build_association_base_info(
             up,
             up_completion_date=up_completion_date,
@@ -1240,7 +1240,7 @@ async def export_association_report(
             st_amt = 0.0
             if d.settlements:
                 st_amt = float(d.settlements[0].settlement_amount or 0)
-            pd_amt = sum(float(p.amount or 0) for p in d.payments)
+            pd_amt = sum(float(p.amount or 0) for p in d.payments if p.posting_status == "active")
             assoc_list.append({
                 "type": "下游合同", "serial": d.serial_number, "name": d.contract_name,
                 "amount": float(d.contract_amount or 0), "settle": st_amt, "paid": pd_amt
@@ -1250,7 +1250,7 @@ async def export_association_report(
             st_amt = 0.0
             if m.settlements:
                 st_amt = float(m.settlements[0].settlement_amount or 0)
-            pd_amt = sum(float(p.amount or 0) for p in m.payments)
+            pd_amt = sum(float(p.amount or 0) for p in m.payments if p.posting_status == "active")
             assoc_list.append({
                 "type": "管理合同", "serial": m.serial_number, "name": m.contract_name,
                 "amount": float(m.contract_amount or 0), "settle": st_amt, "paid": pd_amt

@@ -4,7 +4,7 @@ from app.core.errors import ValidationError
 from app.database import Base
 from app.schemas.bank_receipt import ReceiptAllocationCreate
 from datetime import datetime
-from app.services.bank_receipt import _json_safe, chinese_money_to_decimal, determine_direction, parse_receipt_text, validate_receipt_allocation_total
+from app.services.bank_receipt import _json_safe, chinese_money_to_decimal, determine_direction, parse_receipt_text, validate_receipt_allocation_total, validate_receipt_confirm_state
 
 def test_bank_receipt_and_zero_hour_finance_tables_registered():
     names=set(Base.metadata.tables)
@@ -46,3 +46,13 @@ def test_parsed_receipt_payload_is_json_safe():
 def test_bank_receipt_has_separate_ignore_and_clear_audit_fields():
     columns = Base.metadata.tables["bank_receipt_items"].columns
     assert {"ignored_reason", "ignored_by", "ignored_at", "clear_reason", "cleared_by", "cleared_at"} <= set(columns.keys())
+
+@pytest.mark.parametrize("status", ["uploaded", "processing", "needs_review", "failed", "ignored", "cleared"])
+def test_receipt_confirm_rejects_non_ready_states(status):
+    with pytest.raises(ValidationError):
+        validate_receipt_confirm_state(status, 1)
+
+def test_receipt_confirm_requires_at_least_one_draft_allocation():
+    with pytest.raises(ValidationError):
+        validate_receipt_confirm_state("ready", 0)
+    validate_receipt_confirm_state("ready", 1)

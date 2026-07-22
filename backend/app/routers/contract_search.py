@@ -900,13 +900,13 @@ async def search_contracts(
         invoiced_sum = await _scalar(
             db,
             select(func.coalesce(func.sum(FinanceUpstreamInvoice.amount), 0)).where(
-                FinanceUpstreamInvoice.contract_id.in_(select(upstream_ids_subq.c.id))
+                FinanceUpstreamInvoice.contract_id.in_(select(upstream_ids_subq.c.id)), FinanceUpstreamInvoice.posting_status == "active"
             )
         ) if upstream_ids_subq is not None else 0
         received_sum = await _scalar(
             db,
             select(func.coalesce(func.sum(FinanceUpstreamReceipt.amount), 0)).where(
-                FinanceUpstreamReceipt.contract_id.in_(select(upstream_ids_subq.c.id))
+                FinanceUpstreamReceipt.contract_id.in_(select(upstream_ids_subq.c.id)), FinanceUpstreamReceipt.posting_status == "active"
             )
         ) if upstream_ids_subq is not None else 0
         summary = SearchSummary(
@@ -948,13 +948,13 @@ async def search_contracts(
             down_invoiced_sum = await _scalar(
                 db,
                 select(func.coalesce(func.sum(FinanceDownstreamInvoice.amount), 0)).where(
-                    FinanceDownstreamInvoice.contract_id.in_(select(downstream_ids_subq.c.id))
+                    FinanceDownstreamInvoice.contract_id.in_(select(downstream_ids_subq.c.id)), FinanceDownstreamInvoice.posting_status == "active"
                 )
             )
             down_paid_sum = await _scalar(
                 db,
                 select(func.coalesce(func.sum(FinanceDownstreamPayment.amount), 0)).where(
-                    FinanceDownstreamPayment.contract_id.in_(select(downstream_ids_subq.c.id))
+                    FinanceDownstreamPayment.contract_id.in_(select(downstream_ids_subq.c.id)), FinanceDownstreamPayment.posting_status == "active"
                 )
             )
 
@@ -974,13 +974,13 @@ async def search_contracts(
             mgmt_invoiced_sum = await _scalar(
                 db,
                 select(func.coalesce(func.sum(FinanceManagementInvoice.amount), 0)).where(
-                    FinanceManagementInvoice.contract_id.in_(select(management_ids_subq.c.id))
+                    FinanceManagementInvoice.contract_id.in_(select(management_ids_subq.c.id)), FinanceManagementInvoice.posting_status == "active"
                 )
             )
             mgmt_paid_sum = await _scalar(
                 db,
                 select(func.coalesce(func.sum(FinanceManagementPayment.amount), 0)).where(
-                    FinanceManagementPayment.contract_id.in_(select(management_ids_subq.c.id))
+                    FinanceManagementPayment.contract_id.in_(select(management_ids_subq.c.id)), FinanceManagementPayment.posting_status == "active"
                 )
             )
 

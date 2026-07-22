@@ -92,6 +92,8 @@ class InvoicePostingService:
 
         if item.confirmation_status == "confirmed":
             return item
+        if item.confirmation_status not in {"draft", "cleared"}:
+            raise ValidationError(message="当前发票状态不能确认挂账")
 
         draft_allocations = [a for a in item.allocations if a.status == "draft"]
         if not draft_allocations:

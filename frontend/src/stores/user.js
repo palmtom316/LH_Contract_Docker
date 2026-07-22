@@ -128,6 +128,12 @@ export const useUserStore = defineStore('user', {
                 state.permissions.includes('create_invoices') ||
                 state.permissions.includes('edit_invoices')
         },
+        canViewPayments: (state) => {
+            if (state.user.is_superuser) return true
+            return state.permissions.includes('view_payments') ||
+                state.permissions.includes('create_payments') ||
+                state.permissions.includes('edit_payments')
+        },
         canManagePayments: (state) => {
             if (state.user.is_superuser) return true
             return state.permissions.includes('create_payments')

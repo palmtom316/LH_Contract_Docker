@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from contextlib import asynccontextmanager
+import asyncio
 import logging
 
 from app.config import settings
@@ -47,15 +48,37 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Cache init failed: {e}")
     
     await init_data()
+
+    recovery_task = asyncio.create_task(_recover_bank_receipts())
     
     yield
     
     try:
+        recovery_task.cancel()
+        await asyncio.gather(recovery_task, return_exceptions=True)
         from app.core.cache import close_cache
         await close_cache()
     except:
         pass
     await close_db()
+
+
+async def _recover_bank_receipts() -> None:
+    """Resume upload jobs left behind by a worker restart."""
+    from sqlalchemy import select
+    from app.database import AsyncSessionLocal
+    from app.models.bank_receipt import BankReceiptBatch
+    from app.services.bank_receipt import BankReceiptService
+
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(BankReceiptBatch.id).where(BankReceiptBatch.status.in_({"uploaded", "processing"}))
+            )
+            for (batch_id,) in result.all():
+                await BankReceiptService(db).process(batch_id)
+    except Exception:
+        logger.exception("Failed to recover pending bank receipt jobs")
 
 app = FastAPI(
     title=settings.APP_NAME,

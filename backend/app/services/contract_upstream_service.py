@@ -183,7 +183,7 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
         # Invoices Sum
         invoices_sub = (
             select(func.sum(FinanceUpstreamInvoice.amount))
-            .where(FinanceUpstreamInvoice.contract_id == ContractUpstream.id)
+            .where(FinanceUpstreamInvoice.contract_id == ContractUpstream.id, FinanceUpstreamInvoice.posting_status == "active")
             .correlate(ContractUpstream)
             .scalar_subquery()
         )
@@ -191,7 +191,7 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
         # Receipts Sum
         receipts_sub = (
             select(func.sum(FinanceUpstreamReceipt.amount))
-            .where(FinanceUpstreamReceipt.contract_id == ContractUpstream.id)
+            .where(FinanceUpstreamReceipt.contract_id == ContractUpstream.id, FinanceUpstreamReceipt.posting_status == "active")
             .correlate(ContractUpstream)
             .scalar_subquery()
         )
@@ -319,7 +319,7 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
         # Invoices Sum
         invoices_sub = (
             select(func.sum(FinanceUpstreamInvoice.amount))
-            .where(FinanceUpstreamInvoice.contract_id == ContractUpstream.id)
+            .where(FinanceUpstreamInvoice.contract_id == ContractUpstream.id, FinanceUpstreamInvoice.posting_status == "active")
             .correlate(ContractUpstream)
             .scalar_subquery()
         )
@@ -327,7 +327,7 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
         # Receipts Sum
         receipts_sub = (
             select(func.sum(FinanceUpstreamReceipt.amount))
-            .where(FinanceUpstreamReceipt.contract_id == ContractUpstream.id)
+            .where(FinanceUpstreamReceipt.contract_id == ContractUpstream.id, FinanceUpstreamReceipt.posting_status == "active")
             .correlate(ContractUpstream)
             .scalar_subquery()
         )
@@ -597,7 +597,7 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
 
         # Calculate Totals
         total_settlement = sum(s.settlement_amount or 0 for s in contract.settlements)
-        total_received = sum(r.amount or 0 for r in contract.receipts)
+        total_received = sum(r.amount or 0 for r in contract.receipts if r.posting_status == "active")
         total_receivable = sum(r.amount or 0 for r in contract.receivables)
         
         new_status = calculate_contract_status(contract, total_settlement, total_received, total_receivable)

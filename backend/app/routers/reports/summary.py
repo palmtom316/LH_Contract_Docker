@@ -137,7 +137,7 @@ async def _collect_cost_metrics(
         )
         .select_from(FinanceUpstreamInvoice)
         .join(ContractUpstream, FinanceUpstreamInvoice.contract_id == ContractUpstream.id)
-        .where(*_period_filters(FinanceUpstreamInvoice.invoice_date, year, months))
+        .where(*_period_filters(FinanceUpstreamInvoice.invoice_date, year, months), FinanceUpstreamInvoice.posting_status == "active")
         .group_by(ContractUpstream.company_category),
     )
 
@@ -149,7 +149,7 @@ async def _collect_cost_metrics(
         )
         .select_from(FinanceUpstreamReceipt)
         .join(ContractUpstream, FinanceUpstreamReceipt.contract_id == ContractUpstream.id)
-        .where(*_period_filters(FinanceUpstreamReceipt.receipt_date, year, months))
+        .where(*_period_filters(FinanceUpstreamReceipt.receipt_date, year, months), FinanceUpstreamReceipt.posting_status == "active")
         .group_by(ContractUpstream.company_category),
     )
 
@@ -224,7 +224,7 @@ async def _collect_cost_metrics(
         .select_from(FinanceDownstreamInvoice)
         .join(ContractDownstream, FinanceDownstreamInvoice.contract_id == ContractDownstream.id)
         .outerjoin(ContractUpstream, ContractDownstream.upstream_contract_id == ContractUpstream.id)
-        .where(*_period_filters(FinanceDownstreamInvoice.invoice_date, year, months))
+        .where(*_period_filters(FinanceDownstreamInvoice.invoice_date, year, months), FinanceDownstreamInvoice.posting_status == "active")
         .group_by(ContractUpstream.company_category),
     )
     mgmt_invoice = await _execute_group_sum(
@@ -236,7 +236,7 @@ async def _collect_cost_metrics(
         .select_from(FinanceManagementInvoice)
         .join(ContractManagement, FinanceManagementInvoice.contract_id == ContractManagement.id)
         .outerjoin(ContractUpstream, ContractManagement.upstream_contract_id == ContractUpstream.id)
-        .where(*_period_filters(FinanceManagementInvoice.invoice_date, year, months))
+        .where(*_period_filters(FinanceManagementInvoice.invoice_date, year, months), FinanceManagementInvoice.posting_status == "active")
         .group_by(ContractUpstream.company_category),
     )
     metrics["down_mgmt_invoice"] = _merge_amounts(down_invoice, mgmt_invoice)
@@ -250,7 +250,7 @@ async def _collect_cost_metrics(
         .select_from(FinanceDownstreamPayment)
         .join(ContractDownstream, FinanceDownstreamPayment.contract_id == ContractDownstream.id)
         .outerjoin(ContractUpstream, ContractDownstream.upstream_contract_id == ContractUpstream.id)
-        .where(*_period_filters(FinanceDownstreamPayment.payment_date, year, months))
+        .where(*_period_filters(FinanceDownstreamPayment.payment_date, year, months), FinanceDownstreamPayment.posting_status == "active")
         .group_by(ContractUpstream.company_category),
     )
     mgmt_payment = await _execute_group_sum(
@@ -262,7 +262,7 @@ async def _collect_cost_metrics(
         .select_from(FinanceManagementPayment)
         .join(ContractManagement, FinanceManagementPayment.contract_id == ContractManagement.id)
         .outerjoin(ContractUpstream, ContractManagement.upstream_contract_id == ContractUpstream.id)
-        .where(*_period_filters(FinanceManagementPayment.payment_date, year, months))
+        .where(*_period_filters(FinanceManagementPayment.payment_date, year, months), FinanceManagementPayment.posting_status == "active")
         .group_by(ContractUpstream.company_category),
     )
     metrics["down_mgmt_payment"] = _merge_amounts(down_payment, mgmt_payment)
@@ -478,7 +478,7 @@ async def _build_settlement_period_rows(
             FinanceUpstreamReceipt.contract_id,
             func.sum(FinanceUpstreamReceipt.amount),
         )
-        .where(FinanceUpstreamReceipt.contract_id.in_(upstream_ids))
+        .where(FinanceUpstreamReceipt.contract_id.in_(upstream_ids), FinanceUpstreamReceipt.posting_status == "active")
         .group_by(FinanceUpstreamReceipt.contract_id),
     )
     downstream_settlements = await _get_upstream_amount_map(
@@ -508,7 +508,7 @@ async def _build_settlement_period_rows(
             func.sum(FinanceDownstreamPayment.amount),
         )
         .join(FinanceDownstreamPayment, FinanceDownstreamPayment.contract_id == ContractDownstream.id)
-        .where(ContractDownstream.upstream_contract_id.in_(upstream_ids))
+        .where(ContractDownstream.upstream_contract_id.in_(upstream_ids), FinanceDownstreamPayment.posting_status == "active")
         .group_by(ContractDownstream.upstream_contract_id),
     )
     management_payments = await _get_upstream_amount_map(
@@ -518,7 +518,7 @@ async def _build_settlement_period_rows(
             func.sum(FinanceManagementPayment.amount),
         )
         .join(FinanceManagementPayment, FinanceManagementPayment.contract_id == ContractManagement.id)
-        .where(ContractManagement.upstream_contract_id.in_(upstream_ids))
+        .where(ContractManagement.upstream_contract_id.in_(upstream_ids), FinanceManagementPayment.posting_status == "active")
         .group_by(ContractManagement.upstream_contract_id),
     )
     expense_amounts = await _get_upstream_amount_map(
@@ -729,7 +729,8 @@ async def get_finance_trend(
         extract('month', FinanceUpstreamReceipt.receipt_date).label('month'),
         func.sum(FinanceUpstreamReceipt.amount)
     ).where(
-        extract('year', FinanceUpstreamReceipt.receipt_date) == year
+        extract('year', FinanceUpstreamReceipt.receipt_date) == year,
+        FinanceUpstreamReceipt.posting_status == "active"
     ).group_by('month')
     
     res_income = await db.execute(stmt_income)
@@ -743,7 +744,8 @@ async def get_finance_trend(
         extract('month', FinanceDownstreamPayment.payment_date).label('month'),
         func.sum(FinanceDownstreamPayment.amount)
     ).where(
-        extract('year', FinanceDownstreamPayment.payment_date) == year
+        extract('year', FinanceDownstreamPayment.payment_date) == year,
+        FinanceDownstreamPayment.posting_status == "active"
     ).group_by('month')
     res_exp_down = await db.execute(stmt_exp_down)
     for r in res_exp_down.all():
@@ -756,7 +758,8 @@ async def get_finance_trend(
         extract('month', FinanceManagementPayment.payment_date).label('month'),
         func.sum(FinanceManagementPayment.amount)
     ).where(
-        extract('year', FinanceManagementPayment.payment_date) == year
+        extract('year', FinanceManagementPayment.payment_date) == year,
+        FinanceManagementPayment.posting_status == "active"
     ).group_by('month')
     res_exp_mgmt = await db.execute(stmt_exp_mgmt)
     for r in res_exp_mgmt.all():
@@ -837,8 +840,8 @@ async def get_expense_breakdown(
         
     # Filters
     nc_filters = [extract('year', ExpenseNonContract.expense_date) == year]
-    down_filters = [extract('year', FinanceDownstreamPayment.payment_date) == year]
-    mgmt_filters = [extract('year', FinanceManagementPayment.payment_date) == year]
+    down_filters = [extract('year', FinanceDownstreamPayment.payment_date) == year, FinanceDownstreamPayment.posting_status == "active"]
+    mgmt_filters = [extract('year', FinanceManagementPayment.payment_date) == year, FinanceManagementPayment.posting_status == "active"]
     
     if month:
         nc_filters.append(extract('month', ExpenseNonContract.expense_date) == month)
@@ -945,13 +948,13 @@ async def get_ar_ap_stats(
     
     # Filters
     ar_filters = [cast(extract('year', FinanceUpstreamReceivable.expected_date), Integer) == year]
-    rec_filters = [cast(extract('year', FinanceUpstreamReceipt.receipt_date), Integer) == year]
+    rec_filters = [cast(extract('year', FinanceUpstreamReceipt.receipt_date), Integer) == year, FinanceUpstreamReceipt.posting_status == "active"]
     
     ap_down_filters = [cast(extract('year', FinanceDownstreamPayable.expected_date), Integer) == year]
-    paid_down_filters = [cast(extract('year', FinanceDownstreamPayment.payment_date), Integer) == year]
+    paid_down_filters = [cast(extract('year', FinanceDownstreamPayment.payment_date), Integer) == year, FinanceDownstreamPayment.posting_status == "active"]
     
     ap_mgmt_filters = [cast(extract('year', FinanceManagementPayable.expected_date), Integer) == year]
-    paid_mgmt_filters = [cast(extract('year', FinanceManagementPayment.payment_date), Integer) == year]
+    paid_mgmt_filters = [cast(extract('year', FinanceManagementPayment.payment_date), Integer) == year, FinanceManagementPayment.posting_status == "active"]
     
     if month:
         ar_filters.append(cast(extract('month', FinanceUpstreamReceivable.expected_date), Integer) == month)

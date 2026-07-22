@@ -14,11 +14,7 @@ import os
 import tempfile
 from datetime import datetime
 from typing import List, Optional, Union
-import base64, hashlib
 import httpx
-import ipaddress
-import socket
-from cryptography.fernet import Fernet, InvalidToken
 from urllib.parse import urlparse, unquote
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +23,7 @@ from app.database import get_db
 from app.models.system import SysDictionary, SystemConfig
 from app.services.dictionary_usage_service import DictionaryUsageService
 from app.utils.file_validator import validate_file_upload
+from app.core.secure_config import protect_config_secret, reveal_config_secret, validate_external_api_url
 import logging
 
 router = APIRouter()
@@ -365,52 +362,22 @@ class SystemConfigUpdate(BaseModel):
     mineru_timeout_seconds: Optional[int] = None
     company_bank_accounts: Optional[str] = None
 
-def _protect_secret(value: str) -> str:
-    if not settings.CONFIG_ENCRYPTION_KEY:
-        raise ValidationError(message="未配置 CONFIG_ENCRYPTION_KEY，不能保存 MinerU 密钥")
-    key=base64.urlsafe_b64encode(hashlib.sha256(settings.CONFIG_ENCRYPTION_KEY.encode()).digest())
-    return Fernet(key).encrypt(value.encode()).decode()
-
-def _reveal_secret(value: str) -> str:
-    key=base64.urlsafe_b64encode(hashlib.sha256(settings.CONFIG_ENCRYPTION_KEY.encode()).digest())
-    try: return Fernet(key).decrypt(value.encode()).decode()
-    except (InvalidToken,ValueError): raise ValidationError(message="MinerU 密钥配置损坏")
-
-def _validate_external_api_url(value:str) -> str:
-    parsed=urlparse(value)
-    if parsed.scheme not in {"https","http"} or not parsed.hostname: raise ValidationError(message="MinerU API 地址无效")
-    try:
-        addresses={info[4][0] for info in socket.getaddrinfo(parsed.hostname,parsed.port or (443 if parsed.scheme=="https" else 80),type=socket.SOCK_STREAM)}
-        for address in addresses:
-            ip=ipaddress.ip_address(address)
-            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_unspecified: raise ValidationError(message="MinerU API 地址不能指向内部或保留网络")
-    except socket.gaierror: raise ValidationError(message="MinerU API 域名无法解析")
-    return value
-
 @router.get("/config")
 async def get_system_config(
     db: AsyncSession = Depends(get_db)
 ):
     """Get system configuration (name, logo, etc)"""
     # Fetch all config
-    result = await db.execute(select(SystemConfig))
+    public_keys = {"system_name", "system_name_line_2"}
+    result = await db.execute(select(SystemConfig).where(SystemConfig.key.in_(public_keys)))
     configs = result.scalars().all()
     
-    config_dict = {
-        "system_name": "合同管理系统",
-        "system_name_line_2": "",
-        "system_logo": None, "mineru_enabled": False, "mineru_api_url": "", "mineru_timeout_seconds": 60,
-        "mineru_api_key_configured": False, "mineru_api_key_masked": "", "company_bank_accounts": ""
-    }
+    config_dict = {"system_name": "合同管理系统", "system_name_line_2": "", "system_logo": None}
     
     # Override defaults
     for c in configs:
-        if c.key == "mineru_api_key":
-            config_dict["mineru_api_key_configured"] = bool(c.value); config_dict["mineru_api_key_masked"] = "••••••••" if c.value else ""
-        elif c.key in config_dict:
+        if c.key in config_dict:
             config_dict[c.key] = c.value
-    config_dict["mineru_enabled"] = str(config_dict["mineru_enabled"]).lower() == "true"
-    config_dict["mineru_timeout_seconds"] = int(config_dict["mineru_timeout_seconds"] or 60)
             
     # Check logo file existence logic if needed, but simple return is fine
     config_dict["system_logo"] = _build_logo_api_path(_find_system_logo_path())
@@ -454,12 +421,12 @@ async def update_system_config(
 
     await upsert_config("system_name", config.system_name)
     await upsert_config("system_name_line_2", config.system_name_line_2)
-    if config.mineru_api_url is not None: _validate_external_api_url(config.mineru_api_url)
+    if config.mineru_api_url is not None: validate_external_api_url(config.mineru_api_url)
     await upsert_config("mineru_api_url", config.mineru_api_url)
     await upsert_config("mineru_enabled", str(config.mineru_enabled).lower() if config.mineru_enabled is not None else None)
     await upsert_config("mineru_timeout_seconds", str(config.mineru_timeout_seconds) if config.mineru_timeout_seconds is not None else None)
     await upsert_config("company_bank_accounts", config.company_bank_accounts)
-    if config.mineru_api_key and config.mineru_api_key != "••••••••": await upsert_config("mineru_api_key", _protect_secret(config.mineru_api_key))
+    if config.mineru_api_key and config.mineru_api_key != "••••••••": await upsert_config("mineru_api_key", protect_config_secret(config.mineru_api_key))
             
     await db.commit()
     return {"message": "Configuration updated"}
@@ -468,10 +435,10 @@ async def update_system_config(
 async def test_mineru(db: AsyncSession=Depends(get_db), current_user: User=Depends(get_current_active_user)):
     if not current_user.is_superuser: raise PermissionDeniedError(detail="需要超级管理员权限")
     rows={x.key:x.value for x in (await db.execute(select(SystemConfig).where(SystemConfig.key.in_(["mineru_api_url","mineru_api_key","mineru_timeout_seconds"])))).scalars()}
-    url=_validate_external_api_url(rows.get("mineru_api_url",""))
+    url=validate_external_api_url(rows.get("mineru_api_url",""))
     try:
         async with httpx.AsyncClient(timeout=int(rows.get("mineru_timeout_seconds") or 60)) as client:
-            response=await client.get(url,headers={"Authorization":f"Bearer {_reveal_secret(rows.get('mineru_api_key',''))}"})
+            response=await client.get(url,headers={"Authorization":f"Bearer {reveal_config_secret(rows.get('mineru_api_key',''))}"})
         if response.status_code in {401,403}: return {"ok":False,"result":"auth_failed","message":"MinerU 鉴权失败"}
         if response.status_code >= 500: return {"ok":False,"result":"service_unavailable","message":"MinerU 服务不可用"}
         return {"ok":True,"result":"connected","message":"连接成功"}

@@ -103,7 +103,7 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
         # Invoices Sum
         invoices_sub = (
             select(func.sum(FinanceDownstreamInvoice.amount))
-            .where(FinanceDownstreamInvoice.contract_id == ContractDownstream.id)
+            .where(FinanceDownstreamInvoice.contract_id == ContractDownstream.id, FinanceDownstreamInvoice.posting_status == "active")
             .correlate(ContractDownstream)
             .scalar_subquery()
         )
@@ -111,7 +111,7 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
         # Payments Sum
         payments_sub = (
             select(func.sum(FinanceDownstreamPayment.amount))
-            .where(FinanceDownstreamPayment.contract_id == ContractDownstream.id)
+            .where(FinanceDownstreamPayment.contract_id == ContractDownstream.id, FinanceDownstreamPayment.posting_status == "active")
             .correlate(ContractDownstream)
             .scalar_subquery()
         )
@@ -205,14 +205,14 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
         
         invoices_sub = (
             select(func.sum(FinanceDownstreamInvoice.amount))
-            .where(FinanceDownstreamInvoice.contract_id == ContractDownstream.id)
+            .where(FinanceDownstreamInvoice.contract_id == ContractDownstream.id, FinanceDownstreamInvoice.posting_status == "active")
             .correlate(ContractDownstream)
             .scalar_subquery()
         )
         
         payments_sub = (
             select(func.sum(FinanceDownstreamPayment.amount))
-            .where(FinanceDownstreamPayment.contract_id == ContractDownstream.id)
+            .where(FinanceDownstreamPayment.contract_id == ContractDownstream.id, FinanceDownstreamPayment.posting_status == "active")
             .correlate(ContractDownstream)
             .scalar_subquery()
         )
@@ -417,7 +417,7 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
 
         # Calculate Totals
         total_settlement = sum(s.settlement_amount or 0 for s in contract.settlements)
-        total_paid = sum(p.amount or 0 for p in contract.payments)
+        total_paid = sum(p.amount or 0 for p in contract.payments if p.posting_status == "active")
         total_payable = sum(p.amount or 0 for p in contract.payables)
 
         new_status = calculate_contract_status(contract, total_settlement, total_paid, total_payable)

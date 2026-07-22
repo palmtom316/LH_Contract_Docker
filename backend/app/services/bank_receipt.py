@@ -1,11 +1,12 @@
 """Bank receipt parsing, allocation and posting service."""
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from io import BytesIO
 import hashlib, re, uuid
 import httpx
 from pypdf import PdfReader
-from sqlalchemy import select, func
+from sqlalchemy import case, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from app.core.errors import ResourceNotFoundError, ValidationError
@@ -18,6 +19,7 @@ from app.services.audit_service import create_audit_log
 from app.config import settings
 from app.core.minio import get_minio_client, ensure_bucket_exists
 from app.models.system import SystemConfig
+from app.core.secure_config import reveal_config_secret, validate_external_api_url
 
 MONEY = re.compile(r"(?:币种及金额|交易金额|金额)[:：\s]*(?:CNY|RMB|人民币)?\s*[￥¥]?\s*([\d,]+\.\d{2})", re.IGNORECASE)
 SERIAL = re.compile(r"(?:核心流水号|交易流水号|流水号)[:：\s]*([A-Za-z0-9_-]+)")
@@ -71,6 +73,12 @@ def validate_receipt_allocation_total(amount, allocations):
     if amount is None or total.quantize(Decimal("0.01")) != Decimal(str(amount)).quantize(Decimal("0.01")):
         raise ValidationError(message="分摊金额合计必须等于回单金额", field_errors={"amount": "分摊金额必须精确等于回单金额"})
 
+def validate_receipt_confirm_state(status: str, draft_count: int) -> None:
+    if status != "ready":
+        raise ValidationError(message="只有待入账回单可以确认")
+    if draft_count < 1:
+        raise ValidationError(message="回单至少需要一条草稿分摊")
+
 def _json_safe(value):
     """Convert parsed financial values into JSONB-safe primitives."""
     if isinstance(value, Decimal):
@@ -85,23 +93,32 @@ def _json_safe(value):
 
 class BankReceiptService:
     def __init__(self, db: AsyncSession): self.db = db
+    async def _refresh_allocation_status(self, item: BankReceiptItem) -> None:
+        total = await self.db.scalar(select(func.coalesce(func.sum(BankReceiptAllocation.amount), 0)).where(BankReceiptAllocation.item_id == item.id, BankReceiptAllocation.status == "draft"))
+        item.status = "ready" if item.amount is not None and Decimal(str(total)).quantize(Decimal("0.01")) == Decimal(str(item.amount)).quantize(Decimal("0.01")) and Decimal(str(total)) > 0 else "needs_review"
     async def upload(self, upload, user):
         data = await upload.read()
-        if not upload.filename.lower().endswith(".pdf") or not data.startswith(b"%PDF"):
+        filename = (upload.filename or "").strip()
+        if not filename.lower().endswith(".pdf") or not data.startswith(b"%PDF"):
             raise ValidationError(message="仅支持 PDF 银行回单")
         digest = hashlib.sha256(data).hexdigest()
         duplicate = await self.db.scalar(select(BankReceiptItem).where(BankReceiptItem.sha256 == digest))
         if duplicate: raise ValidationError(message="该回单已导入", field_errors={"file": f"原记录 #{duplicate.id}"})
         if len(data) > settings.MAX_FILE_SIZE: raise ValidationError(message="回单文件超过大小限制")
-        pages=max(1,len(re.findall(rb"/Type\s*/Page\b",data)))
+        try:
+            pages = len(PdfReader(BytesIO(data)).pages)
+        except Exception:
+            raise ValidationError(message="回单 PDF 文件损坏或无法解析")
         if pages > 20: raise ValidationError(message="回单 PDF 页数超过 20 页限制")
         object_key=f"bank-receipts/{datetime.now():%Y/%m}/{uuid.uuid4().hex}.pdf"
         client=get_minio_client(); ensure_bucket_exists(client,settings.MINIO_BUCKET_CONTRACTS); client.put_object(settings.MINIO_BUCKET_CONTRACTS,object_key,BytesIO(data),len(data),content_type="application/pdf")
-        batch = BankReceiptBatch(batch_number=f"BR-{datetime.now():%Y%m%d}-{uuid.uuid4().hex[:8]}", original_filename=upload.filename, uploaded_by=user.id)
+        batch = BankReceiptBatch(batch_number=f"BR-{datetime.now():%Y%m%d}-{uuid.uuid4().hex[:8]}", original_filename=filename, uploaded_by=user.id)
         self.db.add(batch); await self.db.flush()
-        item = BankReceiptItem(batch_id=batch.id, source_filename=upload.filename, sha256=digest, file_path=object_key, file_key=object_key, status="needs_review")
+        item = BankReceiptItem(batch_id=batch.id, source_filename=filename, sha256=digest, file_path=object_key, file_key=object_key, status="needs_review")
         try:
-            self.db.add(item); await create_audit_log(self.db, user, "UPLOAD", "银行回单", description=upload.filename); await self.db.commit(); await self.db.refresh(batch); return batch
+            self.db.add(item); await create_audit_log(self.db, user, "UPLOAD", "银行回单", description=filename); await self.db.commit(); await self.db.refresh(batch); return batch
+        except IntegrityError:
+            await self.db.rollback(); client.remove_object(settings.MINIO_BUCKET_CONTRACTS,object_key); raise ValidationError(message="该回单已导入，请勿重复上传")
         except Exception:
             await self.db.rollback(); client.remove_object(settings.MINIO_BUCKET_CONTRACTS,object_key); raise
     async def process(self,batch_id:int):
@@ -120,23 +137,33 @@ class BankReceiptService:
             if len(text)<40:
                 if str(config.get("mineru_enabled","")).lower()!="true": raise ValidationError(message="PDF 无可用文本层且 MinerU 未启用")
                 if not config.get("mineru_api_url") or not config.get("mineru_api_key"): raise ValidationError(message="PDF 无可用文本层且 MinerU 配置缺失")
-                from app.routers.system import _reveal_secret, _validate_external_api_url
-                _validate_external_api_url(config["mineru_api_url"])
+                validate_external_api_url(config["mineru_api_url"])
                 async with httpx.AsyncClient(timeout=int(config.get("mineru_timeout_seconds") or 60)) as http:
-                    response=await http.post(config["mineru_api_url"],headers={"Authorization":f"Bearer {_reveal_secret(config['mineru_api_key'])}"},files={"file":(item.source_filename,data,"application/pdf")})
+                    response=await http.post(config["mineru_api_url"],headers={"Authorization":f"Bearer {reveal_config_secret(config['mineru_api_key'])}"},files={"file":(item.source_filename,data,"application/pdf")})
                 response.raise_for_status(); payload=response.json(); text=payload.get("text") or payload.get("markdown") or payload.get("content") or ""
             else:payload={"source":"pdf_text_layer","text":text}
             parsed=parse_receipt_text(text); accounts={x.strip() for x in (config.get("company_bank_accounts") or "").split(",") if x.strip()}
+            if parsed.get("bank_serial_number"):
+                duplicate = await self.db.scalar(select(BankReceiptItem.id).where(BankReceiptItem.bank_serial_number == parsed["bank_serial_number"], BankReceiptItem.id != item.id).limit(1))
+                if duplicate:
+                    raise ValidationError(message="核心流水号已存在，请核对重复回单", field_errors={"bank_serial_number": f"原记录 #{duplicate}"})
             for key,value in parsed.items():
                 if hasattr(item,key):setattr(item,key,value)
             item.raw_mineru_result=_json_safe(payload); item.parsed_payload=_json_safe({**parsed,"text":text}); item.direction=determine_direction(accounts,item.payer_account,item.payee_account); item.status="needs_review"; item.error_message=None if parsed["amount_consistent"] else "中文大写金额与数字金额不一致，请人工复核"; batch.status="completed"
             counterparty=item.payer_name if item.direction=="receipt" else item.payee_name
             if item.direction in {"receipt","payment"} and counterparty:
                 for result in await self.search(counterparty,item.direction):
-                    self.db.add(BankReceiptMatchCandidate(item_id=item.id,direction=item.direction,contract_type=result["contract_type"],contract_id=result["id"],contract_name=result["contract_name"],score=80,matched_signals={"counterparty":counterparty}))
+                    self.db.add(BankReceiptMatchCandidate(item_id=item.id,direction=item.direction,contract_type=result["contract_type"],contract_id=result["id"],contract_name=result["contract_name"],score=result["score"],matched_signals=result["matched_signals"]))
         except Exception as exc:
             item.status="failed"; item.error_message="MinerU 识别失败" if response is not None else str(exc); batch.status="failed"
-        await self.db.commit()
+        try:
+            await self.db.commit()
+        except IntegrityError:
+            await self.db.rollback()
+            item = await self.db.get(BankReceiptItem, item.id)
+            batch = await self.db.get(BankReceiptBatch, batch.id)
+            item.status = "failed"; item.error_message = "回单流水号或文件已存在，请核对重复回单"; batch.status = "failed"
+            await self.db.commit()
     async def retry(self,item_id,user):
         item=await self.db.get(BankReceiptItem,item_id)
         if not item: raise ResourceNotFoundError(resource_type="银行回单",resource_id=item_id)
@@ -154,7 +181,9 @@ class BankReceiptService:
         if item.direction not in {"unknown", payload.direction}:
             raise ValidationError(message="分摊方向必须与已复核的回单方向一致")
         allocation = BankReceiptAllocation(item_id=item_id, **payload.model_dump())
-        self.db.add(allocation); item.status = "ready"; await self.db.commit(); await self.db.refresh(allocation); return allocation
+        self.db.add(allocation); await self.db.flush()
+        await self._refresh_allocation_status(item)
+        await self.db.commit(); await self.db.refresh(allocation); return allocation
     async def update_allocation(self, item_id, allocation_id, payload):
         allocation = await self.db.scalar(
             select(BankReceiptAllocation)
@@ -167,7 +196,7 @@ class BankReceiptService:
         if not item or item.status not in {"needs_review", "ready", "cleared"}: raise ValidationError(message="当前状态不能修改分摊")
         if item.direction not in {"unknown", payload.direction}: raise ValidationError(message="分摊方向必须与回单方向一致")
         for key, value in payload.model_dump().items(): setattr(allocation, key, value)
-        item.status = "ready"; await self.db.commit(); await self.db.refresh(allocation); return allocation
+        await self.db.flush(); await self._refresh_allocation_status(item); await self.db.commit(); await self.db.refresh(allocation); return allocation
     async def delete_allocation(self, item_id, allocation_id):
         allocation = await self.db.scalar(
             select(BankReceiptAllocation)
@@ -178,15 +207,17 @@ class BankReceiptService:
         if allocation.status != "draft": raise ValidationError(message="只能删除草稿分摊")
         item = await self.db.get(BankReceiptItem, item_id)
         await self.db.delete(allocation); await self.db.flush()
-        remaining = await self.db.scalar(select(BankReceiptAllocation.id).where(BankReceiptAllocation.item_id == item_id, BankReceiptAllocation.status == "draft").limit(1))
-        if item: item.status = "ready" if remaining else "needs_review"
+        if item: await self._refresh_allocation_status(item)
         await self.db.commit()
     async def review(self,item_id,payload,user):
         item=await self.db.scalar(select(BankReceiptItem).where(BankReceiptItem.id==item_id).with_for_update())
         if not item: raise ResourceNotFoundError(resource_type="银行回单",resource_id=item_id)
         if item.status not in {"needs_review","ready","cleared"}: raise ValidationError(message="当前状态不能复核")
+        if payload.bank_serial_number:
+            duplicate = await self.db.scalar(select(BankReceiptItem.id).where(BankReceiptItem.bank_serial_number == payload.bank_serial_number, BankReceiptItem.id != item.id).limit(1))
+            if duplicate: raise ValidationError(message="核心流水号已存在，请核对重复回单", field_errors={"bank_serial_number": f"原记录 #{duplicate}"})
         for key,value in payload.model_dump().items(): setattr(item,key,value)
-        item.status="ready" if await self.db.scalar(select(BankReceiptAllocation.id).where(BankReceiptAllocation.item_id==item_id).limit(1)) else "needs_review"
+        await self._refresh_allocation_status(item)
         await create_audit_log(self.db,user,"UPDATE","银行回单",item.id,new_values=payload.model_dump()); await self.db.commit(); return item
     async def confirm(self, item_id, user):
         item = (await self.db.execute(select(BankReceiptItem).options(selectinload(BankReceiptItem.allocations)).where(BankReceiptItem.id == item_id).with_for_update())).scalar_one_or_none()
@@ -194,6 +225,7 @@ class BankReceiptService:
         if item.status == "confirmed": return item
         if item.direction not in {"receipt", "payment"} or item.transaction_at is None: raise ValidationError(message="请先复核回单方向和交易时间")
         drafts = [a for a in item.allocations if a.status == "draft"]
+        validate_receipt_confirm_state(item.status, len(drafts))
         validate_receipt_allocation_total(item.amount, [a.amount for a in drafts])
         for allocation in drafts:
             common = dict(amount=allocation.amount, description=item.summary, file_path=item.file_path, file_key=item.file_key, storage_provider="minio" if item.file_key else "local", source_bank_receipt_item_id=item.id, source_bank_receipt_allocation_id=allocation.id, bank_serial_number=item.bank_serial_number, transaction_at=item.transaction_at, created_by=user.id, updated_by=user.id)
@@ -203,8 +235,8 @@ class BankReceiptService:
                 formal = FinanceDownstreamPayment(contract_id=allocation.downstream_contract_id, payment_date=item.transaction_at.date(), payee_name=item.payee_name, payee_account=item.payee_account, **common)
             else:
                 formal = FinanceManagementPayment(contract_id=allocation.management_contract_id, payment_date=item.transaction_at.date(), payee_name=item.payee_name, payee_account=item.payee_account, **common)
-            self.db.add(formal); await self.db.flush(); allocation.formal_record_id = formal.id; allocation.status = "confirmed"; allocation.confirmed_by = user.id; allocation.confirmed_at = datetime.utcnow()
-        item.status = "confirmed"; await create_audit_log(self.db, user, "APPROVE", "银行回单", item.id, old_values=None, new_values={"allocations": [str(a.amount) for a in drafts]}); await self.db.commit(); return item
+            self.db.add(formal); await self.db.flush(); allocation.formal_record_id = formal.id; allocation.status = "confirmed"; allocation.confirmed_by = user.id; allocation.confirmed_at = datetime.now(timezone.utc)
+        item.status = "confirmed"; item.posting_version = (item.posting_version or 0) + 1; await create_audit_log(self.db, user, "APPROVE", "银行回单", item.id, old_values=None, new_values={"allocations": [str(a.amount) for a in drafts], "posting_version": item.posting_version}); await self.db.commit(); return item
     async def clear(self, item_id, reason, user):
         item = (await self.db.execute(select(BankReceiptItem).options(selectinload(BankReceiptItem.allocations)).where(BankReceiptItem.id == item_id).with_for_update())).scalar_one_or_none()
         if not item: raise ResourceNotFoundError(resource_type="银行回单", resource_id=item_id)
@@ -217,22 +249,30 @@ class BankReceiptService:
             if a.formal_record_id:
                 formal=await self.db.get(table,a.formal_record_id)
                 if formal:
-                    formal.original_amount=formal.amount; formal.amount=0; formal.posting_status="cleared"; formal.cleared_at=datetime.utcnow(); formal.clear_reason=reason
+                    formal.original_amount=formal.amount; formal.amount=0; formal.posting_status="cleared"; formal.cleared_at=datetime.now(timezone.utc); formal.clear_reason=reason
             a.status = "cleared"
-        item.status = "cleared"; item.clear_reason = reason; item.cleared_by = user.id; item.cleared_at = datetime.utcnow()
+        item.status = "cleared"; item.clear_reason = reason; item.cleared_by = user.id; item.cleared_at = datetime.now(timezone.utc)
         await create_audit_log(self.db, user, "DELETE", "银行回单入账", item.id, description=reason, old_values={"records": snapshot}); await self.db.commit(); return item
     async def search(self, q, direction):
         escaped=q.replace("\\","\\\\").replace("%","\\%").replace("_","\\_"); pattern = f"%{escaped}%"; results=[]
         models = [("upstream", ContractUpstream)] if direction == "receipt" else [("downstream", ContractDownstream), ("management", ContractManagement)]
         for kind, model in models:
-            rows=(await self.db.execute(select(model).where(model.contract_name.ilike(pattern,escape="\\")).order_by(func.length(model.contract_name)).limit(20))).scalars()
-            results += [{"contract_type": kind, "id": x.id, "serial_number":x.serial_number,"contract_name": x.contract_name, "contract_code": x.contract_code,"counterparty":x.party_a_name if kind=="upstream" else x.party_b_name,"remaining_amount":str(x.contract_amount or 0)} for x in rows]
+            party_field = model.party_a_name if kind == "upstream" else model.party_b_name
+            exact = q.strip()
+            rank = case(
+                (func.lower(party_field) == exact.lower(), 100),
+                (party_field.ilike(f"{escaped}%", escape="\\"), 90),
+                (party_field.ilike(pattern, escape="\\"), 80),
+                else_=70,
+            )
+            rows=(await self.db.execute(select(model, rank.label("score")).where(or_(model.contract_name.ilike(pattern,escape="\\"), party_field.ilike(pattern, escape="\\"))).order_by(rank.desc(),func.length(model.contract_name)).limit(20))).all()
+            results += [{"contract_type": kind, "id": x.id, "serial_number":x.serial_number,"contract_name": x.contract_name, "contract_code": x.contract_code,"counterparty":x.party_a_name if kind=="upstream" else x.party_b_name,"contract_amount":str(x.contract_amount or 0),"score":score,"matched_signals":{"counterparty": exact, "party_match": score >= 80}} for x, score in rows]
         return results[:20]
     async def ignore(self,item_id,reason,user):
         item=await self.db.get(BankReceiptItem,item_id)
         if not item: raise ResourceNotFoundError(resource_type="银行回单",resource_id=item_id)
-        if item.status not in {"needs_review","ready","cleared"}: raise ValidationError(message="当前状态不能忽略")
-        item.status="ignored"; item.ignored_reason=reason; item.ignored_by=user.id; item.ignored_at=datetime.utcnow(); await create_audit_log(self.db,user,"UPDATE","银行回单",item.id,description=reason,new_values={"status":"ignored"}); await self.db.commit(); return item
+        if item.status not in {"needs_review","ready"}: raise ValidationError(message="当前状态不能忽略")
+        item.status="ignored"; item.ignored_reason=reason; item.ignored_by=user.id; item.ignored_at=datetime.now(timezone.utc); await create_audit_log(self.db,user,"UPDATE","银行回单",item.id,description=reason,new_values={"status":"ignored"}); await self.db.commit(); return item
     async def delete_failed(self,item_id,user):
         item=await self.db.get(BankReceiptItem,item_id)
         if not item: raise ResourceNotFoundError(resource_type="银行回单",resource_id=item_id)

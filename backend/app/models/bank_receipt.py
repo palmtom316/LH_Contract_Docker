@@ -1,5 +1,5 @@
 """Bank receipt import and auditable posting models."""
-from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -47,12 +47,16 @@ class BankReceiptItem(Base):
     clear_reason = Column(String(300), nullable=True)
     cleared_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     cleared_at = Column(DateTime(timezone=True), nullable=True)
+    posting_version = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     batch = relationship("BankReceiptBatch", back_populates="items")
     allocations = relationship("BankReceiptAllocation", back_populates="item", cascade="all, delete-orphan")
     candidates = relationship("BankReceiptMatchCandidate", back_populates="item", cascade="all, delete-orphan")
-    __table_args__ = (UniqueConstraint("sha256", name="uq_bank_receipt_sha256"), UniqueConstraint("bank_serial_number", name="uq_bank_receipt_serial"),)
+    __table_args__ = (
+        UniqueConstraint("sha256", name="uq_bank_receipt_sha256"),
+        Index("uq_bank_receipt_serial", "bank_serial_number", unique=True, postgresql_where=text("bank_serial_number IS NOT NULL")),
+    )
 
 
 class BankReceiptAllocation(Base):

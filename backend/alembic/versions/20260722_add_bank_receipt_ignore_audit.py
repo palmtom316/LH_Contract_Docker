@@ -17,6 +17,13 @@ def upgrade():
         op.add_column("bank_receipt_items", sa.Column("ignored_by", sa.Integer(), sa.ForeignKey("users.id")))
     if "ignored_at" not in columns:
         op.add_column("bank_receipt_items", sa.Column("ignored_at", sa.DateTime(timezone=True)))
+    # Keep optional serials nullable while enforcing uniqueness for real serials.
+    constraints = {constraint["name"] for constraint in inspector.get_unique_constraints("bank_receipt_items")}
+    if "uq_bank_receipt_serial" in constraints:
+        op.drop_constraint("uq_bank_receipt_serial", "bank_receipt_items", type_="unique")
+    indexes = {index["name"] for index in sa.inspect(op.get_bind()).get_indexes("bank_receipt_items")}
+    if "uq_bank_receipt_serial" not in indexes:
+        op.create_index("uq_bank_receipt_serial", "bank_receipt_items", ["bank_serial_number"], unique=True, postgresql_where=sa.text("bank_serial_number IS NOT NULL"))
 
 
 def downgrade():

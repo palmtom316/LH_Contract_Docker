@@ -10,7 +10,8 @@ import io
 import urllib.parse
 
 from app.database import get_db
-from app.core.permissions import require_permission, Permission
+from app.core.permissions import require_permission, Permission, has_permission
+from app.core.errors import PermissionDeniedError
 from app.core.errors import DatabaseError, ResourceNotFoundError, ValidationError
 from app.models.user import User
 from app.schemas.zero_hour_labor import (
@@ -22,6 +23,8 @@ from app.schemas.zero_hour_labor import (
 from app.schemas.zero_hour_labor import ZeroHourPayableCreate, ZeroHourInvoiceCreate, ZeroHourPaymentCreate, ZeroHourPayableUpdate, ZeroHourInvoiceUpdate, ZeroHourPaymentUpdate, ZeroHourFinanceResponse
 from app.models.zero_hour_labor import ZeroHourLabor, ZeroHourLaborPayable, ZeroHourLaborInvoice, ZeroHourLaborPayment
 from app.services.zero_hour_labor_service import ZeroHourLaborService
+from app.services.audit_service import create_audit_log
+from app.services.auth import get_current_active_user
 
 router = APIRouter()
 
@@ -59,11 +62,17 @@ async def _update_finance(id:int,kind:str,record_id:int,data,db:AsyncSession,use
     await db.commit();await db.refresh(obj);return obj
 
 @router.delete("/{id:int}/finance/{kind}/{record_id:int}")
-async def delete_finance(id:int,kind:str,record_id:int,db:AsyncSession=Depends(get_db),user:User=Depends(require_permission(Permission.DELETE_EXPENSES))):
+async def delete_finance(id:int,kind:str,record_id:int,db:AsyncSession=Depends(get_db),user:User=Depends(get_current_active_user)):
+    required_permission = {"invoices": Permission.DELETE_INVOICES, "payments": Permission.DELETE_PAYMENTS}.get(kind, Permission.DELETE_EXPENSES)
+    if not has_permission(user, required_permission): raise PermissionDeniedError(detail=f"需要 {required_permission.value} 权限")
     model={"payables":ZeroHourLaborPayable,"invoices":ZeroHourLaborInvoice,"payments":ZeroHourLaborPayment}.get(kind)
     if not model: raise ValidationError(message="财务明细类型无效")
     obj=await db.get(model,record_id)
     if not obj or obj.zero_hour_labor_id!=id: raise ResourceNotFoundError(resource_type="财务明细",resource_id=record_id)
+    source_fields = ("source_import_item_id", "source_bank_receipt_item_id")
+    if any(getattr(obj, field, None) is not None for field in source_fields):
+        raise ValidationError(message="来源于发票或银行回单的财务明细不能直接删除，请先清除来源单据")
+    await create_audit_log(db,user,"DELETE","零星用工财务明细",obj.id,description=f"删除{kind}明细",old_values={key: str(getattr(obj,key)) for key in ("amount","status") if hasattr(obj,key)})
     await db.delete(obj); await db.commit(); return {"status":"success"}
 
 @router.get("/export/excel", response_class=StreamingResponse)

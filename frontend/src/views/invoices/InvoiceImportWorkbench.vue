@@ -2,8 +2,8 @@
   <div class="invoice-import-workbench">
     <AppPageHeader title="发票及回单" description="识别、复核、分摊后再确认正式财务记录" />
     <el-tabs v-model="activeTab" class="workspace-tabs">
-      <el-tab-pane label="发票识别入账" name="invoice" />
-      <el-tab-pane label="回单识别入账" name="receipt" lazy>
+      <el-tab-pane v-if="userStore.canViewInvoices" label="发票识别入账" name="invoice" />
+      <el-tab-pane v-if="userStore.canViewPayments" label="回单识别入账" name="receipt" lazy>
         <BankReceiptWorkbench />
       </el-tab-pane>
     </el-tabs>
@@ -180,6 +180,8 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useUserStore } from '@/stores/user'
+import { getActivePinia } from 'pinia'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AppPageHeader from '@/components/ui/AppPageHeader.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
@@ -190,7 +192,9 @@ import { getContracts as getDownstreamContracts } from '@/api/contractDownstream
 import { getContracts as getManagementContracts } from '@/api/contractManagement'
 
 const batches = ref([])
-const activeTab = ref('invoice')
+const activePinia = getActivePinia()
+const userStore = activePinia ? useUserStore(activePinia) : { canViewInvoices: true, canViewPayments: true }
+const activeTab = ref(userStore.canViewInvoices ? 'invoice' : 'receipt')
 const selectedBatch = ref(null)
 const selectedItem = ref(null)
 const items = ref([])

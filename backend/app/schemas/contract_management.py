@@ -162,6 +162,10 @@ class ManagementInvoiceCreate(ManagementInvoiceBase):
 class ManagementInvoiceResponse(ManagementInvoiceBase):
     id: int
     contract_id: int
+    posting_status: str = "active"
+    original_amount: Optional[Decimal] = None
+    clear_reason: Optional[str] = None
+    cleared_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -190,6 +194,12 @@ class ManagementPaymentCreate(ManagementPaymentBase):
 class ManagementPaymentResponse(ManagementPaymentBase):
     id: int
     contract_id: int
+    posting_status: str = "active"
+    original_amount: Optional[Decimal] = None
+    bank_serial_number: Optional[str] = None
+    transaction_at: Optional[datetime] = None
+    clear_reason: Optional[str] = None
+    cleared_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
