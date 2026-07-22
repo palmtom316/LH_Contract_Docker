@@ -11,7 +11,7 @@ from app.models.contract_downstream import (
     FinanceDownstreamPayment,
     DownstreamSettlement,
     FinanceDownstreamInvoice,
-    DownstreamUpstreamAllocation
+    DownstreamUpstreamAllocation,
 )
 from app.models.contract_upstream import ContractUpstream
 from app.schemas.contract_downstream import (
@@ -25,7 +25,13 @@ from app.models.user import User
 from app.services.audit_service import create_audit_log, AuditAction, ResourceType
 from app.services.contract_code_generator import ContractCodeGenerator
 from app.services.base_contract_service import BaseContractService
-from app.core.errors import AppException, ErrorCode, DuplicateRecordError, ResourceNotFoundError, ValidationError
+from app.core.errors import (
+    AppException,
+    ErrorCode,
+    DuplicateRecordError,
+    ResourceNotFoundError,
+    ValidationError,
+)
 
 
 class ContractWrapper:
@@ -33,7 +39,10 @@ class ContractWrapper:
     Wrapper to enforce SQL-calculated totals over model properties.
     Proxies all other attributes to the underlying contract model.
     """
-    def __init__(self, contract, total_payable, total_invoiced, total_paid, total_settlement):
+
+    def __init__(
+        self, contract, total_payable, total_invoiced, total_paid, total_settlement
+    ):
         self._contract = contract
         self._total_payable = total_payable or 0
         self._total_invoiced = total_invoiced or 0
@@ -59,23 +68,30 @@ class ContractWrapper:
     def __getattr__(self, name):
         return getattr(self._contract, name)
 
+
 class ContractDownstreamService(BaseContractService[ContractDownstream]):
     def __init__(self, db: AsyncSession):
         super().__init__(db, ContractDownstream)
 
     async def get_contract(self, contract_id: int) -> Optional[ContractDownstream]:
         """Get contract by ID (Override to load relations)"""
-        query = select(ContractDownstream).options(
-            selectinload(ContractDownstream.upstream_contract),
-            selectinload(ContractDownstream.payables),
-            selectinload(ContractDownstream.invoices),
-            selectinload(ContractDownstream.payments),
-            selectinload(ContractDownstream.settlements)
-        ).where(ContractDownstream.id == contract_id)
+        query = (
+            select(ContractDownstream)
+            .options(
+                selectinload(ContractDownstream.upstream_contract),
+                selectinload(ContractDownstream.payables),
+                selectinload(ContractDownstream.invoices),
+                selectinload(ContractDownstream.payments),
+                selectinload(ContractDownstream.settlements),
+            )
+            .where(ContractDownstream.id == contract_id)
+        )
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
-    async def get_contract_with_relations(self, contract_id: int) -> Optional[ContractDownstream]:
+    async def get_contract_with_relations(
+        self, contract_id: int
+    ) -> Optional[ContractDownstream]:
         """Get contract by ID with all financial relations loaded"""
         return await self.get_contract(contract_id)
 
@@ -88,10 +104,10 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
         category: Optional[str] = None,
-        upstream_contract_id: Optional[int] = None
+        upstream_contract_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """List contracts with filtering and pagination (Optimized)"""
-        
+
         # Payables Sum
         payables_sub = (
             select(func.sum(FinanceDownstreamPayable.amount))
@@ -99,23 +115,29 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
             .correlate(ContractDownstream)
             .scalar_subquery()
         )
-        
+
         # Invoices Sum
         invoices_sub = (
             select(func.sum(FinanceDownstreamInvoice.amount))
-            .where(FinanceDownstreamInvoice.contract_id == ContractDownstream.id, FinanceDownstreamInvoice.posting_status == "active")
+            .where(
+                FinanceDownstreamInvoice.contract_id == ContractDownstream.id,
+                FinanceDownstreamInvoice.posting_status == "active",
+            )
             .correlate(ContractDownstream)
             .scalar_subquery()
         )
-        
+
         # Payments Sum
         payments_sub = (
             select(func.sum(FinanceDownstreamPayment.amount))
-            .where(FinanceDownstreamPayment.contract_id == ContractDownstream.id, FinanceDownstreamPayment.posting_status == "active")
+            .where(
+                FinanceDownstreamPayment.contract_id == ContractDownstream.id,
+                FinanceDownstreamPayment.posting_status == "active",
+            )
             .correlate(ContractDownstream)
             .scalar_subquery()
         )
-        
+
         # Settlements Sum
         settlements_sub = (
             select(func.sum(DownstreamSettlement.settlement_amount))
@@ -129,11 +151,11 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
             payables_sub.label("total_payable"),
             invoices_sub.label("total_invoiced"),
             payments_sub.label("total_paid"),
-            settlements_sub.label("total_settlement")
+            settlements_sub.label("total_settlement"),
         ).options(
             selectinload(ContractDownstream.upstream_contract),
-             # Simplify eager loads for list view - keep upstream and settlements (for reports)
-            selectinload(ContractDownstream.settlements)
+            # Simplify eager loads for list view - keep upstream and settlements (for reports)
+            selectinload(ContractDownstream.settlements),
         )
 
         if keyword:
@@ -141,12 +163,12 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
                 ContractDownstream.contract_name.ilike(f"%{keyword}%"),
                 ContractDownstream.contract_code.ilike(f"%{keyword}%"),
                 ContractDownstream.party_a_name.ilike(f"%{keyword}%"),
-                ContractDownstream.party_b_name.ilike(f"%{keyword}%")
+                ContractDownstream.party_b_name.ilike(f"%{keyword}%"),
             ]
             if keyword.isdigit():
                 conditions.append(ContractDownstream.serial_number == int(keyword))
                 conditions.append(ContractDownstream.id == int(keyword))
-            
+
             query = query.where(or_(*conditions))
 
         if status:
@@ -154,7 +176,7 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
 
         if start_date:
             query = query.where(ContractDownstream.sign_date >= start_date)
-        
+
         if end_date:
             query = query.where(ContractDownstream.sign_date <= end_date)
 
@@ -162,61 +184,65 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
             query = query.where(ContractDownstream.category == category)
 
         if upstream_contract_id:
-            query = query.where(ContractDownstream.upstream_contract_id == upstream_contract_id)
+            query = query.where(
+                ContractDownstream.upstream_contract_id == upstream_contract_id
+            )
 
         # Count total
         count_query = select(func.count()).select_from(query.subquery())
         total = (await self.db.execute(count_query)).scalar_one()
 
         # Pagination
-        query = query.order_by(desc(ContractDownstream.created_at)).offset((page - 1) * page_size).limit(page_size)
+        query = (
+            query.order_by(desc(ContractDownstream.created_at))
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
         result = await self.db.execute(query)
         rows = result.all()
-        
-        items = [
-            ContractWrapper(r[0], r[1], r[2], r[3], r[4])
-            for r in rows
-        ]
 
-        return {
-            "items": items,
-            "total": total,
-            "page": page,
-            "page_size": page_size
-        }
+        items = [ContractWrapper(r[0], r[1], r[2], r[3], r[4]) for r in rows]
+
+        return {"items": items, "total": total, "page": page, "page_size": page_size}
 
     async def list_all_contracts(
-        self, 
-        keyword: Optional[str] = None, 
+        self,
+        keyword: Optional[str] = None,
         status: Optional[str] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
         category: Optional[str] = None,
-        upstream_contract_id: Optional[int] = None
+        upstream_contract_id: Optional[int] = None,
     ) -> List[ContractDownstream]:
         """List all contracts for export (no pagination) - Optimized"""
-        
+
         payables_sub = (
             select(func.sum(FinanceDownstreamPayable.amount))
             .where(FinanceDownstreamPayable.contract_id == ContractDownstream.id)
             .correlate(ContractDownstream)
             .scalar_subquery()
         )
-        
+
         invoices_sub = (
             select(func.sum(FinanceDownstreamInvoice.amount))
-            .where(FinanceDownstreamInvoice.contract_id == ContractDownstream.id, FinanceDownstreamInvoice.posting_status == "active")
+            .where(
+                FinanceDownstreamInvoice.contract_id == ContractDownstream.id,
+                FinanceDownstreamInvoice.posting_status == "active",
+            )
             .correlate(ContractDownstream)
             .scalar_subquery()
         )
-        
+
         payments_sub = (
             select(func.sum(FinanceDownstreamPayment.amount))
-            .where(FinanceDownstreamPayment.contract_id == ContractDownstream.id, FinanceDownstreamPayment.posting_status == "active")
+            .where(
+                FinanceDownstreamPayment.contract_id == ContractDownstream.id,
+                FinanceDownstreamPayment.posting_status == "active",
+            )
             .correlate(ContractDownstream)
             .scalar_subquery()
         )
-        
+
         settlements_sub = (
             select(func.sum(DownstreamSettlement.settlement_amount))
             .where(DownstreamSettlement.contract_id == ContractDownstream.id)
@@ -229,10 +255,10 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
             payables_sub.label("total_payable"),
             invoices_sub.label("total_invoiced"),
             payments_sub.label("total_paid"),
-            settlements_sub.label("total_settlement")
+            settlements_sub.label("total_settlement"),
         ).options(
             selectinload(ContractDownstream.upstream_contract),
-            selectinload(ContractDownstream.settlements)
+            selectinload(ContractDownstream.settlements),
         )
 
         if keyword:
@@ -240,7 +266,7 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
                 ContractDownstream.contract_name.ilike(f"%{keyword}%"),
                 ContractDownstream.contract_code.ilike(f"%{keyword}%"),
                 ContractDownstream.party_a_name.ilike(f"%{keyword}%"),
-                ContractDownstream.party_b_name.ilike(f"%{keyword}%")
+                ContractDownstream.party_b_name.ilike(f"%{keyword}%"),
             ]
             if keyword.isdigit():
                 conditions.append(ContractDownstream.serial_number == int(keyword))
@@ -252,7 +278,7 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
 
         if start_date:
             query = query.where(ContractDownstream.sign_date >= start_date)
-        
+
         if end_date:
             query = query.where(ContractDownstream.sign_date <= end_date)
 
@@ -260,27 +286,30 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
             query = query.where(ContractDownstream.category == category)
 
         if upstream_contract_id:
-            query = query.where(ContractDownstream.upstream_contract_id == upstream_contract_id)
+            query = query.where(
+                ContractDownstream.upstream_contract_id == upstream_contract_id
+            )
 
         query = query.order_by(desc(ContractDownstream.created_at))
         result = await self.db.execute(query)
         rows = result.all()
-        
-        return [
-            ContractWrapper(r[0], r[1], r[2], r[3], r[4])
-            for r in rows
-        ]
 
-    async def create_contract(self, contract_in: ContractDownstreamCreate, user: User) -> ContractDownstream:
+        return [ContractWrapper(r[0], r[1], r[2], r[3], r[4]) for r in rows]
+
+    async def create_contract(
+        self, contract_in: ContractDownstreamCreate, user: User
+    ) -> ContractDownstream:
         """Create new downstream contract"""
         data = contract_in.model_dump()
-        
+
         # Auto-generate contract code if not provided or empty (use sign_date for year/month)
-        if not data.get('contract_code') or data['contract_code'].strip() == '':
+        if not data.get("contract_code") or data["contract_code"].strip() == "":
             code_generator = ContractCodeGenerator(self.db)
-            sign_date = data.get('sign_date')
-            data['contract_code'] = await code_generator.generate_downstream_code(sign_date)
-        
+            sign_date = data.get("sign_date")
+            data["contract_code"] = await code_generator.generate_downstream_code(
+                sign_date
+            )
+
         # Check unique serial_number
         if contract_in.serial_number:
             if await self.check_serial_number_exists(contract_in.serial_number):
@@ -291,7 +320,7 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
                 )
 
         # Check unique contract_code
-        if await self.check_contract_code_exists(data['contract_code']):
+        if await self.check_contract_code_exists(data["contract_code"]):
             raise AppException(
                 error_code=ErrorCode.CONTRACT_NUMBER_EXISTS,
                 message="合同编号已存在",
@@ -308,19 +337,21 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
             resource_type=ResourceType.DOWNSTREAM_CONTRACT,
             resource_id=contract.id,
             resource_name=contract.contract_name,
-            new_values=contract_in.model_dump(mode='json'),
-            description=f"创建下游合同: {contract.contract_name}"
+            new_values=contract_in.model_dump(mode="json"),
+            description=f"创建下游合同: {contract.contract_name}",
         )
         await self.db.commit()
         await self.db.refresh(contract)
-        
+
         # Invalidate dashboard cache
         await self._invalidate_dashboard_cache()
-        
-        # Return with eager loaded relations if needed 
+
+        # Return with eager loaded relations if needed
         return await self.get_contract(contract.id)
 
-    async def update_contract(self, contract_id: int, contract_in: ContractDownstreamUpdate, user: User) -> ContractDownstream:
+    async def update_contract(
+        self, contract_id: int, contract_in: ContractDownstreamUpdate, user: User
+    ) -> ContractDownstream:
         """Update existing contract"""
         contract = await self.get_contract(contract_id)
         if not contract:
@@ -331,24 +362,37 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
             )
 
         old_values = {
-            k: getattr(contract, k) for k in contract_in.model_dump(exclude_unset=True).keys() 
+            k: getattr(contract, k)
+            for k in contract_in.model_dump(exclude_unset=True).keys()
             if hasattr(contract, k)
         }
 
-        update_data = contract_in.model_dump(exclude_unset=True, exclude={'upstream_contract_name_snapshot'})
+        update_data = contract_in.model_dump(
+            exclude_unset=True, exclude={"upstream_contract_name_snapshot"}
+        )
 
         # Check serial_number uniqueness
-        if 'serial_number' in update_data and update_data['serial_number'] != contract.serial_number:
-            if await self.check_serial_number_exists(update_data['serial_number'], exclude_id=contract_id):
+        if (
+            "serial_number" in update_data
+            and update_data["serial_number"] != contract.serial_number
+        ):
+            if await self.check_serial_number_exists(
+                update_data["serial_number"], exclude_id=contract_id
+            ):
                 raise DuplicateRecordError(
                     resource_type="合同序号",
                     field_name="serial_number",
-                    field_value=update_data['serial_number'],
+                    field_value=update_data["serial_number"],
                 )
 
         # Check contract_code uniqueness
-        if 'contract_code' in update_data and update_data['contract_code'] != contract.contract_code:
-            if await self.check_contract_code_exists(update_data['contract_code'], exclude_id=contract_id):
+        if (
+            "contract_code" in update_data
+            and update_data["contract_code"] != contract.contract_code
+        ):
+            if await self.check_contract_code_exists(
+                update_data["contract_code"], exclude_id=contract_id
+            ):
                 raise AppException(
                     error_code=ErrorCode.CONTRACT_NUMBER_EXISTS,
                     message="合同编号已存在",
@@ -367,11 +411,11 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
             resource_name=contract.contract_name,
             old_values=old_values,
             new_values=update_data,
-            description=f"更新下游合同: {contract.contract_name}"
+            description=f"更新下游合同: {contract.contract_name}",
         )
         await self.db.commit()
         await self.db.refresh(contract)
-        
+
         await self._invalidate_dashboard_cache()
 
         return contract
@@ -391,7 +435,7 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
             "id": contract.id,
             "serial_number": contract.serial_number,
             "contract_name": contract.contract_name,
-            "contract_code": contract.contract_code
+            "contract_code": contract.contract_code,
         }
 
         await self.db.delete(contract)
@@ -403,10 +447,10 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
             resource_id=contract_id,
             resource_name=contract_name,
             old_values=contract_data,
-            description=f"删除下游合同: {contract_name}"
+            description=f"删除下游合同: {contract_name}",
         )
         await self.db.commit()
-        
+
         await self._invalidate_dashboard_cache()
 
     async def refresh_contract_status(self, contract_id: int) -> None:
@@ -417,10 +461,14 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
 
         # Calculate Totals
         total_settlement = sum(s.settlement_amount or 0 for s in contract.settlements)
-        total_paid = sum(p.amount or 0 for p in contract.payments if p.posting_status == "active")
+        total_paid = sum(
+            p.amount or 0 for p in contract.payments if p.posting_status != "cleared"
+        )
         total_payable = sum(p.amount or 0 for p in contract.payables)
 
-        new_status = calculate_contract_status(contract, total_settlement, total_paid, total_payable)
+        new_status = calculate_contract_status(
+            contract, total_settlement, total_paid, total_payable
+        )
 
         if contract.status != new_status:
             contract.status = new_status
@@ -430,7 +478,9 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
         await self._invalidate_dashboard_cache()
 
     # ===== Downstream-to-Upstream Allocations =====
-    async def list_allocations(self, contract_id: int) -> List[DownstreamUpstreamAllocation]:
+    async def list_allocations(
+        self, contract_id: int
+    ) -> List[DownstreamUpstreamAllocation]:
         """列出某下游合同的所有分摊条目"""
         query = (
             select(DownstreamUpstreamAllocation)
@@ -465,13 +515,17 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
 
         # 校验：所有上游合同存在
         if upstream_ids:
-            existing_q = select(ContractUpstream.id).where(ContractUpstream.id.in_(upstream_ids))
+            existing_q = select(ContractUpstream.id).where(
+                ContractUpstream.id.in_(upstream_ids)
+            )
             existing_ids = {row[0] for row in (await self.db.execute(existing_q)).all()}
             missing = [uid for uid in upstream_ids if uid not in existing_ids]
             if missing:
                 raise ValidationError(
                     message=f"上游合同不存在: {missing}",
-                    field_errors={"upstream_contract_id": f"以下上游合同不存在: {missing}"},
+                    field_errors={
+                        "upstream_contract_id": f"以下上游合同不存在: {missing}"
+                    },
                 )
 
         # 强平衡校验：Σ amount == contract_amount（容差 0.01）
@@ -571,9 +625,13 @@ class ContractDownstreamService(BaseContractService[ContractDownstream]):
             )
             .join(
                 ContractDownstream,
-                ContractDownstream.id == DownstreamUpstreamAllocation.downstream_contract_id,
+                ContractDownstream.id
+                == DownstreamUpstreamAllocation.downstream_contract_id,
             )
-            .where(DownstreamUpstreamAllocation.upstream_contract_id == upstream_contract_id)
+            .where(
+                DownstreamUpstreamAllocation.upstream_contract_id
+                == upstream_contract_id
+            )
             .order_by(DownstreamUpstreamAllocation.id)
         )
         result = await self.db.execute(query)

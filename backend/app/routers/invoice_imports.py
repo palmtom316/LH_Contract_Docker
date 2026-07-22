@@ -1,9 +1,9 @@
 """Electronic invoice import workbench API."""
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.permissions import Permission, require_permission
-from app.database import AsyncSessionLocal, get_db
+from app.database import get_db
 from app.models.user import User
 from app.schemas.invoice_import import (
     AllocationCreate,
@@ -21,24 +21,17 @@ from app.services.invoice_import.service import InvoiceImportService
 router = APIRouter()
 
 
-async def process_uploaded_batch_task(batch_id: int) -> None:
-    async with AsyncSessionLocal() as db:
-        await InvoiceImportService(db).process_uploaded_batch(batch_id)
-
-
 def get_import_service(db: AsyncSession = Depends(get_db)) -> InvoiceImportService:
     return InvoiceImportService(db)
 
 
 @router.post("/batches", response_model=BatchResponse, status_code=status.HTTP_201_CREATED)
 async def upload_batch(
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     current_user: User = Depends(require_permission(Permission.CREATE_INVOICES)),
     service: InvoiceImportService = Depends(get_import_service),
 ):
     batch = await service.create_batch_from_upload(file, current_user)
-    background_tasks.add_task(process_uploaded_batch_task, batch.id)
     return batch
 
 

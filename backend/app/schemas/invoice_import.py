@@ -1,4 +1,5 @@
 """Pydantic schemas for electronic invoice import APIs."""
+
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
@@ -32,6 +33,7 @@ class AllocationCreate(BaseModel):
     upstream_contract_id: Optional[int] = Field(None, gt=0)
     downstream_contract_id: Optional[int] = Field(None, gt=0)
     management_contract_id: Optional[int] = Field(None, gt=0)
+    zero_hour_labor_id: Optional[int] = Field(None, gt=0)
     amount: Decimal = Field(..., gt=0)
     tax_amount: Optional[Decimal] = Field(None, ge=0)
     description: Optional[str] = Field(None, max_length=300)
@@ -39,11 +41,28 @@ class AllocationCreate(BaseModel):
     @model_validator(mode="after")
     def validate_target_contract(self) -> "AllocationCreate":
         if self.direction == InvoiceDirection.UPSTREAM:
-            if not self.upstream_contract_id or self.downstream_contract_id:
+            targets = [
+                self.upstream_contract_id,
+                self.downstream_contract_id,
+                self.management_contract_id,
+                self.zero_hour_labor_id,
+            ]
+            if (
+                sum(value is not None for value in targets) != 1
+                or not self.upstream_contract_id
+            ):
                 raise ValueError("上游分摊必须且只能选择上游合同")
         if self.direction == InvoiceDirection.DOWNSTREAM:
-            if bool(self.downstream_contract_id) == bool(self.management_contract_id) or self.upstream_contract_id:
-                raise ValueError("进项发票分摊必须选择下游或管理合同之一")
+            targets = [
+                self.downstream_contract_id,
+                self.management_contract_id,
+                self.zero_hour_labor_id,
+            ]
+            if (
+                sum(value is not None for value in targets) != 1
+                or self.upstream_contract_id
+            ):
+                raise ValueError("进项发票分摊必须选择下游、管理合同或零星用工之一")
         if self.direction == InvoiceDirection.UNKNOWN:
             raise ValueError("分摊方向必须为上游或下游")
         return self
@@ -54,6 +73,7 @@ class AllocationUpdate(BaseModel):
     upstream_contract_id: Optional[int] = Field(None, gt=0)
     downstream_contract_id: Optional[int] = Field(None, gt=0)
     management_contract_id: Optional[int] = Field(None, gt=0)
+    zero_hour_labor_id: Optional[int] = Field(None, gt=0)
     amount: Optional[Decimal] = Field(None, gt=0)
     tax_amount: Optional[Decimal] = Field(None, ge=0)
     description: Optional[str] = Field(None, max_length=300)
@@ -71,6 +91,7 @@ class MatchCandidateResponse(BaseModel):
     upstream_contract_id: Optional[int] = None
     downstream_contract_id: Optional[int] = None
     management_contract_id: Optional[int] = None
+    zero_hour_labor_id: Optional[int] = None
     score: int
     matched_signals: Dict[str, Any]
     contract_serial_number: Optional[int] = None
@@ -87,6 +108,8 @@ class AllocationResponse(BaseModel):
     direction: InvoiceDirection
     upstream_contract_id: Optional[int] = None
     downstream_contract_id: Optional[int] = None
+    management_contract_id: Optional[int] = None
+    zero_hour_labor_id: Optional[int] = None
     amount: Decimal
     tax_amount: Optional[Decimal] = None
     description: Optional[str] = None
@@ -157,6 +180,7 @@ class ConfirmItemRequest(BaseModel):
 
 class IgnoreItemRequest(BaseModel):
     reason: str = Field(..., min_length=2, max_length=300)
+
 
 class ClearInvoiceRequest(IgnoreItemRequest):
     pass

@@ -1,7 +1,8 @@
 """Posting imported invoice allocations into formal invoice tables."""
+
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Iterable
 
@@ -13,24 +14,45 @@ from app.core.errors import ResourceNotFoundError, ValidationError
 from app.models.contract_downstream import FinanceDownstreamInvoice
 from app.models.contract_upstream import FinanceUpstreamInvoice
 from app.models.contract_management import FinanceManagementInvoice
-from app.models.invoice_import import InvoiceImportAllocation, InvoiceImportItem, InvoiceImportMatchCandidate
+from app.models.invoice_import import (
+    InvoiceImportAllocation,
+    InvoiceImportItem,
+    InvoiceImportMatchCandidate,
+)
+from app.models.zero_hour_labor import ZeroHourLaborInvoice
 from app.models.user import User, UserRole
 
 
-def validate_allocation_total(invoice_total: Decimal | None, allocation_amounts: Iterable[Decimal]) -> None:
-    total = sum((amount or Decimal("0.00") for amount in allocation_amounts), Decimal("0.00"))
+def validate_allocation_total(
+    invoice_total: Decimal | None, allocation_amounts: Iterable[Decimal]
+) -> None:
+    total = sum(
+        (amount or Decimal("0.00") for amount in allocation_amounts), Decimal("0.00")
+    )
     if total <= Decimal("0.00"):
-        raise ValidationError(message="分摊金额必须大于 0", field_errors={"amount": "分摊金额必须大于 0"})
+        raise ValidationError(
+            message="分摊金额必须大于 0", field_errors={"amount": "分摊金额必须大于 0"}
+        )
     if invoice_total is None:
-        raise ValidationError(message="发票价税合计缺失，不能确认", field_errors={"total_amount": "发票价税合计缺失"})
+        raise ValidationError(
+            message="发票价税合计缺失，不能确认",
+            field_errors={"total_amount": "发票价税合计缺失"},
+        )
     if total.quantize(Decimal("0.01")) != invoice_total.quantize(Decimal("0.01")):
-        raise ValidationError(message="分摊金额合计必须等于发票价税合计", field_errors={"amount": "分摊金额必须精确等于发票价税合计"})
+        raise ValidationError(
+            message="分摊金额合计必须等于发票价税合计",
+            field_errors={"amount": "分摊金额必须精确等于发票价税合计"},
+        )
 
 
 def _can_access_imports(user: User) -> bool:
-    return bool(getattr(user, "is_superuser", False) or getattr(user, "role", None) in {
-        UserRole.ADMIN,
-    })
+    return bool(
+        getattr(user, "is_superuser", False)
+        or getattr(user, "role", None)
+        in {
+            UserRole.ADMIN,
+        }
+    )
 
 
 def _invoice_file_fields(item: InvoiceImportItem) -> tuple[str | None, str | None]:
@@ -50,33 +72,57 @@ def _validate_item_before_posting(item: InvoiceImportItem) -> None:
     if item.parse_status != "parsed":
         errors["parse_status"] = "只有解析成功的发票可以确认"
     if errors:
-        raise ValidationError(message="发票关键信息不完整，不能确认", field_errors=errors)
+        raise ValidationError(
+            message="发票关键信息不完整，不能确认", field_errors=errors
+        )
 
 
 def _validate_allocation(allocation: InvoiceImportAllocation) -> None:
     if allocation.direction == "upstream":
         if not allocation.upstream_contract_id or allocation.downstream_contract_id:
-            raise ValidationError(message="上游分摊必须且只能选择上游合同", field_errors={"upstream_contract_id": "请选择上游合同"})
+            raise ValidationError(
+                message="上游分摊必须且只能选择上游合同",
+                field_errors={"upstream_contract_id": "请选择上游合同"},
+            )
         return
     if allocation.direction == "downstream":
-        if bool(allocation.downstream_contract_id) == bool(allocation.management_contract_id) or allocation.upstream_contract_id:
-            raise ValidationError(message="进项发票分摊必须选择下游或管理合同之一", field_errors={"downstream_contract_id": "请选择一个目标合同"})
+        targets = [
+            allocation.downstream_contract_id,
+            allocation.management_contract_id,
+            allocation.zero_hour_labor_id,
+        ]
+        if (
+            sum(value is not None for value in targets) != 1
+            or allocation.upstream_contract_id
+        ):
+            raise ValidationError(
+                message="进项发票分摊必须选择下游、管理合同或零星用工之一",
+                field_errors={"downstream_contract_id": "请选择一个入账目标"},
+            )
         return
-    raise ValidationError(message="分摊方向必须为上游或下游", field_errors={"direction": "分摊方向无效"})
+    raise ValidationError(
+        message="分摊方向必须为上游或下游", field_errors={"direction": "分摊方向无效"}
+    )
 
 
 class InvoicePostingService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def confirm_item(self, item_id: int, user: User, override_duplicate: bool = False) -> InvoiceImportItem:
+    async def confirm_item(
+        self, item_id: int, user: User, override_duplicate: bool = False
+    ) -> InvoiceImportItem:
         candidate_contracts = selectinload(InvoiceImportItem.candidates)
         result = await self.db.execute(
             select(InvoiceImportItem)
             .options(
                 selectinload(InvoiceImportItem.allocations),
-                candidate_contracts.selectinload(InvoiceImportMatchCandidate.upstream_contract),
-                candidate_contracts.selectinload(InvoiceImportMatchCandidate.downstream_contract),
+                candidate_contracts.selectinload(
+                    InvoiceImportMatchCandidate.upstream_contract
+                ),
+                candidate_contracts.selectinload(
+                    InvoiceImportMatchCandidate.downstream_contract
+                ),
                 selectinload(InvoiceImportItem.batch),
             )
             .where(InvoiceImportItem.id == item_id)
@@ -85,10 +131,17 @@ class InvoicePostingService:
         item = result.scalar_one_or_none()
         if not item:
             raise ResourceNotFoundError(resource_type="导入发票", resource_id=item_id)
-        if not _can_access_imports(user) and item.batch and item.batch.uploaded_by != user.id:
+        if (
+            not _can_access_imports(user)
+            and item.batch
+            and item.batch.uploaded_by != user.id
+        ):
             raise ResourceNotFoundError(resource_type="导入发票", resource_id=item_id)
         if item.duplicate_of_item_id and not override_duplicate:
-            raise ValidationError(message="重复发票不能直接确认", field_errors={"invoice_number": "请核对重复发票"})
+            raise ValidationError(
+                message="重复发票不能直接确认",
+                field_errors={"invoice_number": "请核对重复发票"},
+            )
 
         if item.confirmation_status == "confirmed":
             return item
@@ -97,17 +150,22 @@ class InvoicePostingService:
 
         draft_allocations = [a for a in item.allocations if a.status == "draft"]
         if not draft_allocations:
-            raise ValidationError(message="发票尚未分摊，不能确认挂账", field_errors={"allocations": "请先添加分摊记录"})
+            raise ValidationError(
+                message="发票尚未分摊，不能确认挂账",
+                field_errors={"allocations": "请先添加分摊记录"},
+            )
 
         _validate_item_before_posting(item)
         for allocation in draft_allocations:
             _validate_allocation(allocation)
         # A cleared import keeps its former allocations and formal-record links for audit.
         # Only the new draft version participates when the document is reposted.
-        validate_allocation_total(item.total_amount, [a.amount for a in draft_allocations])
+        validate_allocation_total(
+            item.total_amount, [a.amount for a in draft_allocations]
+        )
 
         file_path, file_key = _invoice_file_fields(item)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         for allocation in draft_allocations:
             if allocation.direction == "upstream":
                 formal = FinanceUpstreamInvoice(
@@ -126,6 +184,21 @@ class InvoicePostingService:
                     source_import_allocation_id=allocation.id,
                     created_by=user.id,
                     updated_by=user.id,
+                )
+            elif allocation.zero_hour_labor_id:
+                formal = ZeroHourLaborInvoice(
+                    zero_hour_labor_id=allocation.zero_hour_labor_id,
+                    invoice_number=item.invoice_number,
+                    invoice_date=item.invoice_date,
+                    amount=allocation.amount,
+                    tax_amount=allocation.tax_amount or Decimal("0"),
+                    supplier=item.seller_name,
+                    file_path=file_path,
+                    file_key=file_key,
+                    status="active",
+                    source_import_item_id=item.id,
+                    source_import_allocation_id=allocation.id,
+                    created_by=user.id,
                 )
             elif allocation.downstream_contract_id:
                 formal = FinanceDownstreamInvoice(
@@ -180,8 +253,12 @@ class InvoicePostingService:
             select(InvoiceImportItem)
             .options(
                 selectinload(InvoiceImportItem.allocations),
-                candidate_contracts.selectinload(InvoiceImportMatchCandidate.upstream_contract),
-                candidate_contracts.selectinload(InvoiceImportMatchCandidate.downstream_contract),
+                candidate_contracts.selectinload(
+                    InvoiceImportMatchCandidate.upstream_contract
+                ),
+                candidate_contracts.selectinload(
+                    InvoiceImportMatchCandidate.downstream_contract
+                ),
                 selectinload(InvoiceImportItem.batch),
             )
             .where(InvoiceImportItem.id == item_id)

@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     """Application settings"""
     # Application
     APP_NAME: str = "LH Contract Management System"
-    APP_VERSION: str = "1.8.0"
+    APP_VERSION: str = "1.9.0"
     DEBUG: bool = False  # Default to False for security
     
     # Database - MUST be set via environment variable
@@ -64,6 +64,9 @@ class Settings(BaseSettings):
         if not self.DEBUG and not self.COMPANY_TAX_NO:
             raise ValueError("COMPANY_TAX_NO 环境变量在生产环境中必须设置，用于电子发票上下游方向判断")
 
+        if not self.DEBUG and len(self.CONFIG_ENCRYPTION_KEY) < 32:
+            raise ValueError("CONFIG_ENCRYPTION_KEY 在生产环境中必须设置且至少 32 个字符")
+
         if not self.SECRET_KEY:
             if not self.DEBUG:
                 raise ValueError(
@@ -83,6 +86,7 @@ class Settings(BaseSettings):
             "MINIO_ACCESS_KEY": self.MINIO_ACCESS_KEY,
             "MINIO_SECRET_KEY": self.MINIO_SECRET_KEY,
             "INIT_ADMIN_TOKEN": self.INIT_ADMIN_TOKEN,
+            "CONFIG_ENCRYPTION_KEY": self.CONFIG_ENCRYPTION_KEY,
         }
         placeholder_marker = "CHANGE" + "_THIS"
         for name, value in protected_values.items():

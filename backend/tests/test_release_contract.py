@@ -1,6 +1,7 @@
 """
 Release contract tests for production startup and deployment docs.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -41,21 +42,27 @@ def test_deployment_checklist_references_existing_compose_services():
 
 
 def test_production_images_and_startup_match_release_18_contract():
-    backend_dockerfile = (REPO_ROOT / "backend" / "Dockerfile.production").read_text(encoding="utf-8")
-    frontend_dockerfile = (REPO_ROOT / "frontend" / "Dockerfile.production").read_text(encoding="utf-8")
-    frontend_package = (REPO_ROOT / "frontend" / "package.json").read_text(encoding="utf-8")
+    backend_dockerfile = (REPO_ROOT / "backend" / "Dockerfile.production").read_text(
+        encoding="utf-8"
+    )
+    frontend_dockerfile = (REPO_ROOT / "frontend" / "Dockerfile.production").read_text(
+        encoding="utf-8"
+    )
+    frontend_package = (REPO_ROOT / "frontend" / "package.json").read_text(
+        encoding="utf-8"
+    )
 
-    assert 'LABEL version="1.8.0"' in backend_dockerfile
-    assert 'LABEL version="1.8.0"' in frontend_dockerfile
-    assert '"version": "1.8.0"' in frontend_package
+    assert 'LABEL version="1.9.0"' in backend_dockerfile
+    assert 'LABEL version="1.9.0"' in frontend_dockerfile
+    assert '"version": "1.9.0"' in frontend_package
     assert "alembic upgrade head && uvicorn" in backend_dockerfile
 
 
 def test_pve_compose_defaults_to_release_18_ghcr_images():
     content = (REPO_ROOT / "docker-compose.pve-prod.yml").read_text(encoding="utf-8")
 
-    assert "ghcr.io/palmtom316/lh-contract-backend:1.8.0" in content
-    assert "ghcr.io/palmtom316/lh-contract-frontend:1.8.0" in content
+    assert "ghcr.io/palmtom316/lh-contract-backend:1.9.0" in content
+    assert "ghcr.io/palmtom316/lh-contract-frontend:1.9.0" in content
     assert "BACKEND_IMAGE" in content
     assert "FRONTEND_IMAGE" in content
 
@@ -73,6 +80,18 @@ def test_release_18_preflight_checks_schema_and_required_environment():
     assert "20260527_add_zero_hour_tax_description" in content
     assert "version_width" in content
     assert "COMPANY_TAX_NO" in content
+
+
+def test_release_19_upgrade_is_guarded_by_backup_and_schema_preflights():
+    preflight = (REPO_ROOT / "scripts/preflight_1.9.sh").read_text(encoding="utf-8")
+    upgrade = (REPO_ROOT / "scripts/upgrade_to_v1.9.sh").read_text(encoding="utf-8")
+    assert "20260527_add_zero_hour_tax_description" in preflight
+    assert "20260722_durable_import_jobs" in preflight
+    assert "CONFIG_ENCRYPTION_KEY" in preflight
+    assert "./scripts/preflight_1.9.sh before" in upgrade
+    assert "./scripts/backup.sh" in upgrade
+    assert "alembic upgrade head" in upgrade
+    assert "./scripts/preflight_1.9.sh after" in upgrade
 
 
 def test_upgrade_backup_requires_minio_object_backup():

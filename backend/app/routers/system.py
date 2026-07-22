@@ -5,8 +5,13 @@ from app.services.auth import get_current_active_user
 from app.models.user import User
 from app.config import settings
 from app.core.errors import (
-    PermissionDeniedError, DatabaseError, ResourceNotFoundError, 
-    ValidationError, DuplicateRecordError, AppException, ErrorCode
+    PermissionDeniedError,
+    DatabaseError,
+    ResourceNotFoundError,
+    ValidationError,
+    DuplicateRecordError,
+    AppException,
+    ErrorCode,
 )
 import shutil
 import subprocess
@@ -23,13 +28,19 @@ from app.database import get_db
 from app.models.system import SysDictionary, SystemConfig
 from app.services.dictionary_usage_service import DictionaryUsageService
 from app.utils.file_validator import validate_file_upload
-from app.core.secure_config import protect_config_secret, reveal_config_secret, validate_external_api_url
+from app.core.secure_config import (
+    create_pinned_http_transport,
+    protect_config_secret,
+    reveal_config_secret,
+    validate_external_api_url,
+)
 import logging
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 LOGO_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".svg")
 LOGO_ALLOWED_EXTENSIONS = [ext.lstrip(".") for ext in LOGO_EXTENSIONS]
+
 
 def _safe_remove_file(path: str) -> None:
     """Best-effort file removal to avoid backup accumulation."""
@@ -122,23 +133,25 @@ def _build_logo_api_path(logo_path: str | None) -> str | None:
     version = os.stat(logo_path).st_mtime_ns
     return f"/api/v1/system/logo/file?v={version}"
 
+
 def find_pg_dump():
     """Find pg_dump executable in PATH or common Windows locations"""
     if shutil.which("pg_dump"):
         return "pg_dump"
-    
+
     # Common Windows paths
     possible_versions = [17, 16, 15, 14, 13, 12, 11, 10]
     common_paths = []
-    
+
     for v in possible_versions:
         common_paths.append(rf"C:\Program Files\PostgreSQL\{v}\bin\pg_dump.exe")
         common_paths.append(rf"C:\Program Files (x86)\PostgreSQL\{v}\bin\pg_dump.exe")
-        
+
     for p in common_paths:
         if os.path.exists(p):
             return p
     return None
+
 
 def get_pg_dump_cmd(db_url: str, output_file: str):
     """
@@ -147,20 +160,24 @@ def get_pg_dump_cmd(db_url: str, output_file: str):
     """
     pg_dump_exe = find_pg_dump()
     if not pg_dump_exe:
-        raise DatabaseError(message="未找到 pg_dump 工具", detail="无法进行备份。请安装 PostgreSQL 客户端。")
+        raise DatabaseError(
+            message="未找到 pg_dump 工具",
+            detail="无法进行备份。请安装 PostgreSQL 客户端。",
+        )
 
     # Remove driver part
     clean_url = db_url.replace("+asyncpg", "")
-    
+
     # pg_dump needs standard URI
     # Use -d flag to explicitly specify connection string to avoid argument parsing ambiguity
     cmd = [pg_dump_exe, "-d", clean_url, "-f", output_file]
     return cmd
 
+
 def run_db_dump(output_file: str):
     """Helper to run pg_dump with proper environment"""
     cmd = get_pg_dump_cmd(settings.DATABASE_URL, output_file)
-    
+
     # Prepare environment with PGPASSWORD
     env = os.environ.copy()
     try:
@@ -169,25 +186,22 @@ def run_db_dump(output_file: str):
         if parsed.password:
             env["PGPASSWORD"] = unquote(parsed.password)
     except Exception as e:
-        logger.warning("Failed to parse database password for pg_dump environment", exc_info=e)
+        logger.warning(
+            "Failed to parse database password for pg_dump environment", exc_info=e
+        )
 
     # Execute pg_dump
     try:
         subprocess.run(
-            cmd, 
-            check=True, 
-            stdout=subprocess.PIPE, 
-            stderr=subprocess.PIPE,
-            env=env
+            cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env
         )
     except subprocess.CalledProcessError as e:
-        error_msg = e.stderr.decode(errors='ignore') if e.stderr else str(e)
+        error_msg = e.stderr.decode(errors="ignore") if e.stderr else str(e)
         raise Exception(error_msg)
 
+
 @router.get("/backup/db")
-async def backup_database(
-    current_user: User = Depends(get_current_active_user)
-):
+async def backup_database(current_user: User = Depends(get_current_active_user)):
     """
     Backup database to SQL file and return it
     """
@@ -198,26 +212,24 @@ async def backup_database(
     filename = f"lh_contract_db_{timestamp}.sql"
     tmp_root = _ensure_backup_tmp_dir()
     filepath = os.path.join(tmp_root, filename)
-    
+
     try:
         run_db_dump(filepath)
 
         return FileResponse(
             path=filepath,
             filename=filename,
-            media_type='application/sql',
-            background=BackgroundTask(_safe_remove_file, filepath)
+            media_type="application/sql",
+            background=BackgroundTask(_safe_remove_file, filepath),
         )
-        
+
     except Exception as e:
         logger.exception("Database backup failed")
         raise DatabaseError(message="数据库备份失败", detail=str(e))
 
 
 @router.get("/backup/full")
-async def backup_system(
-    current_user: User = Depends(get_current_active_user)
-):
+async def backup_system(current_user: User = Depends(get_current_active_user)):
     """
     Full system backup: Database + local uploads + MinIO objects (ZIP)
     """
@@ -230,18 +242,18 @@ async def backup_system(
     temp_dir = tempfile.mkdtemp(prefix="full_backup_", dir=tmp_root)
     zip_filename = f"{base_filename}.zip"
     zip_filepath = os.path.join(tmp_root, zip_filename)
-    
+
     try:
         # 1. Dump Database
         db_file = os.path.join(temp_dir, "database.sql")
         run_db_dump(db_file)
-        
+
         # 2. Copy Uploads
         uploads_src = settings.UPLOAD_DIR
         uploads_dst = os.path.join(temp_dir, "uploads")
         backup_tmp_real = os.path.realpath(settings.BACKUP_TMP_DIR)
         uploads_root_real = os.path.realpath(settings.UPLOAD_DIR)
-        
+
         def ignore_patterns(path, names):
             ignored = set()
             if os.path.realpath(path) == uploads_root_real:
@@ -249,12 +261,14 @@ async def backup_system(
                     ignored.add("temp")
                 for name in names:
                     child_real = os.path.realpath(os.path.join(path, name))
-                    if child_real == backup_tmp_real or child_real.startswith(backup_tmp_real + os.sep):
+                    if child_real == backup_tmp_real or child_real.startswith(
+                        backup_tmp_real + os.sep
+                    ):
                         ignored.add(name)
             return ignored
 
         if os.path.exists(uploads_src):
-             shutil.copytree(uploads_src, uploads_dst, ignore=ignore_patterns)
+            shutil.copytree(uploads_src, uploads_dst, ignore=ignore_patterns)
 
         # 3. Copy MinIO objects. A full backup must fail if object storage
         # cannot be copied; otherwise the archive would silently omit PDFs.
@@ -272,12 +286,12 @@ async def backup_system(
 
         # 5. Cleanup temp folder (keep zip)
         shutil.rmtree(temp_dir)
-        
+
         return FileResponse(
             path=zip_filepath,
             filename=zip_filename,
-            media_type='application/zip',
-            background=BackgroundTask(_safe_remove_file, zip_filepath)
+            media_type="application/zip",
+            background=BackgroundTask(_safe_remove_file, zip_filepath),
         )
 
     except Exception as e:
@@ -287,40 +301,40 @@ async def backup_system(
         _safe_remove_file(zip_filepath)
         raise DatabaseError(message="系统备份失败", detail=str(e))
 
+
 @router.post("/logo")
 async def upload_logo(
-    file: UploadFile = File(...),
-    current_user: User = Depends(get_current_active_user)
+    file: UploadFile = File(...), current_user: User = Depends(get_current_active_user)
 ):
     """
     Upload system logo
     """
     if not current_user.is_superuser:
         raise PermissionDeniedError(detail="需要超级管理员权限")
-    
+
     # Validate file name, extension, size, and MIME signature
     await validate_file_upload(file, allowed_extensions=LOGO_ALLOWED_EXTENSIONS)
-    
+
     # Save to uploads/system/logo.png
     system_dir = os.path.join(settings.UPLOAD_DIR, "system")
     os.makedirs(system_dir, exist_ok=True)
-    
-    # We always save as logo.png or preserve extension? 
+
+    # We always save as logo.png or preserve extension?
     # For simplicity, let's keep original extension or convert to png.
     # Frontend layout expects a fixed URL or we return the dynamic URL.
     # Let's save as specific name 'site_logo.png' (or match extension)
-    
+
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in LOGO_EXTENSIONS:
-        ext = '.png' # Default fallback
-        
+        ext = ".png"  # Default fallback
+
     filename = f"site_logo{ext}"
     target_path = os.path.join(system_dir, filename)
-    
+
     try:
         with open(target_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-            
+
         # Also clean up other logo files to avoid confusion if we change extension
         for other_ext in LOGO_EXTENSIONS:
             if other_ext != ext:
@@ -331,6 +345,7 @@ async def upload_logo(
         return {"message": "Logo上传成功", "path": _build_logo_api_path(target_path)}
     except Exception as e:
         raise DatabaseError(message="Logo上传失败", detail=str(e))
+
 
 @router.get("/logo")
 async def get_logo():
@@ -346,12 +361,11 @@ async def get_logo_file():
     if not logo_path:
         raise ResourceNotFoundError(resource_type="系统Logo")
 
-    return FileResponse(
-        logo_path,
-        headers={"Cache-Control": "public, max-age=300"}
-    )
+    return FileResponse(logo_path, headers={"Cache-Control": "public, max-age=300"})
+
 
 # --- System Configuration & Dictionary Endpoints ---
+
 
 class SystemConfigUpdate(BaseModel):
     system_name: Optional[str] = None
@@ -362,23 +376,28 @@ class SystemConfigUpdate(BaseModel):
     mineru_timeout_seconds: Optional[int] = None
     company_bank_accounts: Optional[str] = None
 
+
 @router.get("/config")
-async def get_system_config(
-    db: AsyncSession = Depends(get_db)
-):
+async def get_system_config(db: AsyncSession = Depends(get_db)):
     """Get system configuration (name, logo, etc)"""
     # Fetch all config
     public_keys = {"system_name", "system_name_line_2"}
-    result = await db.execute(select(SystemConfig).where(SystemConfig.key.in_(public_keys)))
+    result = await db.execute(
+        select(SystemConfig).where(SystemConfig.key.in_(public_keys))
+    )
     configs = result.scalars().all()
-    
-    config_dict = {"system_name": "合同管理系统", "system_name_line_2": "", "system_logo": None}
-    
+
+    config_dict = {
+        "system_name": "合同管理系统",
+        "system_name_line_2": "",
+        "system_logo": None,
+    }
+
     # Override defaults
     for c in configs:
         if c.key in config_dict:
             config_dict[c.key] = c.value
-            
+
     # Check logo file existence logic if needed, but simple return is fine
     config_dict["system_logo"] = _build_logo_api_path(_find_system_logo_path())
 
@@ -388,31 +407,53 @@ async def get_system_config(
         "system_logo": config_dict["system_logo"],
     }
 
+
 @router.get("/config/admin")
-async def get_admin_system_config(db:AsyncSession=Depends(get_db),current_user:User=Depends(get_current_active_user)):
-    if not current_user.is_superuser: raise PermissionDeniedError(detail="需要超级管理员权限")
-    rows=(await db.execute(select(SystemConfig))).scalars()
-    result={"system_name":"合同管理系统","system_name_line_2":"","system_logo":_build_logo_api_path(_find_system_logo_path()),"mineru_enabled":False,"mineru_api_url":"","mineru_timeout_seconds":60,"mineru_api_key_configured":False,"mineru_api_key_masked":"","company_bank_accounts":""}
+async def get_admin_system_config(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    if not current_user.is_superuser:
+        raise PermissionDeniedError(detail="需要超级管理员权限")
+    rows = (await db.execute(select(SystemConfig))).scalars()
+    result = {
+        "system_name": "合同管理系统",
+        "system_name_line_2": "",
+        "system_logo": _build_logo_api_path(_find_system_logo_path()),
+        "mineru_enabled": False,
+        "mineru_api_url": "",
+        "mineru_timeout_seconds": 60,
+        "mineru_api_key_configured": False,
+        "mineru_api_key_masked": "",
+        "company_bank_accounts": "",
+    }
     for row in rows:
-        if row.key=="mineru_api_key": result["mineru_api_key_configured"]=bool(row.value);result["mineru_api_key_masked"]="••••••••" if row.value else ""
-        elif row.key in result: result[row.key]=row.value
-    result["mineru_enabled"]=str(result["mineru_enabled"]).lower()=="true";result["mineru_timeout_seconds"]=int(result["mineru_timeout_seconds"] or 60)
+        if row.key == "mineru_api_key":
+            result["mineru_api_key_configured"] = bool(row.value)
+            result["mineru_api_key_masked"] = "••••••••" if row.value else ""
+        elif row.key in result:
+            result[row.key] = row.value
+    result["mineru_enabled"] = str(result["mineru_enabled"]).lower() == "true"
+    result["mineru_timeout_seconds"] = int(result["mineru_timeout_seconds"] or 60)
     return result
+
 
 @router.post("/config")
 async def update_system_config(
     config: SystemConfigUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """Update system configuration"""
     if not current_user.is_superuser:
         raise PermissionDeniedError(detail="需要超级管理员权限")
-        
+
     async def upsert_config(key, value):
         if value is not None:
             # Upsert
-            result = await db.execute(select(SystemConfig).where(SystemConfig.key == key))
+            result = await db.execute(
+                select(SystemConfig).where(SystemConfig.key == key)
+            )
             obj = result.scalar_one_or_none()
             if obj:
                 obj.value = value
@@ -421,37 +462,95 @@ async def update_system_config(
 
     await upsert_config("system_name", config.system_name)
     await upsert_config("system_name_line_2", config.system_name_line_2)
-    if config.mineru_api_url is not None: validate_external_api_url(config.mineru_api_url)
+    if config.mineru_api_url is not None:
+        validate_external_api_url(config.mineru_api_url)
     await upsert_config("mineru_api_url", config.mineru_api_url)
-    await upsert_config("mineru_enabled", str(config.mineru_enabled).lower() if config.mineru_enabled is not None else None)
-    await upsert_config("mineru_timeout_seconds", str(config.mineru_timeout_seconds) if config.mineru_timeout_seconds is not None else None)
+    await upsert_config(
+        "mineru_enabled",
+        (
+            str(config.mineru_enabled).lower()
+            if config.mineru_enabled is not None
+            else None
+        ),
+    )
+    await upsert_config(
+        "mineru_timeout_seconds",
+        (
+            str(config.mineru_timeout_seconds)
+            if config.mineru_timeout_seconds is not None
+            else None
+        ),
+    )
     await upsert_config("company_bank_accounts", config.company_bank_accounts)
-    if config.mineru_api_key and config.mineru_api_key != "••••••••": await upsert_config("mineru_api_key", protect_config_secret(config.mineru_api_key))
-            
+    if config.mineru_api_key and config.mineru_api_key != "••••••••":
+        await upsert_config(
+            "mineru_api_key", protect_config_secret(config.mineru_api_key)
+        )
+
     await db.commit()
     return {"message": "Configuration updated"}
 
+
 @router.post("/config/mineru/test")
-async def test_mineru(db: AsyncSession=Depends(get_db), current_user: User=Depends(get_current_active_user)):
-    if not current_user.is_superuser: raise PermissionDeniedError(detail="需要超级管理员权限")
-    rows={x.key:x.value for x in (await db.execute(select(SystemConfig).where(SystemConfig.key.in_(["mineru_api_url","mineru_api_key","mineru_timeout_seconds"])))).scalars()}
-    url=validate_external_api_url(rows.get("mineru_api_url",""))
+async def test_mineru(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    if not current_user.is_superuser:
+        raise PermissionDeniedError(detail="需要超级管理员权限")
+    rows = {
+        x.key: x.value
+        for x in (
+            await db.execute(
+                select(SystemConfig).where(
+                    SystemConfig.key.in_(
+                        ["mineru_api_url", "mineru_api_key", "mineru_timeout_seconds"]
+                    )
+                )
+            )
+        ).scalars()
+    }
+    url = rows.get("mineru_api_url", "")
+    transport = create_pinned_http_transport(url)
     try:
-        async with httpx.AsyncClient(timeout=int(rows.get("mineru_timeout_seconds") or 60)) as client:
-            response=await client.get(url,headers={"Authorization":f"Bearer {reveal_config_secret(rows.get('mineru_api_key',''))}"})
-        if response.status_code in {401,403}: return {"ok":False,"result":"auth_failed","message":"MinerU 鉴权失败"}
-        if response.status_code >= 500: return {"ok":False,"result":"service_unavailable","message":"MinerU 服务不可用"}
-        return {"ok":True,"result":"connected","message":"连接成功"}
-    except httpx.TimeoutException: return {"ok":False,"result":"timeout","message":"连接超时"}
-    except httpx.HTTPError: return {"ok":False,"result":"service_unavailable","message":"MinerU 服务不可用"}
+        async with httpx.AsyncClient(
+            timeout=min(int(rows.get("mineru_timeout_seconds") or 60), 120),
+            transport=transport,
+        ) as client:
+            response = await client.get(
+                url,
+                headers={
+                    "Authorization": f"Bearer {reveal_config_secret(rows.get('mineru_api_key',''))}"
+                },
+            )
+        if response.status_code in {401, 403}:
+            return {"ok": False, "result": "auth_failed", "message": "MinerU 鉴权失败"}
+        if response.status_code >= 500:
+            return {
+                "ok": False,
+                "result": "service_unavailable",
+                "message": "MinerU 服务不可用",
+            }
+        return {"ok": True, "result": "connected", "message": "连接成功"}
+    except httpx.TimeoutException:
+        return {"ok": False, "result": "timeout", "message": "连接超时"}
+    except httpx.HTTPError:
+        return {
+            "ok": False,
+            "result": "service_unavailable",
+            "message": "MinerU 服务不可用",
+        }
+
 
 # --- Dictionary Endpoints ---
+
 
 class OptionCreate(BaseModel):
     category: str
     label: str
     value: str
     sort_order: int = 0
+
 
 class OptionUpdate(BaseModel):
     label: Optional[str] = None
@@ -460,83 +559,97 @@ class OptionUpdate(BaseModel):
     is_active: Optional[bool] = None
     replacement_value: Optional[str] = None
 
+
 @router.get("/options")
 async def get_all_options(
-    category: Optional[str] = None,
-    db: AsyncSession = Depends(get_db)
+    category: Optional[str] = None, db: AsyncSession = Depends(get_db)
 ):
     """Get options, optionally filtered by category"""
-    stmt = select(SysDictionary).where(SysDictionary.is_active == True).order_by(SysDictionary.sort_order)
+    stmt = (
+        select(SysDictionary)
+        .where(SysDictionary.is_active == True)
+        .order_by(SysDictionary.sort_order)
+    )
     if category:
         stmt = stmt.where(SysDictionary.category == category)
-        
+
     result = await db.execute(stmt)
     options = result.scalars().all()
     return options
+
 
 @router.post("/options")
 async def create_option(
     option: OptionCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """Create a new dictionary option"""
     if not current_user.is_superuser:
         raise PermissionDeniedError(detail="需要超级管理员权限")
-        
+
     # Check duplicate in category
-    res = await db.execute(select(SysDictionary).where(
-        SysDictionary.category == option.category,
-        SysDictionary.value == option.value
-    ))
+    res = await db.execute(
+        select(SysDictionary).where(
+            SysDictionary.category == option.category,
+            SysDictionary.value == option.value,
+        )
+    )
     if res.scalar_one_or_none():
-        raise DuplicateRecordError(resource_type="字典选项", field_name="存储值", field_value=option.value)
-        
+        raise DuplicateRecordError(
+            resource_type="字典选项", field_name="存储值", field_value=option.value
+        )
+
     new_opt = SysDictionary(
         category=option.category,
         label=option.label,
         value=option.value,
-        sort_order=option.sort_order
+        sort_order=option.sort_order,
     )
     db.add(new_opt)
     await db.commit()
     await db.refresh(new_opt)
     return new_opt
 
+
 @router.put("/options/{id}")
 async def update_option(
     id: int,
     option: OptionUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """Update an option"""
     if not current_user.is_superuser:
         raise PermissionDeniedError(detail="需要超级管理员权限")
-        
+
     res = await db.execute(select(SysDictionary).where(SysDictionary.id == id))
     obj = res.scalar_one_or_none()
     if not obj:
         raise ResourceNotFoundError(resource_type="字典选项", resource_id=id)
     usage_service = DictionaryUsageService(db)
 
-    if option.label is not None: obj.label = option.label
+    if option.label is not None:
+        obj.label = option.label
     if option.value is not None:
         await usage_service.ensure_value_change_is_safe(obj, option.value)
         obj.value = option.value
-    if option.sort_order is not None: obj.sort_order = option.sort_order
-    if option.is_active is not None: obj.is_active = option.is_active
-    
+    if option.sort_order is not None:
+        obj.sort_order = option.sort_order
+    if option.is_active is not None:
+        obj.is_active = option.is_active
+
     await db.commit()
     await db.refresh(obj)
     return obj
+
 
 @router.delete("/options/{id}")
 async def delete_option(
     id: int,
     replacement_value: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """Delete an option, falling back to disable when historical data references it."""
     if not current_user.is_superuser:
@@ -548,22 +661,24 @@ async def delete_option(
         raise ResourceNotFoundError(resource_type="字典选项", resource_id=id)
 
     usage_service = DictionaryUsageService(db)
-    return await usage_service.disable_or_delete(obj, replacement_value=replacement_value)
+    return await usage_service.disable_or_delete(
+        obj, replacement_value=replacement_value
+    )
 
 
 @router.get("/options/export")
 async def export_options(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """Export all dictionary options to Excel"""
     import pandas as pd
     import io
     from starlette.responses import StreamingResponse
-    
+
     if not current_user.is_superuser:
         raise PermissionDeniedError(detail="需要超级管理员权限")
-    
+
     # Category code to Chinese name mapping
     category_names = {
         "contract_category": "上游合同类别",
@@ -575,33 +690,37 @@ async def export_options(
         "management_contract_category": "管理合同类别",
         "downstream_pricing_mode": "下游及管理合同计价模式",
         "payment_category": "下游及管理合同应付款类别",
-        "expense_type": "无合同费用类别"
+        "expense_type": "无合同费用类别",
     }
-    
+
     # Get all options
-    result = await db.execute(select(SysDictionary).order_by(SysDictionary.category, SysDictionary.sort_order))
+    result = await db.execute(
+        select(SysDictionary).order_by(SysDictionary.category, SysDictionary.sort_order)
+    )
     options = result.scalars().all()
-    
+
     # Convert to DataFrame with Chinese category names
     data = []
     for opt in options:
-        data.append({
-            "分类名称": category_names.get(opt.category, opt.category),
-            "分类代码": opt.category,
-            "显示名称": opt.label,
-            "存储值": opt.value,
-            "排序": opt.sort_order,
-            "是否启用": "是" if opt.is_active else "否",
-            "说明": opt.description or ""
-        })
-    
+        data.append(
+            {
+                "分类名称": category_names.get(opt.category, opt.category),
+                "分类代码": opt.category,
+                "显示名称": opt.label,
+                "存储值": opt.value,
+                "排序": opt.sort_order,
+                "是否启用": "是" if opt.is_active else "否",
+                "说明": opt.description or "",
+            }
+        )
+
     df = pd.DataFrame(data)
-    
+
     # Create Excel file in memory
     output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='数据字典')
-        
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="数据字典")
+
         # Add a notes sheet explaining categories
         notes_data = {
             "分类名称": list(category_names.values()),
@@ -616,22 +735,25 @@ async def export_options(
                 "管理合同的类别",
                 "下游及管理合同的计价模式",
                 "下游及管理合同的应付款类别",
-                "无合同费用的分类，如工资、奖金等"
-            ]
+                "无合同费用的分类，如工资、奖金等",
+            ],
         }
         notes_df = pd.DataFrame(notes_data)
-        notes_df.to_excel(writer, index=False, sheet_name='分类说明')
-    
+        notes_df.to_excel(writer, index=False, sheet_name="分类说明")
+
     output.seek(0)
-    
+
     from urllib.parse import quote
+
     filename = f"数据字典_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     encoded_filename = quote(filename)
-    
+
     return StreamingResponse(
         output,
-        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"}
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+        },
     )
 
 
@@ -639,51 +761,63 @@ async def export_options(
 async def import_options(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """Import dictionary options from Excel file"""
     import pandas as pd
     import io
-    
+
     if not current_user.is_superuser:
         raise PermissionDeniedError(detail="需要超级管理员权限")
-    
-    if not file.filename.endswith(('.xlsx', '.xls')):
-        raise ValidationError(message="文件格式错误", field_errors={"file": "请上传Excel文件 (.xlsx 或 .xls)"})
-    
+
+    if not file.filename.endswith((".xlsx", ".xls")):
+        raise ValidationError(
+            message="文件格式错误",
+            field_errors={"file": "请上传Excel文件 (.xlsx 或 .xls)"},
+        )
+
     try:
         content = await file.read()
-        df = pd.read_excel(io.BytesIO(content), sheet_name='数据字典')
-        
+        df = pd.read_excel(io.BytesIO(content), sheet_name="数据字典")
+
         # Validate required columns
         required_cols = ["分类代码", "显示名称", "存储值"]
         for col in required_cols:
             if col not in df.columns:
-                raise ValidationError(message="缺少必需列", field_errors={"columns": f"缺少: {col}"})
-        
+                raise ValidationError(
+                    message="缺少必需列", field_errors={"columns": f"缺少: {col}"}
+                )
+
         imported_count = 0
         updated_count = 0
         skipped_count = 0
-        
+
         for _, row in df.iterrows():
             category = str(row["分类代码"]).strip()
             label = str(row["显示名称"]).strip()
             value = str(row["存储值"]).strip()
             sort_order = int(row.get("排序", 0)) if pd.notna(row.get("排序")) else 0
-            is_active = row.get("是否启用", "是") == "是" if pd.notna(row.get("是否启用")) else True
-            description = str(row.get("说明", "")).strip() if pd.notna(row.get("说明")) else None
-            
+            is_active = (
+                row.get("是否启用", "是") == "是"
+                if pd.notna(row.get("是否启用"))
+                else True
+            )
+            description = (
+                str(row.get("说明", "")).strip() if pd.notna(row.get("说明")) else None
+            )
+
             if not category or not label or not value:
                 skipped_count += 1
                 continue
-            
+
             # Check if exists
-            result = await db.execute(select(SysDictionary).where(
-                SysDictionary.category == category,
-                SysDictionary.value == value
-            ))
+            result = await db.execute(
+                select(SysDictionary).where(
+                    SysDictionary.category == category, SysDictionary.value == value
+                )
+            )
             existing = result.scalar_one_or_none()
-            
+
             if existing:
                 # Update existing
                 existing.label = label
@@ -699,20 +833,20 @@ async def import_options(
                     value=value,
                     sort_order=sort_order,
                     is_active=is_active,
-                    description=description
+                    description=description,
                 )
                 db.add(new_opt)
                 imported_count += 1
-        
+
         await db.commit()
-        
+
         return {
             "message": "导入成功",
             "imported": imported_count,
             "updated": updated_count,
-            "skipped": skipped_count
+            "skipped": skipped_count,
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -724,7 +858,7 @@ async def import_options(
 async def reset_system(
     confirm_code: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     Reset system to initial state.
@@ -732,46 +866,65 @@ async def reset_system(
     """
     if not current_user.is_superuser:
         raise PermissionDeniedError(detail="需要超级管理员权限")
-        
+
     if confirm_code != "RESET":
-        raise ValidationError(message="确认码错误", field_errors={"confirm_code": "请输入正确的确认码 'RESET'"})
+        raise ValidationError(
+            message="确认码错误",
+            field_errors={"confirm_code": "请输入正确的确认码 'RESET'"},
+        )
 
     try:
         from sqlalchemy import text
+
         # 1. Truncate business tables
         # Use CASCADE to handle foreign keys
         target_tables = [
-             "finance_upstream_receivables", "finance_upstream_invoices", "finance_upstream_receipts", "project_settlements",
-             "finance_downstream_payables", "finance_downstream_invoices", "finance_downstream_payments", "downstream_settlements",
-             "finance_management_payables", "finance_management_invoices", "finance_management_payments", "management_settlements",
-             "contracts_upstream", "contracts_downstream", "contracts_management",
-             "sys_expenses", "sys_audit_log", "sys_files"
+            "finance_upstream_receivables",
+            "finance_upstream_invoices",
+            "finance_upstream_receipts",
+            "project_settlements",
+            "finance_downstream_payables",
+            "finance_downstream_invoices",
+            "finance_downstream_payments",
+            "downstream_settlements",
+            "finance_management_payables",
+            "finance_management_invoices",
+            "finance_management_payments",
+            "management_settlements",
+            "contracts_upstream",
+            "contracts_downstream",
+            "contracts_management",
+            "sys_expenses",
+            "sys_audit_log",
+            "sys_files",
         ]
-        
+
         # Check which tables exist to avoid "table does not exist" error which aborts transaction
         # Postgres specific
-        result = await db.execute(text(
-            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
-        ))
+        result = await db.execute(
+            text(
+                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+            )
+        )
         existing_tables_rows = result.fetchall()
         existing_tables = {row[0] for row in existing_tables_rows}
-        
+
         tables_to_truncate = [t for t in target_tables if t in existing_tables]
-        
+
         if tables_to_truncate:
-             truncate_sql = f"TRUNCATE TABLE {', '.join(tables_to_truncate)} CASCADE"
-             await db.execute(text(truncate_sql))
+            truncate_sql = f"TRUNCATE TABLE {', '.join(tables_to_truncate)} CASCADE"
+            await db.execute(text(truncate_sql))
 
         # 2. Delete Users (except superusers)
         await db.execute(text("DELETE FROM users WHERE is_superuser = false"))
-        
+
         # 3. Clear Uploads Directory (Keep 'system' folder for logos)
         uploads_dir = settings.UPLOAD_DIR
         if os.path.exists(uploads_dir):
             for item in os.listdir(uploads_dir):
                 item_path = os.path.join(uploads_dir, item)
-                if item == 'system':
-                    continue 
+                if item == "system":
+                    continue
                 if os.path.isfile(item_path):
                     os.unlink(item_path)
                 elif os.path.isdir(item_path):

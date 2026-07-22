@@ -27,6 +27,11 @@ def test_health_detailed_returns_503_when_any_dependency_is_unhealthy(monkeypatc
         "check_minio",
         lambda: _completed({"status": "healthy"}),
     )
+    monkeypatch.setattr(
+        health_router,
+        "check_finance_import_jobs",
+        lambda _db: _completed({"status": "healthy", "failed_jobs": 0, "stale_leases": 0}),
+    )
 
     response = asyncio.run(health_router.health_check_detailed(db=object()))
 

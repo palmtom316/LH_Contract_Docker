@@ -5,9 +5,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop, 1.6, release/1.8 ]
+    branches: [ main, develop, 1.6, release/1.8, release/1.9 ]
   pull_request:
-    branches: [ main, develop, 1.6, release/1.8 ]
+    branches: [ main, develop, 1.6, release/1.8, release/1.9 ]
 
 permissions:
   contents: read
@@ -79,6 +79,7 @@ jobs:
         TEST_DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/test_db
         REDIS_URL: redis://localhost:6379/0
         SECRET_KEY: test_secret_key_for_ci_cd_only
+        CONFIG_ENCRYPTION_KEY: test_config_encryption_key_for_ci_cd_only
         COMPANY_TAX_NO: 91310000TESTTAXNO01
       run: |
         cd backend
@@ -129,10 +130,10 @@ jobs:
   build:
     needs: [backend-test, frontend-test]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release/1.8')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release/1.9')
     env:
       REGISTRY: ghcr.io
-      IMAGE_VERSION: 1.8.0
+      IMAGE_VERSION: 1.9.0
     
     steps:
     - uses: actions/checkout@v4
@@ -194,9 +195,10 @@ jobs:
         key: ${{ secrets.DEPLOY_KEY }}
         script: |
           cd /opt/lh_contract
-          docker-compose pull
-          docker-compose up -d
-          docker system prune -f
+          git fetch origin main
+          git switch main
+          git pull --ff-only origin main
+          ./scripts/upgrade_to_v1.9.sh
     
     - name: Health check
       if: ${{ env.DEPLOY_HOST != '' && env.DEPLOY_USER != '' && env.DEPLOY_KEY != '' && env.DEPLOY_URL != '' }}

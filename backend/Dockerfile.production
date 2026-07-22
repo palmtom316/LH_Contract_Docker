@@ -36,7 +36,7 @@ FROM python:3.11-slim AS production
 
 # Labels
 LABEL maintainer="LH Contract Management System"
-LABEL version="1.8.0"
+LABEL version="1.9.0"
 LABEL description="Backend production image"
 
 # Install runtime dependencies only (no gcc)

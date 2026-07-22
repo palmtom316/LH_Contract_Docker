@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func, or_
 from sqlalchemy.orm import joinedload, selectinload
 from typing import List, Optional, Dict, Any
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 
 from app.models.zero_hour_labor import ZeroHourLabor, ZeroHourLaborMaterial
 from app.models.user import User
@@ -131,7 +131,7 @@ class ZeroHourLaborService:
                 # We can append to relationship
                 obj.materials.append(material)
                 
-        obj.updated_at = datetime.utcnow()
+        obj.updated_at = datetime.now(timezone.utc)
 
         await create_audit_log(
             db=self.db,

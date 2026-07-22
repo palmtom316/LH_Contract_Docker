@@ -2,6 +2,7 @@
 Safe Mode Main Application
 Disabling all complex middleware to fix 'startlette.responses.Response' error.
 """
+
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,6 +18,7 @@ from app.init_data import init_data
 import app.models  # ensure all models are registered with SQLAlchemy metadata
 from app.core.errors import AppException, ErrorCode
 from app.core.exceptions import sqlalchemy_exception_handler
+
 
 async def internal_server_error_handler(request: Request, exc: Exception):
     logger.exception("Unhandled application error", exc_info=exc)
@@ -34,51 +36,68 @@ async def internal_server_error_handler(request: Request, exc: Exception):
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("app")
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     logger.info(f"[START] Starting {settings.APP_NAME}")
     await init_db()
-    
+
     # Initialize cache
     try:
         from app.core.cache import init_cache
+
         await init_cache()
     except Exception as e:
         logger.warning(f"Cache init failed: {e}")
-    
+
     await init_data()
 
-    recovery_task = asyncio.create_task(_recover_bank_receipts())
-    
+    recovery_task = asyncio.create_task(_run_finance_import_worker())
+
     yield
-    
+
     try:
         recovery_task.cancel()
         await asyncio.gather(recovery_task, return_exceptions=True)
         from app.core.cache import close_cache
+
         await close_cache()
     except:
         pass
     await close_db()
 
 
-async def _recover_bank_receipts() -> None:
-    """Resume upload jobs left behind by a worker restart."""
-    from sqlalchemy import select
+async def _run_finance_import_worker() -> None:
+    """Durable DB-backed worker; SKIP LOCKED makes it safe with many web workers."""
     from app.database import AsyncSessionLocal
-    from app.models.bank_receipt import BankReceiptBatch
     from app.services.bank_receipt import BankReceiptService
+    from app.services.invoice_import.service import InvoiceImportService
 
-    try:
-        async with AsyncSessionLocal() as db:
-            result = await db.execute(
-                select(BankReceiptBatch.id).where(BankReceiptBatch.status.in_({"uploaded", "processing"}))
-            )
-            for (batch_id,) in result.all():
-                await BankReceiptService(db).process(batch_id)
-    except Exception:
-        logger.exception("Failed to recover pending bank receipt jobs")
+    while True:
+        try:
+            async with AsyncSessionLocal() as db:
+                claimed = await BankReceiptService(db).claim_next_batch()
+                if claimed:
+                    batch_id, token = claimed
+                    await BankReceiptService(db).process(batch_id, token)
+                    continue
+                invoice_service = InvoiceImportService(db)
+                claimed = await invoice_service.claim_next_batch()
+                if claimed:
+                    batch_id, token = claimed
+                    try:
+                        await invoice_service.process_uploaded_batch(batch_id, token)
+                    except Exception as exc:
+                        await db.rollback()
+                        await invoice_service.mark_job_failure(batch_id, token, exc)
+                    continue
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Finance import worker iteration failed")
+        await asyncio.sleep(2)
+
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -86,8 +105,7 @@ app = FastAPI(
     lifespan=lifespan,
     redirect_slashes=False,
     docs_url="/docs" if settings.DEBUG or settings.ENABLE_API_DOCS else None,
-    openapi_url="/openapi.json" if settings.DEBUG or settings.ENABLE_API_DOCS else None
-
+    openapi_url="/openapi.json" if settings.DEBUG or settings.ENABLE_API_DOCS else None,
 )
 
 # Exception Handlers
@@ -106,17 +124,21 @@ app.add_middleware(
 # Setup rate limiting (optional - requires slowapi)
 try:
     from app.core.rate_limit import setup_rate_limiting
+
     setup_rate_limiting(app)
 except Exception as e:
     logger.warning(f"Rate limiting setup failed: {e}")
+
 
 @app.get("/", tags=["Health"])
 async def root():
     return {"status": "healthy", "version": settings.APP_VERSION}
 
+
 @app.get("/health", tags=["Health"])
 async def health_check():
     return {"status": "healthy"}
+
 
 @app.exception_handler(AppException)
 async def app_exception_handler(request: Request, exc: AppException):
@@ -125,14 +147,42 @@ async def app_exception_handler(request: Request, exc: AppException):
         content=exc.to_response(),
     )
 
+
 # Routers
-from app.routers import auth, users, contracts_upstream, contracts_downstream, contract_management, expenses, common, dashboard, reports, audit, system, health, invoice_imports, bank_receipts
+from app.routers import (
+    auth,
+    users,
+    contracts_upstream,
+    contracts_downstream,
+    contract_management,
+    expenses,
+    common,
+    dashboard,
+    reports,
+    audit,
+    system,
+    health,
+    invoice_imports,
+    bank_receipts,
+)
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
-app.include_router(contracts_upstream.router, prefix="/api/v1/contracts/upstream", tags=["Upstream Contracts"])
-app.include_router(contracts_downstream.router, prefix="/api/v1/contracts/downstream", tags=["Downstream Contracts"])
-app.include_router(contract_management.router, prefix="/api/v1/contracts/management", tags=["Management Contracts"])
+app.include_router(
+    contracts_upstream.router,
+    prefix="/api/v1/contracts/upstream",
+    tags=["Upstream Contracts"],
+)
+app.include_router(
+    contracts_downstream.router,
+    prefix="/api/v1/contracts/downstream",
+    tags=["Downstream Contracts"],
+)
+app.include_router(
+    contract_management.router,
+    prefix="/api/v1/contracts/management",
+    tags=["Management Contracts"],
+)
 app.include_router(expenses.router, prefix="/api/v1/expenses", tags=["Expenses"])
 app.include_router(common.router, prefix="/api/v1/common", tags=["Common"])
 app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
@@ -140,21 +190,33 @@ app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
 app.include_router(audit.router, prefix="/api/v1/audit", tags=["Audit Logs"])
 app.include_router(system.router, prefix="/api/v1/system", tags=["System Management"])
 app.include_router(health.router, tags=["Health"])
-app.include_router(invoice_imports.router, prefix="/api/v1/invoice-imports", tags=["Invoice Imports"])
-app.include_router(bank_receipts.router, prefix="/api/v1/bank-receipts", tags=["Bank Receipts"])
+app.include_router(
+    invoice_imports.router, prefix="/api/v1/invoice-imports", tags=["Invoice Imports"]
+)
+app.include_router(
+    bank_receipts.router, prefix="/api/v1/bank-receipts", tags=["Bank Receipts"]
+)
 
 # New Router
 from app.routers import zero_hour_labor
-app.include_router(zero_hour_labor.router, prefix="/api/v1/zero-hour-labor", tags=["Zero Hour Labor"])
+
+app.include_router(
+    zero_hour_labor.router, prefix="/api/v1/zero-hour-labor", tags=["Zero Hour Labor"]
+)
 
 # Contract Search Router (查询机器人)
 from app.routers import contract_search
-app.include_router(contract_search.router, prefix="/api/v1/contracts", tags=["Contract Search"])
+
+app.include_router(
+    contract_search.router, prefix="/api/v1/contracts", tags=["Contract Search"]
+)
 
 # Feishu Integration (V1.4)
 from app.routers import feishu
+
 app.include_router(feishu.router, prefix="/api/feishu", tags=["Feishu Integration"])
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=settings.DEBUG)

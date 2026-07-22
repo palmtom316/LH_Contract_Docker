@@ -2,16 +2,20 @@
 Enhanced Health Check Endpoints
 Provides detailed system health status for monitoring
 """
+
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
+from sqlalchemy import func, or_, select, text
 from typing import Dict, Any
 import asyncio
+from datetime import datetime, timezone
 
 from app.database import get_db, verify_required_schema
 from app.core.cache import cache_manager
 from app.config import settings
+from app.models.bank_receipt import BankReceiptBatch
+from app.models.invoice_import import InvoiceImportBatch
 
 router = APIRouter()
 
@@ -24,15 +28,9 @@ async def check_database(db: AsyncSession) -> Dict[str, Any]:
         await verify_required_schema(db)
         latency = (asyncio.get_event_loop().time() - start) * 1000
 
-        return {
-            "status": "healthy",
-            "latency_ms": round(latency, 2)
-        }
+        return {"status": "healthy", "latency_ms": round(latency, 2)}
     except Exception as e:
-        return {
-            "status": "unhealthy",
-            "error": str(e)[:100]
-        }
+        return {"status": "unhealthy", "error": str(e)[:100]}
 
 
 async def check_redis() -> Dict[str, Any]:
@@ -43,20 +41,11 @@ async def check_redis() -> Dict[str, Any]:
             await cache_manager.redis_client.ping()
             latency = (asyncio.get_event_loop().time() - start) * 1000
 
-            return {
-                "status": "healthy",
-                "latency_ms": round(latency, 2)
-            }
+            return {"status": "healthy", "latency_ms": round(latency, 2)}
         else:
-            return {
-                "status": "degraded",
-                "message": "Using memory cache"
-            }
+            return {"status": "degraded", "message": "Using memory cache"}
     except Exception as e:
-        return {
-            "status": "unhealthy",
-            "error": str(e)[:100]
-        }
+        return {"status": "unhealthy", "error": str(e)[:100]}
 
 
 async def check_minio() -> Dict[str, Any]:
@@ -67,20 +56,41 @@ async def check_minio() -> Dict[str, Any]:
         client = get_minio_client()
         if client:
             buckets = client.list_buckets()
-            return {
-                "status": "healthy",
-                "buckets": len(buckets)
-            }
+            return {"status": "healthy", "buckets": len(buckets)}
         else:
-            return {
-                "status": "not_configured",
-                "message": "MinIO not configured"
-            }
+            return {"status": "not_configured", "message": "MinIO not configured"}
     except Exception as e:
-        return {
-            "status": "unhealthy",
-            "error": str(e)[:100]
-        }
+        return {"status": "unhealthy", "error": str(e)[:100]}
+
+
+async def check_finance_import_jobs(db: AsyncSession) -> Dict[str, Any]:
+    """Report exhausted or stale durable jobs without blocking application readiness."""
+    now = datetime.now(timezone.utc)
+    failed = 0
+    stale = 0
+    for model in (InvoiceImportBatch, BankReceiptBatch):
+        failed += (
+            await db.scalar(
+                select(func.count()).select_from(model).where(model.status == "failed")
+            )
+            or 0
+        )
+        stale += (
+            await db.scalar(
+                select(func.count())
+                .select_from(model)
+                .where(
+                    model.status == "processing",
+                    or_(model.job_lease_until.is_(None), model.job_lease_until < now),
+                )
+            )
+            or 0
+        )
+    return {
+        "status": "degraded" if failed or stale else "healthy",
+        "failed_jobs": failed,
+        "stale_leases": stale,
+    }
 
 
 @router.get("/health/detailed")
@@ -89,7 +99,8 @@ async def health_check_detailed(db: AsyncSession = Depends(get_db)):
     checks = {
         "database": await check_database(db),
         "redis": await check_redis(),
-        "minio": await check_minio()
+        "minio": await check_minio(),
+        "finance_import_jobs": await check_finance_import_jobs(db),
     }
 
     # Determine overall status
@@ -107,9 +118,9 @@ async def health_check_detailed(db: AsyncSession = Depends(get_db)):
     return JSONResponse(
         status_code=status_code,
         content={
-        "status": overall_status,
-        "checks": checks,
-        "version": settings.APP_VERSION
+            "status": overall_status,
+            "checks": checks,
+            "version": settings.APP_VERSION,
         },
     )
 
