@@ -2,7 +2,7 @@
 
 ## 前提
 
-- 当前数据库 Alembic revision 必须为 `20260527_add_zero_hour_tax_description`。
+- 当前数据库 Alembic revision 必须为正式 1.8 基线之一：`20260527_add_zero_hour_tax_description` 或 `20260717_invoice_project_matching`。后者是包含发票匹配加固的最新 1.8 生产头。
 - `.env.production` 必须配置 `CONFIG_ENCRYPTION_KEY`，并离线备份该密钥。
 - 1.9.0 后端与前端镜像必须已推送至 GHCR。
 - 如 `.env.production` 设置了 `BACKEND_IMAGE` 或 `FRONTEND_IMAGE`，必须更新为 `1.9.0`；预检会拒绝任何仍解析为 1.8 的镜像。
