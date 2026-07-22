@@ -3,7 +3,8 @@ import pytest
 from app.core.errors import ValidationError
 from app.database import Base
 from app.schemas.bank_receipt import ReceiptAllocationCreate
-from app.services.bank_receipt import chinese_money_to_decimal, determine_direction, parse_receipt_text, validate_receipt_allocation_total
+from datetime import datetime
+from app.services.bank_receipt import _json_safe, chinese_money_to_decimal, determine_direction, parse_receipt_text, validate_receipt_allocation_total
 
 def test_bank_receipt_and_zero_hour_finance_tables_registered():
     names=set(Base.metadata.tables)
@@ -37,3 +38,11 @@ def test_receipt_and_payment_contract_target_rules():
     ReceiptAllocationCreate(direction="payment",management_contract_id=1,amount=1)
     with pytest.raises(ValueError): ReceiptAllocationCreate(direction="receipt",downstream_contract_id=1,amount=1)
     with pytest.raises(ValueError): ReceiptAllocationCreate(direction="payment",upstream_contract_id=1,amount=1)
+
+def test_parsed_receipt_payload_is_json_safe():
+    payload = _json_safe({"amount": Decimal("12.34"), "transaction_at": datetime(2026, 7, 22, 9, 0)})
+    assert payload == {"amount": "12.34", "transaction_at": "2026-07-22T09:00:00"}
+
+def test_bank_receipt_has_separate_ignore_and_clear_audit_fields():
+    columns = Base.metadata.tables["bank_receipt_items"].columns
+    assert {"ignored_reason", "ignored_by", "ignored_at", "clear_reason", "cleared_by", "cleared_at"} <= set(columns.keys())

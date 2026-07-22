@@ -27,7 +27,7 @@ class ReceiptCandidateResponse(BaseModel):
     class Config: from_attributes=True
 
 class BankReceiptItemResponse(BaseModel):
-    id: int; batch_id: int; source_filename: str; sha256: str; direction: str; transaction_at: Optional[datetime] = None; amount: Optional[Decimal] = None; currency: Optional[str] = None; payer_name: Optional[str] = None; payer_account: Optional[str] = None; payee_name: Optional[str] = None; payee_account: Optional[str] = None; summary: Optional[str] = None; bank_serial_number: Optional[str] = None; status: str; error_message: Optional[str] = None; allocations: list[ReceiptAllocationResponse] = []; candidates:list[ReceiptCandidateResponse]=[]
+    id: int; batch_id: int; source_filename: str; sha256: str; direction: str; transaction_at: Optional[datetime] = None; amount: Optional[Decimal] = None; currency: Optional[str] = None; payer_name: Optional[str] = None; payer_account: Optional[str] = None; payee_name: Optional[str] = None; payee_account: Optional[str] = None; summary: Optional[str] = None; bank_serial_number: Optional[str] = None; status: str; error_message: Optional[str] = None; ignored_reason: Optional[str] = None; clear_reason: Optional[str] = None; allocations: list[ReceiptAllocationResponse] = []; candidates:list[ReceiptCandidateResponse]=[]
     class Config: from_attributes = True
 
 class BankReceiptBatchResponse(BaseModel):

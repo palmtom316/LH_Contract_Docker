@@ -140,15 +140,21 @@ class ZeroHourFinanceBase(BaseModel):
     amount: Decimal = Field(..., gt=0)
 class ZeroHourPayableCreate(ZeroHourFinanceBase):
     category: str; expected_date: Optional[date]=None; description: Optional[str]=None; file_path:Optional[str]=None; file_key:Optional[str]=None
+class ZeroHourPayableUpdate(BaseModel):
+    category: Optional[str]=None; amount:Optional[Decimal]=Field(None,gt=0); expected_date:Optional[date]=None; description:Optional[str]=None; file_path:Optional[str]=None; file_key:Optional[str]=None
 class ZeroHourInvoiceCreate(ZeroHourFinanceBase):
     invoice_date: date; invoice_number: str; tax_amount: Decimal=0; supplier: Optional[str]=None; file_path:Optional[str]=None; file_key:Optional[str]=None
+class ZeroHourInvoiceUpdate(BaseModel):
+    invoice_date:Optional[date]=None; invoice_number:Optional[str]=None; amount:Optional[Decimal]=Field(None,gt=0); tax_amount:Optional[Decimal]=Field(None,ge=0); supplier:Optional[str]=None; file_path:Optional[str]=None; file_key:Optional[str]=None
 class ZeroHourPaymentCreate(ZeroHourFinanceBase):
     payment_date: date; payee_name: Optional[str]=None; payee_account: Optional[str]=None; payee_bank: Optional[str]=None; payment_method: Optional[str]=None; file_path:Optional[str]=None; file_key:Optional[str]=None
+class ZeroHourPaymentUpdate(BaseModel):
+    payment_date:Optional[date]=None; amount:Optional[Decimal]=Field(None,gt=0); payee_name:Optional[str]=None; payee_account:Optional[str]=None; payee_bank:Optional[str]=None; payment_method:Optional[str]=None; file_path:Optional[str]=None; file_key:Optional[str]=None
 class ZeroHourFinanceResponse(BaseModel):
-    id:int; zero_hour_labor_id:int; amount:Decimal; file_path:Optional[str]=None; file_key:Optional[str]=None; status:Optional[str]=None; created_at:Optional[datetime]=None
+    id:int; zero_hour_labor_id:int; amount:Decimal; category:Optional[str]=None; expected_date:Optional[date]=None; description:Optional[str]=None; invoice_date:Optional[date]=None; invoice_number:Optional[str]=None; tax_amount:Optional[Decimal]=None; supplier:Optional[str]=None; payment_date:Optional[date]=None; payee_name:Optional[str]=None; payee_account:Optional[str]=None; payee_bank:Optional[str]=None; payment_method:Optional[str]=None; file_path:Optional[str]=None; file_key:Optional[str]=None; status:Optional[str]=None; created_at:Optional[datetime]=None
     class Config: from_attributes=True
 class ZeroHourLaborDetailResponse(ZeroHourLaborResponse):
-    payables: list[dict]=[]; invoices:list[dict]=[]; payments:list[dict]=[]
+    payables: list[ZeroHourFinanceResponse]=[]; invoices:list[ZeroHourFinanceResponse]=[]; payments:list[ZeroHourFinanceResponse]=[]
     payable_total:Decimal=0; invoiced_total:Decimal=0; paid_total:Decimal=0; unpaid_total:Decimal=0
 
 class ZeroHourLaborListResponse(BaseModel):

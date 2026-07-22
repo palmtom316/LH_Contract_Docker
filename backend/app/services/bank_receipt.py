@@ -71,6 +71,18 @@ def validate_receipt_allocation_total(amount, allocations):
     if amount is None or total.quantize(Decimal("0.01")) != Decimal(str(amount)).quantize(Decimal("0.01")):
         raise ValidationError(message="分摊金额合计必须等于回单金额", field_errors={"amount": "分摊金额必须精确等于回单金额"})
 
+def _json_safe(value):
+    """Convert parsed financial values into JSONB-safe primitives."""
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    return value
+
 class BankReceiptService:
     def __init__(self, db: AsyncSession): self.db = db
     async def upload(self, upload, user):
@@ -117,7 +129,7 @@ class BankReceiptService:
             parsed=parse_receipt_text(text); accounts={x.strip() for x in (config.get("company_bank_accounts") or "").split(",") if x.strip()}
             for key,value in parsed.items():
                 if hasattr(item,key):setattr(item,key,value)
-            item.raw_mineru_result=payload; item.parsed_payload={**parsed,"text":text}; item.direction=determine_direction(accounts,item.payer_account,item.payee_account); item.status="needs_review"; item.error_message=None if parsed["amount_consistent"] else "中文大写金额与数字金额不一致，请人工复核"; batch.status="completed"
+            item.raw_mineru_result=_json_safe(payload); item.parsed_payload=_json_safe({**parsed,"text":text}); item.direction=determine_direction(accounts,item.payer_account,item.payee_account); item.status="needs_review"; item.error_message=None if parsed["amount_consistent"] else "中文大写金额与数字金额不一致，请人工复核"; batch.status="completed"
             counterparty=item.payer_name if item.direction=="receipt" else item.payee_name
             if item.direction in {"receipt","payment"} and counterparty:
                 for result in await self.search(counterparty,item.direction):
@@ -143,10 +155,36 @@ class BankReceiptService:
             raise ValidationError(message="分摊方向必须与已复核的回单方向一致")
         allocation = BankReceiptAllocation(item_id=item_id, **payload.model_dump())
         self.db.add(allocation); item.status = "ready"; await self.db.commit(); await self.db.refresh(allocation); return allocation
+    async def update_allocation(self, item_id, allocation_id, payload):
+        allocation = await self.db.scalar(
+            select(BankReceiptAllocation)
+            .where(BankReceiptAllocation.id == allocation_id, BankReceiptAllocation.item_id == item_id)
+            .with_for_update()
+        )
+        if not allocation: raise ResourceNotFoundError(resource_type="回单分摊", resource_id=allocation_id)
+        if allocation.status != "draft": raise ValidationError(message="只能修改草稿分摊")
+        item = await self.db.get(BankReceiptItem, item_id)
+        if not item or item.status not in {"needs_review", "ready", "cleared"}: raise ValidationError(message="当前状态不能修改分摊")
+        if item.direction not in {"unknown", payload.direction}: raise ValidationError(message="分摊方向必须与回单方向一致")
+        for key, value in payload.model_dump().items(): setattr(allocation, key, value)
+        item.status = "ready"; await self.db.commit(); await self.db.refresh(allocation); return allocation
+    async def delete_allocation(self, item_id, allocation_id):
+        allocation = await self.db.scalar(
+            select(BankReceiptAllocation)
+            .where(BankReceiptAllocation.id == allocation_id, BankReceiptAllocation.item_id == item_id)
+            .with_for_update()
+        )
+        if not allocation: raise ResourceNotFoundError(resource_type="回单分摊", resource_id=allocation_id)
+        if allocation.status != "draft": raise ValidationError(message="只能删除草稿分摊")
+        item = await self.db.get(BankReceiptItem, item_id)
+        await self.db.delete(allocation); await self.db.flush()
+        remaining = await self.db.scalar(select(BankReceiptAllocation.id).where(BankReceiptAllocation.item_id == item_id, BankReceiptAllocation.status == "draft").limit(1))
+        if item: item.status = "ready" if remaining else "needs_review"
+        await self.db.commit()
     async def review(self,item_id,payload,user):
         item=await self.db.scalar(select(BankReceiptItem).where(BankReceiptItem.id==item_id).with_for_update())
         if not item: raise ResourceNotFoundError(resource_type="银行回单",resource_id=item_id)
-        if item.status in {"processing","confirmed","ignored"}: raise ValidationError(message="当前状态不能复核")
+        if item.status not in {"needs_review","ready","cleared"}: raise ValidationError(message="当前状态不能复核")
         for key,value in payload.model_dump().items(): setattr(item,key,value)
         item.status="ready" if await self.db.scalar(select(BankReceiptAllocation.id).where(BankReceiptAllocation.item_id==item_id).limit(1)) else "needs_review"
         await create_audit_log(self.db,user,"UPDATE","银行回单",item.id,new_values=payload.model_dump()); await self.db.commit(); return item
@@ -194,7 +232,7 @@ class BankReceiptService:
         item=await self.db.get(BankReceiptItem,item_id)
         if not item: raise ResourceNotFoundError(resource_type="银行回单",resource_id=item_id)
         if item.status not in {"needs_review","ready","cleared"}: raise ValidationError(message="当前状态不能忽略")
-        item.status="ignored"; item.clear_reason=reason; await create_audit_log(self.db,user,"UPDATE","银行回单",item.id,description=reason,new_values={"status":"ignored"}); await self.db.commit(); return item
+        item.status="ignored"; item.ignored_reason=reason; item.ignored_by=user.id; item.ignored_at=datetime.utcnow(); await create_audit_log(self.db,user,"UPDATE","银行回单",item.id,description=reason,new_values={"status":"ignored"}); await self.db.commit(); return item
     async def delete_failed(self,item_id,user):
         item=await self.db.get(BankReceiptItem,item_id)
         if not item: raise ResourceNotFoundError(resource_type="银行回单",resource_id=item_id)
