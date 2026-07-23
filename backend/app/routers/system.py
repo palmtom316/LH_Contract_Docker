@@ -465,13 +465,11 @@ async def update_system_config(
     if config.mineru_api_url is not None:
         validate_external_api_url(config.mineru_api_url)
     await upsert_config("mineru_api_url", config.mineru_api_url)
+    if config.mineru_enabled:
+        raise ValidationError(message="请先通过 MinerU 连接测试再启用识别")
     await upsert_config(
         "mineru_enabled",
-        (
-            str(config.mineru_enabled).lower()
-            if config.mineru_enabled is not None
-            else None
-        ),
+        "false" if config.mineru_enabled is not None else None,
     )
     await upsert_config(
         "mineru_timeout_seconds",
@@ -510,36 +508,68 @@ async def test_mineru(
             )
         ).scalars()
     }
-    url = rows.get("mineru_api_url", "")
-    transport = create_pinned_http_transport(url)
+    async def finish(ok: bool, result: str, message: str):
+        enabled = await db.scalar(
+            select(SystemConfig).where(SystemConfig.key == "mineru_enabled")
+        )
+        if enabled:
+            enabled.value = "true" if ok else "false"
+        else:
+            db.add(
+                SystemConfig(
+                    key="mineru_enabled",
+                    value="true" if ok else "false",
+                )
+            )
+        await db.commit()
+        return {"ok": ok, "result": result, "message": message}
+
+    url = (rows.get("mineru_api_url") or "").strip()
+    encrypted_key = rows.get("mineru_api_key") or ""
+    if not url or not encrypted_key:
+        return await finish(
+            False,
+            "not_configured",
+            "请先保存 MinerU API 地址和 API Key",
+        )
     try:
+        transport = create_pinned_http_transport(url)
+        api_key = reveal_config_secret(encrypted_key)
         async with httpx.AsyncClient(
             timeout=min(int(rows.get("mineru_timeout_seconds") or 60), 120),
             transport=transport,
         ) as client:
-            response = await client.get(
+            # The production workflow uses POST. Sending an empty request verifies
+            # routing and authentication without creating an extraction task.
+            response = await client.post(
                 url,
-                headers={
-                    "Authorization": f"Bearer {reveal_config_secret(rows.get('mineru_api_key',''))}"
-                },
+                headers={"Authorization": f"Bearer {api_key}"},
             )
         if response.status_code in {401, 403}:
-            return {"ok": False, "result": "auth_failed", "message": "MinerU 鉴权失败"}
+            return await finish(False, "auth_failed", "MinerU API Key 鉴权失败")
+        if response.status_code in {404, 405}:
+            return await finish(
+                False,
+                "invalid_endpoint",
+                "MinerU API 地址不是可用的解析接口",
+            )
+        if response.status_code == 429:
+            return await finish(False, "rate_limited", "MinerU 请求受限，请稍后重试")
         if response.status_code >= 500:
-            return {
-                "ok": False,
-                "result": "service_unavailable",
-                "message": "MinerU 服务不可用",
-            }
-        return {"ok": True, "result": "connected", "message": "连接成功"}
+            return await finish(False, "service_unavailable", "MinerU 服务不可用")
+        if 200 <= response.status_code < 300 or response.status_code in {400, 422}:
+            return await finish(True, "connected", "连接成功，MinerU 识别已启用")
+        return await finish(
+            False,
+            "request_rejected",
+            f"MinerU 接口拒绝测试请求（HTTP {response.status_code}）",
+        )
+    except ValidationError as exc:
+        return await finish(False, "invalid_config", exc.message)
     except httpx.TimeoutException:
-        return {"ok": False, "result": "timeout", "message": "连接超时"}
+        return await finish(False, "timeout", "连接超时")
     except httpx.HTTPError:
-        return {
-            "ok": False,
-            "result": "service_unavailable",
-            "message": "MinerU 服务不可用",
-        }
+        return await finish(False, "service_unavailable", "MinerU 服务不可用")
 
 
 # --- Dictionary Endpoints ---

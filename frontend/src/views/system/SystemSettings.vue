@@ -27,14 +27,18 @@
                     </el-upload>
                 </el-form-item>
                 <el-form-item>
-                    <el-button type="primary" @click="saveConfig">保存配置</el-button>
+                    <el-button type="primary" :loading="savingBaseConfig" @click="saveConfig">保存配置</el-button>
                 </el-form-item>
             </el-form>
         </AppSectionCard>
         <AppSectionCard class="system-settings-card mineru-settings">
           <template #header>银行回单识别（MinerU）</template>
           <el-form :model="configForm" label-width="120px">
-            <el-form-item label="启用识别"><el-switch v-model="configForm.mineru_enabled" /></el-form-item>
+            <el-form-item label="识别状态">
+              <el-tag :type="configForm.mineru_enabled ? 'success' : 'info'">
+                {{ configForm.mineru_enabled ? '已启用' : '未启用' }}
+              </el-tag>
+            </el-form-item>
             <el-form-item label="API 地址"><el-input v-model="configForm.mineru_api_url" placeholder="https://mineru.example.com/api/parse" /></el-form-item>
             <el-form-item label="API Key">
               <el-input v-model="configForm.mineru_api_key" type="password" show-password :placeholder="configForm.mineru_api_key_configured ? '已配置；留空保持不变' : '请输入 API Key'" autocomplete="new-password" />
@@ -42,7 +46,13 @@
             </el-form-item>
             <el-form-item label="超时（秒）"><el-input-number v-model="configForm.mineru_timeout_seconds" :min="5" :max="300" /></el-form-item>
             <el-form-item label="公司银行账号"><el-input v-model="configForm.company_bank_accounts" type="textarea" :rows="2" placeholder="多个账号用英文逗号分隔，用于判断收款或付款方向" /></el-form-item>
-            <el-form-item><el-button @click="testMineru" :loading="testingMineru">测试连接</el-button><span v-if="mineruTestResult" class="connection-result">{{ mineruTestResult }}</span></el-form-item>
+            <el-form-item>
+              <div class="mineru-actions">
+                <el-button :loading="savingMineru" :disabled="testingMineru" @click="saveMineruConfig">保存配置</el-button>
+                <el-button type="primary" :loading="testingMineru" :disabled="savingMineru" @click="testMineru">测试连接并启用</el-button>
+                <span v-if="mineruTestResult" class="connection-result">{{ mineruTestResult }}</span>
+              </div>
+            </el-form-item>
           </el-form>
         </AppSectionCard>
       </el-tab-pane>
@@ -148,6 +158,8 @@ const configForm = ref({
     company_bank_accounts: ''
 })
 const testingMineru = ref(false)
+const savingBaseConfig = ref(false)
+const savingMineru = ref(false)
 const mineruTestResult = ref('')
 // Headers for upload (if Auth needed, add Authorization header here)
 const headers = computed(() => {
@@ -161,21 +173,86 @@ function handleLogoSuccess(res) {
 }
 
 async function saveConfig() {
-    const payload = { ...configForm.value }
-    delete payload.system_logo
-    delete payload.mineru_api_key_configured
-    delete payload.mineru_api_key_masked
-    if (!payload.mineru_api_key) delete payload.mineru_api_key
-    await systemStore.updateConfig(payload)
-    ElMessage.success('配置已保存')
-    // Maybe refresh page title immediately? 
-    document.title = configForm.value.system_name
+    savingBaseConfig.value = true
+    try {
+        await systemStore.updateConfig({
+            system_name: configForm.value.system_name,
+            system_name_line_2: configForm.value.system_name_line_2
+        })
+        ElMessage.success('基础配置已保存')
+        document.title = configForm.value.system_name
+    } finally {
+        savingBaseConfig.value = false
+    }
+}
+
+const applyAdminConfig = (next) => {
+    configForm.value = {
+        ...configForm.value,
+        ...next,
+        mineru_api_key: ''
+    }
+}
+
+const validateMineruConfig = () => {
+    const url = configForm.value.mineru_api_url?.trim()
+    if (!url) {
+        ElMessage.warning('请输入 MinerU API 地址')
+        return false
+    }
+    try {
+        if (new URL(url).protocol !== 'https:') throw new Error('invalid protocol')
+    } catch {
+        ElMessage.warning('MinerU API 地址必须是有效的 HTTPS 地址')
+        return false
+    }
+    if (!configForm.value.mineru_api_key?.trim() && !configForm.value.mineru_api_key_configured) {
+        ElMessage.warning('请输入 MinerU API Key')
+        return false
+    }
+    return true
+}
+
+async function persistMineruConfig({ notify = true } = {}) {
+    if (!validateMineruConfig()) return false
+    savingMineru.value = true
+    mineruTestResult.value = ''
+    try {
+        const payload = {
+            mineru_api_url: configForm.value.mineru_api_url.trim(),
+            mineru_enabled: false,
+            mineru_timeout_seconds: configForm.value.mineru_timeout_seconds,
+            company_bank_accounts: configForm.value.company_bank_accounts
+        }
+        if (configForm.value.mineru_api_key?.trim()) {
+            payload.mineru_api_key = configForm.value.mineru_api_key.trim()
+        }
+        await systemStore.updateConfig(payload)
+        applyAdminConfig(systemStore.config)
+        if (notify) ElMessage.success('MinerU 配置已保存，请测试连接后启用')
+        return true
+    } finally {
+        savingMineru.value = false
+    }
+}
+
+async function saveMineruConfig() {
+    await persistMineruConfig()
 }
 
 async function testMineru() {
-    testingMineru.value = true; mineruTestResult.value = ''
-    try { const result = await request.post('/system/config/mineru/test'); mineruTestResult.value = result.message; result.ok ? ElMessage.success(result.message) : ElMessage.warning(result.message) }
-    finally { testingMineru.value = false }
+    if (!(await persistMineruConfig({ notify: false }))) return
+    testingMineru.value = true
+    mineruTestResult.value = ''
+    try {
+        const result = await request.post('/system/config/mineru/test')
+        mineruTestResult.value = result.message
+        await systemStore.fetchAdminConfig()
+        applyAdminConfig(systemStore.config)
+        result.ok ? ElMessage.success(result.message) : ElMessage.warning(result.message)
+    } finally {
+        testingMineru.value = false
+    }
 }
 
 // Dictionary Logic
@@ -335,6 +412,8 @@ onMounted(async () => {
 }
 .mineru-settings { margin-top: var(--space-4); }
 .secret-state,.connection-result { margin-left: var(--space-3); color: var(--text-secondary); font-size: 13px; }
+.mineru-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+.mineru-actions .connection-result { margin-left: var(--space-1); }
 
 .dict-layout {
   display: grid;

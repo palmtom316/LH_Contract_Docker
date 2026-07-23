@@ -6,7 +6,7 @@
         description="基本信息、成本构成与独立财务明细"
       >
         <template #actions>
-          <el-button plain @click="router.back()">返回列表</el-button>
+          <el-button plain @click="returnToList">返回列表</el-button>
         </template>
       </AppPageHeader>
       <el-row :gutter="20" class="summary-cards">
@@ -273,6 +273,11 @@ const amountRows = computed(() => {
 const load = async () =>
   (detail.value = await getZeroHourLaborDetail(route.params.id));
 onMounted(load);
+const returnToList = () =>
+  router.push({
+    name: "Expenses",
+    query: { ...route.query, tab: "zeroHourLabor" },
+  });
 const edit = (next, row = {}) => {
   kind.value = next;
   for (const key of Object.keys(form)) delete form[key];

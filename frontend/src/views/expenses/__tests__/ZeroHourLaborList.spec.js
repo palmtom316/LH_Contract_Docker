@@ -11,6 +11,7 @@ const zeroHourLaborSource = readFileSync(
 )
 
 const routeState = reactive({ query: {} })
+const routerPushMock = vi.hoisted(() => vi.fn())
 const setRouteQuery = (nextQuery = {}) => {
   Object.keys(routeState.query).forEach((key) => {
     delete routeState.query[key]
@@ -36,7 +37,8 @@ vi.mock('vue-router', async () => {
   const actual = await vi.importActual('vue-router')
   return {
     ...actual,
-    useRoute: () => routeState
+    useRoute: () => routeState,
+    useRouter: () => ({ push: routerPushMock })
   }
 })
 
@@ -115,6 +117,7 @@ describe('ZeroHourLaborList route filters', () => {
   beforeEach(() => {
     setRouteQuery({})
     apiMocks.getZeroHourLaborList.mockResolvedValue({ items: [], total: 0 })
+    routerPushMock.mockReset()
   })
 
   afterEach(() => {
@@ -132,6 +135,58 @@ describe('ZeroHourLaborList route filters', () => {
         upstream_contract_id: 58
       })
     )
+  })
+
+  it('restores all list filters from the detail return query', async () => {
+    setRouteQuery({
+      attribution: 'PROJECT',
+      keyword: '安装队',
+      upstream_contract_id: '58',
+      start_date: '2026-07-01',
+      end_date: '2026-07-23',
+      page: '3',
+      page_size: '50'
+    })
+    mountPage()
+    await flushPromises()
+
+    expect(apiMocks.getZeroHourLaborList).toHaveBeenCalledWith({
+      attribution: 'PROJECT',
+      keyword: '安装队',
+      upstream_contract_id: 58,
+      start_date: '2026-07-01',
+      end_date: '2026-07-23',
+      page: 3,
+      page_size: 50
+    })
+  })
+
+  it('carries the active filters into the detail route', async () => {
+    const wrapper = mountPage()
+    await flushPromises()
+    Object.assign(wrapper.vm.queryParams, {
+      attribution: 'COMPANY',
+      keyword: '检修班',
+      page: 2,
+      page_size: 20
+    })
+    wrapper.vm.dateRange = ['2026-07-10', '2026-07-20']
+
+    wrapper.vm.viewDetail({ id: 91 })
+
+    expect(routerPushMock).toHaveBeenCalledWith({
+      name: 'ZeroHourLaborDetail',
+      params: { id: 91 },
+      query: {
+        tab: 'zeroHourLabor',
+        attribution: 'COMPANY',
+        keyword: '检修班',
+        start_date: '2026-07-10',
+        end_date: '2026-07-20',
+        page: '2',
+        page_size: '20'
+      }
+    })
   })
 
   it('shows dispatch unit field for company labor entries', async () => {

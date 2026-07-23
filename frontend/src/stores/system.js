@@ -146,7 +146,7 @@ export const useSystemStore = defineStore('system', () => {
     async function updateConfig(newConfig) {
         try {
             const res = await request.post('/system/config', newConfig)
-            await fetchConfig()
+            await fetchAdminConfig()
             return res
         } catch (e) {
             throw e

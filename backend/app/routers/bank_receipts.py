@@ -45,6 +45,16 @@ async def batches(
     return await svc.batches()
 
 
+@router.delete("/batches/{batch_id}", status_code=204)
+async def delete_batch(
+    batch_id: int,
+    user: User = Depends(require_permission(Permission.DELETE_PAYMENTS)),
+    svc: BankReceiptService = Depends(service),
+):
+    await svc.delete_batch(batch_id, user)
+    return Response(status_code=204)
+
+
 @router.get("/batches/{batch_id}/items", response_model=list[BankReceiptItemResponse])
 async def items(
     batch_id: int,

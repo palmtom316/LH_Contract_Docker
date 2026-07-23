@@ -29,4 +29,11 @@ describe("zero-hour labor detail workflow", () => {
     expect(source).toContain("银行转账");
     expect(source).toContain("payee_name: row.payee_name || labor.dispatch_unit");
   });
+
+  it("returns to the filtered zero-hour labor list", () => {
+    expect(source).toContain('@click="returnToList"');
+    expect(source).toContain('name: "Expenses"');
+    expect(source).toContain('query: { ...route.query, tab: "zeroHourLabor" }');
+    expect(source).not.toContain("router.back()");
+  });
 });

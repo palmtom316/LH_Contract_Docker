@@ -518,6 +518,63 @@ class BankReceiptService:
             ).scalars()
         )
 
+    async def delete_batch(self, batch_id: int, user) -> None:
+        batch = await self.db.scalar(
+            select(BankReceiptBatch)
+            .options(
+                selectinload(BankReceiptBatch.items).selectinload(
+                    BankReceiptItem.allocations
+                )
+            )
+            .where(BankReceiptBatch.id == batch_id)
+        )
+        if not batch:
+            raise ResourceNotFoundError(
+                resource_type="银行回单批次", resource_id=batch_id
+            )
+        if batch.status in {"uploaded", "processing"} or any(
+            item.status in {"uploaded", "processing"} for item in batch.items
+        ):
+            raise ValidationError(message="正在识别的回单批次不能删除")
+        if any(
+            item.status == "confirmed"
+            or any(allocation.formal_record_id for allocation in item.allocations)
+            for item in batch.items
+        ):
+            raise ValidationError(message="已入账的回单批次不能删除，请先清除入账")
+
+        object_keys = {
+            item.file_key or item.file_path
+            for item in batch.items
+            if item.file_key or item.file_path
+        }
+        await create_audit_log(
+            self.db,
+            user,
+            "DELETE",
+            "银行回单批次",
+            batch.id,
+            description=batch.original_filename,
+            old_values={
+                "batch_number": batch.batch_number,
+                "status": batch.status,
+                "item_count": len(batch.items),
+            },
+        )
+        await self.db.delete(batch)
+        await self.db.commit()
+        client = get_minio_client()
+        for object_key in object_keys:
+            try:
+                client.remove_object(settings.MINIO_BUCKET_CONTRACTS, object_key)
+            except Exception:
+                logger.warning(
+                    "Failed to remove object for deleted receipt batch %s: %s",
+                    batch_id,
+                    object_key,
+                    exc_info=True,
+                )
+
     async def items(self, batch_id):
         return list(
             (

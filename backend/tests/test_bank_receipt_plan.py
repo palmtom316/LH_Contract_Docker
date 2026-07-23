@@ -6,10 +6,16 @@ from app.schemas.bank_receipt import ReceiptAllocationCreate
 from datetime import datetime
 from app.services.bank_receipt import _json_safe, chinese_money_to_decimal, determine_direction, parse_receipt_text, validate_receipt_allocation_total, validate_receipt_confirm_state
 from app.schemas.zero_hour_labor import ZeroHourInvoiceCreate, ZeroHourPayableCreate, ZeroHourPaymentCreate
+from app.main import app
 
 def test_bank_receipt_and_zero_hour_finance_tables_registered():
     names=set(Base.metadata.tables)
     assert {"bank_receipt_batches","bank_receipt_items","bank_receipt_allocations","bank_receipt_match_candidates","finance_zero_hour_payables","finance_zero_hour_invoices","finance_zero_hour_payments"} <= names
+
+def test_bank_receipt_batch_delete_route_is_registered():
+    assert "/api/v1/bank-receipts/batches/{batch_id}" in {
+        route.path for route in app.routes
+    }
 
 def test_zero_hour_finance_entry_contract_requires_only_unit_date_and_amount():
     payable = ZeroHourPayableCreate(amount=100, expected_date="2026-07-23")

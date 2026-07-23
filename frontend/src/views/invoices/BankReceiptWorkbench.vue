@@ -27,9 +27,12 @@
         label="文件名"
       /><el-table-column prop="status" label="状态" /><el-table-column
         label="操作"
+        width="150"
         ><template #default="{ row }"
           ><el-button link type="primary" @click="open(row)"
-            >查看与复核</el-button
+            >查看</el-button
+          ><el-button link type="danger" @click="removeBatch(row)"
+            >删除</el-button
           ></template
         ></el-table-column
       ></el-table
@@ -223,6 +226,7 @@ import {
   clearReceipt,
   confirmReceipt,
   createReceiptAllocation,
+  deleteReceiptBatch,
   updateReceiptAllocation,
   deleteReceiptAllocation,
   deleteFailedReceipt,
@@ -328,6 +332,23 @@ const open = async (row) => {
   selectedBatch.value = row;
   await refresh();
   visible.value = true;
+};
+const removeBatch = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      "将删除该批次、未入账明细及源文件。确定继续？",
+      "删除回单批次",
+      { type: "warning" },
+    );
+    await deleteReceiptBatch(row.id);
+    if (selectedBatch.value?.id === row.id) {
+      visible.value = false;
+      selectedBatch.value = null;
+      items.value = [];
+    }
+    ElMessage.success("回单批次已删除");
+    await load();
+  } catch {}
 };
 const canEdit = (i) => ["needs_review", "ready", "cleared"].includes(i.status);
 const directionLabel = (v) =>

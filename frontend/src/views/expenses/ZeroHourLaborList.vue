@@ -441,7 +441,6 @@ import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
 const { isMobile } = useMobileDetection()
 const route = useRoute()
 const router = useRouter()
-const viewDetail = row => router.push(`/expenses/zero-hour-labor/${row.id}`)
 
 const loading = ref(false)
 const exporting = ref(false)
@@ -497,7 +496,49 @@ const applyRouteFilters = () => {
     if (typeof upstreamId !== 'undefined') {
         queryParams.upstream_contract_id = upstreamId
     }
+    const attribution = normalizeQueryValue(route.query.attribution)
+    const keyword = normalizeQueryValue(route.query.keyword)
+    const page = Number.parseInt(normalizeQueryValue(route.query.page), 10)
+    const pageSize = Number.parseInt(normalizeQueryValue(route.query.page_size), 10)
+    const startDate = normalizeQueryValue(route.query.start_date)
+    const endDate = normalizeQueryValue(route.query.end_date)
+    if (attribution === 'PROJECT' || attribution === 'COMPANY') {
+        queryParams.attribution = attribution
+    }
+    if (typeof keyword === 'string') {
+        queryParams.keyword = keyword
+    }
+    if (Number.isInteger(page) && page > 0) {
+        queryParams.page = page
+    }
+    if (Number.isInteger(pageSize) && pageSize > 0) {
+        queryParams.page_size = pageSize
+    }
+    if (startDate || endDate) {
+        dateRange.value = [startDate || '', endDate || '']
+    }
 }
+
+const buildListRouteQuery = () => {
+    const query = {
+        tab: 'zeroHourLabor',
+        page: String(queryParams.page),
+        page_size: String(queryParams.page_size)
+    }
+    if (queryParams.attribution) query.attribution = queryParams.attribution
+    if (queryParams.keyword) query.keyword = queryParams.keyword
+    if (queryParams.upstream_contract_id) query.upstream_contract_id = String(queryParams.upstream_contract_id)
+    const [startDate, endDate] = dateRange.value || []
+    if (startDate) query.start_date = startDate
+    if (endDate) query.end_date = endDate
+    return query
+}
+
+const viewDetail = row => router.push({
+    name: 'ZeroHourLaborDetail',
+    params: { id: row.id },
+    query: buildListRouteQuery()
+})
 
 const dialog = reactive({
     title: '',
