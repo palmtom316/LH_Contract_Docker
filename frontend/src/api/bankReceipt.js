@@ -1,7 +1,11 @@
 import request from '@/utils/request'
 export const listReceiptBatches = () => request.get('/bank-receipts/batches')
 export const listReceiptItems = (id) => request.get(`/bank-receipts/batches/${id}/items`)
-export const uploadReceipt = (file) => { const form = new FormData(); form.append('file', file); return request.post('/bank-receipts/batches', form) }
+export const uploadReceipt = (file) => {
+  const form = new FormData()
+  form.append('file', file)
+  return request.post('/bank-receipts/batches', form)
+}
 export const createReceiptAllocation = (id, data) => request.post(`/bank-receipts/items/${id}/allocations`, data)
 export const updateReceiptAllocation = (id, allocationId, data) => request.put(`/bank-receipts/items/${id}/allocations/${allocationId}`, data)
 export const deleteReceiptAllocation = (id, allocationId) => request.delete(`/bank-receipts/items/${id}/allocations/${allocationId}`)

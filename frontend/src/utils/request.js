@@ -33,6 +33,12 @@ service.interceptors.request.use(
         if (token) {
             config.headers['Authorization'] = `Bearer ${token}`
         }
+        // Let Axios add the multipart boundary for browser FormData uploads.
+        // The instance default is JSON, which otherwise makes FastAPI report a
+        // missing UploadFile field even though the UI selected a file.
+        if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+            delete config.headers['Content-Type']
+        }
         return config
     },
     error => {

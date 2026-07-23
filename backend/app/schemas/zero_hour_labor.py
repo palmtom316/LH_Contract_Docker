@@ -152,15 +152,13 @@ class ZeroHourFinanceBase(BaseModel):
 
 
 class ZeroHourPayableCreate(ZeroHourFinanceBase):
-    category: str
-    expected_date: Optional[date] = None
+    expected_date: date
     description: Optional[str] = None
     file_path: Optional[str] = None
     file_key: Optional[str] = None
 
 
 class ZeroHourPayableUpdate(BaseModel):
-    category: Optional[str] = None
     amount: Optional[Decimal] = Field(None, gt=0)
     expected_date: Optional[date] = None
     description: Optional[str] = None
@@ -170,9 +168,9 @@ class ZeroHourPayableUpdate(BaseModel):
 
 class ZeroHourInvoiceCreate(ZeroHourFinanceBase):
     invoice_date: date
-    invoice_number: str
+    invoice_number: Optional[str] = None
     tax_amount: Decimal = 0
-    supplier: Optional[str] = None
+    supplier: str = Field(..., min_length=1)
     file_path: Optional[str] = None
     file_key: Optional[str] = None
 
@@ -189,7 +187,7 @@ class ZeroHourInvoiceUpdate(BaseModel):
 
 class ZeroHourPaymentCreate(ZeroHourFinanceBase):
     payment_date: date
-    payee_name: Optional[str] = None
+    payee_name: str = Field(..., min_length=1)
     payee_account: Optional[str] = None
     payee_bank: Optional[str] = None
     payment_method: Optional[str] = None

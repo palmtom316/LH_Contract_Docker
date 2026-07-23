@@ -5,10 +5,26 @@ from app.database import Base
 from app.schemas.bank_receipt import ReceiptAllocationCreate
 from datetime import datetime
 from app.services.bank_receipt import _json_safe, chinese_money_to_decimal, determine_direction, parse_receipt_text, validate_receipt_allocation_total, validate_receipt_confirm_state
+from app.schemas.zero_hour_labor import ZeroHourInvoiceCreate, ZeroHourPayableCreate, ZeroHourPaymentCreate
 
 def test_bank_receipt_and_zero_hour_finance_tables_registered():
     names=set(Base.metadata.tables)
     assert {"bank_receipt_batches","bank_receipt_items","bank_receipt_allocations","bank_receipt_match_candidates","finance_zero_hour_payables","finance_zero_hour_invoices","finance_zero_hour_payments"} <= names
+
+def test_zero_hour_finance_entry_contract_requires_only_unit_date_and_amount():
+    payable = ZeroHourPayableCreate(amount=100, expected_date="2026-07-23")
+    assert "category" not in payable.model_dump()
+    invoice = ZeroHourInvoiceCreate(amount=100, invoice_date="2026-07-23", supplier="下游供应商")
+    assert invoice.invoice_number is None
+    payment = ZeroHourPaymentCreate(amount=100, payment_date="2026-07-23", payee_name="派工单位")
+    assert payment.payment_method is None
+
+    with pytest.raises(ValueError):
+        ZeroHourPayableCreate(amount=100)
+    with pytest.raises(ValueError):
+        ZeroHourInvoiceCreate(amount=100, invoice_date="2026-07-23")
+    with pytest.raises(ValueError):
+        ZeroHourPaymentCreate(amount=100, payment_date="2026-07-23")
 
 def test_parser_extracts_amount_date_and_serial():
     data=parse_receipt_text("交易日期：2026-07-21 08:30:01 币种及金额：CNY 12,345.67 核心流水号：ABC001")

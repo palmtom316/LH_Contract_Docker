@@ -40,6 +40,7 @@ export function exportZeroHourLabor(params) {
     })
 }
 export const getZeroHourLaborDetail = id => request.get(`/zero-hour-labor/${id}/detail`)
+export const searchZeroHourSuppliers = q => request.get('/zero-hour-labor/suppliers', { params: { q } })
 export const createZeroHourFinance = (id,kind,data) => request.post(`/zero-hour-labor/${id}/${kind}`,data)
 export const updateZeroHourFinance = (id,kind,recordId,data) => request.put(`/zero-hour-labor/${id}/finance/${kind}/${recordId}`,data)
 export const deleteZeroHourFinance = (id,kind,recordId) => request.delete(`/zero-hour-labor/${id}/finance/${kind}/${recordId}`)

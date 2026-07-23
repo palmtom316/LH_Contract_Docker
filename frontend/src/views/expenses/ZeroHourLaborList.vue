@@ -89,7 +89,7 @@
               <el-button v-if="row.dispatch_file_path" link type="primary" size="small" :icon="Document" @click="viewFile(row.dispatch_file_path)">派工单</el-button>
             </div>
             <div class="labor-card__links">
-              <el-button link type="primary" size="small" @click="viewDetail(row)">查看详情</el-button>
+              <el-button link type="primary" size="small" @click="viewDetail(row)">详情</el-button>
               <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
               <el-button link type="danger" size="small" @click="handleDelete(row)">删除</el-button>
             </div>
@@ -170,7 +170,7 @@
         
         <el-table-column label="操作" width="220" fixed="right">
             <template #default="{ row }">
-                <el-button link type="primary" size="small" @click="viewDetail(row)">查看详情</el-button>
+                <el-button link type="primary" size="small" @click="viewDetail(row)">详情</el-button>
                 <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
                 <el-button link type="danger" size="small" @click="handleDelete(row)">删除</el-button>
             </template>

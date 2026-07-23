@@ -151,4 +151,9 @@ describe('ZeroHourLaborList route filters', () => {
     expect(zeroHourLaborSource).toContain('overflow-wrap: anywhere;')
     expect(zeroHourLaborSource).not.toContain('label="上游合同" min-width="150" show-overflow-tooltip')
   })
+
+  it('uses the concise details action label on desktop and mobile', () => {
+    expect(zeroHourLaborSource).toContain('>详情</el-button>')
+    expect(zeroHourLaborSource).not.toContain('>查看详情</el-button>')
+  })
 })

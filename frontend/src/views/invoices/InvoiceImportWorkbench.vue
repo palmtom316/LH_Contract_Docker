@@ -2,7 +2,6 @@
   <div class="invoice-import-workbench">
     <AppPageHeader
       title="发票及回单"
-      description="识别、复核、分摊后再确认正式财务记录"
     />
     <el-tabs v-model="activeTab" class="workspace-tabs">
       <el-tab-pane

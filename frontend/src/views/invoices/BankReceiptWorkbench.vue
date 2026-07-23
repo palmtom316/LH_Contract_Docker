@@ -3,7 +3,6 @@
     <div class="workbench-toolbar">
       <div>
         <h2>银行回单</h2>
-        <p>回单按“识别 → 复核 → 分摊 → 入账”处理；清除会保留审计历史。</p>
       </div>
       <el-upload
         :auto-upload="false"
@@ -319,7 +318,9 @@ const preview = async (item) => {
   }
 };
 const upload = async (file) => {
-  await uploadReceipt(file.raw);
+  const rawFile = file?.raw || file;
+  if (!rawFile) return;
+  await uploadReceipt(rawFile);
   ElMessage.success("回单已上传，正在识别");
   await load();
 };

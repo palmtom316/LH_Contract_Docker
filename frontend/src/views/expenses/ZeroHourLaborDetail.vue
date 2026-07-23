@@ -1,9 +1,21 @@
 <template>
   <div class="zero-hour-detail">
-    <AppPageHeader
-      title="零星用工详情"
-      description="基本信息、成本构成与独立财务明细"
-    /><AppWorkspacePanel v-if="detail"
+    <AppWorkspacePanel v-if="detail" panel-class="detail-region detail-region--summary"
+      ><AppPageHeader
+        title="零星用工详情"
+        description="基本信息、成本构成与独立财务明细"
+      >
+        <template #actions>
+          <el-button plain @click="router.back()">返回列表</el-button>
+        </template>
+      </AppPageHeader>
+      <el-row :gutter="20" class="summary-cards">
+        <el-col :span="6" :xs="12"><StatCard title="应付款" :value="detail.payable_total" icon="Money" tone="warning" /></el-col>
+        <el-col :span="6" :xs="12"><StatCard title="已挂账" :value="detail.invoiced_total" icon="Tickets" tone="accent" /></el-col>
+        <el-col :span="6" :xs="12"><StatCard title="已付款" :value="detail.paid_total" icon="Wallet" tone="success" /></el-col>
+        <el-col :span="6" :xs="12"><StatCard title="未付款" :value="detail.unpaid_total" icon="Money" tone="danger" /></el-col>
+      </el-row>
+    </AppWorkspacePanel><AppWorkspacePanel v-if="detail"
       ><el-descriptions border :column="isMobile ? 1 : 2"
         ><el-descriptions-item label="用工日期">{{
           detail.labor.labor_date
@@ -31,41 +43,21 @@
             @click="viewFile(detail.labor.approval_pdf_key)"
             >查看审批文件</el-button
           ><span v-else>-</span></el-descriptions-item
+        ><el-descriptions-item label="零星用工总金额"
+          >¥ {{ formatMoney(detail.labor.total_amount) }}</el-descriptions-item
         ></el-descriptions
       >
-      <section class="cost-grid">
-        <div>
-          <span>技工</span
-          ><strong>¥ {{ detail.labor.skilled_price_total }}</strong>
-        </div>
-        <div>
-          <span>普工</span
-          ><strong>¥ {{ detail.labor.general_price_total }}</strong>
-        </div>
-        <div>
-          <span>车辆</span
-          ><strong>¥ {{ detail.labor.vehicle_price_total }}</strong>
-        </div>
-        <div>
-          <span>材料</span
-          ><strong>¥ {{ detail.labor.material_price_total }}</strong>
-        </div>
+      <section class="amount-detail">
+        <div class="section-heading"><h2>金额明细</h2><span>含税总额 ¥ {{ formatMoney(detail.labor.total_amount) }}</span></div>
+        <el-table :data="amountRows" border>
+          <el-table-column prop="item" label="项目" min-width="150" />
+          <el-table-column prop="unit" label="单位" width="100" />
+          <el-table-column prop="quantity" label="数量" width="110" align="right" />
+          <el-table-column prop="unitPrice" label="单价" width="130" align="right"><template #default="{ row }">¥ {{ formatMoney(row.unitPrice) }}</template></el-table-column>
+          <el-table-column prop="amount" label="金额" width="140" align="right"><template #default="{ row }">¥ {{ formatMoney(row.amount) }}</template></el-table-column>
+        </el-table>
+        <div class="tax-summary">税金：¥ {{ formatMoney(detail.labor.tax_amount) }}</div>
       </section>
-      <div class="finance-summary">
-        <el-statistic
-          title="应付款"
-          :value="detail.payable_total"
-        /><el-statistic
-          title="已挂账"
-          :value="detail.invoiced_total"
-        /><el-statistic
-          title="已付款"
-          :value="detail.paid_total"
-        /><el-statistic
-          title="未付款"
-          :value="Number(detail.payable_total) - Number(detail.paid_total)"
-        />
-      </div>
       <el-tabs v-model="tab"
         ><el-tab-pane
           v-for="meta in sections"
@@ -109,20 +101,35 @@
       :title="form.id ? '编辑财务明细' : '新增财务明细'"
       width="520px"
       append-to-body
-      ><el-form :model="form" label-width="90px"
+      ><el-form ref="financeFormRef" :model="form" :rules="financeRules" label-width="90px"
         ><el-form-item
           v-for="field in currentFields"
           :key="field.key"
           :label="field.label"
-          ><el-date-picker
-            v-if="field.type === 'date'"
+          :prop="field.key"
+          ><el-autocomplete
+            v-if="field.key === 'supplier'"
+            v-model="form[field.key]"
+            :fetch-suggestions="searchSuppliers"
+            clearable
+            placeholder="输入下游合同供应商"
+            style="width: 100%"
+          /><el-select
+            v-else-if="field.key === 'payment_method'"
+            v-model="form[field.key]"
+            clearable
+            placeholder="请选择付款方式"
+            style="width: 100%"
+          ><el-option label="银行转账" value="银行转账" /><el-option label="支票" value="支票" /><el-option label="现金" value="现金" /></el-select><el-date-picker
+            v-else-if="field.type === 'date'"
             v-model="form[field.key]"
             value-format="YYYY-MM-DD"
             style="width: 100%" /><el-input-number
             v-else-if="field.type === 'number'"
             v-model="form[field.key]"
-            :min="0"
+            :min="field.key === 'amount' ? 0.01 : 0"
             :precision="2"
+            :controls="false"
             style="width: 100%" /><el-input
             v-else
             v-model="form[field.key]" /></el-form-item
@@ -147,24 +154,29 @@
 </template>
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   createZeroHourFinance,
   deleteZeroHourFinance,
   fetchZeroHourFinanceFile,
   getZeroHourLaborDetail,
+  searchZeroHourSuppliers,
   updateZeroHourFinance,
 } from "@/api/zeroHourLabor";
 import { uploadFile } from "@/api/common";
 import AppPageHeader from "@/components/ui/AppPageHeader.vue";
 import AppWorkspacePanel from "@/components/ui/AppWorkspacePanel.vue";
+import StatCard from "@/components/StatCard.vue";
+import { formatMoney } from "@/utils/common";
 const route = useRoute(),
+  router = useRouter(),
   detail = ref(null),
   tab = ref("payables"),
   dialog = ref(false),
   kind = ref("payables"),
   uploading = ref(false),
+  financeFormRef = ref(null),
   isMobile = window.innerWidth < 768,
   form = reactive({});
 const sections = [
@@ -173,8 +185,7 @@ const sections = [
     label: "应付款",
     singular: "应付款",
     columns: [
-      { prop: "category", label: "类别" },
-      { prop: "expected_date", label: "预计日期" },
+      { prop: "expected_date", label: "日期" },
       { prop: "amount", label: "金额" },
       { prop: "file_key", label: "审批附件" },
     ],
@@ -208,8 +219,7 @@ const sections = [
 ];
 const fields = {
   payables: [
-    ["category", "类别"],
-    ["expected_date", "预计日期", "date"],
+    ["expected_date", "日期", "date"],
     ["amount", "金额", "number"],
     ["description", "说明"],
   ],
@@ -236,14 +246,55 @@ const currentFields = computed(() =>
     type,
   })),
 );
+const financeRules = {
+  expected_date: [{ required: true, message: "请选择日期", trigger: "change" }],
+  invoice_date: [{ required: true, message: "请选择日期", trigger: "change" }],
+  payment_date: [{ required: true, message: "请选择日期", trigger: "change" }],
+  amount: [{ required: true, message: "请输入金额", trigger: "blur" }],
+  supplier: [{ required: true, message: "请输入供应商", trigger: "blur" }],
+  payee_name: [{ required: true, message: "请输入收款方", trigger: "blur" }],
+};
+const amountRows = computed(() => {
+  const labor = detail.value?.labor;
+  if (!labor) return [];
+  return [
+    { item: "技工", unit: "工日", quantity: labor.skilled_quantity, unitPrice: labor.skilled_unit_price, amount: labor.skilled_price_total },
+    { item: "普工", unit: "工日", quantity: labor.general_quantity, unitPrice: labor.general_unit_price, amount: labor.general_price_total },
+    { item: "车辆", unit: "台班", quantity: labor.vehicle_quantity, unitPrice: labor.vehicle_unit_price, amount: labor.vehicle_price_total },
+    ...(labor.materials || []).map((material) => ({
+      item: material.material_name || "材料",
+      unit: material.material_unit || "-",
+      quantity: material.material_quantity,
+      unitPrice: material.material_unit_price,
+      amount: material.material_price_total,
+    })),
+  ];
+});
 const load = async () =>
   (detail.value = await getZeroHourLaborDetail(route.params.id));
 onMounted(load);
 const edit = (next, row = {}) => {
   kind.value = next;
   for (const key of Object.keys(form)) delete form[key];
-  Object.assign(form, row, { amount: Number(row.amount || 0) });
+  const labor = detail.value?.labor || {};
+  Object.assign(form, row, {
+    amount: row.id ? Number(row.amount || 0) : next === "payables" ? Number(labor.total_amount || 0) : 0,
+    expected_date: row.expected_date || labor.labor_date,
+    invoice_date: row.invoice_date || labor.labor_date,
+    payment_date: row.payment_date || labor.labor_date,
+    supplier: row.supplier || "",
+    payee_name: row.payee_name || labor.dispatch_unit || "",
+  });
   dialog.value = true;
+};
+const searchSuppliers = async (queryString, callback) => {
+  if (!queryString?.trim()) return callback([]);
+  try {
+    const names = await searchZeroHourSuppliers(queryString.trim());
+    callback(names.map((value) => ({ value })));
+  } catch {
+    callback([]);
+  }
 };
 const uploadAttachment = async (file) => {
   uploading.value = true;
@@ -277,11 +328,15 @@ const viewFile = async (key) => {
   }
 };
 const save = async () => {
+  if (!(await financeFormRef.value?.validate().catch(() => false))) return;
   const payload = {
     file_path: form.file_path || null,
     file_key: form.file_key || null,
   };
-  for (const field of currentFields.value) payload[field.key] = form[field.key];
+  for (const field of currentFields.value) {
+    const value = form[field.key];
+    payload[field.key] = value === "" || value === undefined ? null : value;
+  }
   if (form.id)
     await updateZeroHourFinance(route.params.id, kind.value, form.id, payload);
   else await createZeroHourFinance(route.params.id, kind.value, payload);
@@ -301,19 +356,31 @@ const remove = async (next, row) => {
 };
 </script>
 <style scoped>
-.finance-summary,
-.cost-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  padding: 24px 0;
+.summary-cards {
+  margin-top: 20px;
 }
-.cost-grid div {
+.amount-detail {
+  margin: 24px 0;
+}
+.section-heading {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
-  padding: 14px;
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 8px;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.section-heading h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.section-heading span,
+.tax-summary {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.tax-summary {
+  padding-top: 12px;
+  text-align: right;
 }
 .table-toolbar {
   display: flex;
@@ -324,11 +391,5 @@ const remove = async (next, row) => {
   margin-left: 10px;
   color: var(--el-color-success);
   font-size: 13px;
-}
-@media (max-width: 640px) {
-  .finance-summary,
-  .cost-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 </style>

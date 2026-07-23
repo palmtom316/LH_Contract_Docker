@@ -35,11 +35,35 @@ from app.models.zero_hour_labor import (
     ZeroHourLaborInvoice,
     ZeroHourLaborPayment,
 )
+from app.models.contract_downstream import ContractDownstream
 from app.services.zero_hour_labor_service import ZeroHourLaborService
 from app.services.audit_service import create_audit_log
 from app.services.auth import get_current_active_user
 
 router = APIRouter()
+
+
+@router.get("/suppliers", response_model=list[str])
+async def search_suppliers(
+    q: str = Query("", max_length=200),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_permission(Permission.VIEW_EXPENSES)),
+):
+    """Return downstream contract suppliers for zero-hour invoice entry."""
+    query = q.strip()
+    if not query:
+        return []
+    result = await db.execute(
+        select(ContractDownstream.party_b_name)
+        .where(
+            ContractDownstream.party_b_name.is_not(None),
+            ContractDownstream.party_b_name.ilike(f"%{query}%"),
+        )
+        .distinct()
+        .order_by(ContractDownstream.party_b_name)
+        .limit(20)
+    )
+    return [name for name in result.scalars().all() if name]
 
 
 @router.get("/{id:int}/detail")

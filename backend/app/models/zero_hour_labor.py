@@ -152,7 +152,7 @@ class ZeroHourLaborPayable(Base):
         nullable=False,
         index=True,
     )
-    category = Column(String(100), nullable=False)
+    category = Column(String(100), nullable=True)
     amount = Column(Numeric(15, 2), nullable=False)
     expected_date = Column(Date)
     description = Column(String(300))
@@ -173,7 +173,7 @@ class ZeroHourLaborInvoice(Base):
         index=True,
     )
     invoice_date = Column(Date, nullable=False)
-    invoice_number = Column(String(100), nullable=False)
+    invoice_number = Column(String(100), nullable=True)
     amount = Column(Numeric(15, 2), nullable=False)
     tax_amount = Column(Numeric(15, 2), default=0)
     supplier = Column(String(200))

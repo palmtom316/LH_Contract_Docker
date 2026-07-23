@@ -88,6 +88,7 @@ def test_release_19_upgrade_is_guarded_by_backup_and_schema_preflights():
     assert "20260527_add_zero_hour_tax_description" in preflight
     assert "20260717_invoice_project_matching" in preflight
     assert "20260722_durable_import_jobs" in preflight
+    assert "20260723_zero_hour_finance_fields" in preflight
     assert "CONFIG_ENCRYPTION_KEY" in preflight
     assert "./scripts/preflight_1.9.sh before" in upgrade
     assert "./scripts/backup.sh" in upgrade
