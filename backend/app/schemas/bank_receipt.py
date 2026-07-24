@@ -87,6 +87,8 @@ class BankReceiptBatchResponse(BaseModel):
     batch_number: str
     original_filename: str
     status: str
+    confirmed_items: int = 0
+    posted_items: int = 0
     job_attempts: int = 0
     job_last_error: Optional[str] = None
     created_at: Optional[datetime] = None

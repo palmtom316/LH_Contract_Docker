@@ -2,7 +2,8 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import InvoiceImportWorkbench from '../InvoiceImportWorkbench.vue'
 
-const { deleteBatchMock, confirmMock } = vi.hoisted(() => ({
+const { clearBatchMock, deleteBatchMock, confirmMock } = vi.hoisted(() => ({
+  clearBatchMock: vi.fn().mockResolvedValue({}),
   deleteBatchMock: vi.fn().mockResolvedValue({}),
   confirmMock: vi.fn().mockResolvedValue('confirm'),
 }))
@@ -31,8 +32,12 @@ vi.mock('@/api/invoiceImport', () => ({
   ]),
   listBatchItems: vi.fn().mockResolvedValue([]),
   createAllocation: vi.fn().mockResolvedValue({}),
+  clearBatch: clearBatchMock,
+  clearInvoiceItem: vi.fn().mockResolvedValue({}),
   confirmItem: vi.fn().mockResolvedValue({}),
   deleteBatch: deleteBatchMock,
+  deleteFailedInvoiceItem: vi.fn().mockResolvedValue({}),
+  ignoreInvoiceItem: vi.fn().mockResolvedValue({}),
   uploadBatch: vi.fn().mockResolvedValue({}),
 }))
 
@@ -69,6 +74,29 @@ describe('InvoiceImportWorkbench', () => {
 
     expect(confirmMock).toHaveBeenCalled()
     expect(deleteBatchMock).toHaveBeenCalledWith(1)
+  })
+
+  it('shows clear instead of delete for a posted batch', async () => {
+    const api = await import('@/api/invoiceImport')
+    api.listBatches.mockResolvedValueOnce([{
+      id: 2,
+      batch_code: 'INVIMP-POSTED',
+      original_filename: 'posted.zip',
+      status: 'completed',
+      total_items: 1,
+      parsed_items: 1,
+      duplicate_items: 0,
+      error_items: 0,
+      confirmed_items: 1,
+      posted_items: 1,
+    }])
+    const wrapper = mount(InvoiceImportWorkbench)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    const actions = wrapper.findAll('button').map((button) => button.text())
+    expect(actions).toContain('清除')
+    expect(actions).not.toContain('删除')
   })
 })
 

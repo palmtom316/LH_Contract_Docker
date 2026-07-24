@@ -28,6 +28,7 @@
           </div>
           <div class="toolbar-actions">
             <el-upload
+              v-if="userStore.canManageInvoices"
               :auto-upload="false"
               :show-file-list="false"
               accept=".zip"
@@ -52,13 +53,24 @@
           <el-table-column prop="duplicate_items" label="重复" width="80" />
           <el-table-column prop="error_items" label="异常" width="80" />
           <el-table-column prop="confirmed_items" label="已确认" width="90" />
-          <el-table-column label="操作" width="150">
+          <el-table-column label="操作" width="190">
             <template #default="{ row }">
               <el-button link type="primary" @click="selectBatch(row)"
                 >查看</el-button
               >
-              <el-button link type="danger" @click="handleDeleteBatch(row)"
+              <el-button
+                v-if="userStore.canManageInvoices && canDeleteBatch(row)"
+                link
+                type="danger"
+                @click="handleDeleteBatch(row)"
                 >删除</el-button
+              >
+              <el-button
+                v-if="userStore.canManageInvoices && Number(row.confirmed_items) > 0"
+                link
+                type="danger"
+                @click="handleClearBatch(row)"
+                >清除</el-button
               >
             </template>
           </el-table-column>
@@ -180,18 +192,22 @@
             </section>
 
             <footer class="invoice-card-actions">
-              <el-button icon="Connection" @click="openAllocation(item)"
+              <el-button
+                v-if="userStore.canManageInvoices && canAllocateInvoice(item)"
+                icon="Connection"
+                @click="openAllocation(item)"
                 >分摊到合同</el-button
               >
               <el-button
+                v-if="userStore.canManageInvoices && canAllocateInvoice(item)"
                 type="success"
                 icon="CircleCheck"
-                :disabled="item.confirmation_status === 'confirmed'"
                 @click="handleConfirm(item)"
                 >确认挂账</el-button
               >
               <el-button
                 v-if="
+                  userStore.canManageInvoices &&
                   item.confirmation_status === 'draft' &&
                   item.parse_status !== 'failed'
                 "
@@ -199,7 +215,7 @@
                 >忽略</el-button
               >
               <el-button
-                v-if="item.confirmation_status === 'confirmed'"
+                v-if="userStore.canManageInvoices && item.confirmation_status === 'confirmed'"
                 type="danger"
                 plain
                 @click="clear(item)"
@@ -207,6 +223,7 @@
               >
               <el-button
                 v-if="
+                  userStore.canManageInvoices &&
                   item.parse_status === 'failed' &&
                   item.confirmation_status === 'draft'
                 "
@@ -226,6 +243,7 @@
         title="新增分摊"
         width="520px"
         append-to-body
+        class="allocation-dialog"
       >
         <el-form label-width="100px">
           <el-form-item label="方向">
@@ -271,16 +289,16 @@
               />
             </el-select>
             <div v-if="candidateOptions.length" class="candidate-hint">
-              系统候选：
-              <el-button
+              <span class="candidate-hint-label">系统候选：</span>
+              <button
                 v-for="candidate in candidateOptions"
                 :key="candidate.id"
-                link
-                type="primary"
+                type="button"
+                class="candidate-option"
                 @click="selectCandidate(candidate)"
               >
                 {{ candidateLabel(candidate) }}（{{ candidate.score }} 分）
-              </el-button>
+              </button>
             </div>
           </el-form-item>
           <el-form-item label="分摊金额">
@@ -288,6 +306,7 @@
               v-model="allocationForm.amount"
               :min="0.01"
               :precision="2"
+              :controls="false"
               style="width: 100%"
             />
           </el-form-item>
@@ -313,6 +332,7 @@ import AppPageHeader from "@/components/ui/AppPageHeader.vue";
 import AppWorkspacePanel from "@/components/ui/AppWorkspacePanel.vue";
 import BankReceiptWorkbench from "./BankReceiptWorkbench.vue";
 import {
+  clearBatch,
   clearInvoiceItem,
   confirmItem,
   createAllocation,
@@ -332,7 +352,11 @@ const batches = ref([]);
 const activePinia = getActivePinia();
 const userStore = activePinia
   ? useUserStore(activePinia)
-  : { canViewInvoices: true, canViewPayments: true };
+  : {
+      canViewInvoices: true,
+      canViewPayments: true,
+      canManageInvoices: true,
+    };
 const activeTab = ref(userStore.canViewInvoices ? "invoice" : "receipt");
 const selectedBatch = ref(null);
 const selectedItem = ref(null);
@@ -384,6 +408,31 @@ async function handleDeleteBatch(row) {
   }
   ElMessage.success("发票导入批次已删除");
   await loadBatches();
+}
+
+function canDeleteBatch(row) {
+  return (
+    !["uploaded", "processing"].includes(row.status) &&
+    Number(row.posted_items || 0) === 0
+  );
+}
+
+function canAllocateInvoice(item) {
+  return ["draft", "cleared"].includes(item.confirmation_status);
+}
+
+async function handleClearBatch(row) {
+  try {
+    const result = await ElMessageBox.prompt(
+      `将清除批次“${row.original_filename}”中全部当前已挂账发票，请输入原因`,
+      "清除批次挂账",
+      { inputValidator: (value) => value?.trim().length > 1 },
+    );
+    await clearBatch(row.id, result.value.trim());
+    ElMessage.success("该批次当前挂账已清除");
+    await loadBatches();
+    if (selectedBatch.value?.id === row.id) await refreshItems();
+  } catch {}
 }
 
 async function openAllocation(row) {
@@ -473,7 +522,14 @@ function matchTagType(status) {
 }
 
 function confirmationStatusLabel(status) {
-  return status === "confirmed" ? "已挂账" : "待确认";
+  return (
+    {
+      confirmed: "已挂账",
+      cleared: "已清除",
+      ignored: "已忽略",
+      draft: "待确认",
+    }[status] || status
+  );
 }
 
 function handleDirectionChange() {
@@ -609,9 +665,46 @@ onMounted(loadBatches);
 }
 
 .candidate-hint {
+  display: grid;
+  min-width: 0;
+  width: 100%;
   margin-top: 8px;
   color: var(--el-text-color-secondary);
   line-height: 1.5;
+}
+
+.candidate-hint-label {
+  margin-bottom: 4px;
+}
+
+.candidate-option {
+  min-width: 0;
+  max-width: 100%;
+  padding: 5px 0;
+  border: 0;
+  background: transparent;
+  color: var(--el-color-primary);
+  cursor: pointer;
+  font: inherit;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  text-align: left;
+  white-space: normal;
+}
+
+.candidate-option:hover,
+.candidate-option:focus-visible {
+  color: var(--el-color-primary-dark-2);
+  text-decoration: underline;
+}
+
+:deep(.allocation-dialog) {
+  max-width: calc(100vw - 32px);
+}
+
+:deep(.allocation-dialog .el-dialog__body),
+:deep(.allocation-dialog .el-form-item__content) {
+  min-width: 0;
 }
 
 .workbench-toolbar {

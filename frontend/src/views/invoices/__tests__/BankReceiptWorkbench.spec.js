@@ -2,7 +2,8 @@ import { mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import BankReceiptWorkbench from "../BankReceiptWorkbench.vue";
 
-const { confirmMock, deleteBatchMock, listBatchesMock } = vi.hoisted(() => ({
+const { clearBatchMock, confirmMock, deleteBatchMock, listBatchesMock } = vi.hoisted(() => ({
+  clearBatchMock: vi.fn().mockResolvedValue(),
   confirmMock: vi.fn().mockResolvedValue("confirm"),
   deleteBatchMock: vi.fn().mockResolvedValue(),
   listBatchesMock: vi.fn().mockResolvedValue([
@@ -25,6 +26,7 @@ vi.mock("element-plus", async (importOriginal) => {
 
 vi.mock("@/api/bankReceipt", () => ({
   clearReceipt: vi.fn(),
+  clearReceiptBatch: clearBatchMock,
   confirmReceipt: vi.fn(),
   createReceiptAllocation: vi.fn(),
   deleteReceiptAllocation: vi.fn(),
@@ -68,5 +70,24 @@ describe("BankReceiptWorkbench batch actions", () => {
     expect(confirmMock).toHaveBeenCalled();
     expect(deleteBatchMock).toHaveBeenCalledWith(17);
     expect(listBatchesMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows clear instead of delete for a posted receipt batch", async () => {
+    listBatchesMock.mockResolvedValueOnce([
+      {
+        id: 18,
+        batch_number: "BR-POSTED",
+        original_filename: "posted.pdf",
+        status: "completed",
+        confirmed_items: 1,
+        posted_items: 1,
+      },
+    ]);
+    wrapper = mount(BankReceiptWorkbench);
+    await flushPromises();
+
+    const actions = wrapper.findAll("button").map((button) => button.text());
+    expect(actions).toContain("清除");
+    expect(actions).not.toContain("删除");
   });
 });

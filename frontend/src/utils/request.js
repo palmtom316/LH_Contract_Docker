@@ -67,12 +67,19 @@ service.interceptors.response.use(
         if (response) {
 
             // Handle Blob errors (response.data is Blob, not JSON)
-            let errorMsg = response.data.detail
+            const payload = response.data
+            let errorMsg = payload?.detail
+            if (errorMsg && typeof errorMsg === 'object' && !Array.isArray(errorMsg)) {
+                errorMsg = errorMsg.message || errorMsg.detail
+            }
             if (response.data instanceof Blob && response.data.type === 'application/json') {
                 try {
                     const text = await response.data.text()
                     const json = JSON.parse(text)
                     errorMsg = json.detail
+                    if (errorMsg && typeof errorMsg === 'object' && !Array.isArray(errorMsg)) {
+                        errorMsg = errorMsg.message || errorMsg.detail
+                    }
                 } catch (e) {
                     // If parse fails, fallback
                 }

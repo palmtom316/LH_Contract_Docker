@@ -60,6 +60,10 @@ class InvoiceImportBatch(Base):
         return int(getattr(self, "_confirmed_items_count", 0) or 0)
 
     @property
+    def posted_items(self) -> int:
+        return int(getattr(self, "_posted_items_count", 0) or 0)
+
+    @property
     def completed_at(self):
         return self.processed_at
 

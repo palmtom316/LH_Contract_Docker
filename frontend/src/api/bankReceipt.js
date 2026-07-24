@@ -2,6 +2,7 @@ import request from '@/utils/request'
 export const listReceiptBatches = () => request.get('/bank-receipts/batches')
 export const listReceiptItems = (id) => request.get(`/bank-receipts/batches/${id}/items`)
 export const deleteReceiptBatch = (id) => request.delete(`/bank-receipts/batches/${id}`)
+export const clearReceiptBatch = (id, reason) => request.post(`/bank-receipts/batches/${id}/clear`, { reason })
 export const uploadReceipt = (file) => {
   const form = new FormData()
   form.append('file', file)

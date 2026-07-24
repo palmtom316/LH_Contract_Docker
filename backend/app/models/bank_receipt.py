@@ -22,6 +22,14 @@ class BankReceiptBatch(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     items = relationship("BankReceiptItem", back_populates="batch", cascade="all, delete-orphan")
 
+    @property
+    def confirmed_items(self) -> int:
+        return int(getattr(self, "_confirmed_items_count", 0) or 0)
+
+    @property
+    def posted_items(self) -> int:
+        return int(getattr(self, "_posted_items_count", 0) or 0)
+
 
 class BankReceiptItem(Base):
     __tablename__ = "bank_receipt_items"

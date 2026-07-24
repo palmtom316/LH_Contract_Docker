@@ -7,8 +7,13 @@ from fastapi import UploadFile
 from sqlalchemy import func, select
 
 from app.core.errors import ValidationError
-from app.models.contract_upstream import ContractUpstream
-from app.models.invoice_import import InvoiceImportBatch, InvoiceImportItem, InvoiceImportMatchCandidate
+from app.models.contract_upstream import ContractUpstream, FinanceUpstreamInvoice
+from app.models.invoice_import import (
+    InvoiceImportAllocation,
+    InvoiceImportBatch,
+    InvoiceImportItem,
+    InvoiceImportMatchCandidate,
+)
 from app.schemas.invoice_import import ImportItemResponse
 from app.services.invoice_import.service import InvoiceImportService
 from app.services.invoice_import.matching import build_dedupe_key
@@ -104,6 +109,71 @@ async def test_delete_confirmed_import_batch_is_rejected(test_db, test_admin):
         await InvoiceImportService(test_db).delete_batch(batch.id, test_admin)
 
     assert await test_db.get(InvoiceImportBatch, batch.id) is not None
+
+
+async def test_clear_import_batch_preserves_posting_history(test_db, test_admin):
+    contract = ContractUpstream(
+        serial_number=9302,
+        contract_code="UP-CLEAR-BATCH",
+        contract_name="批次清除合同",
+        party_a_name="甲方",
+        party_b_name="乙方",
+        contract_amount=Decimal("1000.00"),
+    )
+    batch = InvoiceImportBatch(
+        batch_number="INVIMP-CLEAR-BATCH",
+        original_filename="clear.zip",
+        status="completed",
+        uploaded_by=test_admin.id,
+    )
+    test_db.add_all([contract, batch])
+    await test_db.flush()
+    item = InvoiceImportItem(
+        batch_id=batch.id,
+        source_archive_name="invoice.zip",
+        confirmation_status="confirmed",
+        direction="upstream",
+        parse_status="parsed",
+    )
+    test_db.add(item)
+    await test_db.flush()
+    allocation = InvoiceImportAllocation(
+        item_id=item.id,
+        direction="upstream",
+        upstream_contract_id=contract.id,
+        amount=Decimal("100.00"),
+        status="confirmed",
+        created_by=test_admin.id,
+    )
+    test_db.add(allocation)
+    await test_db.flush()
+    formal = FinanceUpstreamInvoice(
+        contract_id=contract.id,
+        invoice_date=date(2026, 7, 24),
+        amount=Decimal("100.00"),
+        source_import_item_id=item.id,
+        source_import_allocation_id=allocation.id,
+        created_by=test_admin.id,
+    )
+    test_db.add(formal)
+    await test_db.flush()
+    allocation.formal_invoice_id = formal.id
+    await test_db.commit()
+
+    result = await InvoiceImportService(test_db).clear_batch(
+        batch.id, "批次冲销", test_admin
+    )
+
+    await test_db.refresh(item)
+    await test_db.refresh(formal)
+    assert item.confirmation_status == "cleared"
+    assert formal.posting_status == "cleared"
+    assert formal.original_amount == Decimal("100.00")
+    assert formal.amount == Decimal("0.00")
+    assert result.confirmed_items == 0
+    assert result.posted_items == 1
+    with pytest.raises(ValidationError, match="已确认挂账"):
+        await InvoiceImportService(test_db).delete_batch(batch.id, test_admin)
 
 
 async def test_list_items_includes_matched_contract_identity(test_db, test_admin):

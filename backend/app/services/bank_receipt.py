@@ -508,15 +508,72 @@ class BankReceiptService:
         return item.batch_id
 
     async def batches(self):
-        return list(
+        confirmed_count = (
+            select(func.count(BankReceiptItem.id))
+            .where(
+                BankReceiptItem.batch_id == BankReceiptBatch.id,
+                BankReceiptItem.status == "confirmed",
+            )
+            .correlate(BankReceiptBatch)
+            .scalar_subquery()
+        )
+        posted_count = (
+            select(func.count(BankReceiptItem.id))
+            .where(
+                BankReceiptItem.batch_id == BankReceiptBatch.id,
+                or_(
+                    BankReceiptItem.status.in_(("confirmed", "cleared")),
+                    BankReceiptItem.posting_version > 0,
+                ),
+            )
+            .correlate(BankReceiptBatch)
+            .scalar_subquery()
+        )
+        rows = (
+            await self.db.execute(
+                select(
+                    BankReceiptBatch,
+                    confirmed_count.label("confirmed_count"),
+                    posted_count.label("posted_count"),
+                ).order_by(BankReceiptBatch.created_at.desc())
+            )
+        ).all()
+        result = []
+        for batch, confirmed, posted in rows:
+            batch._confirmed_items_count = int(confirmed or 0)
+            batch._posted_items_count = int(posted or 0)
+            result.append(batch)
+        return result
+
+    async def clear_batch(self, batch_id: int, reason: str, user) -> BankReceiptBatch:
+        batch = await self.db.scalar(
+            select(BankReceiptBatch).where(BankReceiptBatch.id == batch_id)
+        )
+        if not batch:
+            raise ResourceNotFoundError(
+                resource_type="银行回单批次", resource_id=batch_id
+            )
+        item_ids = list(
             (
                 await self.db.execute(
-                    select(BankReceiptBatch).order_by(
-                        BankReceiptBatch.created_at.desc()
+                    select(BankReceiptItem.id).where(
+                        BankReceiptItem.batch_id == batch_id,
+                        BankReceiptItem.status == "confirmed",
                     )
                 )
             ).scalars()
         )
+        if not item_ids:
+            raise ValidationError(message="该批次没有可清除的已入账回单")
+        try:
+            for item_id in item_ids:
+                await self.clear(item_id, reason, user, commit=False)
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+            raise
+        result = await self.batches()
+        return next(batch for batch in result if batch.id == batch_id)
 
     async def delete_batch(self, batch_id: int, user) -> None:
         batch = await self.db.scalar(
@@ -790,7 +847,7 @@ class BankReceiptService:
         await self.db.commit()
         return item
 
-    async def clear(self, item_id, reason, user):
+    async def clear(self, item_id, reason, user, *, commit=True):
         item = (
             await self.db.execute(
                 select(BankReceiptItem)
@@ -807,6 +864,8 @@ class BankReceiptService:
             raise ValidationError(message="只有已入账回单可以清除")
         snapshot = []
         for a in item.allocations:
+            if a.status != "confirmed":
+                continue
             snapshot.append(
                 {
                     "allocation_id": a.id,
@@ -852,7 +911,10 @@ class BankReceiptService:
             description=reason,
             old_values={"records": snapshot},
         )
-        await self.db.commit()
+        if commit:
+            await self.db.commit()
+        else:
+            await self.db.flush()
         return item
 
     async def search(self, q, direction):

@@ -48,11 +48,21 @@ async def batches(
 @router.delete("/batches/{batch_id}", status_code=204)
 async def delete_batch(
     batch_id: int,
-    user: User = Depends(require_permission(Permission.DELETE_PAYMENTS)),
+    user: User = Depends(require_permission(Permission.CREATE_PAYMENTS)),
     svc: BankReceiptService = Depends(service),
 ):
     await svc.delete_batch(batch_id, user)
     return Response(status_code=204)
+
+
+@router.post("/batches/{batch_id}/clear", response_model=BankReceiptBatchResponse)
+async def clear_batch(
+    batch_id: int,
+    data: ClearReceiptRequest,
+    user: User = Depends(require_permission(Permission.CREATE_PAYMENTS)),
+    svc: BankReceiptService = Depends(service),
+):
+    return await svc.clear_batch(batch_id, data.reason, user)
 
 
 @router.get("/batches/{batch_id}/items", response_model=list[BankReceiptItemResponse])
@@ -132,7 +142,7 @@ async def confirm(
 async def clear(
     item_id: int,
     data: ClearReceiptRequest,
-    user: User = Depends(require_permission(Permission.DELETE_PAYMENTS)),
+    user: User = Depends(require_permission(Permission.CREATE_PAYMENTS)),
     svc: BankReceiptService = Depends(service),
 ):
     return await svc.clear(item_id, data.reason, user)
@@ -142,7 +152,7 @@ async def clear(
 async def ignore(
     item_id: int,
     data: ClearReceiptRequest,
-    user: User = Depends(require_permission(Permission.EDIT_PAYMENTS)),
+    user: User = Depends(require_permission(Permission.CREATE_PAYMENTS)),
     svc: BankReceiptService = Depends(service),
 ):
     return await svc.ignore(item_id, data.reason, user)
@@ -151,7 +161,7 @@ async def ignore(
 @router.delete("/items/{item_id}", status_code=204)
 async def delete_failed(
     item_id: int,
-    user: User = Depends(require_permission(Permission.DELETE_PAYMENTS)),
+    user: User = Depends(require_permission(Permission.CREATE_PAYMENTS)),
     svc: BankReceiptService = Depends(service),
 ):
     await svc.delete_failed(item_id, user)

@@ -23,6 +23,10 @@ export function deleteBatch(batchId) {
   return request({ url: `/invoice-imports/batches/${batchId}`, method: 'delete' })
 }
 
+export function clearBatch(batchId, reason) {
+  return request.post(`/invoice-imports/batches/${batchId}/clear`, { reason })
+}
+
 export function createAllocation(itemId, data) {
   return request({ url: `/invoice-imports/items/${itemId}/allocations`, method: 'post', data })
 }

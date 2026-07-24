@@ -560,6 +560,16 @@ a:focus-visible,
     color: hsl(var(--foreground));
 }
 
+.el-dialog,
+.el-dialog__body,
+.el-dialog__body .el-form-item__content {
+    min-width: 0;
+}
+
+.el-dialog__body {
+    overflow-wrap: anywhere;
+}
+
 .app-tabs {
     --el-tabs-header-height: auto;
 }

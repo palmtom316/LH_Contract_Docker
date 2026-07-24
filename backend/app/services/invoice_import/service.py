@@ -66,9 +66,12 @@ def _can_access_all_imports(user: User | None) -> bool:
 
 
 def _apply_confirmed_count(
-    batch: InvoiceImportBatch, confirmed_count: int | None
+    batch: InvoiceImportBatch,
+    confirmed_count: int | None,
+    posted_count: int | None = None,
 ) -> InvoiceImportBatch:
     batch._confirmed_items_count = int(confirmed_count or 0)
+    batch._posted_items_count = int(posted_count or 0)
     return batch
 
 
@@ -146,12 +149,33 @@ class InvoiceImportService:
             .correlate(InvoiceImportBatch)
             .scalar_subquery()
         )
-        query = select(InvoiceImportBatch, confirmed_count.label("confirmed_count"))
+        posted_count = (
+            select(func.count(InvoiceImportItem.id))
+            .where(
+                InvoiceImportItem.batch_id == InvoiceImportBatch.id,
+                or_(
+                    InvoiceImportItem.confirmation_status.in_(
+                        ("confirmed", "cleared")
+                    ),
+                    InvoiceImportItem.posting_version > 0,
+                ),
+            )
+            .correlate(InvoiceImportBatch)
+            .scalar_subquery()
+        )
+        query = select(
+            InvoiceImportBatch,
+            confirmed_count.label("confirmed_count"),
+            posted_count.label("posted_count"),
+        )
         if current_user and not _can_access_all_imports(current_user):
             query = query.where(InvoiceImportBatch.uploaded_by == current_user.id)
         query = query.order_by(InvoiceImportBatch.created_at.desc())
         result = await self.db.execute(query)
-        return [_apply_confirmed_count(batch, count) for batch, count in result.all()]
+        return [
+            _apply_confirmed_count(batch, count, posted)
+            for batch, count, posted in result.all()
+        ]
 
     async def get_batch(
         self, batch_id: int, current_user: User | None = None
@@ -165,8 +189,24 @@ class InvoiceImportService:
             .correlate(InvoiceImportBatch)
             .scalar_subquery()
         )
+        posted_count = (
+            select(func.count(InvoiceImportItem.id))
+            .where(
+                InvoiceImportItem.batch_id == InvoiceImportBatch.id,
+                or_(
+                    InvoiceImportItem.confirmation_status.in_(
+                        ("confirmed", "cleared")
+                    ),
+                    InvoiceImportItem.posting_version > 0,
+                ),
+            )
+            .correlate(InvoiceImportBatch)
+            .scalar_subquery()
+        )
         query = select(
-            InvoiceImportBatch, confirmed_count.label("confirmed_count")
+            InvoiceImportBatch,
+            confirmed_count.label("confirmed_count"),
+            posted_count.label("posted_count"),
         ).where(InvoiceImportBatch.id == batch_id)
         if current_user and not _can_access_all_imports(current_user):
             query = query.where(InvoiceImportBatch.uploaded_by == current_user.id)
@@ -176,8 +216,8 @@ class InvoiceImportService:
             raise ResourceNotFoundError(
                 resource_type="发票导入批次", resource_id=batch_id
             )
-        batch, count = row
-        return _apply_confirmed_count(batch, count)
+        batch, count, posted = row
+        return _apply_confirmed_count(batch, count, posted)
 
     async def list_items(
         self, batch_id: int, current_user: User | None = None
@@ -272,6 +312,25 @@ class InvoiceImportService:
         await self.db.refresh(allocation)
         return allocation
 
+    async def clear_batch(
+        self, batch_id: int, reason: str, user: User
+    ) -> InvoiceImportBatch:
+        await self.get_batch(batch_id, user)
+        items = await self.list_items(batch_id, user)
+        confirmed_ids = [
+            item.id for item in items if item.confirmation_status == "confirmed"
+        ]
+        if not confirmed_ids:
+            raise ValidationError(message="该批次没有可清除的已挂账发票")
+        try:
+            for item_id in confirmed_ids:
+                await self.clear_posting(item_id, reason, user, commit=False)
+            await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+            raise
+        return await self.get_batch(batch_id, user)
+
     async def update_allocation(
         self, allocation_id: int, allocation_in: AllocationUpdate, user: User
     ) -> InvoiceImportAllocation:
@@ -336,7 +395,7 @@ class InvoiceImportService:
         return item
 
     async def clear_posting(
-        self, item_id: int, reason: str, user: User
+        self, item_id: int, reason: str, user: User, *, commit: bool = True
     ) -> InvoiceImportItem:
         result = await self.db.execute(
             select(InvoiceImportItem)
@@ -403,7 +462,10 @@ class InvoiceImportService:
             description=reason,
             old_values={"records": snapshot},
         )
-        await self.db.commit()
+        if commit:
+            await self.db.commit()
+        else:
+            await self.db.flush()
         return item
 
     async def delete_failed_item(self, item_id: int, user: User) -> None:

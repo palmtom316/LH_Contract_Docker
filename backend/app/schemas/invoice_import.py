@@ -166,6 +166,7 @@ class BatchResponse(BaseModel):
     duplicate_items: int
     error_items: int
     confirmed_items: int
+    posted_items: int
     error_message: Optional[str] = None
     created_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None

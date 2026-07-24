@@ -5,6 +5,7 @@
         <h2>银行回单</h2>
       </div>
       <el-upload
+        v-if="userStore.canManagePayments"
         :auto-upload="false"
         :show-file-list="false"
         accept=".pdf"
@@ -27,12 +28,22 @@
         label="文件名"
       /><el-table-column prop="status" label="状态" /><el-table-column
         label="操作"
-        width="150"
+        width="190"
         ><template #default="{ row }"
           ><el-button link type="primary" @click="open(row)"
             >查看</el-button
-          ><el-button link type="danger" @click="removeBatch(row)"
+          ><el-button
+            v-if="userStore.canManagePayments && canDeleteBatch(row)"
+            link
+            type="danger"
+            @click="removeBatch(row)"
             >删除</el-button
+          ><el-button
+            v-if="userStore.canManagePayments && Number(row.confirmed_items) > 0"
+            link
+            type="danger"
+            @click="clearBatch(row)"
+            >清除</el-button
           ></template
         ></el-table-column
       ></el-table
@@ -108,28 +119,38 @@
         >
         <div class="receipt-actions">
           <el-button @click="preview(item)">预览原始 PDF</el-button
-          ><el-button @click="review(item)" :disabled="!canEdit(item)"
+          ><el-button
+            v-if="userStore.canManagePayments"
+            @click="review(item)"
+            :disabled="!canEdit(item)"
             >复核信息</el-button
           ><el-button
+            v-if="userStore.canManagePayments"
             @click="allocation(item)"
             :disabled="!canEdit(item) || item.direction === 'unknown'"
             >新增分摊</el-button
           ><el-button
+            v-if="userStore.canManagePayments"
             type="primary"
             @click="confirm(item)"
             :disabled="item.status !== 'ready'"
             >确认入账</el-button
-          ><el-button v-if="canEdit(item)" @click="ignore(item)">忽略</el-button
-          ><el-button v-if="item.status === 'failed'" @click="retry(item)"
+          ><el-button
+            v-if="userStore.canManagePayments && canIgnore(item)"
+            @click="ignore(item)"
+            >忽略</el-button
+          ><el-button
+            v-if="userStore.canManagePayments && item.status === 'failed'"
+            @click="retry(item)"
             >重新识别</el-button
           ><el-button
-            v-if="item.status === 'confirmed'"
+            v-if="userStore.canManagePayments && item.status === 'confirmed'"
             type="danger"
             plain
             @click="clear(item)"
             >清除入账</el-button
           ><el-button
-            v-if="item.status === 'failed'"
+            v-if="userStore.canManagePayments && item.status === 'failed'"
             type="danger"
             plain
             @click="deleteFailed(item)"
@@ -163,6 +184,7 @@
             v-model="reviewForm.amount"
             :min="0.01"
             :precision="2"
+            :controls="false"
             style="width: 100%" /></el-form-item
         ><el-form-item label="付款方"
           ><el-input v-model="reviewForm.payer_name" /></el-form-item
@@ -208,6 +230,7 @@
             v-model="allocationForm.amount"
             :min="0.01"
             :precision="2"
+            :controls="false"
             style="width: 100%" /></el-form-item></el-form
       ><template #footer
         ><el-button @click="allocationVisible = false">取消</el-button
@@ -221,9 +244,12 @@
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
+import { useUserStore } from "@/stores/user";
+import { getActivePinia } from "pinia";
 import AppWorkspacePanel from "@/components/ui/AppWorkspacePanel.vue";
 import {
   clearReceipt,
+  clearReceiptBatch,
   confirmReceipt,
   createReceiptAllocation,
   deleteReceiptBatch,
@@ -239,6 +265,10 @@ import {
   searchReceiptContracts,
   uploadReceipt,
 } from "@/api/bankReceipt";
+const activePinia = getActivePinia();
+const userStore = activePinia
+  ? useUserStore(activePinia)
+  : { canManagePayments: true };
 const batches = ref([]),
   items = ref([]),
   visible = ref(false),
@@ -350,7 +380,24 @@ const removeBatch = async (row) => {
     await load();
   } catch {}
 };
+const canDeleteBatch = (row) =>
+  !["uploaded", "processing"].includes(row.status) &&
+  Number(row.posted_items || 0) === 0;
+const clearBatch = async (row) => {
+  try {
+    const result = await ElMessageBox.prompt(
+      `将清除批次“${row.original_filename}”中全部当前已入账回单，请输入原因`,
+      "清除回单批次",
+      { inputValidator: (value) => value?.trim().length > 1 },
+    );
+    await clearReceiptBatch(row.id, result.value.trim());
+    ElMessage.success("该批次当前入账已清除");
+    await load();
+    if (selectedBatch.value?.id === row.id) await refresh();
+  } catch {}
+};
 const canEdit = (i) => ["needs_review", "ready", "cleared"].includes(i.status);
+const canIgnore = (i) => ["needs_review", "ready"].includes(i.status);
 const directionLabel = (v) =>
   v === "receipt" ? "收款" : v === "payment" ? "付款" : "待判断";
 const statusLabel = (v) =>
