@@ -32,7 +32,7 @@ class SystemConfig(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     key = Column(String(100), unique=True, nullable=False, index=True) # e.g., 'system_name', 'system_logo'
-    value = Column(String(500), nullable=True)
+    value = Column(Text, nullable=True)
     description = Column(String(200), nullable=True)
     
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

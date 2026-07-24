@@ -29,7 +29,7 @@ curl --fail http://127.0.0.1/health/ready
 docker exec lh_contract_backend alembic current
 ```
 
-Alembic revision 应为 `20260723_zero_hour_finance_fields`。随后在系统设置中确认：
+Alembic revision 应为 `20260723_expand_system_config`。随后在系统设置中确认：
 
 - 公司名称和税号正确。
 - 公司银行账号已填写，否则回单方向只能人工复核。

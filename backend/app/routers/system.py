@@ -21,7 +21,7 @@ from datetime import datetime
 from typing import List, Optional, Union
 import httpx
 from urllib.parse import urlparse, unquote
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
 from app.database import get_db
@@ -370,11 +370,11 @@ async def get_logo_file():
 class SystemConfigUpdate(BaseModel):
     system_name: Optional[str] = None
     system_name_line_2: Optional[str] = None
-    mineru_api_url: Optional[str] = None
-    mineru_api_key: Optional[str] = None
+    mineru_api_url: Optional[str] = Field(default=None, max_length=2048)
+    mineru_api_key: Optional[str] = Field(default=None, min_length=1, max_length=4096)
     mineru_enabled: Optional[bool] = None
     mineru_timeout_seconds: Optional[int] = None
-    company_bank_accounts: Optional[str] = None
+    company_bank_accounts: Optional[str] = Field(default=None, max_length=4000)
 
 
 @router.get("/config")

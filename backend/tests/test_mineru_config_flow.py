@@ -1,6 +1,6 @@
 from sqlalchemy import select
 
-from app.core.secure_config import protect_config_secret
+from app.core.secure_config import protect_config_secret, reveal_config_secret
 from app.models.system import SystemConfig
 
 
@@ -34,6 +34,34 @@ async def test_system_config_cannot_enable_mineru_without_connection_test(
     )
 
     assert response.status_code == 422
+
+
+async def test_system_config_saves_long_encrypted_mineru_key(
+    client, admin_token, test_db, monkeypatch
+):
+    api_key = "mineru-" + "a" * 700
+    monkeypatch.setattr(
+        "app.routers.system.validate_external_api_url", lambda value: value
+    )
+
+    response = await client.post(
+        "/api/v1/system/config",
+        json={
+            "mineru_api_url": "https://mineru.net/api/v4/extract/task",
+            "mineru_api_key": api_key,
+            "mineru_enabled": False,
+            "mineru_timeout_seconds": 60,
+            "company_bank_accounts": "7421610182600142192",
+        },
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 200
+    stored_key = await test_db.scalar(
+        select(SystemConfig.value).where(SystemConfig.key == "mineru_api_key")
+    )
+    assert len(stored_key) > 500
+    assert reveal_config_secret(stored_key) == api_key
 
 
 async def test_successful_mineru_test_enables_recognition(

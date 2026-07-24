@@ -4,8 +4,9 @@ set -euo pipefail
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.pve-prod.yml}"
 DB_CONTAINER="${DB_CONTAINER:-lh_contract_db}"
 ENV_FILE="${ENV_FILE:-.env.production}"
-TARGET_REVISION="20260723_zero_hour_finance_fields"
-PREVIOUS_TARGET_REVISION="20260722_durable_import_jobs"
+TARGET_REVISION="20260723_expand_system_config"
+PREVIOUS_TARGET_REVISION="20260723_zero_hour_finance_fields"
+EARLIER_TARGET_REVISION="20260722_durable_import_jobs"
 BASE_REVISION="20260527_add_zero_hour_tax_description"
 CURRENT_18_REVISION="20260717_invoice_project_matching"
 MODE="${1:-after}"
@@ -22,8 +23,8 @@ require_env_key() {
 revision="$(query 'SELECT version_num FROM alembic_version LIMIT 1;')"
 width="$(query "SELECT character_maximum_length FROM information_schema.columns WHERE table_name='alembic_version' AND column_name='version_num';")"
 if [ "${MODE}" = before ]; then
-    if [ "${revision}" != "${BASE_REVISION}" ] && [ "${revision}" != "${CURRENT_18_REVISION}" ] && [ "${revision}" != "${PREVIOUS_TARGET_REVISION}" ] && [ "${revision}" != "${TARGET_REVISION}" ]; then
-        echo "Preflight failed: expected ${BASE_REVISION}, ${CURRENT_18_REVISION}, ${PREVIOUS_TARGET_REVISION}, or ${TARGET_REVISION}, got ${revision:-missing}" >&2
+    if [ "${revision}" != "${BASE_REVISION}" ] && [ "${revision}" != "${CURRENT_18_REVISION}" ] && [ "${revision}" != "${EARLIER_TARGET_REVISION}" ] && [ "${revision}" != "${PREVIOUS_TARGET_REVISION}" ] && [ "${revision}" != "${TARGET_REVISION}" ]; then
+        echo "Preflight failed: expected ${BASE_REVISION}, ${CURRENT_18_REVISION}, ${EARLIER_TARGET_REVISION}, ${PREVIOUS_TARGET_REVISION}, or ${TARGET_REVISION}, got ${revision:-missing}" >&2
         exit 1
     fi
 else
