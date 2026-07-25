@@ -71,14 +71,15 @@ async def delete_batch(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/batches/{batch_id}/clear", response_model=BatchResponse)
+@router.post("/batches/{batch_id}/clear", status_code=status.HTTP_204_NO_CONTENT)
 async def clear_batch(
     batch_id: int,
     request: ClearInvoiceRequest,
     current_user: User = Depends(require_permission(Permission.CREATE_INVOICES)),
     service: InvoiceImportService = Depends(get_import_service),
 ):
-    return await service.clear_batch(batch_id, request.reason, current_user)
+    await service.clear_batch(batch_id, request.reason, current_user)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/items/{item_id}/allocations", response_model=AllocationResponse, status_code=status.HTTP_201_CREATED)
@@ -111,13 +112,28 @@ async def confirm_item(
     return await InvoicePostingService(db).confirm_item(item_id, current_user, request.override_duplicate)
 
 @router.post("/items/{item_id}/ignore", response_model=ImportItemResponse)
-async def ignore_item(item_id:int, request:IgnoreItemRequest, current_user:User=Depends(require_permission(Permission.CREATE_INVOICES)), service:InvoiceImportService=Depends(get_import_service)):
-    return await service.ignore_item(item_id,request.reason,current_user)
+async def ignore_item(
+    item_id: int,
+    request: IgnoreItemRequest,
+    current_user: User = Depends(require_permission(Permission.CREATE_INVOICES)),
+    service: InvoiceImportService = Depends(get_import_service),
+):
+    return await service.ignore_item(item_id, request.reason, current_user)
 
 @router.post("/items/{item_id}/clear", response_model=ImportItemResponse)
-async def clear_item(item_id:int, request:ClearInvoiceRequest, current_user:User=Depends(require_permission(Permission.CREATE_INVOICES)), service:InvoiceImportService=Depends(get_import_service)):
-    return await service.clear_posting(item_id,request.reason,current_user)
+async def clear_item(
+    item_id: int,
+    request: ClearInvoiceRequest,
+    current_user: User = Depends(require_permission(Permission.CREATE_INVOICES)),
+    service: InvoiceImportService = Depends(get_import_service),
+):
+    return await service.clear_posting(item_id, request.reason, current_user)
 
 @router.delete("/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_failed_item(item_id:int,current_user:User=Depends(require_permission(Permission.CREATE_INVOICES)),service:InvoiceImportService=Depends(get_import_service)):
-    await service.delete_failed_item(item_id,current_user); return Response(status_code=status.HTTP_204_NO_CONTENT)
+async def delete_failed_item(
+    item_id: int,
+    current_user: User = Depends(require_permission(Permission.CREATE_INVOICES)),
+    service: InvoiceImportService = Depends(get_import_service),
+):
+    await service.delete_failed_item(item_id, current_user)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

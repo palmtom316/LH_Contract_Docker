@@ -414,7 +414,7 @@ class TestContractSearchEndpoint:
         assert row["management_contract_amount"] == pytest.approx(seeded["management_contract_amount"])
         assert row["management_settlement_amount"] == pytest.approx(seeded["management_settlement_amount"])
         assert row["management_paid_amount"] == pytest.approx(seeded["management_paid_amount"])
-        assert row["non_contract_expense_total"] == pytest.approx(seeded["expense_total"])
+        assert Decimal(row["non_contract_expense_total"]) == Decimal(str(seeded["expense_total"]))
         assert row["expenses_by_category"] == [
             {"category": "培训费", "amount": pytest.approx(32.0)},
             {"category": "管理费", "amount": pytest.approx(88.0)},
@@ -488,9 +488,9 @@ class TestDashboardEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert data["cards"]["annual_upstream_count"] == 1
-        assert data["cards"]["annual_upstream_amount"] == pytest.approx(320000.0)
-        assert data["charts"]["pie_category"] == [{"name": "安装", "value": 320000.0}]
-        assert data["charts"]["pie_company"] == [{"name": "测试公司分类", "value": 320000.0}]
+        assert data["cards"]["annual_upstream_amount"] == "320000.00"
+        assert data["charts"]["pie_category"] == [{"name": "安装", "value": "320000.00"}]
+        assert data["charts"]["pie_company"] == [{"name": "测试公司分类", "value": "320000.00"}]
         assert "bar" not in data["charts"]
 
     async def test_search_party_b_with_sign_date_range(

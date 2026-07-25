@@ -12,6 +12,7 @@ const diagnosePath = path.resolve(process.cwd(), 'public/diagnose.html')
 describe('authSession', () => {
   beforeEach(() => {
     localStorage.clear()
+    sessionStorage.clear()
     clearSessionStorage()
   })
 
@@ -23,7 +24,8 @@ describe('authSession', () => {
       user: { id: 1, username: 'alice', permissions: [] }
     })
 
-    expect(localStorage.getItem('token')).toBe('access-token')
+    expect(sessionStorage.getItem('token')).toBe('access-token')
+    expect(localStorage.getItem('token')).toBeNull()
     expect(localStorage.getItem('refresh_token')).toBeNull()
   })
 

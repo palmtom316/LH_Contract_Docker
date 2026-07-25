@@ -23,8 +23,8 @@ export function deleteBatch(batchId) {
   return request({ url: `/invoice-imports/batches/${batchId}`, method: 'delete' })
 }
 
-export function clearBatch(batchId, reason) {
-  return request.post(`/invoice-imports/batches/${batchId}/clear`, { reason })
+export function clearBatch(batchId) {
+  return request.post(`/invoice-imports/batches/${batchId}/clear`, { reason: '用户主动清除批次' })
 }
 
 export function createAllocation(itemId, data) {
@@ -39,5 +39,5 @@ export function confirmItem(itemId, data = { override_duplicate: false }) {
   return request({ url: `/invoice-imports/items/${itemId}/confirm`, method: 'post', data })
 }
 export const ignoreInvoiceItem = (itemId, reason) => request.post(`/invoice-imports/items/${itemId}/ignore`, { reason })
-export const clearInvoiceItem = (itemId, reason) => request.post(`/invoice-imports/items/${itemId}/clear`, { reason })
+export const clearInvoiceItem = (itemId) => request.post(`/invoice-imports/items/${itemId}/clear`, { reason: '用户主动清除挂账' })
 export const deleteFailedInvoiceItem = (itemId) => request.delete(`/invoice-imports/items/${itemId}`)

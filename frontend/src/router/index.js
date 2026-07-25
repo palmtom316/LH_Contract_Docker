@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { getAccessToken } from '@/utils/authSession'
 
 // Mobile route -> PC route redirect map (PC user lands on /m/* -> bounce to PC).
 // Reverse direction is intentionally not enforced: mobile users can still open PC lists.
@@ -75,7 +76,7 @@ const routes = [
                 path: 'invoice-imports',
                 name: 'InvoiceImportWorkbench',
                 component: () => import('@/views/invoices/InvoiceImportWorkbench.vue'),
-                meta: { title: '发票识别入账', icon: 'DocumentAdd' }
+                meta: { title: '发票挂账', icon: 'DocumentAdd' }
             },
             {
                 path: 'expenses/zero-hour-labor/:id',
@@ -156,7 +157,7 @@ const isMobileDevice = () => window.innerWidth < 768
 router.beforeEach((to, from, next) => {
     // Set page title
     document.title = to.meta.title ? `${to.meta.title} - 合同管理系统` : '合同管理系统'
-    const token = localStorage.getItem('token')
+    const token = getAccessToken()
     const whiteList = ['/login']
 
     if (token) {

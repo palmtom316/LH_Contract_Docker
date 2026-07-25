@@ -314,22 +314,82 @@ class InvoiceImportService:
 
     async def clear_batch(
         self, batch_id: int, reason: str, user: User
-    ) -> InvoiceImportBatch:
-        await self.get_batch(batch_id, user)
-        items = await self.list_items(batch_id, user)
+    ) -> None:
+        query = (
+            select(InvoiceImportBatch)
+            .options(
+                selectinload(InvoiceImportBatch.items).selectinload(
+                    InvoiceImportItem.allocations
+                ),
+                selectinload(InvoiceImportBatch.items).selectinload(
+                    InvoiceImportItem.candidates
+                ),
+            )
+            .where(InvoiceImportBatch.id == batch_id)
+        )
+        if not _can_access_all_imports(user):
+            query = query.where(InvoiceImportBatch.uploaded_by == user.id)
+        batch = (await self.db.execute(query)).scalar_one_or_none()
+        if not batch:
+            raise ResourceNotFoundError(
+                resource_type="发票导入批次", resource_id=batch_id
+            )
+
+        items = list(batch.items)
         confirmed_ids = [
             item.id for item in items if item.confirmation_status == "confirmed"
         ]
-        if not confirmed_ids:
+        has_posting_history = any(
+            item.confirmation_status == "cleared"
+            or (item.posting_version or 0) > 0
+            or any(allocation.formal_invoice_id for allocation in item.allocations)
+            for item in items
+        )
+        if not confirmed_ids and not has_posting_history:
             raise ValidationError(message="该批次没有可清除的已挂账发票")
+
+        object_keys = {
+            key
+            for key in [
+                batch.archive_file_key,
+                *(item.pdf_file_key for item in items),
+                *(item.ofd_file_key for item in items),
+                *(item.xml_file_key for item in items),
+            ]
+            if key
+        }
         try:
             for item_id in confirmed_ids:
                 await self.clear_posting(item_id, reason, user, commit=False)
+            for item in items:
+                for allocation in item.allocations:
+                    if not allocation.formal_invoice_id:
+                        continue
+                    table = (
+                        FinanceUpstreamInvoice
+                        if allocation.direction == "upstream"
+                        else (
+                            ZeroHourLaborInvoice
+                            if allocation.zero_hour_labor_id
+                            else (
+                                FinanceDownstreamInvoice
+                                if allocation.downstream_contract_id
+                                else FinanceManagementInvoice
+                            )
+                        )
+                    )
+                    formal = await self.db.get(table, allocation.formal_invoice_id)
+                    if formal:
+                        formal.source_import_item_id = None
+                        formal.source_import_allocation_id = None
+            await self.db.flush()
+            await self.db.delete(batch)
             await self.db.commit()
         except Exception:
             await self.db.rollback()
             raise
-        return await self.get_batch(batch_id, user)
+        for object_key in object_keys:
+            self._remove_minio_object(object_key)
 
     async def update_allocation(
         self, allocation_id: int, allocation_in: AllocationUpdate, user: User
@@ -750,7 +810,7 @@ class InvoiceImportService:
                 settings.MINIO_BUCKET_CONTRACTS, object_key
             )
         except Exception:
-            pass
+            logger.exception("Failed to remove MinIO object during cleanup: %s", object_key)
 
     async def _get_bytes_from_minio(self, object_key: str) -> bytes:
         client = get_minio_client()

@@ -1,7 +1,6 @@
 from typing import TypeVar, Generic, Type, Optional, List, Dict, Any, Union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
-from app.services.cache import cache, dashboard_cache_key
 from app.services.report_cache import invalidate_all_report_caches
 
 ModelType = TypeVar("ModelType")
@@ -16,7 +15,6 @@ class BaseContractService(Generic[ModelType]):
 
     async def _invalidate_dashboard_cache(self):
         """Clear dashboard and report caches when contract data changes."""
-        await cache.delete(dashboard_cache_key())
         await invalidate_all_report_caches()
 
     async def get_contract(self, contract_id: int) -> Optional[ModelType]:

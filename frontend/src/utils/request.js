@@ -1,14 +1,14 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
-import { clearSessionStorage, refreshSessionWithStoredToken } from '@/utils/authSession'
+import { clearSessionStorage, getAccessToken, refreshSessionWithStoredToken } from '@/utils/authSession'
 
 let refreshPromise = null
 
 async function getRefreshedToken() {
     if (!refreshPromise) {
         refreshPromise = refreshSessionWithStoredToken()
-            .then(() => localStorage.getItem('token'))
+            .then(payload => payload.access_token)
             .finally(() => {
                 refreshPromise = null
             })
@@ -29,7 +29,7 @@ const service = axios.create({
 // Request interceptor
 service.interceptors.request.use(
     config => {
-        const token = localStorage.getItem('token')
+        const token = getAccessToken()
         if (token) {
             config.headers['Authorization'] = `Bearer ${token}`
         }

@@ -16,7 +16,6 @@ from app.schemas.contract_management import (
     ContractManagementCreate,
     ContractManagementUpdate,
 )
-from app.services.cache import cache, dashboard_cache_key
 from app.services.status_service import calculate_contract_status
 from app.models.user import User
 from app.services.audit_service import create_audit_log, AuditAction, ResourceType

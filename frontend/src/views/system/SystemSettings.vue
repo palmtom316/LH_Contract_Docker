@@ -117,6 +117,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
 import AppSectionCard from '@/components/ui/AppSectionCard.vue'
 import AppWorkspacePanel from '@/components/ui/AppWorkspacePanel.vue'
+import { getAccessToken } from '@/utils/authSession'
 
 const activeTab = ref('config')
 const systemStore = useSystemStore()
@@ -130,7 +131,7 @@ const configForm = ref({
 const savingBaseConfig = ref(false)
 // Headers for upload (if Auth needed, add Authorization header here)
 const headers = computed(() => {
-    const token = localStorage.getItem('token') // Assuming stored here
+    const token = getAccessToken()
     return token ? { Authorization: `Bearer ${token}` } : {}
 })
 

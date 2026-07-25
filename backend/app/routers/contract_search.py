@@ -56,9 +56,9 @@ def _to_decimal(value) -> Decimal:
     return Decimal(str(value))
 
 
-def _money(value) -> float:
+def _money(value) -> Decimal:
     amount = _to_decimal(value)
-    return float(amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+    return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 async def _scalar(db: AsyncSession, stmt):
@@ -72,6 +72,10 @@ def _sum_related_amount(items, field: str = "amount") -> Decimal:
 
 def _normalize_text(value: Optional[str]) -> str:
     return (value or "").strip()
+
+
+def _escape_like_pattern(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 def _build_multi_value_ilike_condition(column, values: list[str]):
@@ -90,8 +94,11 @@ def _build_multi_value_ilike_condition(column, values: list[str]):
     if not normalized_values:
         return None
     if len(normalized_values) == 1:
-        return column.ilike(f"%{normalized_values[0]}%")
-    return or_(*[column.ilike(f"%{value}%") for value in normalized_values])
+        return column.ilike(f"%{_escape_like_pattern(normalized_values[0])}%", escape="\\")
+    return or_(*[
+        column.ilike(f"%{_escape_like_pattern(value)}%", escape="\\")
+        for value in normalized_values
+    ])
 
 
 async def _expand_dictionary_filter_values(
@@ -212,10 +219,10 @@ def _apply_upstream_query_filters(
 # Response Models
 class FinanceSummary(BaseModel):
     """财务汇总"""
-    contract_amount: float = 0  # 签约金额
-    payable_amount: float = 0   # 应付款
-    invoiced_amount: float = 0  # 挂账金额
-    paid_amount: float = 0      # 已付款
+    contract_amount: Decimal = Decimal("0.00")  # 签约金额
+    payable_amount: Decimal = Decimal("0.00")   # 应付款
+    invoiced_amount: Decimal = Decimal("0.00")  # 挂账金额
+    paid_amount: Decimal = Decimal("0.00")      # 已付款
 
 
 class AssociatedContract(BaseModel):
@@ -232,7 +239,7 @@ class AssociatedContract(BaseModel):
 class ExpenseCategory(BaseModel):
     """费用分类"""
     category: str
-    amount: float
+    amount: Decimal
 
 
 class UpstreamContractResult(BaseModel):
@@ -289,22 +296,22 @@ class UpstreamAggregateRow(BaseModel):
     sign_date: Optional[date] = None
     completion_date: Optional[date] = None
     warranty_date: Optional[date] = None
-    contract_amount: float = 0
-    receivable_amount: float = 0
-    invoiced_amount: float = 0
-    received_amount: float = 0
-    settlement_amount: float = 0
+    contract_amount: Decimal = Decimal("0.00")
+    receivable_amount: Decimal = Decimal("0.00")
+    invoiced_amount: Decimal = Decimal("0.00")
+    received_amount: Decimal = Decimal("0.00")
+    settlement_amount: Decimal = Decimal("0.00")
     downstream_contract_count: int = 0
-    downstream_contract_amount: float = 0
-    downstream_settlement_amount: float = 0
-    downstream_paid_amount: float = 0
+    downstream_contract_amount: Decimal = Decimal("0.00")
+    downstream_settlement_amount: Decimal = Decimal("0.00")
+    downstream_paid_amount: Decimal = Decimal("0.00")
     management_contract_count: int = 0
-    management_contract_amount: float = 0
-    management_settlement_amount: float = 0
-    management_paid_amount: float = 0
-    non_contract_expense_total: float = 0
+    management_contract_amount: Decimal = Decimal("0.00")
+    management_settlement_amount: Decimal = Decimal("0.00")
+    management_paid_amount: Decimal = Decimal("0.00")
+    non_contract_expense_total: Decimal = Decimal("0.00")
     expenses_by_category: List[ExpenseCategory] = []
-    zero_hour_labor_total: float = 0
+    zero_hour_labor_total: Decimal = Decimal("0.00")
 
 
 class UpstreamAggregateListResponse(BaseModel):

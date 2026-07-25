@@ -263,14 +263,19 @@ import mimetypes
 async def get_file(
     path: str,
     request: Request,
-    token: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
 ):
     """
     Get file from MinIO or local storage.
-    Supports token in Authorization header or query parameter.
+    Requires an Authorization header. Query-string tokens are not accepted.
     """
     current_user = None
+    if "token" in request.query_params:
+        raise ValidationError(
+            message="不允许使用查询参数令牌",
+            field_errors={"token": "请使用 Authorization 头部"},
+        )
+
     # Validate path to prevent traversal
     try:
         safe_path = FileValidators.validate_file_path(normalize_file_reference(path))
@@ -280,13 +285,6 @@ async def get_file(
             field_errors={"path": "文件路径非法"}
         )
 
-    # Query token transport is intentionally forbidden to avoid token leakage
-    if token:
-        raise ValidationError(
-            message="不允许使用查询参数令牌",
-            field_errors={"token": "请使用 Authorization 头部"}
-        )
-            
     # If still no user, try to get from Authorization header manually
     if not current_user:
         auth_header = request.headers.get("Authorization")

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
-from app.services.auth import get_current_active_user
+from app.services.auth import get_current_active_user, verify_password
 from app.models.user import User
 from app.config import settings
 from app.core.errors import (
@@ -17,15 +17,16 @@ import shutil
 import subprocess
 import os
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Union
 from urllib.parse import urlparse, unquote
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete, update, text
 from app.database import get_db
 from app.models.system import SysDictionary, SystemConfig
 from app.services.dictionary_usage_service import DictionaryUsageService
+from app.services.audit_service import create_audit_log, AuditAction, ResourceType
 from app.utils.file_validator import validate_file_upload
 import logging
 
@@ -41,7 +42,7 @@ def _safe_remove_file(path: str) -> None:
         if os.path.exists(path):
             os.remove(path)
     except Exception:
-        pass
+        logger.exception("Failed to remove temporary backup file: %s", path)
 
 
 def _ensure_backup_tmp_dir() -> str:
@@ -201,7 +202,7 @@ async def backup_database(current_user: User = Depends(get_current_active_user))
     if not current_user.is_superuser:
         raise PermissionDeniedError(detail="需要超级管理员权限")
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filename = f"lh_contract_db_{timestamp}.sql"
     tmp_root = _ensure_backup_tmp_dir()
     filepath = os.path.join(tmp_root, filename)
@@ -229,7 +230,7 @@ async def backup_system(current_user: User = Depends(get_current_active_user)):
     if not current_user.is_superuser:
         raise PermissionDeniedError(detail="需要超级管理员权限")
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     base_filename = f"lh_system_backup_{timestamp}"
     tmp_root = _ensure_backup_tmp_dir()
     temp_dir = tempfile.mkdtemp(prefix="full_backup_", dir=tmp_root)
@@ -650,7 +651,7 @@ async def export_options(
 
     from urllib.parse import quote
 
-    filename = f"数据字典_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    filename = f"数据字典_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.xlsx"
     encoded_filename = quote(filename)
 
     return StreamingResponse(
@@ -759,9 +760,15 @@ async def import_options(
         raise DatabaseError(message="导入失败", detail=str(e))
 
 
+class SystemResetRequest(BaseModel):
+    confirm_code: str
+    password: str
+    dry_run: bool = False
+
+
 @router.post("/reset")
 async def reset_system(
-    confirm_code: str,
+    reset_request: SystemResetRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
@@ -772,18 +779,34 @@ async def reset_system(
     if not current_user.is_superuser:
         raise PermissionDeniedError(detail="需要超级管理员权限")
 
-    if confirm_code != "RESET":
+    if not settings.DEBUG:
+        raise PermissionDeniedError(detail="系统重置仅允许在 DEBUG=true 的隔离环境中执行")
+
+    if reset_request.confirm_code != "RESET":
         raise ValidationError(
             message="确认码错误",
             field_errors={"confirm_code": "请输入正确的确认码 'RESET'"},
         )
 
-    try:
-        from sqlalchemy import text
+    if not verify_password(reset_request.password, current_user.hashed_password):
+        raise ValidationError(
+            message="当前密码验证失败",
+            field_errors={"password": "当前密码不正确"},
+        )
 
-        # 1. Truncate business tables
-        # Use CASCADE to handle foreign keys
+    try:
+        # Audit logs and system configuration are intentionally preserved.
         target_tables = [
+            "invoice_import_match_candidates",
+            "invoice_import_allocations",
+            "invoice_import_items",
+            "invoice_import_batches",
+            "downstream_upstream_allocations",
+            "finance_zero_hour_invoices",
+            "finance_zero_hour_payments",
+            "finance_zero_hour_payables",
+            "zero_hour_labor_materials",
+            "zero_hour_labor",
             "finance_upstream_receivables",
             "finance_upstream_invoices",
             "finance_upstream_receipts",
@@ -799,9 +822,7 @@ async def reset_system(
             "contracts_upstream",
             "contracts_downstream",
             "contracts_management",
-            "sys_expenses",
-            "sys_audit_log",
-            "sys_files",
+            "expenses_non_contract",
         ]
 
         # Check which tables exist to avoid "table does not exist" error which aborts transaction
@@ -816,12 +837,40 @@ async def reset_system(
 
         tables_to_truncate = [t for t in target_tables if t in existing_tables]
 
+        if reset_request.dry_run:
+            counts = {}
+            for table_name in tables_to_truncate:
+                count_result = await db.execute(text(f'SELECT count(*) FROM "{table_name}"'))
+                counts[table_name] = int(count_result.scalar_one())
+            user_count_result = await db.execute(
+                text("SELECT count(*) FROM users WHERE is_superuser = false")
+            )
+            return {
+                "dry_run": True,
+                "tables": counts,
+                "non_superuser_count": int(user_count_result.scalar_one()),
+            }
+
         if tables_to_truncate:
-            truncate_sql = f"TRUNCATE TABLE {', '.join(tables_to_truncate)} CASCADE"
+            truncate_sql = "TRUNCATE TABLE " + ", ".join(
+                f'"{table_name}"' for table_name in tables_to_truncate
+            ) + " CASCADE"
             await db.execute(text(truncate_sql))
 
-        # 2. Delete Users (except superusers)
+        # Revoke all sessions, including the caller's current refresh token.
+        if "refresh_tokens" in existing_tables:
+            await db.execute(text("DELETE FROM refresh_tokens"))
         await db.execute(text("DELETE FROM users WHERE is_superuser = false"))
+
+        await create_audit_log(
+            db=db,
+            user=current_user,
+            action=AuditAction.DELETE,
+            resource_type=ResourceType.SYSTEM,
+            resource_name="系统重置",
+            description="超级管理员执行了 DEBUG 环境系统重置",
+            new_values={"truncated_tables": tables_to_truncate},
+        )
 
         # 3. Clear Uploads Directory (Keep 'system' folder for logos)
         uploads_dir = settings.UPLOAD_DIR
@@ -836,7 +885,7 @@ async def reset_system(
                     shutil.rmtree(item_path)
 
         await db.commit()
-        return {"message": "System reset successfully"}
+        return {"message": "System reset successfully", "dry_run": False}
 
     except Exception as e:
         await db.rollback()

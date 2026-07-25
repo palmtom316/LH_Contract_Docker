@@ -29,7 +29,7 @@ describe('Layout sidebar shell', () => {
 
   it('exposes the invoice import workbench from the primary navigation', () => {
     expect(layoutSource).toContain("index: '/invoice-imports'")
-    expect(layoutSource).toContain("label: '发票识别入账'")
+    expect(layoutSource).toContain("label: '发票挂账'")
     expect(layoutSource).toContain('userStore.canViewInvoices')
   })
 })

@@ -10,8 +10,8 @@ Generates contract codes with format: PREFIX-YYYY-MM-NNN
 Each month the sequence number resets to 001.
 """
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, extract
-from datetime import datetime, date
+from sqlalchemy import select, func, text
+from datetime import datetime, date, timezone
 from typing import Literal, Optional, Union
 
 from app.models.contract_upstream import ContractUpstream
@@ -72,12 +72,12 @@ class ContractCodeGenerator:
         
         # Parse the reference date
         if reference_date is None:
-            ref_date = datetime.now()
+            ref_date = datetime.now(timezone.utc)
         elif isinstance(reference_date, str):
             try:
                 ref_date = datetime.strptime(reference_date, '%Y-%m-%d')
             except ValueError:
-                ref_date = datetime.now()
+                ref_date = datetime.now(timezone.utc)
         elif isinstance(reference_date, date) and not isinstance(reference_date, datetime):
             ref_date = datetime.combine(reference_date, datetime.min.time())
         else:
@@ -88,6 +88,15 @@ class ContractCodeGenerator:
         
         # Format: S-2025-12-
         code_prefix = f"{prefix}-{year}-{month:02d}-"
+
+        # Keep allocation serialized until the surrounding create transaction
+        # commits, so concurrent requests cannot observe the same MAX(code).
+        bind = self.db.get_bind()
+        if bind is not None and bind.dialect.name == "postgresql":
+            await self.db.execute(
+                text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"),
+                {"lock_key": f"contract-code:{code_prefix}"},
+            )
         
         # Find the max sequence number for this month
         # Look for codes matching the pattern

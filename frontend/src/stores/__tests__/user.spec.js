@@ -5,14 +5,15 @@ import { useUserStore } from '@/stores/user'
 describe('user store bootstrap', () => {
   beforeEach(() => {
     localStorage.clear()
+    sessionStorage.clear()
     setActivePinia(createPinia())
   })
 
   it('falls back when persisted auth json is invalid', () => {
-    localStorage.setItem('token', 'abc')
-    localStorage.setItem('token_expires_at', '123456')
-    localStorage.setItem('user_info', '{bad-json')
-    localStorage.setItem('user_permissions', 'undefined')
+    sessionStorage.setItem('token', 'abc')
+    sessionStorage.setItem('token_expires_at', '123456')
+    sessionStorage.setItem('user_info', '{bad-json')
+    sessionStorage.setItem('user_permissions', 'undefined')
 
     const store = useUserStore()
 
@@ -23,8 +24,8 @@ describe('user store bootstrap', () => {
   })
 
   it('falls back when persisted auth json has unexpected shapes', () => {
-    localStorage.setItem('user_info', '[]')
-    localStorage.setItem('user_permissions', '{"admin":true}')
+    sessionStorage.setItem('user_info', '[]')
+    sessionStorage.setItem('user_permissions', '{"admin":true}')
 
     const store = useUserStore()
 

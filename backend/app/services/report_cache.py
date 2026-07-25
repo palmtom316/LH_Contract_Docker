@@ -78,11 +78,15 @@ async def invalidate_dashboard_cache(year: Optional[int] = None) -> int:
     Otherwise, invalidate all dashboard caches.
     """
     if year:
-        pattern = f"{CACHE_PREFIX_DASHBOARD}:stats:{year}:*"
+        base_key = f"{CACHE_PREFIX_DASHBOARD}:stats:{year}"
+        count = int(await cache_manager.delete(base_key))
+        pattern = f"{base_key}:*"
     else:
+        count = 0
         pattern = f"{CACHE_PREFIX_DASHBOARD}:*"
     
-    count = await cache_manager.clear_pattern(pattern)
+    count += await cache_manager.clear_pattern(pattern)
+    count += await cache_manager.clear_pattern("dashboard_period_trend:*")
     logger.info(f"[CACHE] Invalidated {count} dashboard cache entries")
     return count
 
@@ -110,6 +114,7 @@ async def invalidate_all_report_caches() -> int:
     """Invalidate all report-related caches"""
     count = 0
     count += await cache_manager.clear_pattern(f"{CACHE_PREFIX_DASHBOARD}:*")
+    count += await cache_manager.clear_pattern("dashboard_period_trend:*")
     count += await cache_manager.clear_pattern(f"{CACHE_PREFIX_REPORTS}:*")
     count += await cache_manager.clear_pattern(f"{CACHE_PREFIX_CONTRACTS}:*")
     logger.info(f"[CACHE] Invalidated {count} total cache entries")

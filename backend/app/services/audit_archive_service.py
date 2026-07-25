@@ -12,7 +12,7 @@ import logging
 import json
 import csv
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from pathlib import Path
 
@@ -126,7 +126,7 @@ class AuditLogArchiveService:
         Returns:
             Path to the exported file
         """
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         filename = f"audit_logs_archive_{timestamp}.json"
         filepath = ARCHIVE_DIR / filename
         
@@ -168,7 +168,7 @@ class AuditLogArchiveService:
         # Write to file
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump({
-                "export_date": datetime.now().isoformat(),
+                "export_date": datetime.now(timezone.utc).isoformat(),
                 "before_date": before_date.isoformat(),
                 "total_records": len(logs_data),
                 "logs": logs_data
@@ -192,7 +192,7 @@ class AuditLogArchiveService:
         Returns:
             Path to the exported file
         """
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         filename = f"audit_logs_archive_{timestamp}.csv"
         filepath = ARCHIVE_DIR / filename
         
@@ -244,6 +244,33 @@ class AuditLogArchiveService:
         
         logger.info(f"Exported {total_exported} logs to {filepath}")
         return str(filepath)
+
+    def verify_archive_file(
+        self,
+        archive_file: str,
+        export_format: str,
+        expected_count: int,
+    ) -> None:
+        """Parse the closed archive and verify its count before deleting rows."""
+        filepath = Path(archive_file)
+        if not filepath.is_file() or filepath.stat().st_size <= 0:
+            raise OSError(f"审计归档文件不存在或为空: {filepath}")
+
+        if export_format.lower() == "csv":
+            with filepath.open("r", newline="", encoding="utf-8-sig") as source:
+                actual_count = sum(1 for _ in csv.DictReader(source))
+        else:
+            with filepath.open("r", encoding="utf-8") as source:
+                payload = json.load(source)
+            logs = payload.get("logs")
+            if not isinstance(logs, list) or payload.get("total_records") != len(logs):
+                raise ValueError("审计 JSON 归档结构或自报记录数无效")
+            actual_count = len(logs)
+
+        if actual_count != expected_count:
+            raise ValueError(
+                f"审计归档记录数校验失败: expected={expected_count}, actual={actual_count}"
+            )
     
     async def delete_logs_before_date(self, before_date: datetime) -> int:
         """
@@ -281,7 +308,7 @@ class AuditLogArchiveService:
         Returns:
             Dictionary with archive results
         """
-        before_date = datetime.now() - timedelta(days=days)
+        before_date = datetime.now(timezone.utc) - timedelta(days=days)
         
         # Count logs to archive
         count = await self.count_logs_before_date(before_date)
@@ -300,6 +327,8 @@ class AuditLogArchiveService:
             archive_file = await self.export_logs_to_csv(before_date)
         else:
             archive_file = await self.export_logs_to_json(before_date)
+
+        self.verify_archive_file(archive_file, export_format, count)
         
         # Delete logs if requested
         deleted_count = 0
@@ -328,12 +357,12 @@ class AuditLogArchiveService:
         if not ARCHIVE_DIR.exists():
             return 0
         
-        cutoff = datetime.now() - timedelta(days=keep_days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=keep_days)
         deleted_count = 0
         
         for filepath in ARCHIVE_DIR.glob("audit_logs_archive_*"):
             if filepath.is_file():
-                file_mtime = datetime.fromtimestamp(filepath.stat().st_mtime)
+                file_mtime = datetime.fromtimestamp(filepath.stat().st_mtime, tz=timezone.utc)
                 if file_mtime < cutoff:
                     filepath.unlink()
                     deleted_count += 1
@@ -360,7 +389,7 @@ class AuditLogArchiveService:
                     "path": str(filepath),
                     "size_bytes": stat.st_size,
                     "size_mb": round(stat.st_size / (1024 * 1024), 2),
-                    "created_at": datetime.fromtimestamp(stat.st_mtime).isoformat()
+                    "created_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
                 })
         
         return archives

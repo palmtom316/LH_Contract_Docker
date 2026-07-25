@@ -4,8 +4,9 @@ Optimized with caching
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, extract, cast, Integer
+from sqlalchemy import select, func, extract, cast, Integer, literal, union_all
 from datetime import datetime, date
+from decimal import Decimal, ROUND_HALF_UP
 
 from app.database import get_db
 from app.models.user import User
@@ -19,6 +20,10 @@ from app.core.cache import cache_manager
 from app.services.auth import get_current_active_user
 
 router = APIRouter()
+
+
+def _money_string(value) -> str:
+    return format(Decimal(str(value or 0)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP), "f")
 
 @router.get("/stats")
 async def get_dashboard_stats(
@@ -114,9 +119,12 @@ async def get_dashboard_stats(
     annual_mgmt_count = mgmt_annual[0] or 0
     annual_mgmt_amount = mgmt_annual[1] or 0
     
-    annual_payments_amount = float(annual_paid_down or 0) + float(annual_paid_mgmt or 0) + float(annual_paid_exp or 0) + float(annual_paid_zhl or 0)
+    annual_payments_amount = sum(
+        (Decimal(str(value or 0)) for value in (annual_paid_down, annual_paid_mgmt, annual_paid_exp, annual_paid_zhl)),
+        Decimal("0"),
+    )
     annual_down_mgmt_count = annual_down_count + annual_mgmt_count
-    annual_down_mgmt_amount = float(annual_down_amount or 0) + float(annual_mgmt_amount or 0)
+    annual_down_mgmt_amount = Decimal(str(annual_down_amount or 0)) + Decimal(str(annual_mgmt_amount or 0))
     
     # --- 2. Charts Data ---
     
@@ -127,7 +135,7 @@ async def get_dashboard_stats(
         func.sum(ContractUpstream.contract_amount)
     ).group_by(ContractUpstream.category)
     cat_result = await db.execute(stmt_cat)
-    pie_category_data = [{"name": r[0].value if hasattr(r[0], 'value') else str(r[0]), "value": float(r[1] or 0)} for r in cat_result.all()]
+    pie_category_data = [{"name": r[0].value if hasattr(r[0], 'value') else str(r[0]), "value": _money_string(r[1])} for r in cat_result.all()]
 
     # Pie Chart 2: Upstream Contract Company Categories
     stmt_comp_cat = select(
@@ -135,16 +143,16 @@ async def get_dashboard_stats(
         func.sum(ContractUpstream.contract_amount)
     ).group_by(ContractUpstream.company_category)
     comp_cat_result = await db.execute(stmt_comp_cat)
-    pie_company_data = [{"name": r[0] or "未分类", "value": float(r[1] or 0)} for r in comp_cat_result.all()]
+    pie_company_data = [{"name": r[0] or "未分类", "value": _money_string(r[1])} for r in comp_cat_result.all()]
     
     result = {
         "cards": {
             "annual_upstream_count": annual_upstream_count,
-            "annual_upstream_amount": float(annual_upstream_amount),
-            "annual_receipts_amount": float(annual_receipts_amount),
-            "annual_payments_amount": annual_payments_amount,
+            "annual_upstream_amount": _money_string(annual_upstream_amount),
+            "annual_receipts_amount": _money_string(annual_receipts_amount),
+            "annual_payments_amount": _money_string(annual_payments_amount),
             "annual_down_mgmt_count": annual_down_mgmt_count,
-            "annual_down_mgmt_amount": annual_down_mgmt_amount
+            "annual_down_mgmt_amount": _money_string(annual_down_mgmt_amount)
         },
         "charts": {
             "pie_category": pie_category_data,
@@ -336,56 +344,58 @@ async def get_period_trend(
     non_contract_list = []
     labor_list = []
     
-    # Maps for individual components - reusing the logic to populate them
-    downstream_map = {}
-    management_map = {}
-    non_contract_map = {}
-    labor_map = {}
-    
-    async def fill_map(stmt, target_map):
-        res = await db.execute(stmt)
-        for row in res.all():
-            d, amt = row[0], float(row[1] or 0)
-            target_map[d] = target_map.get(d, 0) + amt
-
-    # Downstream Payment
-    await fill_map(select(
-        FinanceDownstreamPayment.payment_date,
-        func.sum(FinanceDownstreamPayment.amount)
-    ).where(
-        FinanceDownstreamPayment.payment_date >= start_date,
-        FinanceDownstreamPayment.payment_date <= end_date,
-        FinanceDownstreamPayment.posting_status == "active"
-    ).group_by(FinanceDownstreamPayment.payment_date), downstream_map)
-    
-    # Management Payment
-    await fill_map(select(
-        FinanceManagementPayment.payment_date,
-        func.sum(FinanceManagementPayment.amount)
-    ).where(
-        FinanceManagementPayment.payment_date >= start_date,
-        FinanceManagementPayment.payment_date <= end_date,
-        FinanceManagementPayment.posting_status == "active"
-    ).group_by(FinanceManagementPayment.payment_date), management_map)
-    
-    # Non-Contract Expense
-    await fill_map(select(
-        ExpenseNonContract.expense_date,
-        func.sum(ExpenseNonContract.amount)
-    ).where(
-        ExpenseNonContract.expense_date >= start_date,
-        ExpenseNonContract.expense_date <= end_date
-    ).group_by(ExpenseNonContract.expense_date), non_contract_map)
-    
-    # Zero Hour Labor
+    # Aggregate all expense components in one database round trip.
     from app.models.zero_hour_labor import ZeroHourLabor
-    await fill_map(select(
-        ZeroHourLabor.labor_date,
-        func.sum(ZeroHourLabor.total_amount)
-    ).where(
-        ZeroHourLabor.labor_date >= start_date,
-        ZeroHourLabor.labor_date <= end_date
-    ).group_by(ZeroHourLabor.labor_date), labor_map)
+    expense_union = union_all(
+        select(
+            FinanceDownstreamPayment.payment_date.label("event_date"),
+            literal("downstream").label("component"),
+            func.sum(FinanceDownstreamPayment.amount).label("amount"),
+        ).where(
+            FinanceDownstreamPayment.payment_date >= start_date,
+            FinanceDownstreamPayment.payment_date <= end_date,
+            FinanceDownstreamPayment.posting_status == "active",
+        ).group_by(FinanceDownstreamPayment.payment_date),
+        select(
+            FinanceManagementPayment.payment_date.label("event_date"),
+            literal("management").label("component"),
+            func.sum(FinanceManagementPayment.amount).label("amount"),
+        ).where(
+            FinanceManagementPayment.payment_date >= start_date,
+            FinanceManagementPayment.payment_date <= end_date,
+            FinanceManagementPayment.posting_status == "active",
+        ).group_by(FinanceManagementPayment.payment_date),
+        select(
+            ExpenseNonContract.expense_date.label("event_date"),
+            literal("non_contract").label("component"),
+            func.sum(ExpenseNonContract.amount).label("amount"),
+        ).where(
+            ExpenseNonContract.expense_date >= start_date,
+            ExpenseNonContract.expense_date <= end_date,
+        ).group_by(ExpenseNonContract.expense_date),
+        select(
+            ZeroHourLabor.labor_date.label("event_date"),
+            literal("labor").label("component"),
+            func.sum(ZeroHourLabor.total_amount).label("amount"),
+        ).where(
+            ZeroHourLabor.labor_date >= start_date,
+            ZeroHourLabor.labor_date <= end_date,
+        ).group_by(ZeroHourLabor.labor_date),
+    )
+    expense_rows = (await db.execute(expense_union)).all()
+    component_maps = {
+        "downstream": {},
+        "management": {},
+        "non_contract": {},
+        "labor": {},
+    }
+    for event_date, component, amount in expense_rows:
+        component_maps[component][event_date] = float(amount or 0)
+
+    downstream_map = component_maps["downstream"]
+    management_map = component_maps["management"]
+    non_contract_map = component_maps["non_contract"]
+    labor_map = component_maps["labor"]
     
     for d in date_range:
         dates.append(d.strftime("%Y-%m-%d"))

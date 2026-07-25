@@ -16,7 +16,7 @@ import os
 import logging
 import httpx
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +38,16 @@ class FeishuService:
     def __init__(self):
         self._access_token: Optional[str] = None
         self._token_expires_at: Optional[datetime] = None
+        self._client: Optional[httpx.AsyncClient] = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(timeout=30.0)
+        return self._client
+
+    async def close(self) -> None:
+        if self._client is not None and not self._client.is_closed:
+            await self._client.aclose()
     
     async def get_tenant_access_token(self) -> str:
         """
@@ -46,36 +56,30 @@ class FeishuService:
         """
         # Check if we have a valid cached token
         if self._access_token and self._token_expires_at:
-            if datetime.now() < self._token_expires_at:
+            if datetime.now(timezone.utc) < self._token_expires_at:
                 return self._access_token
         
         if not FEISHU_APP_ID or not FEISHU_APP_SECRET:
             raise ValueError("FEISHU_APP_ID and FEISHU_APP_SECRET must be set")
         
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                TOKEN_URL,
-                json={
-                    "app_id": FEISHU_APP_ID,
-                    "app_secret": FEISHU_APP_SECRET
-                }
-            )
-            response.raise_for_status()
-            data = response.json()
-            
-            if data.get("code") != 0:
-                error_msg = data.get("msg", "Unknown error")
-                logger.error(f"Failed to get Feishu token: {error_msg}")
-                raise Exception(f"Feishu API Error: {error_msg}")
-            
-            self._access_token = data["tenant_access_token"]
-            # Token expires in 7200 seconds (2 hours), refresh 5 minutes early
-            expires_in = data.get("expire", 7200) - 300
-            from datetime import timedelta
-            self._token_expires_at = datetime.now() + timedelta(seconds=expires_in)
-            
-            logger.info("Successfully obtained Feishu access token")
-            return self._access_token
+        response = await self._get_client().post(
+            TOKEN_URL,
+            json={"app_id": FEISHU_APP_ID, "app_secret": FEISHU_APP_SECRET},
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        if data.get("code") != 0:
+            error_msg = data.get("msg", "Unknown error")
+            logger.error("Failed to get Feishu token: %s", error_msg)
+            raise RuntimeError(f"Feishu API Error: {error_msg}")
+
+        self._access_token = data["tenant_access_token"]
+        expires_in = max(data.get("expire", 7200) - 300, 0)
+        self._token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+
+        logger.info("Successfully obtained Feishu access token")
+        return self._access_token
     
     async def _get_headers(self) -> Dict[str, str]:
         """Get authorization headers for API requests"""
@@ -103,10 +107,9 @@ class FeishuService:
         
         headers = await self._get_headers()
         
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            return response.json()
+        response = await self._get_client().get(url, headers=headers, params=params)
+        response.raise_for_status()
+        return response.json()
     
     async def batch_create_records(self, records: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
@@ -126,10 +129,9 @@ class FeishuService:
         headers = await self._get_headers()
         payload = {"records": [{"fields": r} for r in records]}
         
-        async with httpx.AsyncClient() as client:
-            response = await client.post(url, headers=headers, json=payload)
-            response.raise_for_status()
-            return response.json()
+        response = await self._get_client().post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()
     
     async def batch_update_records(self, records: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
@@ -149,10 +151,9 @@ class FeishuService:
         headers = await self._get_headers()
         payload = {"records": records}
         
-        async with httpx.AsyncClient() as client:
-            response = await client.post(url, headers=headers, json=payload)
-            response.raise_for_status()
-            return response.json()
+        response = await self._get_client().post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()
     
     async def download_file(self, file_token: str, save_path: str) -> str:
         """
@@ -168,18 +169,15 @@ class FeishuService:
         url = f"{FEISHU_BASE_URL}/drive/v1/files/{file_token}/download"
         headers = await self._get_headers()
         
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=headers, follow_redirects=True)
-            response.raise_for_status()
-            
-            # Ensure directory exists
-            os.makedirs(os.path.dirname(save_path), exist_ok=True)
-            
-            with open(save_path, 'wb') as f:
-                f.write(response.content)
-            
-            logger.info(f"Downloaded file to {save_path}")
-            return save_path
+        response = await self._get_client().get(url, headers=headers, follow_redirects=True)
+        response.raise_for_status()
+
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        with open(save_path, 'wb') as f:
+            f.write(response.content)
+
+        logger.info("Downloaded file to %s", save_path)
+        return save_path
 
 
 # Singleton instance

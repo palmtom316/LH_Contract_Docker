@@ -227,7 +227,7 @@ const handleDbRestoreUpload = async () => {
 
 const handleSystemReset = async () => {
   try {
-    await ElMessageBox.confirm(
+    await ElMessageBox.prompt(
       '此操作将清空所有数据，仅保留管理员账户，且不可恢复。请输入 "RESET" 确认操作。',
       '危险操作',
       {
@@ -240,8 +240,21 @@ const handleSystemReset = async () => {
       }
     )
 
+    const { value: password } = await ElMessageBox.prompt(
+      '请输入当前管理员密码完成二次验证。该接口仅在 DEBUG=true 的隔离环境可用。',
+      '管理员密码验证',
+      {
+        confirmButtonText: '执行重置',
+        cancelButtonText: '取消',
+        inputType: 'password',
+        inputPattern: /.+/,
+        inputErrorMessage: '请输入当前密码',
+        type: 'error'
+      }
+    )
+
     resetLoading.value = true
-    await resetSystem('RESET')
+    await resetSystem({ confirmCode: 'RESET', password })
     ElMessage.success('系统重置成功，请重新登录')
 
     setTimeout(() => {

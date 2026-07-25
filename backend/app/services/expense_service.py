@@ -2,16 +2,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, or_
 from sqlalchemy.orm import joinedload
 from typing import List, Optional, Dict, Any
-from datetime import datetime, date
+from datetime import datetime, date, timezone
+import logging
 
 from app.models.expense import ExpenseNonContract
 from app.models.user import User, UserRole
 from app.schemas.expense import ExpenseCreate, ExpenseUpdate
-from app.services.cache import cache, dashboard_cache_key
+from app.services.report_cache import invalidate_all_report_caches
 from app.services.audit_service import create_audit_log, AuditAction, ResourceType
 from app.core.errors import AppException, ErrorCode, DuplicateRecordError, ResourceNotFoundError, PermissionDeniedError
 from app.models.enums import ExpenseCategory, ExpenseType
 from app.services.contract_code_generator import ContractCodeGenerator
+from app.core.permissions import Permission, has_permission
+
+logger = logging.getLogger(__name__)
 
 class ExpenseService:
     def __init__(self, db: AsyncSession):
@@ -33,7 +37,7 @@ class ExpenseService:
 
     async def _invalidate_dashboard_cache(self):
         """Clear dashboard cache when data changes"""
-        await cache.delete(dashboard_cache_key())
+        await invalidate_all_report_caches()
 
     async def get_expense(self, expense_id: int, current_user: User = None) -> Optional[ExpenseNonContract]:
         """Get expense by ID with optional ownership check"""
@@ -100,14 +104,14 @@ class ExpenseService:
                 sd = datetime.strptime(start_date, '%Y-%m-%d').date()
                 query = query.where(ExpenseNonContract.expense_date >= sd)
             except ValueError:
-                pass
+                logger.warning("Ignoring invalid expense start_date: %r", start_date)
         
         if end_date:
             try:
                 ed = datetime.strptime(end_date, '%Y-%m-%d').date()
                 query = query.where(ExpenseNonContract.expense_date <= ed)
             except ValueError:
-                pass
+                logger.warning("Ignoring invalid expense end_date: %r", end_date)
 
         # Data isolation: non-admin users can only see their own records
         if current_user and not self._can_view_all_expenses(current_user):
@@ -177,14 +181,14 @@ class ExpenseService:
                 sd = datetime.strptime(start_date, '%Y-%m-%d').date()
                 query = query.where(ExpenseNonContract.expense_date >= sd)
             except ValueError:
-                pass
+                logger.warning("Ignoring invalid expense start_date: %r", start_date)
         
         if end_date:
             try:
                 ed = datetime.strptime(end_date, '%Y-%m-%d').date()
                 query = query.where(ExpenseNonContract.expense_date <= ed)
             except ValueError:
-                pass
+                logger.warning("Ignoring invalid expense end_date: %r", end_date)
 
         # Data isolation: non-admin users can only see their own records
         if current_user and not self._can_view_all_expenses(current_user):
@@ -327,13 +331,16 @@ class ExpenseService:
 
     async def approve_expense(self, expense_id: int, approved: bool, user: User) -> None:
         """Approve or reject expense"""
+        if not has_permission(user, Permission.EDIT_EXPENSES):
+            raise PermissionDeniedError(message="无费用审批权限")
+
         expense = await self.get_expense(expense_id)
         if not expense:
             raise ResourceNotFoundError(resource_type="费用记录", resource_id=expense_id)
             
         expense.status = "已审核" if approved else "已驳回"
         expense.approved_by = user.id
-        expense.approved_at = datetime.utcnow()
+        expense.approved_at = datetime.now(timezone.utc)
 
         # Audit Log
         action = AuditAction.APPROVE if approved else AuditAction.REJECT

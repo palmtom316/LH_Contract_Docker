@@ -1,39 +1,13 @@
-"""
-Simple in-memory cache service for frequently accessed data
-"""
-from datetime import datetime, timedelta
+"""Compatibility adapter for the application's single shared cache manager."""
 from typing import Any, Optional, Dict
-import asyncio
+
+from app.core.cache import cache_manager
 
 class CacheService:
-    """
-    Simple in-memory cache with TTL support.
-    Suitable for dashboard statistics and other frequently accessed data.
-    """
-    
-    def __init__(self):
-        self._cache: Dict[str, Dict] = {}
-        self._lock = asyncio.Lock()
-    
+    """Backward-compatible facade backed by Redis/CacheManager."""
+
     async def get(self, key: str) -> Optional[Any]:
-        """
-        Get value from cache if not expired.
-        
-        Args:
-            key: Cache key
-            
-        Returns:
-            Cached value or None if expired/not found
-        """
-        async with self._lock:
-            if key in self._cache:
-                entry = self._cache[key]
-                if datetime.now() < entry['expires_at']:
-                    return entry['value']
-                else:
-                    # Remove expired entry
-                    del self._cache[key]
-            return None
+        return await cache_manager.get(key)
     
     async def set(self, key: str, value: Any, ttl_seconds: int = 300) -> None:
         """
@@ -44,12 +18,7 @@ class CacheService:
             value: Value to cache
             ttl_seconds: Time to live in seconds (default 5 minutes)
         """
-        async with self._lock:
-            self._cache[key] = {
-                'value': value,
-                'expires_at': datetime.now() + timedelta(seconds=ttl_seconds),
-                'created_at': datetime.now()
-            }
+        await cache_manager.set(key, value, ttl=ttl_seconds)
     
     async def delete(self, key: str) -> bool:
         """
@@ -61,16 +30,13 @@ class CacheService:
         Returns:
             True if key existed, False otherwise
         """
-        async with self._lock:
-            if key in self._cache:
-                del self._cache[key]
-                return True
-            return False
+        existed = await cache_manager.get(key) is not None
+        await cache_manager.delete(key)
+        return existed
     
     async def clear(self) -> None:
         """Clear all cache entries."""
-        async with self._lock:
-            self._cache.clear()
+        await cache_manager.clear_pattern("*")
     
     async def clear_pattern(self, pattern: str) -> int:
         """
@@ -82,23 +48,16 @@ class CacheService:
         Returns:
             Number of keys deleted
         """
-        async with self._lock:
-            keys_to_delete = [k for k in self._cache.keys() if k.startswith(pattern)]
-            for key in keys_to_delete:
-                del self._cache[key]
-            return len(keys_to_delete)
+        normalized_pattern = pattern if any(char in pattern for char in "*?") else f"{pattern}*"
+        return await cache_manager.clear_pattern(normalized_pattern)
     
     async def stats(self) -> Dict:
         """Get cache statistics."""
-        async with self._lock:
-            now = datetime.now()
-            active = sum(1 for v in self._cache.values() if now < v['expires_at'])
-            expired = len(self._cache) - active
-            return {
-                'total_keys': len(self._cache),
-                'active_keys': active,
-                'expired_keys': expired
-            }
+        if cache_manager.use_redis and cache_manager.redis_client:
+            total = len([key async for key in cache_manager.redis_client.scan_iter(match="*")])
+        else:
+            total = len(cache_manager.memory_cache)
+        return {"total_keys": total, "active_keys": total, "expired_keys": 0}
 
 
 # Global cache instance

@@ -4,7 +4,7 @@ Automatically archives old audit logs to improve query performance
 """
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, insert
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 
 from app.models.audit_log import AuditLog
@@ -32,7 +32,7 @@ async def archive_old_audit_logs(
     Returns:
         dict with archived_count and deleted_count
     """
-    cutoff_date = datetime.now() - timedelta(days=days_to_keep)
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_to_keep)
 
     try:
         # Count records to archive

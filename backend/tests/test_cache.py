@@ -137,12 +137,16 @@ class TestReportCacheService:
 
         await cache.set(dashboard_cache_key(), {"stale": True})
         await cache_manager.set("reports:cost_monthly_quarterly_v2:2026:1", {"stale": True})
+        await cache_manager.set("dashboard:stats:2026", {"stale": True})
+        await cache_manager.set("dashboard_period_trend:abc123", {"stale": True})
 
         service = BaseContractService(db=None, model=object)
         await service._invalidate_dashboard_cache()
 
         assert await cache.get(dashboard_cache_key()) is None
         assert await cache_manager.get("reports:cost_monthly_quarterly_v2:2026:1") is None
+        assert await cache_manager.get("dashboard:stats:2026") is None
+        assert await cache_manager.get("dashboard_period_trend:abc123") is None
     
     async def test_cache_serialization(self, mock_cache_manager: CacheManager):
         """Test that complex data types are properly serialized"""

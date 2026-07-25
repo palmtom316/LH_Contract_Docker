@@ -150,8 +150,21 @@ class Settings(BaseSettings):
     
     # Redis Cache (Optional - falls back to memory cache if not available)
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    RATE_LIMIT_STORAGE_URI: str = os.getenv("RATE_LIMIT_STORAGE_URI", "")
     CACHE_DEFAULT_TTL: int = 300  # 5 minutes
     CACHE_ENABLED: bool = os.getenv("CACHE_ENABLED", "true").lower() == "true"
+
+    @property
+    def rate_limit_storage_uri(self) -> str:
+        """Use shared Redis counters in production and memory in explicit dev mode."""
+        if self.RATE_LIMIT_STORAGE_URI:
+            return self.RATE_LIMIT_STORAGE_URI
+        if self.DEBUG:
+            return "memory://"
+        parsed = urlparse(self.REDIS_URL)
+        if parsed.scheme not in {"redis", "rediss"}:
+            raise ValueError("REDIS_URL 必须使用 redis:// 或 rediss://")
+        return parsed._replace(path="/1").geturl()
 
     # Electronic invoice import
     COMPANY_NAME: str = os.getenv("COMPANY_NAME", "")

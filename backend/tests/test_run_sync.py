@@ -24,8 +24,27 @@ class DummyScheduler:
 class DummyLoop:
     """Event loop double that exits immediately."""
 
+    class Task:
+        def cancel(self):
+            return None
+
+        def __await__(self):
+            if False:
+                yield None
+            return None
+
+    def create_task(self, coro):
+        coro.close()
+        return self.Task()
+
     def run_forever(self):
         raise KeyboardInterrupt
+
+    def run_until_complete(self, _awaitable):
+        close = getattr(_awaitable, "close", None)
+        if close:
+            close()
+        return None
 
 
 def test_main_skips_sync_jobs_when_feishu_config_missing(monkeypatch):

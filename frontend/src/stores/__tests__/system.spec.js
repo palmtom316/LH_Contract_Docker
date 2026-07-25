@@ -13,7 +13,8 @@ vi.mock('@/api/notifications', () => ({
 describe('system store notifications', () => {
   beforeEach(() => {
     localStorage.clear()
-    localStorage.setItem('user_info', JSON.stringify({ id: 1, username: 'alice' }))
+    sessionStorage.clear()
+    sessionStorage.setItem('user_info', JSON.stringify({ id: 1, username: 'alice' }))
     setActivePinia(createPinia())
     fetchNotificationsMock.mockReset()
     fetchNotificationsMock.mockResolvedValue([
@@ -68,7 +69,7 @@ describe('system store notifications', () => {
     expect(store.notifications.map(item => item.id)).toContain('local-user-1')
     expect(store.notifications.find(item => item.id === 'remote-1')?.unread).toBe(false)
 
-    localStorage.setItem('user_info', JSON.stringify({ id: 2, username: 'bob' }))
+    sessionStorage.setItem('user_info', JSON.stringify({ id: 2, username: 'bob' }))
     store.resetNotificationState()
 
     expect(store.notifications.map(item => item.id)).not.toContain('local-user-1')
@@ -77,7 +78,7 @@ describe('system store notifications', () => {
     await store.fetchNotifications()
     expect(store.notifications.find(item => item.id === 'remote-1')?.unread).toBe(true)
 
-    localStorage.setItem('user_info', JSON.stringify({ id: 1, username: 'alice' }))
+    sessionStorage.setItem('user_info', JSON.stringify({ id: 1, username: 'alice' }))
     store.resetNotificationState()
 
     expect(store.notifications.map(item => item.id)).toContain('local-user-1')

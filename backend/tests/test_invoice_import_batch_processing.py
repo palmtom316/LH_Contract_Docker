@@ -111,7 +111,9 @@ async def test_delete_confirmed_import_batch_is_rejected(test_db, test_admin):
     assert await test_db.get(InvoiceImportBatch, batch.id) is not None
 
 
-async def test_clear_import_batch_preserves_posting_history(test_db, test_admin):
+async def test_clear_import_batch_clears_posting_and_removes_batch(
+    test_db, test_admin, monkeypatch
+):
     contract = ContractUpstream(
         serial_number=9302,
         contract_code="UP-CLEAR-BATCH",
@@ -160,20 +162,50 @@ async def test_clear_import_batch_preserves_posting_history(test_db, test_admin)
     allocation.formal_invoice_id = formal.id
     await test_db.commit()
 
-    result = await InvoiceImportService(test_db).clear_batch(
-        batch.id, "批次冲销", test_admin
-    )
+    batch_id = batch.id
+    item_id = item.id
+    removed = []
+    service = InvoiceImportService(test_db)
+    monkeypatch.setattr(service, "_remove_minio_object", removed.append)
+    await service.clear_batch(batch_id, "批次冲销", test_admin)
 
-    await test_db.refresh(item)
     await test_db.refresh(formal)
-    assert item.confirmation_status == "cleared"
     assert formal.posting_status == "cleared"
     assert formal.original_amount == Decimal("100.00")
     assert formal.amount == Decimal("0.00")
-    assert result.confirmed_items == 0
-    assert result.posted_items == 1
-    with pytest.raises(ValidationError, match="已确认挂账"):
-        await InvoiceImportService(test_db).delete_batch(batch.id, test_admin)
+    assert formal.source_import_item_id is None
+    assert formal.source_import_allocation_id is None
+    assert await test_db.get(InvoiceImportBatch, batch_id) is None
+    assert await test_db.get(InvoiceImportItem, item_id) is None
+    assert removed == []
+
+
+async def test_clear_legacy_cleared_import_batch_removes_stuck_batch(
+    test_db, test_admin, monkeypatch
+):
+    batch = InvoiceImportBatch(
+        batch_number="INVIMP-LEGACY-CLEARED",
+        original_filename="legacy-cleared.zip",
+        status="completed",
+        uploaded_by=test_admin.id,
+    )
+    batch.items.append(
+        InvoiceImportItem(
+            source_archive_name="invoice.zip",
+            direction="upstream",
+            confirmation_status="cleared",
+            posting_version=1,
+        )
+    )
+    test_db.add(batch)
+    await test_db.commit()
+    batch_id = batch.id
+    service = InvoiceImportService(test_db)
+    monkeypatch.setattr(service, "_remove_minio_object", lambda _key: None)
+
+    await service.clear_batch(batch_id, "清理历史残留批次", test_admin)
+
+    assert await test_db.get(InvoiceImportBatch, batch_id) is None
 
 
 async def test_list_items_includes_matched_contract_identity(test_db, test_admin):

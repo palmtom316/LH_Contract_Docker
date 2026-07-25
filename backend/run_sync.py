@@ -62,6 +62,31 @@ async def sync_job():
         logger.error(f"=== Sync job failed: {e} ===", exc_info=True)
 
 
+async def run_finance_import_worker() -> None:
+    """Continuously process durable invoice-import jobs in the worker container."""
+    from app.database import AsyncSessionLocal
+    from app.services.invoice_import.service import InvoiceImportService
+
+    while True:
+        try:
+            async with AsyncSessionLocal() as db:
+                service = InvoiceImportService(db)
+                claimed = await service.claim_next_batch()
+                if claimed:
+                    batch_id, token = claimed
+                    try:
+                        await service.process_uploaded_batch(batch_id, token)
+                    except Exception as exc:
+                        await db.rollback()
+                        await service.mark_job_failure(batch_id, token, exc)
+                    continue
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Finance import worker iteration failed")
+        await asyncio.sleep(2)
+
+
 def run_sync_job():
     """Synchronous wrapper for the async job"""
     asyncio.get_event_loop().run_until_complete(sync_job())
@@ -106,11 +131,21 @@ def main():
     
     scheduler.start()
     
+    loop = asyncio.get_event_loop()
+    finance_task = loop.create_task(run_finance_import_worker())
+
     # Keep the worker running
     try:
-        asyncio.get_event_loop().run_forever()
+        loop.run_forever()
     except (KeyboardInterrupt, SystemExit):
         logger.info("Sync worker shutting down...")
+        finance_task.cancel()
+        try:
+            loop.run_until_complete(finance_task)
+        except asyncio.CancelledError:
+            logger.info("Finance import worker stopped")
+        from app.services.feishu_service import feishu_service
+        loop.run_until_complete(feishu_service.close())
         scheduler.shutdown()
 
 

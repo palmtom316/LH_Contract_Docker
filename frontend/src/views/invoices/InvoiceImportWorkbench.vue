@@ -1,8 +1,6 @@
 <template>
   <div class="invoice-import-workbench">
-    <AppPageHeader
-      title="发票识别入账"
-    />
+    <AppPageHeader title="发票挂账" />
 
     <template v-if="userStore.canViewInvoices">
       <AppWorkspacePanel>
@@ -51,7 +49,7 @@
                 >删除</el-button
               >
               <el-button
-                v-if="userStore.canManageInvoices && Number(row.confirmed_items) > 0"
+                v-if="userStore.canManageInvoices && canClearBatch(row)"
                 link
                 type="danger"
                 @click="handleClearBatch(row)"
@@ -383,13 +381,8 @@ async function handleDeleteBatch(row) {
     return;
   }
   await deleteBatch(row.id);
-  if (selectedBatch.value?.id === row.id) {
-    itemDrawerVisible.value = false;
-    selectedBatch.value = null;
-    items.value = [];
-  }
+  removeBatchFromView(row.id);
   ElMessage.success("发票导入批次已删除");
-  await loadBatches();
 }
 
 function canDeleteBatch(row) {
@@ -399,22 +392,38 @@ function canDeleteBatch(row) {
   );
 }
 
+function canClearBatch(row) {
+  return (
+    Number(row.confirmed_items || 0) > 0 || Number(row.posted_items || 0) > 0
+  );
+}
+
+function removeBatchFromView(batchId) {
+  batches.value = batches.value.filter((batch) => batch.id !== batchId);
+  if (selectedBatch.value?.id === batchId) {
+    itemDrawerVisible.value = false;
+    selectedBatch.value = null;
+    items.value = [];
+  }
+}
+
 function canAllocateInvoice(item) {
   return ["draft", "cleared"].includes(item.confirmation_status);
 }
 
 async function handleClearBatch(row) {
   try {
-    const result = await ElMessageBox.prompt(
-      `将清除批次“${row.original_filename}”中全部当前已挂账发票，请输入原因`,
-      "清除批次挂账",
-      { inputValidator: (value) => value?.trim().length > 1 },
+    await ElMessageBox.confirm(
+      `确定清除批次“${row.original_filename}”吗？已完成的挂账将被冲销，批次将从列表移除。`,
+      "清除确认",
+      { type: "warning", confirmButtonText: "清除", cancelButtonText: "取消" },
     );
-    await clearBatch(row.id, result.value.trim());
-    ElMessage.success("该批次当前挂账已清除");
-    await loadBatches();
-    if (selectedBatch.value?.id === row.id) await refreshItems();
-  } catch {}
+  } catch {
+    return;
+  }
+  await clearBatch(row.id);
+  removeBatchFromView(row.id);
+  ElMessage.success("该批次挂账已清除，批次已移出列表");
 }
 
 async function openAllocation(row) {
@@ -616,13 +625,17 @@ async function ignore(row) {
 }
 async function clear(row) {
   try {
-    const result = await ElMessageBox.prompt("请输入清除原因", "清除挂账", {
-      inputValidator: (value) => value?.length > 1,
-    });
-    await clearInvoiceItem(row.id, result.value);
-    ElMessage.success("已清除挂账，可重新分摊");
-    await refreshItems();
-  } catch {}
+    await ElMessageBox.confirm(
+      "确定清除该发票挂账吗？清除后可重新分摊。",
+      "清除确认",
+      { type: "warning", confirmButtonText: "清除", cancelButtonText: "取消" },
+    );
+  } catch {
+    return;
+  }
+  await clearInvoiceItem(row.id);
+  ElMessage.success("已清除挂账，可重新分摊");
+  await refreshItems();
 }
 async function deleteFailed(row) {
   try {

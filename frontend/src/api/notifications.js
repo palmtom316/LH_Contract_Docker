@@ -5,15 +5,15 @@ function getPersistedAuthContext() {
     try {
         let userRaw = '{}'
         let permissionsRaw = '[]'
-        if (typeof localStorage !== 'undefined') {
-            userRaw = localStorage.getItem('user_info') || '{}'
-            permissionsRaw = localStorage.getItem('user_permissions') || '[]'
-        } else if (globalThis.window?.localStorage) {
-            userRaw = globalThis.window.localStorage.getItem('user_info') || '{}'
-            permissionsRaw = globalThis.window.localStorage.getItem('user_permissions') || '[]'
-        } else if (globalThis.localStorage) {
-            userRaw = globalThis.localStorage.getItem('user_info') || '{}'
-            permissionsRaw = globalThis.localStorage.getItem('user_permissions') || '[]'
+        if (typeof sessionStorage !== 'undefined') {
+            userRaw = sessionStorage.getItem('user_info') || '{}'
+            permissionsRaw = sessionStorage.getItem('user_permissions') || '[]'
+        } else if (globalThis.window?.sessionStorage) {
+            userRaw = globalThis.window.sessionStorage.getItem('user_info') || '{}'
+            permissionsRaw = globalThis.window.sessionStorage.getItem('user_permissions') || '[]'
+        } else if (globalThis.sessionStorage) {
+            userRaw = globalThis.sessionStorage.getItem('user_info') || '{}'
+            permissionsRaw = globalThis.sessionStorage.getItem('user_permissions') || '[]'
         }
         return {
             user: JSON.parse(userRaw),

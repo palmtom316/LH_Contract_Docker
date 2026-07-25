@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import InvoiceImportWorkbench from '../InvoiceImportWorkbench.vue'
 
 const { clearBatchMock, deleteBatchMock, confirmMock } = vi.hoisted(() => ({
@@ -52,12 +52,16 @@ vi.mock('@/api/contractDownstream', () => ({
 }))
 
 describe('InvoiceImportWorkbench', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('renders batch list title and loaded batch code', async () => {
     const wrapper = mount(InvoiceImportWorkbench)
     await Promise.resolve()
     await Promise.resolve()
 
-    expect(wrapper.text()).toContain('发票识别入账')
+    expect(wrapper.text()).toContain('发票挂账')
     expect(wrapper.text()).toContain('INVIMP-202607080001')
     expect(wrapper.text()).toContain('上传压缩包')
     expect(wrapper.text()).toContain('刷新')
@@ -74,6 +78,7 @@ describe('InvoiceImportWorkbench', () => {
 
     expect(confirmMock).toHaveBeenCalled()
     expect(deleteBatchMock).toHaveBeenCalledWith(1)
+    expect(wrapper.text()).not.toContain('INVIMP-202607080001')
   })
 
   it('shows clear instead of delete for a posted batch', async () => {
@@ -97,6 +102,34 @@ describe('InvoiceImportWorkbench', () => {
     const actions = wrapper.findAll('button').map((button) => button.text())
     expect(actions).toContain('清除')
     expect(actions).not.toContain('删除')
+  })
+
+  it('clears a posted batch without asking for a reason and removes its row', async () => {
+    const api = await import('@/api/invoiceImport')
+    api.listBatches.mockResolvedValueOnce([{
+      id: 2,
+      batch_code: 'INVIMP-POSTED',
+      original_filename: 'posted.zip',
+      status: 'completed',
+      total_items: 1,
+      parsed_items: 1,
+      duplicate_items: 0,
+      error_items: 0,
+      confirmed_items: 1,
+      posted_items: 1,
+    }])
+    const wrapper = mount(InvoiceImportWorkbench)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    const clearButton = wrapper.findAll('button').find((button) => button.text() === '清除')
+    await clearButton.trigger('click')
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(confirmMock).toHaveBeenCalled()
+    expect(clearBatchMock).toHaveBeenCalledWith(2)
+    expect(wrapper.text()).not.toContain('INVIMP-POSTED')
   })
 })
 

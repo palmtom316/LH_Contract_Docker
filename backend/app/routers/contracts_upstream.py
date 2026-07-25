@@ -763,7 +763,7 @@ async def import_contracts_from_excel(
             try:
                 raw_amount = row.get("合同金额", 0)
                 contract_amount = float(raw_amount) if pd.notna(raw_amount) else 0
-            except:
+            except (TypeError, ValueError):
                 contract_amount = 0
             
             candidate_dict = {

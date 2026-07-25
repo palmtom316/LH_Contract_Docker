@@ -132,10 +132,10 @@ class CacheManager:
         """Delete key from cache"""
         try:
             if self.use_redis and self.redis_client:
-                await self.redis_client.delete(key)
+                return bool(await self.redis_client.delete(key))
             else:
-                self.memory_cache.pop(key, None)
-            return True
+                marker = object()
+                return self.memory_cache.pop(key, marker) is not marker
         except Exception as e:
             logger.error(f"[CACHE] Error deleting key {key}: {e}")
             return False

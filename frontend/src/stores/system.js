@@ -10,7 +10,7 @@ const NOTIFICATION_LOCAL_KEY = 'lh_notifications_local'
 
 function getNotificationScope() {
     try {
-        const user = JSON.parse(localStorage.getItem('user_info') || '{}')
+        const user = JSON.parse(sessionStorage.getItem('user_info') || '{}')
         if (user.id !== undefined && user.id !== null && user.id !== '') {
             return `user-${user.id}`
         }

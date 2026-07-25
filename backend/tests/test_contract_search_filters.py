@@ -60,6 +60,18 @@ def test_build_multi_value_ilike_condition_deduplicates_case_insensitively():
     assert compiled.count("lower(contracts_upstream.category) LIKE lower(") == 2
 
 
+def test_build_multi_value_ilike_condition_escapes_sql_wildcards():
+    condition = contract_search._build_multi_value_ilike_condition(
+        ContractUpstream.category,
+        [r"50%_done\\draft"],
+    )
+
+    compiled = condition.compile()
+    sql = str(compiled)
+    assert "ESCAPE '\\'" in sql
+    assert list(compiled.params.values()) == [r"%50\%\_done\\\\draft%"]
+
+
 @pytest.mark.asyncio
 async def test_upstream_query_accepts_dictionary_value_for_legacy_contract_category_and_company_category(
     client,

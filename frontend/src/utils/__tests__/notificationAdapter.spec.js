@@ -36,7 +36,8 @@ describe('fetchNotifications API facade', () => {
     vi.restoreAllMocks()
     vi.clearAllMocks()
     localStorage.clear()
-    localStorage.setItem('user_permissions', JSON.stringify([
+    sessionStorage.clear()
+    sessionStorage.setItem('user_permissions', JSON.stringify([
       'view_upstream_basic_info',
       'view_downstream_basic_info',
       'view_management_basic_info'
@@ -65,7 +66,7 @@ describe('fetchNotifications API facade', () => {
   })
 
   it('skips audit endpoint for non-admin users', async () => {
-    localStorage.setItem('user_info', JSON.stringify({ role: 'BIDDING' }))
+    sessionStorage.setItem('user_info', JSON.stringify({ role: 'BIDDING' }))
 
     request.get
       .mockResolvedValueOnce({ items: [] })
@@ -87,8 +88,8 @@ describe('fetchNotifications API facade', () => {
   })
 
   it('only fetches reminder sources the role can view', async () => {
-    localStorage.setItem('user_info', JSON.stringify({ role: 'BIDDING' }))
-    localStorage.setItem('user_permissions', JSON.stringify(['view_upstream_basic_info']))
+    sessionStorage.setItem('user_info', JSON.stringify({ role: 'BIDDING' }))
+    sessionStorage.setItem('user_permissions', JSON.stringify(['view_upstream_basic_info']))
     request.get.mockResolvedValueOnce({ items: [] })
 
     await fetchNotifications()

@@ -34,10 +34,14 @@ export function getLogo() {
     })
 }
 
-export function resetSystem(confirm_code) {
+export function resetSystem({ confirmCode, password, dryRun = false }) {
     return request({
         url: '/system/reset',
         method: 'post',
-        params: { confirm_code }
+        data: {
+            confirm_code: confirmCode,
+            password,
+            dry_run: dryRun
+        }
     })
 }

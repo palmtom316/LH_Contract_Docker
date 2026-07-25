@@ -28,7 +28,9 @@ services:
     image: redis:7-alpine
     container_name: lh_contract_redis
     restart: always
-    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
     volumes:
       - redis_data:/data
     healthcheck:
@@ -65,7 +67,7 @@ services:
           - minio
 
   backend:
-    image: ${BACKEND_IMAGE:-ghcr.io/palmtom316/lh-contract-backend:1.9.0}
+    image: ${BACKEND_IMAGE:-ghcr.io/palmtom316/lh-contract-backend:1.9.1}
     build:
       context: ./backend
       dockerfile: Dockerfile.production
@@ -75,7 +77,7 @@ services:
       - ${PRODUCTION_ENV_FILE:-.env.production}
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/0
       UPLOAD_DIR: /app/uploads
       BACKUP_TMP_DIR: /tmp/lh_contract_backups
       DEBUG: "false"
@@ -106,7 +108,7 @@ services:
           - backend
 
   sync-worker:
-    image: ${BACKEND_IMAGE:-ghcr.io/palmtom316/lh-contract-backend:1.9.0}
+    image: ${BACKEND_IMAGE:-ghcr.io/palmtom316/lh-contract-backend:1.9.1}
     build:
       context: ./backend
       dockerfile: Dockerfile.production
@@ -117,7 +119,7 @@ services:
     command: python run_sync.py
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/0
       UPLOAD_DIR: /app/uploads
       BACKUP_TMP_DIR: /tmp/lh_contract_backups
       MINIO_ENDPOINT: minio:9000
@@ -142,7 +144,7 @@ services:
           - sync-worker
 
   frontend:
-    image: ${FRONTEND_IMAGE:-ghcr.io/palmtom316/lh-contract-frontend:1.9.0}
+    image: ${FRONTEND_IMAGE:-ghcr.io/palmtom316/lh-contract-frontend:1.9.1}
     build:
       context: ./frontend
       dockerfile: Dockerfile.production

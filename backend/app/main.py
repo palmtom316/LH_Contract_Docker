@@ -9,7 +9,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from contextlib import asynccontextmanager
-import asyncio
 import logging
 
 from app.config import settings
@@ -53,44 +52,18 @@ async def lifespan(app: FastAPI):
 
     await init_data()
 
-    recovery_task = asyncio.create_task(_run_finance_import_worker())
-
     yield
 
     try:
-        recovery_task.cancel()
-        await asyncio.gather(recovery_task, return_exceptions=True)
         from app.core.cache import close_cache
+        from app.services.feishu_service import feishu_service
 
+        await feishu_service.close()
         await close_cache()
-    except:
-        pass
-    await close_db()
-
-
-async def _run_finance_import_worker() -> None:
-    """Durable DB-backed worker; SKIP LOCKED makes it safe with many web workers."""
-    from app.database import AsyncSessionLocal
-    from app.services.invoice_import.service import InvoiceImportService
-
-    while True:
-        try:
-            async with AsyncSessionLocal() as db:
-                invoice_service = InvoiceImportService(db)
-                claimed = await invoice_service.claim_next_batch()
-                if claimed:
-                    batch_id, token = claimed
-                    try:
-                        await invoice_service.process_uploaded_batch(batch_id, token)
-                    except Exception as exc:
-                        await db.rollback()
-                        await invoice_service.mark_job_failure(batch_id, token, exc)
-                    continue
-        except asyncio.CancelledError:
-            raise
-        except Exception:
-            logger.exception("Finance import worker iteration failed")
-        await asyncio.sleep(2)
+    except Exception:
+        logger.exception("Application shutdown cleanup failed")
+    finally:
+        await close_db()
 
 
 app = FastAPI(

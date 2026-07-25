@@ -9,6 +9,7 @@ Environment Variables:
 - FEISHU_WEBHOOK_VERIFICATION_TOKEN: Token for verifying webhook requests
 """
 import os
+import secrets
 import logging
 from typing import Optional
 from fastapi import APIRouter, Request, BackgroundTasks, HTTPException
@@ -47,7 +48,8 @@ def _verify_feishu_event(body: dict) -> None:
             return
         raise HTTPException(status_code=503, detail="Feishu webhook verification is not configured")
 
-    if body.get("token") != FEISHU_WEBHOOK_VERIFICATION_TOKEN:
+    supplied_token = str(body.get("token", ""))
+    if not secrets.compare_digest(supplied_token, FEISHU_WEBHOOK_VERIFICATION_TOKEN):
         logger.warning("Webhook token verification failed")
         raise HTTPException(status_code=403, detail="Invalid token")
 

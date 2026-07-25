@@ -5,7 +5,7 @@ import { useSystemStore } from '@/stores/system'
 
 function getStorage() {
     try {
-        return typeof globalThis.localStorage === 'undefined' ? null : globalThis.localStorage
+        return typeof globalThis.sessionStorage === 'undefined' ? null : globalThis.sessionStorage
     } catch {
         return null
     }
@@ -197,8 +197,8 @@ export const useUserStore = defineStore('user', {
                 this.user = res
                 this.permissions = res.permissions || []
 
-                localStorage.setItem('user_info', JSON.stringify(res))
-                localStorage.setItem('user_permissions', JSON.stringify(res.permissions || []))
+                sessionStorage.setItem('user_info', JSON.stringify(res))
+                sessionStorage.setItem('user_permissions', JSON.stringify(res.permissions || []))
                 useSystemStore().resetNotificationState()
 
                 return res

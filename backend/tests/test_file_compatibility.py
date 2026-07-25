@@ -22,7 +22,10 @@ from app.routers import common, system as system_router
 from app.database import get_db
 
 
-def _build_request(headers: dict[str, str] | None = None) -> Request:
+def _build_request(
+    headers: dict[str, str] | None = None,
+    query_string: bytes = b"",
+) -> Request:
     raw_headers = []
     for key, value in (headers or {}).items():
         raw_headers.append((key.lower().encode("latin-1"), value.encode("latin-1")))
@@ -31,7 +34,7 @@ def _build_request(headers: dict[str, str] | None = None) -> Request:
         "method": "GET",
         "path": "/api/v1/common/files/test",
         "headers": raw_headers,
-        "query_string": b"",
+        "query_string": query_string,
     }
     return Request(scope)
 
@@ -373,8 +376,10 @@ async def test_file_endpoint_rejects_query_token_even_with_valid_header(monkeypa
     with pytest.raises(common.ValidationError) as exc:
         await common.get_file(
             path="contracts/2026/04/demo.pdf",
-            token="query-token",
-            request=_build_request({"authorization": "Bearer header-token"}),
+            request=_build_request(
+                {"authorization": "Bearer header-token"},
+                query_string=b"token=query-token",
+            ),
             db=object(),
         )
 

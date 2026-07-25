@@ -3,6 +3,7 @@ from sqlalchemy import select, func, desc, or_, outerjoin
 from sqlalchemy.orm import selectinload, aliased
 from typing import List, Optional, Dict, Any
 from datetime import datetime, date
+import logging
 
 from app.models.contract_upstream import (
     ContractUpstream,
@@ -16,7 +17,6 @@ from app.models.contract_management import ContractManagement
 from app.models.expense import ExpenseNonContract
 from app.models.zero_hour_labor import ZeroHourLabor
 from app.schemas.contract_upstream import ContractUpstreamCreate, ContractUpstreamUpdate
-from app.services.cache import cache, dashboard_cache_key
 from app.services.status_service import calculate_contract_status
 
 from app.models.user import User
@@ -29,6 +29,8 @@ from app.core.errors import (
     DuplicateRecordError,
     ResourceNotFoundError,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ContractWrapper:
@@ -284,7 +286,7 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
                 s_date = date(s_year, s_month, 1)
                 query = query.where(ContractUpstream.sign_date >= s_date)
             except ValueError:
-                pass
+                logger.warning("Ignoring invalid upstream start_month: %r", start_month)
 
         if end_month:
             try:
@@ -295,7 +297,7 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
                     e_date = date(e_year, e_month + 1, 1)
                 query = query.where(ContractUpstream.sign_date < e_date)
             except ValueError:
-                pass
+                logger.warning("Ignoring invalid upstream end_month: %r", end_month)
 
         # Count total
         # We can use the same query structure but simple count
@@ -413,7 +415,7 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
                 s_date = date(s_year, s_month, 1)
                 query = query.where(ContractUpstream.sign_date >= s_date)
             except ValueError:
-                pass
+                logger.warning("Ignoring invalid upstream start_month: %r", start_month)
 
         if end_month:
             try:
@@ -424,7 +426,7 @@ class ContractUpstreamService(BaseContractService[ContractUpstream]):
                     e_date = date(e_year, e_month + 1, 1)
                 query = query.where(ContractUpstream.sign_date < e_date)
             except ValueError:
-                pass
+                logger.warning("Ignoring invalid upstream end_month: %r", end_month)
 
         query = query.order_by(desc(ContractUpstream.created_at))
         result = await self.db.execute(query)

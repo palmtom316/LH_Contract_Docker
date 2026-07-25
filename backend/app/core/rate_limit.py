@@ -72,9 +72,7 @@ if SLOWAPI_AVAILABLE:
     limiter = Limiter(
         key_func=get_client_ip,
         default_limits=[RATE_LIMITS["default"]],
-        # Use in-memory storage by default
-        # For production with multiple workers, configure Redis:
-        # storage_uri="redis://redis:6379/1"
+        storage_uri=settings.rate_limit_storage_uri,
     )
     
     def setup_rate_limiting(app):
@@ -93,7 +91,7 @@ if SLOWAPI_AVAILABLE:
         # Add middleware
         app.add_middleware(SlowAPIMiddleware)
         
-        logger.info("✅ Rate limiting enabled with slowapi")
+        logger.info("✅ Rate limiting enabled with slowapi (%s)", settings.rate_limit_storage_uri)
         logger.info(f"   Default limit: {RATE_LIMITS['default']}")
         logger.info(f"   Login limit: {RATE_LIMITS['login']}")
 else:

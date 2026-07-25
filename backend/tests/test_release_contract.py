@@ -58,11 +58,11 @@ def test_production_images_and_startup_match_release_18_contract():
     assert "alembic upgrade head && uvicorn" in backend_dockerfile
 
 
-def test_pve_compose_defaults_to_release_18_ghcr_images():
+def test_pve_compose_defaults_to_release_191_ghcr_images():
     content = (REPO_ROOT / "docker-compose.pve-prod.yml").read_text(encoding="utf-8")
 
-    assert "ghcr.io/palmtom316/lh-contract-backend:1.9.0" in content
-    assert "ghcr.io/palmtom316/lh-contract-frontend:1.9.0" in content
+    assert "ghcr.io/palmtom316/lh-contract-backend:1.9.1" in content
+    assert "ghcr.io/palmtom316/lh-contract-frontend:1.9.1" in content
     assert "BACKEND_IMAGE" in content
     assert "FRONTEND_IMAGE" in content
 
