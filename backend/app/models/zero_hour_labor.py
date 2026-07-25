@@ -209,12 +209,6 @@ class ZeroHourLaborPayment(Base):
     file_path = Column(String(500))
     file_key = Column(String(500))
     status = Column(String(30), default="active")
-    source_bank_receipt_item_id = Column(
-        Integer, ForeignKey("bank_receipt_items.id"), nullable=True, index=True
-    )
-    source_bank_receipt_allocation_id = Column(
-        Integer, ForeignKey("bank_receipt_allocations.id"), nullable=True, unique=True
-    )
     created_by = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     zero_hour_labor = relationship("ZeroHourLabor", back_populates="payments")

@@ -218,7 +218,7 @@ class FinanceUpstreamReceipt(Base):
     payer_account = Column(String(100), nullable=True)  # 付款方账号
     
     description = Column(String(300), nullable=True)
-    file_path = Column(String(500), nullable=True)                   # 银行回单文件路径
+    file_path = Column(String(500), nullable=True)                   # 收款凭证文件路径
     file_key = Column(String(500), nullable=True)
     storage_provider = Column(String(50), default='local')
     
@@ -227,10 +227,6 @@ class FinanceUpstreamReceipt(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
-    source_bank_receipt_item_id = Column(Integer, ForeignKey("bank_receipt_items.id"), nullable=True, index=True)
-    source_bank_receipt_allocation_id = Column(Integer, ForeignKey("bank_receipt_allocations.id"), nullable=True, unique=True)
-    bank_serial_number = Column(String(150), nullable=True, index=True)
-    transaction_at = Column(DateTime(timezone=True), nullable=True)
     posting_status = Column(String(20), nullable=False, default="active", index=True)
     cleared_at = Column(DateTime(timezone=True), nullable=True)
     clear_reason = Column(String(300), nullable=True)

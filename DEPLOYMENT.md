@@ -207,8 +207,6 @@ REDIS_URL=redis://redis:6379/0
 # 其他
 ENABLE_API_DOCS=false
 TRUSTED_PROXIES=  # 如使用代理，填写代理 IP
-# MinerU API Key 的数据库加密密钥（生成一次后稳定保存，丢失会导致既有 Key 无法解密）
-CONFIG_ENCRYPTION_KEY=<使用 secrets.token_urlsafe(48) 生成>
 ```
 
 **生成安全密钥**：

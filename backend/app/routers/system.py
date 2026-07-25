@@ -19,21 +19,14 @@ import os
 import tempfile
 from datetime import datetime
 from typing import List, Optional, Union
-import httpx
 from urllib.parse import urlparse, unquote
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
 from app.database import get_db
 from app.models.system import SysDictionary, SystemConfig
 from app.services.dictionary_usage_service import DictionaryUsageService
 from app.utils.file_validator import validate_file_upload
-from app.core.secure_config import (
-    create_pinned_http_transport,
-    protect_config_secret,
-    reveal_config_secret,
-    validate_external_api_url,
-)
 import logging
 
 router = APIRouter()
@@ -370,11 +363,6 @@ async def get_logo_file():
 class SystemConfigUpdate(BaseModel):
     system_name: Optional[str] = None
     system_name_line_2: Optional[str] = None
-    mineru_api_url: Optional[str] = Field(default=None, max_length=2048)
-    mineru_api_key: Optional[str] = Field(default=None, min_length=1, max_length=4096)
-    mineru_enabled: Optional[bool] = None
-    mineru_timeout_seconds: Optional[int] = None
-    company_bank_accounts: Optional[str] = Field(default=None, max_length=4000)
 
 
 @router.get("/config")
@@ -415,26 +403,18 @@ async def get_admin_system_config(
 ):
     if not current_user.is_superuser:
         raise PermissionDeniedError(detail="需要超级管理员权限")
-    rows = (await db.execute(select(SystemConfig))).scalars()
+    public_keys = {"system_name", "system_name_line_2"}
+    rows = (
+        await db.execute(select(SystemConfig).where(SystemConfig.key.in_(public_keys)))
+    ).scalars()
     result = {
         "system_name": "合同管理系统",
         "system_name_line_2": "",
         "system_logo": _build_logo_api_path(_find_system_logo_path()),
-        "mineru_enabled": False,
-        "mineru_api_url": "",
-        "mineru_timeout_seconds": 60,
-        "mineru_api_key_configured": False,
-        "mineru_api_key_masked": "",
-        "company_bank_accounts": "",
     }
     for row in rows:
-        if row.key == "mineru_api_key":
-            result["mineru_api_key_configured"] = bool(row.value)
-            result["mineru_api_key_masked"] = "••••••••" if row.value else ""
-        elif row.key in result:
+        if row.key in result:
             result[row.key] = row.value
-    result["mineru_enabled"] = str(result["mineru_enabled"]).lower() == "true"
-    result["mineru_timeout_seconds"] = int(result["mineru_timeout_seconds"] or 60)
     return result
 
 
@@ -462,114 +442,9 @@ async def update_system_config(
 
     await upsert_config("system_name", config.system_name)
     await upsert_config("system_name_line_2", config.system_name_line_2)
-    if config.mineru_api_url is not None:
-        validate_external_api_url(config.mineru_api_url)
-    await upsert_config("mineru_api_url", config.mineru_api_url)
-    if config.mineru_enabled:
-        raise ValidationError(message="请先通过 MinerU 连接测试再启用识别")
-    await upsert_config(
-        "mineru_enabled",
-        "false" if config.mineru_enabled is not None else None,
-    )
-    await upsert_config(
-        "mineru_timeout_seconds",
-        (
-            str(config.mineru_timeout_seconds)
-            if config.mineru_timeout_seconds is not None
-            else None
-        ),
-    )
-    await upsert_config("company_bank_accounts", config.company_bank_accounts)
-    if config.mineru_api_key and config.mineru_api_key != "••••••••":
-        await upsert_config(
-            "mineru_api_key", protect_config_secret(config.mineru_api_key)
-        )
 
     await db.commit()
     return {"message": "Configuration updated"}
-
-
-@router.post("/config/mineru/test")
-async def test_mineru(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
-):
-    if not current_user.is_superuser:
-        raise PermissionDeniedError(detail="需要超级管理员权限")
-    rows = {
-        x.key: x.value
-        for x in (
-            await db.execute(
-                select(SystemConfig).where(
-                    SystemConfig.key.in_(
-                        ["mineru_api_url", "mineru_api_key", "mineru_timeout_seconds"]
-                    )
-                )
-            )
-        ).scalars()
-    }
-    async def finish(ok: bool, result: str, message: str):
-        enabled = await db.scalar(
-            select(SystemConfig).where(SystemConfig.key == "mineru_enabled")
-        )
-        if enabled:
-            enabled.value = "true" if ok else "false"
-        else:
-            db.add(
-                SystemConfig(
-                    key="mineru_enabled",
-                    value="true" if ok else "false",
-                )
-            )
-        await db.commit()
-        return {"ok": ok, "result": result, "message": message}
-
-    url = (rows.get("mineru_api_url") or "").strip()
-    encrypted_key = rows.get("mineru_api_key") or ""
-    if not url or not encrypted_key:
-        return await finish(
-            False,
-            "not_configured",
-            "请先保存 MinerU API 地址和 API Key",
-        )
-    try:
-        transport = create_pinned_http_transport(url)
-        api_key = reveal_config_secret(encrypted_key)
-        async with httpx.AsyncClient(
-            timeout=min(int(rows.get("mineru_timeout_seconds") or 60), 120),
-            transport=transport,
-        ) as client:
-            # The production workflow uses POST. Sending an empty request verifies
-            # routing and authentication without creating an extraction task.
-            response = await client.post(
-                url,
-                headers={"Authorization": f"Bearer {api_key}"},
-            )
-        if response.status_code in {401, 403}:
-            return await finish(False, "auth_failed", "MinerU API Key 鉴权失败")
-        if response.status_code in {404, 405}:
-            return await finish(
-                False,
-                "invalid_endpoint",
-                "MinerU API 地址不是可用的解析接口",
-            )
-        if response.status_code == 429:
-            return await finish(False, "rate_limited", "MinerU 请求受限，请稍后重试")
-        if response.status_code >= 500:
-            return await finish(False, "service_unavailable", "MinerU 服务不可用")
-        if 200 <= response.status_code < 300 or response.status_code in {400, 422}:
-            return await finish(True, "connected", "连接成功，MinerU 识别已启用")
-        return await finish(
-            False,
-            "request_rejected",
-            f"MinerU 接口拒绝测试请求（HTTP {response.status_code}）",
-        )
-    except ValidationError as exc:
-        return await finish(False, "invalid_config", exc.message)
-    except httpx.TimeoutException:
-        return await finish(False, "timeout", "连接超时")
-    except httpx.HTTPError:
-        return await finish(False, "service_unavailable", "MinerU 服务不可用")
 
 
 # --- Dictionary Endpoints ---

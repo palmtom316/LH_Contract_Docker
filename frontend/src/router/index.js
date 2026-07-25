@@ -75,7 +75,7 @@ const routes = [
                 path: 'invoice-imports',
                 name: 'InvoiceImportWorkbench',
                 component: () => import('@/views/invoices/InvoiceImportWorkbench.vue'),
-                meta: { title: '电子发票导入', icon: 'DocumentAdd' }
+                meta: { title: '发票识别入账', icon: 'DocumentAdd' }
             },
             {
                 path: 'expenses/zero-hour-labor/:id',

@@ -8,7 +8,6 @@ def _base_env(tmp_path):
         "DEBUG": True,
         "DATABASE_URL": "postgresql+asyncpg://test_user:test-db-password@localhost:5432/test_db",
         "SECRET_KEY": "test_secret_key_for_release_contracts",
-        "CONFIG_ENCRYPTION_KEY": "test_config_encryption_key_32_chars_long",
         "UPLOAD_DIR": str(tmp_path / "uploads"),
         "BACKUP_TMP_DIR": str(tmp_path / "backup_tmp"),
         "MINIO_ENDPOINT": "minio:9000",

@@ -1,18 +1,13 @@
 """Release 1.9 finance lifecycle integration tests against PostgreSQL."""
 
 import asyncio
-from datetime import date, datetime, timezone
+from datetime import date
 from decimal import Decimal
 
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from app.models.bank_receipt import (
-    BankReceiptAllocation,
-    BankReceiptBatch,
-    BankReceiptItem,
-)
 from app.models.invoice_import import (
     InvoiceImportAllocation,
     InvoiceImportBatch,
@@ -21,65 +16,9 @@ from app.models.invoice_import import (
 from app.models.zero_hour_labor import (
     ZeroHourLabor,
     ZeroHourLaborInvoice,
-    ZeroHourLaborPayment,
 )
-from app.services.bank_receipt import BankReceiptService
 from app.services.invoice_import.posting import InvoicePostingService
 from app.services.invoice_import.service import InvoiceImportService
-
-
-@pytest.mark.asyncio
-async def test_bank_receipt_posts_and_clears_zero_hour_payment(test_db, test_admin):
-    labor = ZeroHourLabor(
-        labor_date=date(2026, 7, 1),
-        attribution="COMPANY",
-        total_amount=Decimal("100.00"),
-        created_by=test_admin.id,
-    )
-    batch = BankReceiptBatch(
-        batch_number="BR-INTEGRATION-1",
-        original_filename="receipt.pdf",
-        status="completed",
-        uploaded_by=test_admin.id,
-    )
-    test_db.add_all([labor, batch])
-    await test_db.flush()
-    item = BankReceiptItem(
-        batch_id=batch.id,
-        source_filename="receipt.pdf",
-        sha256="1" * 64,
-        direction="payment",
-        transaction_at=datetime(2026, 7, 2, tzinfo=timezone.utc),
-        amount=Decimal("100.00"),
-        status="ready",
-    )
-    test_db.add(item)
-    await test_db.flush()
-    test_db.add(
-        BankReceiptAllocation(
-            item_id=item.id,
-            direction="payment",
-            zero_hour_labor_id=labor.id,
-            amount=Decimal("100.00"),
-            status="draft",
-        )
-    )
-    await test_db.commit()
-
-    service = BankReceiptService(test_db)
-    await service.confirm(item.id, test_admin)
-    payment = await test_db.scalar(
-        select(ZeroHourLaborPayment).where(
-            ZeroHourLaborPayment.zero_hour_labor_id == labor.id
-        )
-    )
-    assert payment.status == "active"
-    assert payment.source_bank_receipt_allocation_id is not None
-
-    await service.clear(item.id, "integration clear", test_admin)
-    await test_db.refresh(payment)
-    assert payment.status == "cleared"
-    assert payment.amount == Decimal("100.00")
 
 
 @pytest.mark.asyncio
@@ -142,11 +81,11 @@ async def test_invoice_posts_and_clears_zero_hour_invoice(test_db, test_admin):
 
 
 @pytest.mark.asyncio
-async def test_bank_receipt_job_claim_is_single_consumer(test_db, test_admin):
+async def test_invoice_import_job_claim_is_single_consumer(test_db, test_admin):
     test_db.add(
-        BankReceiptBatch(
-            batch_number="BR-JOB-1",
-            original_filename="job.pdf",
+        InvoiceImportBatch(
+            batch_number="INV-JOB-1",
+            original_filename="job.zip",
             status="uploaded",
             uploaded_by=test_admin.id,
         )
@@ -155,7 +94,7 @@ async def test_bank_receipt_job_claim_is_single_consumer(test_db, test_admin):
     sessions = async_sessionmaker(test_db.bind, expire_on_commit=False)
     async with sessions() as first, sessions() as second:
         claims = await asyncio.gather(
-            BankReceiptService(first).claim_next_batch(),
-            BankReceiptService(second).claim_next_batch(),
+            InvoiceImportService(first).claim_next_batch(),
+            InvoiceImportService(second).claim_next_batch(),
         )
     assert sum(claim is not None for claim in claims) == 1

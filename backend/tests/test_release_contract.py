@@ -90,7 +90,7 @@ def test_release_19_upgrade_is_guarded_by_backup_and_schema_preflights():
     assert "20260722_durable_import_jobs" in preflight
     assert "20260723_zero_hour_finance_fields" in preflight
     assert "20260723_expand_system_config" in preflight
-    assert "CONFIG_ENCRYPTION_KEY" in preflight
+    assert "20260725_remove_bank_receipts" in preflight
     assert "./scripts/preflight_1.9.sh before" in upgrade
     assert "./scripts/backup.sh" in upgrade
     assert "alembic upgrade head" in upgrade

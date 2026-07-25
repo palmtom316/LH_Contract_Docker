@@ -14,7 +14,6 @@ from datetime import datetime, timezone
 from app.database import get_db, verify_required_schema
 from app.core.cache import cache_manager
 from app.config import settings
-from app.models.bank_receipt import BankReceiptBatch
 from app.models.invoice_import import InvoiceImportBatch
 
 router = APIRouter()
@@ -68,24 +67,28 @@ async def check_finance_import_jobs(db: AsyncSession) -> Dict[str, Any]:
     now = datetime.now(timezone.utc)
     failed = 0
     stale = 0
-    for model in (InvoiceImportBatch, BankReceiptBatch):
-        failed += (
-            await db.scalar(
-                select(func.count()).select_from(model).where(model.status == "failed")
-            )
-            or 0
+    failed += (
+        await db.scalar(
+            select(func.count())
+            .select_from(InvoiceImportBatch)
+            .where(InvoiceImportBatch.status == "failed")
         )
-        stale += (
-            await db.scalar(
-                select(func.count())
-                .select_from(model)
-                .where(
-                    model.status == "processing",
-                    or_(model.job_lease_until.is_(None), model.job_lease_until < now),
-                )
+        or 0
+    )
+    stale += (
+        await db.scalar(
+            select(func.count())
+            .select_from(InvoiceImportBatch)
+            .where(
+                InvoiceImportBatch.status == "processing",
+                or_(
+                    InvoiceImportBatch.job_lease_until.is_(None),
+                    InvoiceImportBatch.job_lease_until < now,
+                ),
             )
-            or 0
         )
+        or 0
+    )
     return {
         "status": "degraded" if failed or stale else "healthy",
         "failed_jobs": failed,

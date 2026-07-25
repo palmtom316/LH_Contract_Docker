@@ -223,23 +223,9 @@ const contracts = await contractsResponse.json();
 - `POST /api/v1/invoice-imports/items/{item_id}/clear` 清除已挂账发票（保留正式记录与审计快照）
 - `DELETE /api/v1/invoice-imports/items/{item_id}` 仅删除未入账的失败文件
 
-### 银行回单识别入账
+### 发票导入操作规则
 
-- `POST /api/v1/bank-receipts/batches` 上传单份 PDF 回单并异步识别
-- `GET /api/v1/bank-receipts/batches`、`GET /api/v1/bank-receipts/batches/{id}/items` 查询批次和明细
-- `PUT /api/v1/bank-receipts/items/{id}` 人工复核方向、交易时间、金额和流水号
-- `GET /api/v1/bank-receipts/contracts/search?q=<名称片段>&direction=receipt|payment` 按方向模糊查合同
-- `POST /api/v1/bank-receipts/items/{id}/allocations` 添加分摊；收款仅上游，付款可下游或管理合同
-- `PUT /api/v1/bank-receipts/items/{id}/allocations/{allocation_id}`、`DELETE /api/v1/bank-receipts/items/{id}/allocations/{allocation_id}` 修改或删除尚未确认的草稿分摊
-- `POST /api/v1/bank-receipts/items/{id}/confirm` 等额分摊后确认入账
-- `POST /api/v1/bank-receipts/items/{id}/clear` 清除入账并保留原记录、原因和审计历史
-- `POST /api/v1/bank-receipts/items/{id}/ignore` 忽略不处理的回单；`DELETE /api/v1/bank-receipts/items/{id}` 仅删除失败文件
-
-### MinerU 配置与操作规则
-
-管理员在“系统配置 → 银行回单识别”中设置 MinerU 地址、Key、超时和公司银行账号。Key 只以掩码状态返回，数据库中以 `CONFIG_ENCRYPTION_KEY` 加密值保存。测试连接不会接受前端提供的地址，识别服务仅调用受控配置地址。
-
-成功识别的发票/回单必须先人工复核并完成等额分摊才会写入正式表。清除不是物理删除：历史正式记录标为 `cleared`，原始文件、来源关系、清除原因和审计日志均保留；清除后可重新分摊确认。
+成功识别的发票必须先人工复核并完成等额分摊才会写入正式表。清除不是物理删除：历史正式记录标为 `cleared`，原始文件、来源关系、清除原因和审计日志均保留；清除后可重新分摊确认。
 
 ### 零星用工财务详情
 

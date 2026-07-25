@@ -200,7 +200,7 @@ const allSidebarItems = computed(() => [
   userStore.canViewDownstreamContracts ? { index: '/contracts/downstream', label: '下游合同', icon: DocumentCopy, group: 'primary' } : null,
   userStore.canViewManagementContracts ? { index: '/contracts/management', label: '管理合同', icon: FolderChecked, group: 'primary' } : null,
   userStore.canViewExpenses ? { index: '/expenses', label: '无合同费用', icon: Money, group: 'primary' } : null,
-  (userStore.canViewInvoices || userStore.canViewPayments) ? { index: '/invoice-imports', label: '发票及回单', icon: DocumentAdd, group: 'primary' } : null,
+  userStore.canViewInvoices ? { index: '/invoice-imports', label: '发票识别入账', icon: DocumentAdd, group: 'primary' } : null,
   userStore.canViewReports ? { index: '/reports', label: '报表导出', icon: DataAnalysis, group: 'secondary' } : null,
   userStore.canManageUsers ? { index: '/system', label: '系统管理', icon: Setting, group: 'secondary' } : null,
   userStore.isAdmin ? { index: '/audit', label: '审计日志', icon: Document, group: 'secondary' } : null

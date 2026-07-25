@@ -64,9 +64,6 @@ class Settings(BaseSettings):
         if not self.DEBUG and not self.COMPANY_TAX_NO:
             raise ValueError("COMPANY_TAX_NO 环境变量在生产环境中必须设置，用于电子发票上下游方向判断")
 
-        if not self.DEBUG and len(self.CONFIG_ENCRYPTION_KEY) < 32:
-            raise ValueError("CONFIG_ENCRYPTION_KEY 在生产环境中必须设置且至少 32 个字符")
-
         if not self.SECRET_KEY:
             if not self.DEBUG:
                 raise ValueError(
@@ -86,7 +83,6 @@ class Settings(BaseSettings):
             "MINIO_ACCESS_KEY": self.MINIO_ACCESS_KEY,
             "MINIO_SECRET_KEY": self.MINIO_SECRET_KEY,
             "INIT_ADMIN_TOKEN": self.INIT_ADMIN_TOKEN,
-            "CONFIG_ENCRYPTION_KEY": self.CONFIG_ENCRYPTION_KEY,
         }
         placeholder_marker = "CHANGE" + "_THIS"
         for name, value in protected_values.items():
@@ -163,7 +159,6 @@ class Settings(BaseSettings):
     INVOICE_IMPORT_MAX_ARCHIVE_SIZE: int = int(os.getenv("INVOICE_IMPORT_MAX_ARCHIVE_SIZE", str(200 * 1024 * 1024)))
     INVOICE_IMPORT_MAX_FILE_SIZE: int = int(os.getenv("INVOICE_IMPORT_MAX_FILE_SIZE", str(50 * 1024 * 1024)))
     INVOICE_IMPORT_MAX_FILES: int = int(os.getenv("INVOICE_IMPORT_MAX_FILES", "2000"))
-    CONFIG_ENCRYPTION_KEY: str = os.getenv("CONFIG_ENCRYPTION_KEY", "")
 
     # Admin initialization (production should require a token)
     INIT_ADMIN_TOKEN: str = os.getenv("INIT_ADMIN_TOKEN", "")

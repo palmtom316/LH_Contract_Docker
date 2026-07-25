@@ -27,9 +27,9 @@ describe('Layout sidebar shell', () => {
     expect(layoutSource).not.toContain('AppDeveloperIcon')
   })
 
-  it('exposes the invoice and receipt workbench from the primary navigation', () => {
+  it('exposes the invoice import workbench from the primary navigation', () => {
     expect(layoutSource).toContain("index: '/invoice-imports'")
-    expect(layoutSource).toContain("label: '发票及回单'")
+    expect(layoutSource).toContain("label: '发票识别入账'")
     expect(layoutSource).toContain('userStore.canViewInvoices')
   })
 })

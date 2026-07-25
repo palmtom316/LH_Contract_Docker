@@ -19,7 +19,6 @@ REQUIRED_SCHEMA_TABLES = (
     "sys_config",
     "refresh_tokens",
     "invoice_import_batches",
-    "bank_receipt_batches",
     "finance_zero_hour_invoices",
     "finance_zero_hour_payments",
 )

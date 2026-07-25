@@ -1,25 +1,10 @@
 <template>
   <div class="invoice-import-workbench">
     <AppPageHeader
-      title="发票及回单"
+      title="发票识别入账"
     />
-    <el-tabs v-model="activeTab" class="workspace-tabs">
-      <el-tab-pane
-        v-if="userStore.canViewInvoices"
-        label="发票识别入账"
-        name="invoice"
-      />
-      <el-tab-pane
-        v-if="userStore.canViewPayments"
-        label="回单识别入账"
-        name="receipt"
-        lazy
-      >
-        <BankReceiptWorkbench />
-      </el-tab-pane>
-    </el-tabs>
 
-    <template v-if="activeTab === 'invoice'">
+    <template v-if="userStore.canViewInvoices">
       <AppWorkspacePanel>
         <div class="workbench-toolbar">
           <div>
@@ -330,7 +315,6 @@ import { getActivePinia } from "pinia";
 import { ElMessage, ElMessageBox } from "element-plus";
 import AppPageHeader from "@/components/ui/AppPageHeader.vue";
 import AppWorkspacePanel from "@/components/ui/AppWorkspacePanel.vue";
-import BankReceiptWorkbench from "./BankReceiptWorkbench.vue";
 import {
   clearBatch,
   clearInvoiceItem,
@@ -354,10 +338,8 @@ const userStore = activePinia
   ? useUserStore(activePinia)
   : {
       canViewInvoices: true,
-      canViewPayments: true,
       canManageInvoices: true,
     };
-const activeTab = ref(userStore.canViewInvoices ? "invoice" : "receipt");
 const selectedBatch = ref(null);
 const selectedItem = ref(null);
 const items = ref([]);

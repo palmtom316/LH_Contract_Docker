@@ -71,17 +71,11 @@ async def lifespan(app: FastAPI):
 async def _run_finance_import_worker() -> None:
     """Durable DB-backed worker; SKIP LOCKED makes it safe with many web workers."""
     from app.database import AsyncSessionLocal
-    from app.services.bank_receipt import BankReceiptService
     from app.services.invoice_import.service import InvoiceImportService
 
     while True:
         try:
             async with AsyncSessionLocal() as db:
-                claimed = await BankReceiptService(db).claim_next_batch()
-                if claimed:
-                    batch_id, token = claimed
-                    await BankReceiptService(db).process(batch_id, token)
-                    continue
                 invoice_service = InvoiceImportService(db)
                 claimed = await invoice_service.claim_next_batch()
                 if claimed:
@@ -163,7 +157,6 @@ from app.routers import (
     system,
     health,
     invoice_imports,
-    bank_receipts,
 )
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
@@ -192,9 +185,6 @@ app.include_router(system.router, prefix="/api/v1/system", tags=["System Managem
 app.include_router(health.router, tags=["Health"])
 app.include_router(
     invoice_imports.router, prefix="/api/v1/invoice-imports", tags=["Invoice Imports"]
-)
-app.include_router(
-    bank_receipts.router, prefix="/api/v1/bank-receipts", tags=["Bank Receipts"]
 )
 
 # New Router

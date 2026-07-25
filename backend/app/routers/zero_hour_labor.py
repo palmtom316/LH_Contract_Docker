@@ -202,12 +202,9 @@ async def _update_finance(
     obj = await db.get(model, record_id)
     if not obj or obj.zero_hour_labor_id != id:
         raise ResourceNotFoundError(resource_type="财务明细", resource_id=record_id)
-    if any(
-        getattr(obj, field, None) is not None
-        for field in ("source_import_item_id", "source_bank_receipt_item_id")
-    ):
+    if getattr(obj, "source_import_item_id", None) is not None:
         raise ValidationError(
-            message="来源于发票或银行回单的财务明细不能直接修改，请在来源单据中清除后重新入账"
+            message="来源于发票导入的财务明细不能直接修改，请在来源单据中清除后重新入账"
         )
     for key, value in data.model_dump(exclude_unset=True).items():
         setattr(obj, key, value)
@@ -242,10 +239,9 @@ async def delete_finance(
     obj = await db.get(model, record_id)
     if not obj or obj.zero_hour_labor_id != id:
         raise ResourceNotFoundError(resource_type="财务明细", resource_id=record_id)
-    source_fields = ("source_import_item_id", "source_bank_receipt_item_id")
-    if any(getattr(obj, field, None) is not None for field in source_fields):
+    if getattr(obj, "source_import_item_id", None) is not None:
         raise ValidationError(
-            message="来源于发票或银行回单的财务明细不能直接删除，请先清除来源单据"
+            message="来源于发票导入的财务明细不能直接删除，请先清除来源单据"
         )
     await create_audit_log(
         db,

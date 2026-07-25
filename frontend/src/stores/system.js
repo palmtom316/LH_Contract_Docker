@@ -58,13 +58,7 @@ export const useSystemStore = defineStore('system', () => {
     const config = ref({
         system_name: '合同管理系统',
         system_name_line_2: '',
-        system_logo: null
-        ,mineru_enabled: false,
-        mineru_api_url: '',
-        mineru_api_key_configured: false,
-        mineru_api_key_masked: '',
-        mineru_timeout_seconds: 60,
-        company_bank_accounts: ''
+        system_logo: null,
     })
 
     const dictionaries = ref({}) // key: category, value: Array of options

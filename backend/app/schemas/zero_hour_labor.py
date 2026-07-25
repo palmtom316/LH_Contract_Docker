@@ -227,8 +227,6 @@ class ZeroHourFinanceResponse(BaseModel):
     status: Optional[str] = None
     source_import_item_id: Optional[int] = None
     source_import_allocation_id: Optional[int] = None
-    source_bank_receipt_item_id: Optional[int] = None
-    source_bank_receipt_allocation_id: Optional[int] = None
     created_at: Optional[datetime] = None
 
     class Config:
