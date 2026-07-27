@@ -38,8 +38,8 @@ fi
 for key in COMPANY_NAME COMPANY_TAX_NO MINIO_ROOT_USER MINIO_ROOT_PASSWORD SECRET_KEY; do require_env_key "${key}"; done
 docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" config >/dev/null
 images="$(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" config --images)"
-echo "${images}" | grep -Eq 'lh-contract-backend:1\.9\.0$' || { echo "Preflight failed: resolved backend image is not 1.9.0" >&2; exit 1; }
-echo "${images}" | grep -Eq 'lh-contract-frontend:1\.9\.0$' || { echo "Preflight failed: resolved frontend image is not 1.9.0" >&2; exit 1; }
+echo "${images}" | grep -Eq 'lh-contract-backend:1\.9\.1$' || { echo "Preflight failed: resolved backend image is not 1.9.1" >&2; exit 1; }
+echo "${images}" | grep -Eq 'lh-contract-frontend:1\.9\.1$' || { echo "Preflight failed: resolved frontend image is not 1.9.1" >&2; exit 1; }
 
 if [ "${MODE}" = after ]; then
     required=(

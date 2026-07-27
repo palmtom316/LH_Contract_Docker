@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     """Application settings"""
     # Application
     APP_NAME: str = "LH Contract Management System"
-    APP_VERSION: str = "1.9.0"
+    APP_VERSION: str = "1.9.1"
     DEBUG: bool = False  # Default to False for security
     
     # Database - MUST be set via environment variable

@@ -53,7 +53,7 @@
                 link
                 type="danger"
                 @click="handleClearBatch(row)"
-                >清除</el-button
+                >删除</el-button
               >
             </template>
           </el-table-column>
@@ -388,6 +388,7 @@ async function handleDeleteBatch(row) {
 function canDeleteBatch(row) {
   return (
     !["uploaded", "processing"].includes(row.status) &&
+    Number(row.confirmed_items || 0) === 0 &&
     Number(row.posted_items || 0) === 0
   );
 }
@@ -414,16 +415,16 @@ function canAllocateInvoice(item) {
 async function handleClearBatch(row) {
   try {
     await ElMessageBox.confirm(
-      `确定清除批次“${row.original_filename}”吗？已完成的挂账将被冲销，批次将从列表移除。`,
-      "清除确认",
-      { type: "warning", confirmButtonText: "清除", cancelButtonText: "取消" },
+      `确定删除批次“${row.original_filename}”吗？已完成的挂账将先被冲销，然后删除批次及导入文件。`,
+      "删除确认",
+      { type: "warning", confirmButtonText: "删除", cancelButtonText: "取消" },
     );
   } catch {
     return;
   }
   await clearBatch(row.id);
   removeBatchFromView(row.id);
-  ElMessage.success("该批次挂账已清除，批次已移出列表");
+  ElMessage.success("该批次挂账已冲销，批次及导入文件已删除");
 }
 
 async function openAllocation(row) {

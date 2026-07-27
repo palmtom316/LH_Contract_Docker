@@ -14,4 +14,4 @@ docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" run --rm backend al
 ./scripts/preflight_1.9.sh after
 docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --remove-orphans
 docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" ps
-echo "1.9.0 upgrade completed; verify /health/ready and finance import queues before opening traffic."
+echo "1.9.1 upgrade completed; verify /health/ready and finance import queues before opening traffic."

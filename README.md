@@ -1,6 +1,6 @@
 # 合同管理系统 / Contract Management System
 
-[![Version](https://img.shields.io/badge/version-1.8.0-blue.svg)](https://github.com/palmtom316/LH_Contract_Docker)
+[![Version](https://img.shields.io/badge/version-1.9.1-blue.svg)](https://github.com/palmtom316/LH_Contract_Docker)
 [![License](https://img.shields.io/badge/license-Proprietary-red.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)](docker-compose.yml)
 
@@ -342,7 +342,7 @@ npm run test
 
 | 变量名 | 说明 | 默认值 | 必填 |
 |--------|------|--------|------|
-| `APP_VERSION` | 应用版本号 | 1.8.0 | 否 |
+| `APP_VERSION` | 应用版本号 | 1.9.1 | 否 |
 | `DEBUG` | 调试模式 | false | 否 |
 | `SECRET_KEY` | 应用密钥 | - | **是** |
 | `DATABASE_URL` | 数据库连接字符串 | - | **是** |
@@ -366,11 +366,16 @@ npm run test
 - **[USER_OPERATION_MANUAL.md](docs/USER_OPERATION_MANUAL.md)** - 用户操作手册
 - **[PVE_BACKUP_GUIDE.md](docs/PVE_BACKUP_GUIDE.md)** - 备份恢复指南
 - **[PVE_1.7.1_TO_1.8.md](docs/PVE_1.7.1_TO_1.8.md)** - PVE 1.7.1 升级到 1.8.0
+- **[upgrade-1.9.0-to-1.9.1.md](docs/deployment/upgrade-1.9.0-to-1.9.1.md)** - PVE 1.9.0 升级到 1.9.1
 - **[N+1_QUERY_OPTIMIZATION.md](backend/docs/N+1_QUERY_OPTIMIZATION.md)** - 数据库查询优化
 
 ---
 
 ## 🔄 版本历史
+
+### v1.9.1 (2026-07-27)
+- 🔖 PVE 镜像、CI 发布版本和应用版本号更新至 1.9.1
+- 🧪 PVE 升级预检改为校验 1.9.1 镜像
 
 ### v1.8.0 (2026-07-16)
 - ✨ 新增电子发票批量导入、合同匹配、人工分摊与确认挂账

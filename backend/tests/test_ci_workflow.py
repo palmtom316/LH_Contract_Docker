@@ -40,7 +40,7 @@ def test_ci_workflow_builds_release_19_branch_and_checks_readiness():
     workflow = (REPO_ROOT / ".github" / "workflows" / "ci-cd.yml").read_text(encoding="utf-8")
 
     assert "refs/heads/release/1.9" in workflow
-    assert "IMAGE_VERSION: 1.9.0" in workflow
+    assert "IMAGE_VERSION: 1.9.1" in workflow
     assert "${{ secrets.DEPLOY_URL }}/health/ready" in workflow
 
 

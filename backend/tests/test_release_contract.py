@@ -41,7 +41,7 @@ def test_deployment_checklist_references_existing_compose_services():
     assert legacy_admin_password not in content
 
 
-def test_production_images_and_startup_match_release_18_contract():
+def test_production_images_and_startup_match_release_191_contract():
     backend_dockerfile = (REPO_ROOT / "backend" / "Dockerfile.production").read_text(
         encoding="utf-8"
     )
@@ -52,9 +52,9 @@ def test_production_images_and_startup_match_release_18_contract():
         encoding="utf-8"
     )
 
-    assert 'LABEL version="1.9.0"' in backend_dockerfile
-    assert 'LABEL version="1.9.0"' in frontend_dockerfile
-    assert '"version": "1.9.0"' in frontend_package
+    assert 'LABEL version="1.9.1"' in backend_dockerfile
+    assert 'LABEL version="1.9.1"' in frontend_dockerfile
+    assert '"version": "1.9.1"' in frontend_package
     assert "alembic upgrade head && uvicorn" in backend_dockerfile
 
 
@@ -95,6 +95,7 @@ def test_release_19_upgrade_is_guarded_by_backup_and_schema_preflights():
     assert "./scripts/backup.sh" in upgrade
     assert "alembic upgrade head" in upgrade
     assert "./scripts/preflight_1.9.sh after" in upgrade
+    assert "1.9.1 upgrade completed" in upgrade
 
 
 def test_upgrade_backup_requires_minio_object_backup():

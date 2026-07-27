@@ -81,7 +81,7 @@ describe('InvoiceImportWorkbench', () => {
     expect(wrapper.text()).not.toContain('INVIMP-202607080001')
   })
 
-  it('shows clear instead of delete for a posted batch', async () => {
+  it('shows delete for a posted batch', async () => {
     const api = await import('@/api/invoiceImport')
     api.listBatches.mockResolvedValueOnce([{
       id: 2,
@@ -100,11 +100,10 @@ describe('InvoiceImportWorkbench', () => {
     await Promise.resolve()
 
     const actions = wrapper.findAll('button').map((button) => button.text())
-    expect(actions).toContain('清除')
-    expect(actions).not.toContain('删除')
+    expect(actions.filter((action) => action === '删除')).toHaveLength(1)
   })
 
-  it('clears a posted batch without asking for a reason and removes its row', async () => {
+  it('reverses postings and deletes a posted batch after confirmation', async () => {
     const api = await import('@/api/invoiceImport')
     api.listBatches.mockResolvedValueOnce([{
       id: 2,
@@ -122,8 +121,8 @@ describe('InvoiceImportWorkbench', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    const clearButton = wrapper.findAll('button').find((button) => button.text() === '清除')
-    await clearButton.trigger('click')
+    const deleteButton = wrapper.findAll('button').find((button) => button.text() === '删除')
+    await deleteButton.trigger('click')
     await Promise.resolve()
     await Promise.resolve()
 
