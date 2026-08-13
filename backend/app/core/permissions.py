@@ -83,13 +83,29 @@ class Permission(str, Enum):
     # Management Contract Financial Records (管理合同专用)
     MANAGE_MGMT_CONTRACT_FINANCE = "manage_mgmt_contract_finance"
 
+    # Warehouse
+    VIEW_WAREHOUSE_INVENTORY = "view_warehouse_inventory"
+    VIEW_ALL_WAREHOUSES = "view_all_warehouses"
+    MANAGE_WAREHOUSE_MASTER = "manage_warehouse_master"
+    MANAGE_WAREHOUSE_MATERIALS = "manage_warehouse_materials"
+    POST_WAREHOUSE_INBOUND = "post_warehouse_inbound"
+    POST_WAREHOUSE_OUTBOUND = "post_warehouse_outbound"
+    POST_WAREHOUSE_TRANSFER = "post_warehouse_transfer"
+    ENTER_WAREHOUSE_COUNT = "enter_warehouse_count"
+    CONFIRM_WAREHOUSE_COUNT = "confirm_warehouse_count"
+    VOID_WAREHOUSE_DOCUMENT = "void_warehouse_document"
+    MANAGE_WAREHOUSE_SUPPLEMENTS = "manage_warehouse_supplements"
+    IMPORT_WAREHOUSE_DATA = "import_warehouse_data"
+    EXPORT_WAREHOUSE_DATA = "export_warehouse_data"
+    VIEW_WAREHOUSE_REPORTS = "view_warehouse_reports"
+
 
 # Role-Permission Mapping
 ROLE_PERMISSIONS: dict[UserRole, Set[Permission]] = {
     # 管理员 - 系统全部权限
     UserRole.ADMIN: set(Permission),
     
-    # 公司领导 - 查看主页概况、经营看板、报表统计，可下载报表
+    # 公司领导 - 查看主页概况、经营看板、报表统计，可下载报表；库房库存只读
     UserRole.COMPANY_LEADER: {
         Permission.VIEW_DASHBOARD,
         Permission.VIEW_REPORTS,
@@ -97,6 +113,10 @@ ROLE_PERMISSIONS: dict[UserRole, Set[Permission]] = {
         Permission.VIEW_UPSTREAM_BASIC_INFO,
         Permission.VIEW_DOWNSTREAM_BASIC_INFO,
         Permission.VIEW_MANAGEMENT_BASIC_INFO,
+        Permission.VIEW_WAREHOUSE_INVENTORY,
+        Permission.VIEW_ALL_WAREHOUSES,
+        Permission.VIEW_WAREHOUSE_REPORTS,
+        Permission.EXPORT_WAREHOUSE_DATA,
     },
     
     # 合同管理 - 合同CRUD、财务记录CRUD、无合同费用CRUD、查看报表
@@ -192,6 +212,34 @@ ROLE_PERMISSIONS: dict[UserRole, Set[Permission]] = {
         Permission.VIEW_INVOICES, Permission.CREATE_INVOICES, Permission.EDIT_INVOICES, Permission.DELETE_INVOICES,
         Permission.VIEW_PAYMENTS, Permission.CREATE_PAYMENTS, Permission.EDIT_PAYMENTS, Permission.DELETE_PAYMENTS,
         Permission.VIEW_SETTLEMENTS, Permission.CREATE_SETTLEMENTS, Permission.EDIT_SETTLEMENTS, Permission.DELETE_SETTLEMENTS,
+    },
+
+    # 库房管理员 - 全部库房主数据、过账、盘点确认、冲销、导入导出
+    UserRole.WAREHOUSE_ADMIN: {
+        Permission.VIEW_WAREHOUSE_INVENTORY,
+        Permission.VIEW_ALL_WAREHOUSES,
+        Permission.MANAGE_WAREHOUSE_MASTER,
+        Permission.MANAGE_WAREHOUSE_MATERIALS,
+        Permission.POST_WAREHOUSE_INBOUND,
+        Permission.POST_WAREHOUSE_OUTBOUND,
+        Permission.POST_WAREHOUSE_TRANSFER,
+        Permission.ENTER_WAREHOUSE_COUNT,
+        Permission.CONFIRM_WAREHOUSE_COUNT,
+        Permission.VOID_WAREHOUSE_DOCUMENT,
+        Permission.MANAGE_WAREHOUSE_SUPPLEMENTS,
+        Permission.IMPORT_WAREHOUSE_DATA,
+        Permission.EXPORT_WAREHOUSE_DATA,
+        Permission.VIEW_WAREHOUSE_REPORTS,
+    },
+
+    # 公司库管 - 仅授权库房入库/出库/调拨/盘点录入与导出
+    UserRole.COMPANY_STOREKEEPER: {
+        Permission.VIEW_WAREHOUSE_INVENTORY,
+        Permission.POST_WAREHOUSE_INBOUND,
+        Permission.POST_WAREHOUSE_OUTBOUND,
+        Permission.POST_WAREHOUSE_TRANSFER,
+        Permission.ENTER_WAREHOUSE_COUNT,
+        Permission.EXPORT_WAREHOUSE_DATA,
     },
 }
 

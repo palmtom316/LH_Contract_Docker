@@ -48,4 +48,12 @@ describe('user store bootstrap', () => {
     store.user = { is_superuser: true }
     expect(store.canViewInvoices).toBe(true)
   })
+
+  it('exposes warehouse inventory permission for storekeepers', () => {
+    const store = useUserStore()
+    store.permissions = ['view_warehouse_inventory', 'post_warehouse_inbound']
+    expect(store.canViewWarehouseInventory).toBe(true)
+    expect(store.canPostWarehouseInbound).toBe(true)
+    expect(store.canConfirmWarehouseCount).toBe(false)
+  })
 })

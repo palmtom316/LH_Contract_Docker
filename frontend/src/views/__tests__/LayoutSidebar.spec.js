@@ -32,4 +32,10 @@ describe('Layout sidebar shell', () => {
     expect(layoutSource).toContain("label: '发票挂账'")
     expect(layoutSource).toContain('userStore.canViewInvoices')
   })
+
+  it('exposes warehouse management from the primary navigation', () => {
+    expect(layoutSource).toContain("index: '/warehouse/overview'")
+    expect(layoutSource).toContain("label: '库房管理'")
+    expect(layoutSource).toContain('userStore.canViewWarehouseInventory')
+  })
 })

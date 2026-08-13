@@ -18,9 +18,10 @@
     </div>
 
     <van-tabbar v-model="activeTab" route safe-area-inset-bottom class="mobile-tabbar">
-      <van-tabbar-item to="/m/contracts" icon="orders-o">合同</van-tabbar-item>
-      <van-tabbar-item to="/m/expenses" icon="gold-coin-o">费用</van-tabbar-item>
-      <van-tabbar-item to="/m/reports" icon="chart-trending-o">报表</van-tabbar-item>
+      <van-tabbar-item v-if="userStore.canViewUpstreamContracts" to="/m/contracts" icon="orders-o">合同</van-tabbar-item>
+      <van-tabbar-item v-if="userStore.canViewWarehouseInventory" to="/m/warehouse" icon="logistics">库房</van-tabbar-item>
+      <van-tabbar-item v-if="userStore.canViewExpenses" to="/m/expenses" icon="gold-coin-o">费用</van-tabbar-item>
+      <van-tabbar-item v-if="userStore.canViewReports" to="/m/reports" icon="chart-trending-o">报表</van-tabbar-item>
       <van-tabbar-item v-if="userStore.canManageUsers" to="/m/profile" icon="user-o">我的</van-tabbar-item>
     </van-tabbar>
 
@@ -156,6 +157,7 @@ const unreadCount = computed(() => {
 const menuItems = computed(() => {
   const items = []
   if (userStore.canViewUpstreamContracts) items.push({ path: '/m/contracts', label: '合同列表' })
+  if (userStore.canViewWarehouseInventory) items.push({ path: '/m/warehouse', label: '库房作业' })
   if (userStore.canViewExpenses) items.push({ path: '/m/expenses', label: '无合同费用' })
   if (userStore.canViewReports) items.push({ path: '/m/reports', label: '报表导出' })
   if (userStore.canManageUsers) items.push({ path: '/m/profile', label: '系统管理' })

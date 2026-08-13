@@ -107,6 +107,7 @@
           <el-table-column label="操作" width="280" fixed="right">
             <template #default="scope">
               <el-button link type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
+              <el-button v-if="scope.row.role === 'COMPANY_STOREKEEPER'" link type="success" size="small" @click="handleWarehouseScopes(scope.row)">库房授权</el-button>
               <el-button link type="warning" size="small" @click="handleResetPassword(scope.row)">重置密码</el-button>
               <el-button
                 link
@@ -169,6 +170,27 @@
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleSubmit" :loading="submitting">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="scopeVisible" title="库房授权" width="520px" append-to-body :close-on-click-modal="false">
+      <div v-loading="scopeLoading">
+        <el-form label-width="90px">
+          <el-form-item label="可访问库房">
+            <el-select v-model="selectedWarehouseIds" multiple filterable style="width: 100%">
+              <el-option v-for="warehouse in warehouses" :key="warehouse.id" :label="`${warehouse.code} ${warehouse.name}`" :value="warehouse.id" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="默认库房">
+            <el-select v-model="defaultWarehouseId" clearable style="width: 100%">
+              <el-option v-for="warehouse in warehouses.filter(item => selectedWarehouseIds.includes(item.id))" :key="warehouse.id" :label="warehouse.name" :value="warehouse.id" />
+            </el-select>
+          </el-form-item>
+        </el-form>
+      </div>
+      <template #footer>
+        <el-button @click="scopeVisible = false">取消</el-button>
+        <el-button type="primary" :loading="scopeSaving" @click="saveWarehouseScopes">保存</el-button>
       </template>
     </el-dialog>
 
@@ -311,6 +333,7 @@ import { useDevice } from '@/composables/useDevice'
 import AppFilterBar from '@/components/ui/AppFilterBar.vue'
 import AppDataTable from '@/components/ui/AppDataTable.vue'
 import AppEmptyState from '@/components/ui/AppEmptyState.vue'
+import { getUserWarehouseScopes, listWarehouses, replaceUserWarehouseScopes } from '@/api/warehouse'
 
 const { isMobile } = useDevice()
 
@@ -329,6 +352,13 @@ const formRef = ref(null)
 const resetPwdVisible = ref(false)
 const resetting = ref(false)
 const resetFormRef = ref(null)
+const scopeVisible = ref(false)
+const scopeUser = ref(null)
+const scopeLoading = ref(false)
+const scopeSaving = ref(false)
+const warehouses = ref([])
+const selectedWarehouseIds = ref([])
+const defaultWarehouseId = ref(null)
 
 // Role options
 const roleOptions = ref([
@@ -340,6 +370,8 @@ const roleOptions = ref([
   { value: 'AUDIT', label: '审计部' },
   { value: 'BIDDING', label: '投标部' },
   { value: 'GENERAL_AFFAIRS', label: '综合部' },
+  { value: 'WAREHOUSE_ADMIN', label: '库房管理员' },
+  { value: 'COMPANY_STOREKEEPER', label: '公司库管' },
 ])
 
 // Form data
@@ -437,7 +469,9 @@ const getRoleTagType = (role) => {
     'ENGINEERING': 'info',
     'AUDIT': 'info',
     'BIDDING': 'info',
-    'GENERAL_AFFAIRS': 'info'
+    'GENERAL_AFFAIRS': 'info',
+    'WAREHOUSE_ADMIN': 'success',
+    'COMPANY_STOREKEEPER': 'warning'
   }
   return typeMap[role] || 'info'
 }
@@ -479,6 +513,36 @@ const handleEdit = (row) => {
   isEdit.value = true
   dialogTitle.value = '编辑用户'
   dialogVisible.value = true
+}
+
+const handleWarehouseScopes = async (row) => {
+  scopeUser.value = row
+  scopeVisible.value = true
+  scopeLoading.value = true
+  try {
+    const [available, assigned] = await Promise.all([listWarehouses(), getUserWarehouseScopes(row.id)])
+    warehouses.value = available.items || available || []
+    selectedWarehouseIds.value = assigned.map(item => item.warehouse_id)
+    defaultWarehouseId.value = assigned.find(item => item.is_default)?.warehouse_id || null
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '加载库房授权失败')
+  } finally {
+    scopeLoading.value = false
+  }
+}
+
+const saveWarehouseScopes = async () => {
+  if (!scopeUser.value) return
+  scopeSaving.value = true
+  try {
+    await replaceUserWarehouseScopes(scopeUser.value.id, selectedWarehouseIds.value.map(warehouse_id => ({ warehouse_id, is_default: warehouse_id === defaultWarehouseId.value })))
+    ElMessage.success('库房授权已更新')
+    scopeVisible.value = false
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '保存库房授权失败')
+  } finally {
+    scopeSaving.value = false
+  }
 }
 
 // Submit form

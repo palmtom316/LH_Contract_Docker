@@ -176,8 +176,12 @@ app.include_router(
 
 # Feishu Integration (V1.4)
 from app.routers import feishu
+from app.routers import warehouse
 
 app.include_router(feishu.router, prefix="/api/feishu", tags=["Feishu Integration"])
+app.include_router(
+    warehouse.router, prefix="/api/v1/warehouse", tags=["Warehouse"]
+)
 
 if __name__ == "__main__":
     import uvicorn

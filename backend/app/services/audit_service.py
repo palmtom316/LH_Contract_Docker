@@ -53,6 +53,12 @@ class ResourceType:
     FILE = "文件"
     SYSTEM = "系统"
     ZERO_HOUR_LABOR = "零星用工"
+    WAREHOUSE = "库房"
+    WAREHOUSE_LOCATION = "货位"
+    WAREHOUSE_PROJECT = "库房项目"
+    WAREHOUSE_MATERIAL = "物资"
+    WAREHOUSE_DOCUMENT = "库房单据"
+    WAREHOUSE_COUNT = "盘点"
 
 
 async def create_audit_log(

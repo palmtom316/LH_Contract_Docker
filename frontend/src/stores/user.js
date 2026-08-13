@@ -157,6 +157,47 @@ export const useUserStore = defineStore('user', {
         canManageUsers: (state) => {
             if (state.user.is_superuser) return true
             return state.permissions.includes('create_users')
+        },
+
+        canViewWarehouseInventory: (state) => {
+            if (state.user.is_superuser) return true
+            return state.permissions.includes('view_warehouse_inventory')
+        },
+        canManageWarehouseMaster: (state) => {
+            if (state.user.is_superuser) return true
+            return state.permissions.includes('manage_warehouse_master')
+        },
+        canManageWarehouseMaterials: (state) => {
+            if (state.user.is_superuser) return true
+            return state.permissions.includes('manage_warehouse_materials')
+        },
+        canPostWarehouseInbound: (state) => {
+            if (state.user.is_superuser) return true
+            return state.permissions.includes('post_warehouse_inbound')
+        },
+        canPostWarehouseOutbound: (state) => {
+            if (state.user.is_superuser) return true
+            return state.permissions.includes('post_warehouse_outbound')
+        },
+        canPostWarehouseTransfer: (state) => {
+            if (state.user.is_superuser) return true
+            return state.permissions.includes('post_warehouse_transfer')
+        },
+        canEnterWarehouseCount: (state) => {
+            if (state.user.is_superuser) return true
+            return state.permissions.includes('enter_warehouse_count')
+        },
+        canConfirmWarehouseCount: (state) => {
+            if (state.user.is_superuser) return true
+            return state.permissions.includes('confirm_warehouse_count')
+        },
+        canVoidWarehouseDocument: (state) => {
+            if (state.user.is_superuser) return true
+            return state.permissions.includes('void_warehouse_document')
+        },
+        canExportWarehouseData: (state) => {
+            if (state.user.is_superuser) return true
+            return state.permissions.includes('export_warehouse_data')
         }
     },
 

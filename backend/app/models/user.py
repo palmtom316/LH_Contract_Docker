@@ -18,6 +18,8 @@ class UserRole(str, enum.Enum):
     AUDIT = "AUDIT"                     # 审计部 - 查看合同基本信息、结算记录CRUD、无合同费用CRUD（仅限本人数据）
     BIDDING = "BIDDING"                 # 投标部 - 查看上游合同基本信息、无合同费用CRUD（仅限本人数据）
     GENERAL_AFFAIRS = "GENERAL_AFFAIRS" # 综合部 - 无合同费用CRUD、管理合同财务记录CRUD
+    WAREHOUSE_ADMIN = "WAREHOUSE_ADMIN"  # 库房管理员 - 全部库房主数据与过账
+    COMPANY_STOREKEEPER = "COMPANY_STOREKEEPER"  # 公司库管 - 授权库房入库/出库/调拨/盘点录入
 
 
 # Role display names for frontend
@@ -30,6 +32,8 @@ ROLE_DISPLAY_NAMES = {
     UserRole.AUDIT: "审计部",
     UserRole.BIDDING: "投标部",
     UserRole.GENERAL_AFFAIRS: "综合部",
+    UserRole.WAREHOUSE_ADMIN: "库房管理员",
+    UserRole.COMPANY_STOREKEEPER: "公司库管",
 }
 
 

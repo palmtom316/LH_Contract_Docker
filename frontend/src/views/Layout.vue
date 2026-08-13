@@ -148,7 +148,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { DataAnalysis, Document, DocumentAdd, DocumentCopy, Expand, Fold, FolderChecked, HomeFilled, Money, Setting } from '@element-plus/icons-vue'
+import { Box, DataAnalysis, Document, DocumentAdd, DocumentCopy, Expand, Fold, FolderChecked, HomeFilled, Money, Setting } from '@element-plus/icons-vue'
 import pkg from '../../package.json'
 import logoNew from '@/assets/logo_new.png'
 import request from '@/utils/request'
@@ -201,6 +201,7 @@ const allSidebarItems = computed(() => [
   userStore.canViewManagementContracts ? { index: '/contracts/management', label: '管理合同', icon: FolderChecked, group: 'primary' } : null,
   userStore.canViewExpenses ? { index: '/expenses', label: '无合同费用', icon: Money, group: 'primary' } : null,
   userStore.canViewInvoices ? { index: '/invoice-imports', label: '发票挂账', icon: DocumentAdd, group: 'primary' } : null,
+  userStore.canViewWarehouseInventory ? { index: '/warehouse/overview', label: '库房管理', icon: Box, group: 'primary' } : null,
   userStore.canViewReports ? { index: '/reports', label: '报表导出', icon: DataAnalysis, group: 'secondary' } : null,
   userStore.canManageUsers ? { index: '/system', label: '系统管理', icon: Setting, group: 'secondary' } : null,
   userStore.isAdmin ? { index: '/audit', label: '审计日志', icon: Document, group: 'secondary' } : null

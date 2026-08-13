@@ -66,6 +66,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSystemStore } from '@/stores/system'
 import { useUserStore } from '@/stores/user'
+import { resolveHomePath } from '@/utils/homePath'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
@@ -101,7 +102,13 @@ const handleLogin = async () => {
       try {
         await userStore.login(loginForm)
         ElMessage.success('登录成功')
-        await router.push('/')
+        const home = resolveHomePath({
+          role: userStore.userRole,
+          permissions: userStore.permissions,
+          isSuperuser: userStore.user?.is_superuser,
+          isMobile: window.innerWidth < 768
+        })
+        await router.push(home)
       } catch (error) {
         // Error handled in interceptor
       } finally {

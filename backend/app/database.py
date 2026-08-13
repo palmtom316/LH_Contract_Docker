@@ -21,6 +21,9 @@ REQUIRED_SCHEMA_TABLES = (
     "invoice_import_batches",
     "finance_zero_hour_invoices",
     "finance_zero_hour_payments",
+    "warehouse_warehouses",
+    "warehouse_stock_balances",
+    "warehouse_ledger_entries",
 )
 
 # Create async engine with connection pooling
