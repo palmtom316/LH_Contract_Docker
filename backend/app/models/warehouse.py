@@ -56,6 +56,7 @@ class DocumentStatus(str, enum.Enum):
 
 class InboundBusinessType(str, enum.Enum):
     PURCHASE = "PURCHASE"
+    OWNER_SUPPLY = "OWNER_SUPPLY"
     RETURN = "RETURN"
     DEMOLITION = "DEMOLITION"
     OPENING = "OPENING"
@@ -66,6 +67,7 @@ class OutboundBusinessType(str, enum.Enum):
     ISSUE = "ISSUE"
     SCRAP_RETURN = "SCRAP_RETURN"
     WRITE_OFF = "WRITE_OFF"
+    SCRAP_DISPOSAL = "SCRAP_DISPOSAL"
     COUNT_LOSS = "COUNT_LOSS"
 
 
@@ -226,7 +228,9 @@ class WarehouseUserScope(Base):
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     warehouse_id = Column(
         Integer,
         ForeignKey("warehouse_warehouses.id", ondelete="CASCADE"),
@@ -242,14 +246,20 @@ class WarehouseUserScope(Base):
 class WarehouseDocument(Base):
     __tablename__ = "warehouse_documents"
     __table_args__ = (
-        UniqueConstraint("created_by", "idempotency_key", name="uq_warehouse_document_idempotency"),
-        UniqueConstraint("reversed_document_id", name="uq_warehouse_document_reversed_document"),
+        UniqueConstraint(
+            "created_by", "idempotency_key", name="uq_warehouse_document_idempotency"
+        ),
+        UniqueConstraint(
+            "reversed_document_id", name="uq_warehouse_document_reversed_document"
+        ),
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     document_no = Column(String(40), unique=True, nullable=False, index=True)
     document_type = Column(String(32), nullable=False, index=True)
-    status = Column(String(16), nullable=False, default=DocumentStatus.POSTED.value, index=True)
+    status = Column(
+        String(16), nullable=False, default=DocumentStatus.POSTED.value, index=True
+    )
     occurred_on = Column(Date, nullable=False, index=True)
     business_type = Column(String(32), nullable=True, index=True)
     reference_no = Column(String(100), nullable=True)
@@ -263,6 +273,10 @@ class WarehouseDocument(Base):
     posted_at = Column(DateTime(timezone=True), nullable=True)
     voided_at = Column(DateTime(timezone=True), nullable=True)
     void_reason = Column(Text, nullable=True)
+    delivery_note_file = Column(String(500), nullable=True)
+    delivery_note_file_name = Column(String(255), nullable=True)
+    scrap_basis_file = Column(String(500), nullable=True)
+    scrap_basis_file_name = Column(String(255), nullable=True)
     reversed_document_id = Column(
         Integer, ForeignKey("warehouse_documents.id"), nullable=True, index=True
     )
@@ -288,7 +302,9 @@ class WarehouseDocument(Base):
 class WarehouseDocumentLine(Base):
     __tablename__ = "warehouse_document_lines"
     __table_args__ = (
-        UniqueConstraint("document_id", "line_no", name="uq_warehouse_document_line_no"),
+        UniqueConstraint(
+            "document_id", "line_no", name="uq_warehouse_document_line_no"
+        ),
         CheckConstraint("quantity > 0", name="ck_warehouse_document_line_qty_positive"),
     )
 
@@ -304,12 +320,24 @@ class WarehouseDocumentLine(Base):
         Integer, ForeignKey("warehouse_materials.id"), nullable=False, index=True
     )
     quantity = Column(Numeric(18, 4), nullable=False)
-    source_warehouse_id = Column(Integer, ForeignKey("warehouse_warehouses.id"), nullable=True)
-    source_location_id = Column(Integer, ForeignKey("warehouse_locations.id"), nullable=True)
-    source_project_id = Column(Integer, ForeignKey("warehouse_projects.id"), nullable=True)
-    target_warehouse_id = Column(Integer, ForeignKey("warehouse_warehouses.id"), nullable=True)
-    target_location_id = Column(Integer, ForeignKey("warehouse_locations.id"), nullable=True)
-    target_project_id = Column(Integer, ForeignKey("warehouse_projects.id"), nullable=True)
+    source_warehouse_id = Column(
+        Integer, ForeignKey("warehouse_warehouses.id"), nullable=True
+    )
+    source_location_id = Column(
+        Integer, ForeignKey("warehouse_locations.id"), nullable=True
+    )
+    source_project_id = Column(
+        Integer, ForeignKey("warehouse_projects.id"), nullable=True
+    )
+    target_warehouse_id = Column(
+        Integer, ForeignKey("warehouse_warehouses.id"), nullable=True
+    )
+    target_location_id = Column(
+        Integer, ForeignKey("warehouse_locations.id"), nullable=True
+    )
+    target_project_id = Column(
+        Integer, ForeignKey("warehouse_projects.id"), nullable=True
+    )
     original_document_line_id = Column(
         Integer, ForeignKey("warehouse_document_lines.id"), nullable=True
     )
@@ -318,10 +346,14 @@ class WarehouseDocumentLine(Base):
     document = relationship("WarehouseDocument", back_populates="lines")
     material = relationship("WarehouseMaterial")
     source_warehouse = relationship("Warehouse", foreign_keys=[source_warehouse_id])
-    source_location = relationship("WarehouseLocation", foreign_keys=[source_location_id])
+    source_location = relationship(
+        "WarehouseLocation", foreign_keys=[source_location_id]
+    )
     source_project = relationship("WarehouseProject", foreign_keys=[source_project_id])
     target_warehouse = relationship("Warehouse", foreign_keys=[target_warehouse_id])
-    target_location = relationship("WarehouseLocation", foreign_keys=[target_location_id])
+    target_location = relationship(
+        "WarehouseLocation", foreign_keys=[target_location_id]
+    )
     target_project = relationship("WarehouseProject", foreign_keys=[target_project_id])
 
 
@@ -403,7 +435,9 @@ class WarehouseStockBalance(Base):
     )
     quantity = Column(Numeric(18, 4), nullable=False, default=0)
     version = Column(Integer, nullable=False, default=1)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
     warehouse = relationship("Warehouse")
     location = relationship("WarehouseLocation")
@@ -414,7 +448,9 @@ class WarehouseStockBalance(Base):
 class WarehouseCount(Base):
     __tablename__ = "warehouse_counts"
     __table_args__ = (
-        UniqueConstraint("created_by", "idempotency_key", name="uq_warehouse_count_idempotency"),
+        UniqueConstraint(
+            "created_by", "idempotency_key", name="uq_warehouse_count_idempotency"
+        ),
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -425,7 +461,9 @@ class WarehouseCount(Base):
     location_id = Column(Integer, ForeignKey("warehouse_locations.id"), nullable=True)
     project_id = Column(Integer, ForeignKey("warehouse_projects.id"), nullable=True)
     counted_on = Column(Date, nullable=False, index=True)
-    status = Column(String(16), nullable=False, default=CountStatus.DRAFT.value, index=True)
+    status = Column(
+        String(16), nullable=False, default=CountStatus.DRAFT.value, index=True
+    )
     description = Column(Text, nullable=True)
     idempotency_key = Column(String(80), nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -466,13 +504,17 @@ class WarehouseCountLine(Base):
         nullable=False,
         index=True,
     )
-    warehouse_id = Column(Integer, ForeignKey("warehouse_warehouses.id"), nullable=False)
+    warehouse_id = Column(
+        Integer, ForeignKey("warehouse_warehouses.id"), nullable=False
+    )
     location_id = Column(Integer, ForeignKey("warehouse_locations.id"), nullable=False)
     project_id = Column(Integer, ForeignKey("warehouse_projects.id"), nullable=False)
     material_id = Column(Integer, ForeignKey("warehouse_materials.id"), nullable=False)
     book_quantity = Column(Numeric(18, 4), nullable=False)
     counted_quantity = Column(Numeric(18, 4), nullable=True)
-    adjustment_document_id = Column(Integer, ForeignKey("warehouse_documents.id"), nullable=True)
+    adjustment_document_id = Column(
+        Integer, ForeignKey("warehouse_documents.id"), nullable=True
+    )
 
     count = relationship("WarehouseCount", back_populates="lines")
     warehouse = relationship("Warehouse")

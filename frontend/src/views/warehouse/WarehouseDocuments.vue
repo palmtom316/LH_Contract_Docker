@@ -11,7 +11,28 @@
           <el-table v-loading="loading" :data="items" border>
             <el-table-column prop="document_no" label="单号" min-width="160" />
             <el-table-column prop="occurred_on" label="日期" width="120" />
-            <el-table-column prop="business_type" label="业务类型" width="130" />
+            <el-table-column label="业务类型" width="130">
+              <template #default="{ row }">{{ businessLabel(row.business_type) }}</template>
+            </el-table-column>
+            <el-table-column label="物资 / 单位" min-width="180">
+              <template #default="{ row }">{{ materialSummary(row) }}</template>
+            </el-table-column>
+            <el-table-column v-if="documentType === 'INBOUND'" label="送货单" min-width="140">
+              <template #default="{ row }">
+                <el-button v-if="row.delivery_note_file" link type="primary" @click="openFile(row.delivery_note_file)">
+                  {{ row.delivery_note_file_name || '查看送货单' }}
+                </el-button>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
+            <el-table-column v-if="documentType === 'OUTBOUND'" label="废旧处理依据" min-width="150">
+              <template #default="{ row }">
+                <el-button v-if="row.scrap_basis_file" link type="primary" @click="openFile(row.scrap_basis_file)">
+                  {{ row.scrap_basis_file_name || '查看依据' }}
+                </el-button>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
             <el-table-column prop="handler" label="经办人" width="120" />
             <el-table-column prop="status" label="状态" width="100" />
             <el-table-column prop="reference_no" label="依据" min-width="140" />
@@ -45,26 +66,30 @@
         </el-form-item>
         <el-form-item label="物资">
           <el-select v-model="form.material_id" filterable remote :remote-method="searchMats" :loading="searching">
-            <el-option v-for="item in materials" :key="item.id" :label="`${item.code} ${item.name}`" :value="item.id" />
+            <el-option v-for="item in materials" :key="item.id" :label="`${item.code} ${item.name} / ${item.unit}`" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="数量"><el-input-number v-model="form.quantity" :min="0.0001" :precision="4" /></el-form-item>
+        <el-form-item label="单位">{{ selectedMaterialUnit || '-' }}</el-form-item>
+        <el-form-item label="数量">
+          <FormulaInput v-model="form.quantity" :precision="3" placeholder="支持 +-*/，保留3位小数" />
+        </el-form-item>
         <el-form-item label="日期"><el-date-picker v-model="form.occurred_on" value-format="YYYY-MM-DD" /></el-form-item>
         <el-form-item label="经办人"><el-input v-model="form.handler" /></el-form-item>
         <el-form-item v-if="documentType === 'INBOUND'" label="业务类型">
           <el-select v-model="form.business_type">
-            <el-option label="采购入库" value="PURCHASE" />
-            <el-option label="领用退回" value="RETURN" />
-            <el-option label="拆除回收" value="DEMOLITION" />
-            <el-option label="期初" value="OPENING" />
+            <el-option v-for="item in inboundOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
+        </el-form-item>
+        <el-form-item v-if="documentType === 'INBOUND'" label="送货单">
+          <WarehouseAttachmentField v-model="form.delivery_note_file" v-model:file-name="form.delivery_note_file_name" button-text="上传送货单或拍照" />
         </el-form-item>
         <el-form-item v-if="documentType === 'OUTBOUND'" label="业务类型">
           <el-select v-model="form.business_type">
-            <el-option label="领用出库" value="ISSUE" />
-            <el-option label="退废旧" value="SCRAP_RETURN" />
-            <el-option label="报废" value="WRITE_OFF" />
+            <el-option v-for="item in outboundOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
+        </el-form-item>
+        <el-form-item v-if="documentType === 'OUTBOUND' && form.business_type === 'SCRAP_DISPOSAL'" label="废旧处理依据" required>
+          <WarehouseAttachmentField v-model="form.scrap_basis_file" v-model:file-name="form.scrap_basis_file_name" button-text="上传审批文件或拍照" />
         </el-form-item>
         <el-form-item v-if="documentType === 'TRANSFER'" label="调出库房">
           <el-select v-model="form.source_warehouse_id"><el-option v-for="item in warehouses" :key="item.id" :label="item.name" :value="item.id" /></el-select>
@@ -100,6 +125,11 @@ import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listDocuments, listLocations, listMaterials, listProjects, listWarehouses, postInbound, postOutbound, postTransfer, voidDocument } from '@/api/warehouse'
 import { useUserStore } from '@/stores/user'
+import { BUSINESS_TYPE_LABELS, INBOUND_BUSINESS_OPTIONS, OUTBOUND_BUSINESS_OPTIONS } from '@/constants/warehouse'
+import { evaluateQuantityExpression } from '@/utils/quantityExpression'
+import { openProtectedFile } from '@/utils/protectedFiles'
+import FormulaInput from '@/components/FormulaInput.vue'
+import WarehouseAttachmentField from '@/components/WarehouseAttachmentField.vue'
 import WarehouseNav from './WarehouseNav.vue'
 
 const route = useRoute()
@@ -123,6 +153,8 @@ const materials = ref([])
 const locations = ref([])
 const sourceLocations = ref([])
 const targetLocations = ref([])
+const inboundOptions = INBOUND_BUSINESS_OPTIONS
+const outboundOptions = OUTBOUND_BUSINESS_OPTIONS
 const form = reactive({
   warehouse_id: null,
   location_id: null,
@@ -133,6 +165,10 @@ const form = reactive({
   handler: userStore.user?.full_name || userStore.user?.username || '',
   business_type: 'PURCHASE',
   reference_no: '',
+  delivery_note_file: '',
+  delivery_note_file_name: '',
+  scrap_basis_file: '',
+  scrap_basis_file_name: '',
   source_warehouse_id: null,
   source_location_id: null,
   source_project_id: null,
@@ -140,6 +176,31 @@ const form = reactive({
   target_location_id: null,
   target_project_id: null
 })
+const selectedMaterialUnit = computed(() => materials.value.find(item => item.id === form.material_id)?.unit || '')
+
+function businessLabel(value) {
+  return BUSINESS_TYPE_LABELS[value] || value || '-'
+}
+
+function materialSummary(row) {
+  const line = row.lines?.[0]
+  if (!line) return '-'
+  const unit = line.material_unit ? ` / ${line.material_unit}` : ''
+  return `${line.material_code || ''} ${line.material_name || ''}${unit}`.trim()
+}
+
+function resolveQuantity() {
+  const value = evaluateQuantityExpression(form.quantity, 3)
+  const quantity = value ?? Number(form.quantity)
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    throw new Error('请输入有效数量，支持 +-*/，结果须大于 0')
+  }
+  return String(quantity)
+}
+
+async function openFile(path) {
+  if (path) await openProtectedFile(path)
+}
 
 async function load() {
   loading.value = true
@@ -163,12 +224,27 @@ async function searchMats(q) {
 
 function openCreate() {
   form.business_type = documentType.value === 'OUTBOUND' ? 'ISSUE' : 'PURCHASE'
+  form.delivery_note_file = ''
+  form.delivery_note_file_name = ''
+  form.scrap_basis_file = ''
+  form.scrap_basis_file_name = ''
   dialogVisible.value = true
 }
 
 async function submit() {
   saving.value = true
   try {
+    let quantity
+    try {
+      quantity = resolveQuantity()
+    } catch (error) {
+      ElMessage.error(error.message || '数量无效')
+      return
+    }
+    if (documentType.value === 'OUTBOUND' && form.business_type === 'SCRAP_DISPOSAL' && !form.scrap_basis_file) {
+      ElMessage.error('选择废旧处理必须上传废旧处理依据文件')
+      return
+    }
     if (documentType.value === 'INBOUND') {
       await postInbound({
         warehouse_id: form.warehouse_id,
@@ -178,7 +254,9 @@ async function submit() {
         handler: form.handler,
         business_type: form.business_type,
         reference_no: form.reference_no,
-        lines: [{ material_id: form.material_id, quantity: String(form.quantity) }]
+        delivery_note_file: form.delivery_note_file || null,
+        delivery_note_file_name: form.delivery_note_file_name || null,
+        lines: [{ material_id: form.material_id, quantity }]
       })
     } else if (documentType.value === 'OUTBOUND') {
       await postOutbound({
@@ -189,7 +267,9 @@ async function submit() {
         handler: form.handler,
         business_type: form.business_type,
         reference_no: form.reference_no,
-        lines: [{ material_id: form.material_id, quantity: String(form.quantity) }]
+        scrap_basis_file: form.scrap_basis_file || null,
+        scrap_basis_file_name: form.scrap_basis_file_name || null,
+        lines: [{ material_id: form.material_id, quantity }]
       })
     } else {
       await postTransfer({
@@ -198,7 +278,7 @@ async function submit() {
         reference_no: form.reference_no,
         lines: [{
           material_id: form.material_id,
-          quantity: String(form.quantity),
+          quantity,
           source_warehouse_id: form.source_warehouse_id,
           source_location_id: form.source_location_id,
           source_project_id: form.source_project_id,

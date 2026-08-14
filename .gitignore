@@ -113,3 +113,6 @@ Thumbs.db
 *.crt
 secrets/
 token.json
+
+# pi agent local state
+.pi/

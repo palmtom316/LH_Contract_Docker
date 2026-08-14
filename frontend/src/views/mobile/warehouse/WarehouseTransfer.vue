@@ -3,8 +3,9 @@
     <van-form @submit="submit">
       <van-cell-group inset>
         <van-field v-model="materialKeyword" label="物资" placeholder="搜索物资" @update:model-value="searchMaterials" />
-        <van-cell v-for="item in materials" :key="item.id" :title="`${item.code} ${item.name}`" clickable @click="selectMaterial(item)" />
-        <van-field v-model="form.quantity" type="number" label="数量" />
+        <van-cell v-for="item in materials" :key="item.id" :title="`${item.code} ${item.name}`" :label="item.unit || ''" clickable @click="selectMaterial(item)" />
+        <van-field :model-value="selectedUnit" label="单位" readonly />
+        <van-field v-model="form.quantity" label="数量" placeholder="支持 +-*/" />
         <van-field :model-value="sourceWarehouseLabel" label="调出库房" readonly is-link @click="picking = 'source_warehouse'" />
         <van-field :model-value="sourceLocationLabel" label="调出货位" readonly is-link @click="picking = 'source_location'" />
         <van-field :model-value="sourceProjectLabel" label="调出项目" readonly is-link @click="picking = 'source_project'" />
@@ -30,6 +31,7 @@ import { useRouter } from 'vue-router'
 import { showFailToast, showSuccessToast } from 'vant'
 import { ActionSheet as VanActionSheet, Button as VanButton, Cell as VanCell, CellGroup as VanCellGroup, Field as VanField, Form as VanForm } from 'vant'
 import { listLocations, postTransfer } from '@/api/warehouse'
+import { evaluateQuantityExpression } from '@/utils/quantityExpression'
 import { useWarehouseForm } from '@/composables/useWarehouseForm'
 
 const router = useRouter()
@@ -43,6 +45,7 @@ const sourceWarehouseLabel = computed(() => labelWarehouse(form.value.source_war
 const targetWarehouseLabel = computed(() => labelWarehouse(form.value.target_warehouse_id))
 const sourceLocationLabel = computed(() => sourceLocations.value.find(item => item.id === form.value.source_location_id)?.name || '')
 const targetLocationLabel = computed(() => targetLocations.value.find(item => item.id === form.value.target_location_id)?.name || '')
+const selectedUnit = computed(() => materials.value.find(item => item.id === form.value.material_id)?.unit || '')
 const sourceProjectLabel = computed(() => projects.value.find(item => item.id === form.value.source_project_id)?.name || '')
 const targetProjectLabel = computed(() => projects.value.find(item => item.id === form.value.target_project_id)?.name || '')
 const sheetVisible = computed({
@@ -91,6 +94,11 @@ watch(() => form.value.target_warehouse_id, async (id) => {
 
 async function submit() {
   if (submitting.value) return
+  const quantity = evaluateQuantityExpression(form.value.quantity, 3) ?? Number(form.value.quantity)
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    showFailToast('请输入有效数量，支持 +-*/')
+    return
+  }
   submitting.value = true
   try {
     await postTransfer({
@@ -100,7 +108,7 @@ async function submit() {
       description: form.value.description,
       lines: [{
         material_id: form.value.material_id,
-        quantity: form.value.quantity,
+        quantity: String(quantity),
         source_warehouse_id: form.value.source_warehouse_id,
         source_location_id: form.value.source_location_id,
         source_project_id: form.value.source_project_id,

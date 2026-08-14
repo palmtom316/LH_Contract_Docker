@@ -13,9 +13,8 @@
         v-for="line in current.lines"
         :key="line.id"
         v-model="line.counted_quantity"
-        type="number"
-        :label="line.material_code"
-        :placeholder="`账面 ${line.book_quantity}`"
+        :label="`${line.material_code} ${line.material_unit || ''}`"
+        :placeholder="`账面 ${line.book_quantity}，支持 +-*/`"
       />
       <div class="wh-form__submit">
         <van-button block type="success" @click="save">保存实盘</van-button>
@@ -30,6 +29,7 @@ import { computed, ref } from 'vue'
 import { showSuccessToast } from 'vant'
 import { ActionSheet as VanActionSheet, Button as VanButton, Cell as VanCell, CellGroup as VanCellGroup, Field as VanField } from 'vant'
 import { createCount, getMyWarehouseScopes, updateCountLines } from '@/api/warehouse'
+import { evaluateQuantityExpression } from '@/utils/quantityExpression'
 
 const warehouses = ref([])
 const warehouseId = ref(null)
@@ -59,10 +59,14 @@ async function create() {
 
 async function save() {
   await updateCountLines(current.value.id, {
-    lines: current.value.lines.map(line => ({
-      id: line.id,
-      counted_quantity: String(line.counted_quantity ?? line.book_quantity)
-    }))
+    lines: current.value.lines.map(line => {
+      const raw = line.counted_quantity ?? line.book_quantity
+      const quantity = evaluateQuantityExpression(raw, 3) ?? Number(raw)
+      return {
+        id: line.id,
+        counted_quantity: String(Number.isFinite(quantity) ? quantity : 0)
+      }
+    })
   })
   showSuccessToast('实盘已保存，等待库房管理员确认')
 }

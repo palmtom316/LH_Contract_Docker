@@ -2,22 +2,30 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.errors import AppException, DuplicateRecordError, ErrorCode, ResourceNotFoundError, ValidationError
-from app.models.user import User
+from app.core.errors import (
+    AppException,
+    DuplicateRecordError,
+    ErrorCode,
+    ResourceNotFoundError,
+    ValidationError,
+)
 from app.models.contract_upstream import ContractUpstream
+from app.models.user import User
 from app.models.warehouse import (
     DEFAULT_LOCATION_CODE,
     DEFAULT_LOCATION_NAME,
     Warehouse,
+    WarehouseCount,
+    WarehouseCountLine,
+    WarehouseDocumentLine,
     WarehouseLocation,
     WarehouseMaterial,
     WarehouseProject,
+    WarehouseStockBalance,
 )
 from app.services.audit_service import AuditAction, ResourceType, create_audit_log
 from app.services.warehouse.codes import generate_material_code, material_identity_key
@@ -28,8 +36,14 @@ class WarehouseMasterService:
         self.db = db
         self.user = user
 
-    async def list_warehouses(self, *, include_inactive: bool = False) -> list[Warehouse]:
-        query = select(Warehouse).options(selectinload(Warehouse.locations)).order_by(Warehouse.code)
+    async def list_warehouses(
+        self, *, include_inactive: bool = False
+    ) -> list[Warehouse]:
+        query = (
+            select(Warehouse)
+            .options(selectinload(Warehouse.locations))
+            .order_by(Warehouse.code)
+        )
         if not include_inactive:
             query = query.where(Warehouse.is_active.is_(True))
         result = await self.db.execute(query)
@@ -71,7 +85,9 @@ class WarehouseMasterService:
     async def update_warehouse(self, warehouse_id: int, data: dict) -> Warehouse:
         warehouse = await self.get_warehouse(warehouse_id)
         if "name" in data and data["name"] and data["name"] != warehouse.name:
-            await self._assert_unique_warehouse(warehouse.code, data["name"], exclude_id=warehouse.id)
+            await self._assert_unique_warehouse(
+                warehouse.code, data["name"], exclude_id=warehouse.id
+            )
             warehouse.name = data["name"].strip()
         if "address" in data:
             warehouse.address = data["address"]
@@ -79,7 +95,9 @@ class WarehouseMasterService:
             warehouse.manager_name = data["manager_name"]
         if "is_active" in data and data["is_active"] is not None:
             if data["is_active"]:
-                has_default = any(loc.is_default and loc.is_active for loc in warehouse.locations)
+                has_default = any(
+                    loc.is_default and loc.is_active for loc in warehouse.locations
+                )
                 if not has_default:
                     raise ValidationError(message="启用库房前必须至少有一个暂存区货位")
             warehouse.is_active = data["is_active"]
@@ -94,6 +112,21 @@ class WarehouseMasterService:
             new_values=data,
         )
         return await self.get_warehouse(warehouse.id)
+
+    async def delete_warehouse(self, warehouse_id: int) -> None:
+        warehouse = await self.get_warehouse(warehouse_id)
+        await self._assert_warehouse_unused(warehouse_id)
+        await self.db.delete(warehouse)
+        await self.db.flush()
+        await create_audit_log(
+            self.db,
+            self.user,
+            AuditAction.DELETE,
+            ResourceType.WAREHOUSE,
+            resource_id=warehouse.id,
+            resource_name=warehouse.name,
+            old_values={"code": warehouse.code, "name": warehouse.name},
+        )
 
     async def get_warehouse(self, warehouse_id: int) -> Warehouse:
         result = await self.db.execute(
@@ -115,7 +148,9 @@ class WarehouseMasterService:
             )
         )
         if result.scalar_one_or_none():
-            raise DuplicateRecordError(resource_type="货位", field_name="编码", field_value=data["code"])
+            raise DuplicateRecordError(
+                resource_type="货位", field_name="编码", field_value=data["code"]
+            )
         if data.get("is_default"):
             await self._clear_default_location(warehouse_id)
         location = WarehouseLocation(
@@ -150,7 +185,7 @@ class WarehouseMasterService:
         location = await self.db.get(WarehouseLocation, location_id)
         if location is None:
             raise ResourceNotFoundError(resource_type="货位", resource_id=location_id)
-        if "name" in data and data["name"]:
+        if data.get("name"):
             location.name = data["name"].strip()
         if "description" in data:
             location.description = data["description"]
@@ -164,7 +199,36 @@ class WarehouseMasterService:
         await self.db.flush()
         return location
 
-    async def list_projects(self, *, include_inactive: bool = False, q: Optional[str] = None):
+    async def delete_location(self, location_id: int) -> None:
+        location = await self.get_location(location_id)
+        warehouse = await self.get_warehouse(location.warehouse_id)
+        active_locations = [
+            item
+            for item in warehouse.locations
+            if item.is_active and item.id != location.id
+        ]
+        if warehouse.is_active and not active_locations:
+            raise ValidationError(message="启用中的库房至少保留一个货位")
+        if location.is_default and warehouse.is_active:
+            raise ValidationError(
+                message="暂存区是库房默认货位，请先指定其他默认货位后再删除"
+            )
+        await self._assert_location_unused(location.id)
+        await self.db.delete(location)
+        await self.db.flush()
+        await create_audit_log(
+            self.db,
+            self.user,
+            AuditAction.DELETE,
+            ResourceType.WAREHOUSE_LOCATION,
+            resource_id=location.id,
+            resource_name=location.name,
+            old_values={"warehouse_id": location.warehouse_id, "code": location.code},
+        )
+
+    async def list_projects(
+        self, *, include_inactive: bool = False, q: str | None = None
+    ):
         query = (
             select(WarehouseProject, ContractUpstream)
             .outerjoin(
@@ -186,13 +250,16 @@ class WarehouseMasterService:
                 )
             )
         result = await self.db.execute(query)
-        return [self._with_contract_fields(project, contract) for project, contract in result.all()]
+        return [
+            self._with_contract_fields(project, contract)
+            for project, contract in result.all()
+        ]
 
     async def lookup_upstream_contracts(
         self,
         *,
-        q: Optional[str] = None,
-        serial_number: Optional[int] = None,
+        q: str | None = None,
+        serial_number: int | None = None,
         limit: int = 20,
     ) -> list[ContractUpstream]:
         query = select(ContractUpstream)
@@ -212,18 +279,30 @@ class WarehouseMasterService:
         else:
             return []
         result = await self.db.execute(
-            query.order_by(ContractUpstream.serial_number.asc().nulls_last()).limit(limit)
+            query.order_by(ContractUpstream.serial_number.asc().nulls_last()).limit(
+                limit
+            )
         )
         return list(result.scalars().all())
 
     async def create_project(self, data: dict) -> WarehouseProject:
         contract = await self._resolve_upstream_contract(data)
         if contract is None:
-            raise ValidationError(message="请输入有效的上游合同序号，或从合同名称中选择一份合同")
-        code = str(contract.serial_number) if contract.serial_number is not None else str(contract.id)
-        result = await self.db.execute(select(WarehouseProject).where(WarehouseProject.code == code))
+            raise ValidationError(
+                message="请输入有效的上游合同序号，或从合同名称中选择一份合同"
+            )
+        code = (
+            str(contract.serial_number)
+            if contract.serial_number is not None
+            else str(contract.id)
+        )
+        result = await self.db.execute(
+            select(WarehouseProject).where(WarehouseProject.code == code)
+        )
         if result.scalar_one_or_none():
-            raise DuplicateRecordError(resource_type="项目", field_name="合同序号", field_value=code)
+            raise DuplicateRecordError(
+                resource_type="项目", field_name="合同序号", field_value=code
+            )
         project = WarehouseProject(
             code=code,
             name=contract.contract_name,
@@ -256,7 +335,7 @@ class WarehouseMasterService:
             if contract.serial_number is not None:
                 project.code = str(contract.serial_number)
             project.name = contract.contract_name
-        elif "name" in data and data["name"]:
+        elif data.get("name"):
             project.name = data["name"].strip()
         if "is_active" in data and data["is_active"] is not None:
             project.is_active = data["is_active"]
@@ -277,24 +356,28 @@ class WarehouseMasterService:
             raise ResourceNotFoundError(resource_type="项目", resource_id=project_id)
         return self._with_contract_fields(row[0], row[1])
 
-    async def _resolve_upstream_contract(self, data: dict) -> Optional[ContractUpstream]:
+    async def _resolve_upstream_contract(self, data: dict) -> ContractUpstream | None:
         contract_id = data.get("upstream_contract_id")
         if contract_id:
             contract = await self.db.get(ContractUpstream, contract_id)
             if contract is None:
-                raise ResourceNotFoundError(resource_type="上游合同", resource_id=contract_id)
+                raise ResourceNotFoundError(
+                    resource_type="上游合同", resource_id=contract_id
+                )
             return contract
         code = str(data.get("code") or "").strip()
         if code.isdigit():
             result = await self.db.execute(
-                select(ContractUpstream).where(ContractUpstream.serial_number == int(code))
+                select(ContractUpstream).where(
+                    ContractUpstream.serial_number == int(code)
+                )
             )
             return result.scalar_one_or_none()
         return None
 
     @staticmethod
     def _with_contract_fields(
-        project: WarehouseProject, contract: Optional[ContractUpstream]
+        project: WarehouseProject, contract: ContractUpstream | None
     ) -> WarehouseProject:
         project.company_category = contract.company_category if contract else None
         project.party_a_name = contract.party_a_name if contract else None
@@ -307,10 +390,10 @@ class WarehouseMasterService:
     async def list_materials(
         self,
         *,
-        q: Optional[str] = None,
-        category: Optional[str] = None,
-        supply_type: Optional[str] = None,
-        condition: Optional[str] = None,
+        q: str | None = None,
+        category: str | None = None,
+        supply_type: str | None = None,
+        condition: str | None = None,
         include_inactive: bool = False,
         limit: int = 50,
     ) -> list[WarehouseMaterial]:
@@ -361,9 +444,15 @@ class WarehouseMasterService:
         material = WarehouseMaterial(
             code=code,
             legacy_code=data.get("legacy_code"),
-            category=data["category"].value if hasattr(data["category"], "value") else data["category"],
-            supply_type=data["supply_type"].value if hasattr(data["supply_type"], "value") else data["supply_type"],
-            condition=data["condition"].value if hasattr(data["condition"], "value") else data["condition"],
+            category=data["category"].value
+            if hasattr(data["category"], "value")
+            else data["category"],
+            supply_type=data["supply_type"].value
+            if hasattr(data["supply_type"], "value")
+            else data["supply_type"],
+            condition=data["condition"].value
+            if hasattr(data["condition"], "value")
+            else data["condition"],
             name=data["name"].strip(),
             brand=(data.get("brand") or "").strip(),
             specification=(data.get("specification") or "").strip(),
@@ -392,10 +481,17 @@ class WarehouseMasterService:
         material = await self.get_material(material_id)
         name = data.get("name", material.name)
         brand = data["brand"] if "brand" in data else material.brand
-        specification = data["specification"] if "specification" in data else material.specification
+        specification = (
+            data["specification"] if "specification" in data else material.specification
+        )
         unit = data.get("unit", material.unit)
         identity = material_identity_key(
-            name, brand or "", specification or "", unit, material.condition, material.supply_type
+            name,
+            brand or "",
+            specification or "",
+            unit,
+            material.condition,
+            material.supply_type,
         )
         if identity != material.identity_key:
             existing = await self.db.execute(
@@ -411,13 +507,13 @@ class WarehouseMasterService:
                     status_code=409,
                 )
             material.identity_key = identity
-        if "name" in data and data["name"]:
+        if data.get("name"):
             material.name = data["name"].strip()
         if "brand" in data:
             material.brand = (data["brand"] or "").strip()
         if "specification" in data:
             material.specification = (data["specification"] or "").strip()
-        if "unit" in data and data["unit"]:
+        if data.get("unit"):
             material.unit = data["unit"].strip()
         if "minimum_stock" in data and data["minimum_stock"] is not None:
             material.minimum_stock = data["minimum_stock"]
@@ -447,7 +543,7 @@ class WarehouseMasterService:
         return material
 
     async def _assert_unique_warehouse(
-        self, code: str, name: str, exclude_id: Optional[int] = None
+        self, code: str, name: str, exclude_id: int | None = None
     ) -> None:
         code_query = select(Warehouse).where(Warehouse.code == code.strip())
         name_query = select(Warehouse).where(Warehouse.name == name.strip())
@@ -455,13 +551,60 @@ class WarehouseMasterService:
             code_query = code_query.where(Warehouse.id != exclude_id)
             name_query = name_query.where(Warehouse.id != exclude_id)
         if (await self.db.execute(code_query)).scalar_one_or_none():
-            raise DuplicateRecordError(resource_type="库房", field_name="编码", field_value=code)
+            raise DuplicateRecordError(
+                resource_type="库房", field_name="编码", field_value=code
+            )
         if (await self.db.execute(name_query)).scalar_one_or_none():
-            raise DuplicateRecordError(resource_type="库房", field_name="名称", field_value=name)
+            raise DuplicateRecordError(
+                resource_type="库房", field_name="名称", field_value=name
+            )
+
+    async def _assert_warehouse_unused(self, warehouse_id: int) -> None:
+        await self._assert_no_related_rows(
+            warehouse_id,
+            column_sets=(
+                (
+                    WarehouseDocumentLine.source_warehouse_id,
+                    WarehouseDocumentLine.target_warehouse_id,
+                ),
+                (WarehouseStockBalance.warehouse_id,),
+                (WarehouseCount.warehouse_id,),
+                (WarehouseCountLine.warehouse_id,),
+            ),
+            message="库房已发生库存业务，不能删除。可先停用，或冲销相关单据后再删",
+        )
+
+    async def _assert_location_unused(self, location_id: int) -> None:
+        await self._assert_no_related_rows(
+            location_id,
+            column_sets=(
+                (
+                    WarehouseDocumentLine.source_location_id,
+                    WarehouseDocumentLine.target_location_id,
+                ),
+                (WarehouseStockBalance.location_id,),
+                (WarehouseCount.location_id,),
+                (WarehouseCountLine.location_id,),
+            ),
+            message="货位已发生库存业务，不能删除。可先停用，或冲销相关单据后再删",
+        )
+
+    async def _assert_no_related_rows(
+        self, value: int, *, column_sets, message: str
+    ) -> None:
+        for columns in column_sets:
+            condition = columns[0] == value
+            for column in columns[1:]:
+                condition = or_(condition, column == value)
+            result = await self.db.execute(select(columns[0]).where(condition).limit(1))
+            if result.scalar_one_or_none() is not None:
+                raise ValidationError(message=message)
 
     async def _clear_default_location(self, warehouse_id: int) -> None:
         result = await self.db.execute(
-            select(WarehouseLocation).where(WarehouseLocation.warehouse_id == warehouse_id)
+            select(WarehouseLocation).where(
+                WarehouseLocation.warehouse_id == warehouse_id
+            )
         )
         for location in result.scalars().all():
             location.is_default = False

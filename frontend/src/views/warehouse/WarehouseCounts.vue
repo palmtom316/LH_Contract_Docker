@@ -35,10 +35,11 @@
       <el-table :data="current?.lines || []" border>
         <el-table-column prop="material_code" label="编码" />
         <el-table-column prop="material_name" label="物资" />
+        <el-table-column prop="material_unit" label="单位" width="80" />
         <el-table-column prop="book_quantity" label="账面" />
         <el-table-column label="实盘">
           <template #default="{ row }">
-            <el-input-number v-model="row.counted_quantity" :min="0" :precision="4" />
+            <FormulaInput v-model="row.counted_quantity" :precision="3" placeholder="支持 +-*/" />
           </template>
         </el-table-column>
       </el-table>
@@ -72,6 +73,8 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { confirmCount, createCount, getCount, listCounts, listWarehouses, updateCountLines } from '@/api/warehouse'
 import { useUserStore } from '@/stores/user'
+import { evaluateQuantityExpression } from '@/utils/quantityExpression'
+import FormulaInput from '@/components/FormulaInput.vue'
 import WarehouseNav from './WarehouseNav.vue'
 
 const userStore = useUserStore()
@@ -94,7 +97,11 @@ async function openCount(row) {
 
 async function saveLines() {
   await updateCountLines(current.value.id, {
-    lines: current.value.lines.map(line => ({ id: line.id, counted_quantity: String(line.counted_quantity ?? line.book_quantity) }))
+    lines: current.value.lines.map(line => {
+      const raw = line.counted_quantity ?? line.book_quantity
+      const quantity = evaluateQuantityExpression(raw, 3) ?? Number(raw)
+      return { id: line.id, counted_quantity: String(Number.isFinite(quantity) ? quantity : 0) }
+    })
   })
   ElMessage.success('实盘已保存')
   await load()

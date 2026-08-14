@@ -14,14 +14,15 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-
-function evaluateExpression(expression) {
-  return Function(`"use strict"; return (${expression})`)()
-}
+import { evaluateQuantityExpression } from '@/utils/quantityExpression'
 
 const props = defineProps({
   modelValue: [Number, String],
   placeholder: String,
+  precision: {
+    type: Number,
+    default: 2
+  },
   showIcon: {
       type: Boolean, 
       default: false
@@ -55,14 +56,10 @@ function handleBlur() {
                 .replace(/÷/g, '/')
                 .replace(/x/gi, '*')
             
-            // Use mathjs for safe evaluation
-            const result = evaluateExpression(normalized)
-            
-            if (typeof result === 'number' && !isNaN(result) && isFinite(result)) {
-                // Round to 2 decimals usually involved in money
-                const rounded = Math.round(result * 100) / 100
-                displayValue.value = rounded
-                emit('update:modelValue', rounded)
+            const result = evaluateQuantityExpression(normalized, props.precision)
+            if (result !== null) {
+                displayValue.value = result
+                emit('update:modelValue', result)
                 return
             }
         } catch (e) {

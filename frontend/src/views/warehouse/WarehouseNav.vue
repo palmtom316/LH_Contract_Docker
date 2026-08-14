@@ -27,6 +27,7 @@ const items = computed(() => {
     { to: '/warehouse/materials', label: '物资档案' },
     { to: '/warehouse/warehouses', label: '库房与货位' },
     { to: '/warehouse/projects', label: '项目档案' },
+    { to: '/warehouse/opening', label: '期初材料录入' },
     { to: '/warehouse/inbounds', label: '入库单' },
     { to: '/warehouse/outbounds', label: '出库单' },
     { to: '/warehouse/transfers', label: '调拨单' },

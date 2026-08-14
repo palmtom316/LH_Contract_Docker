@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-from typing import Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,6 +35,7 @@ def serialize_document(document: WarehouseDocument) -> DocumentResponse:
                 material_id=line.material_id,
                 material_code=line.material.code if line.material else None,
                 material_name=line.material.name if line.material else None,
+                material_unit=line.material.unit if line.material else None,
                 quantity=line.quantity,
                 source_warehouse_id=line.source_warehouse_id,
                 source_location_id=line.source_location_id,
@@ -43,12 +43,24 @@ def serialize_document(document: WarehouseDocument) -> DocumentResponse:
                 target_warehouse_id=line.target_warehouse_id,
                 target_location_id=line.target_location_id,
                 target_project_id=line.target_project_id,
-                source_warehouse_name=line.source_warehouse.name if line.source_warehouse else None,
-                source_location_name=line.source_location.name if line.source_location else None,
-                source_project_name=line.source_project.name if line.source_project else None,
-                target_warehouse_name=line.target_warehouse.name if line.target_warehouse else None,
-                target_location_name=line.target_location.name if line.target_location else None,
-                target_project_name=line.target_project.name if line.target_project else None,
+                source_warehouse_name=line.source_warehouse.name
+                if line.source_warehouse
+                else None,
+                source_location_name=line.source_location.name
+                if line.source_location
+                else None,
+                source_project_name=line.source_project.name
+                if line.source_project
+                else None,
+                target_warehouse_name=line.target_warehouse.name
+                if line.target_warehouse
+                else None,
+                target_location_name=line.target_location.name
+                if line.target_location
+                else None,
+                target_project_name=line.target_project.name
+                if line.target_project
+                else None,
                 description=line.description,
             )
         )
@@ -69,6 +81,10 @@ def serialize_document(document: WarehouseDocument) -> DocumentResponse:
         posted_at=document.posted_at,
         voided_at=document.voided_at,
         void_reason=document.void_reason,
+        delivery_note_file=document.delivery_note_file,
+        delivery_note_file_name=document.delivery_note_file_name,
+        scrap_basis_file=document.scrap_basis_file,
+        scrap_basis_file_name=document.scrap_basis_file_name,
         reversed_document_id=document.reversed_document_id,
         lines=lines,
     )
@@ -81,7 +97,7 @@ def serialize_balance(row: WarehouseStockBalance) -> StockBalanceResponse:
         project_id=row.project_id,
         material_id=row.material_id,
         quantity=row.quantity,
-        minimum_stock=row.material.minimum_stock if row.material else Decimal("0"),
+        minimum_stock=row.material.minimum_stock if row.material else Decimal(0),
         version=row.version,
         warehouse_code=row.warehouse.code if row.warehouse else None,
         warehouse_name=row.warehouse.name if row.warehouse else None,
@@ -107,14 +123,14 @@ class WarehouseQueryService:
     async def list_balances(
         self,
         *,
-        warehouse_id: Optional[int] = None,
-        location_id: Optional[int] = None,
-        project_id: Optional[int] = None,
-        material_id: Optional[int] = None,
-        supply_type: Optional[str] = None,
-        condition: Optional[str] = None,
-        category: Optional[str] = None,
-        q: Optional[str] = None,
+        warehouse_id: int | None = None,
+        location_id: int | None = None,
+        project_id: int | None = None,
+        material_id: int | None = None,
+        supply_type: str | None = None,
+        condition: str | None = None,
+        category: str | None = None,
+        q: str | None = None,
         page: int = 1,
         page_size: int = 50,
         include_zero: bool = False,
@@ -129,29 +145,44 @@ class WarehouseQueryService:
                 selectinload(WarehouseStockBalance.project),
                 selectinload(WarehouseStockBalance.material),
             )
-            .join(WarehouseMaterial, WarehouseMaterial.id == WarehouseStockBalance.material_id)
+            .join(
+                WarehouseMaterial,
+                WarehouseMaterial.id == WarehouseStockBalance.material_id,
+            )
         )
         count_query = select(func.count(WarehouseStockBalance.id)).join(
             WarehouseMaterial, WarehouseMaterial.id == WarehouseStockBalance.material_id
         )
         if allowed is not None:
             query = query.where(WarehouseStockBalance.warehouse_id.in_(allowed or [-1]))
-            count_query = count_query.where(WarehouseStockBalance.warehouse_id.in_(allowed or [-1]))
+            count_query = count_query.where(
+                WarehouseStockBalance.warehouse_id.in_(allowed or [-1])
+            )
         if warehouse_id:
             query = query.where(WarehouseStockBalance.warehouse_id == warehouse_id)
-            count_query = count_query.where(WarehouseStockBalance.warehouse_id == warehouse_id)
+            count_query = count_query.where(
+                WarehouseStockBalance.warehouse_id == warehouse_id
+            )
         if location_id:
             query = query.where(WarehouseStockBalance.location_id == location_id)
-            count_query = count_query.where(WarehouseStockBalance.location_id == location_id)
+            count_query = count_query.where(
+                WarehouseStockBalance.location_id == location_id
+            )
         if project_id:
             query = query.where(WarehouseStockBalance.project_id == project_id)
-            count_query = count_query.where(WarehouseStockBalance.project_id == project_id)
+            count_query = count_query.where(
+                WarehouseStockBalance.project_id == project_id
+            )
         if material_id:
             query = query.where(WarehouseStockBalance.material_id == material_id)
-            count_query = count_query.where(WarehouseStockBalance.material_id == material_id)
+            count_query = count_query.where(
+                WarehouseStockBalance.material_id == material_id
+            )
         if supply_type:
             query = query.where(WarehouseMaterial.supply_type == supply_type)
-            count_query = count_query.where(WarehouseMaterial.supply_type == supply_type)
+            count_query = count_query.where(
+                WarehouseMaterial.supply_type == supply_type
+            )
         if condition:
             query = query.where(WarehouseMaterial.condition == condition)
             count_query = count_query.where(WarehouseMaterial.condition == condition)
@@ -180,12 +211,13 @@ class WarehouseQueryService:
     async def list_documents(
         self,
         *,
-        document_type: Optional[str] = None,
-        status: Optional[str] = None,
-        warehouse_id: Optional[int] = None,
-        material_id: Optional[int] = None,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
+        document_type: str | None = None,
+        status: str | None = None,
+        business_type: str | None = None,
+        warehouse_id: int | None = None,
+        material_id: int | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> tuple[list[WarehouseDocument], int]:
@@ -193,15 +225,32 @@ class WarehouseQueryService:
         query = (
             select(WarehouseDocument)
             .options(
-                selectinload(WarehouseDocument.lines).selectinload(WarehouseDocumentLine.material),
-                selectinload(WarehouseDocument.lines).selectinload(WarehouseDocumentLine.source_warehouse),
-                selectinload(WarehouseDocument.lines).selectinload(WarehouseDocumentLine.source_location),
-                selectinload(WarehouseDocument.lines).selectinload(WarehouseDocumentLine.source_project),
-                selectinload(WarehouseDocument.lines).selectinload(WarehouseDocumentLine.target_warehouse),
-                selectinload(WarehouseDocument.lines).selectinload(WarehouseDocumentLine.target_location),
-                selectinload(WarehouseDocument.lines).selectinload(WarehouseDocumentLine.target_project),
+                selectinload(WarehouseDocument.lines).selectinload(
+                    WarehouseDocumentLine.material
+                ),
+                selectinload(WarehouseDocument.lines).selectinload(
+                    WarehouseDocumentLine.source_warehouse
+                ),
+                selectinload(WarehouseDocument.lines).selectinload(
+                    WarehouseDocumentLine.source_location
+                ),
+                selectinload(WarehouseDocument.lines).selectinload(
+                    WarehouseDocumentLine.source_project
+                ),
+                selectinload(WarehouseDocument.lines).selectinload(
+                    WarehouseDocumentLine.target_warehouse
+                ),
+                selectinload(WarehouseDocument.lines).selectinload(
+                    WarehouseDocumentLine.target_location
+                ),
+                selectinload(WarehouseDocument.lines).selectinload(
+                    WarehouseDocumentLine.target_project
+                ),
             )
-            .join(WarehouseDocumentLine, WarehouseDocumentLine.document_id == WarehouseDocument.id)
+            .join(
+                WarehouseDocumentLine,
+                WarehouseDocumentLine.document_id == WarehouseDocument.id,
+            )
         )
         conditions = []
         if allowed is not None:
@@ -213,6 +262,8 @@ class WarehouseQueryService:
             conditions.append(WarehouseDocument.document_type == document_type)
         if status:
             conditions.append(WarehouseDocument.status == status)
+        if business_type:
+            conditions.append(WarehouseDocument.business_type == business_type)
         if warehouse_id:
             conditions.append(
                 (WarehouseDocumentLine.source_warehouse_id == warehouse_id)
@@ -231,7 +282,9 @@ class WarehouseQueryService:
         count_query = select(func.count()).select_from(query.order_by(None).subquery())
         total = (await self.db.execute(count_query)).scalar_one()
         result = await self.db.execute(
-            query.order_by(WarehouseDocument.occurred_on.desc(), WarehouseDocument.id.desc())
+            query.order_by(
+                WarehouseDocument.occurred_on.desc(), WarehouseDocument.id.desc()
+            )
             .offset((page - 1) * page_size)
             .limit(page_size)
         )
@@ -240,12 +293,12 @@ class WarehouseQueryService:
     async def list_ledger(
         self,
         *,
-        warehouse_id: Optional[int] = None,
-        location_id: Optional[int] = None,
-        project_id: Optional[int] = None,
-        material_id: Optional[int] = None,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
+        warehouse_id: int | None = None,
+        location_id: int | None = None,
+        project_id: int | None = None,
+        material_id: int | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
         page: int = 1,
         page_size: int = 50,
     ) -> tuple[list[WarehouseLedgerEntry], int]:
@@ -260,28 +313,44 @@ class WarehouseQueryService:
         count_query = select(func.count(WarehouseLedgerEntry.id))
         if allowed is not None:
             query = query.where(WarehouseLedgerEntry.warehouse_id.in_(allowed or [-1]))
-            count_query = count_query.where(WarehouseLedgerEntry.warehouse_id.in_(allowed or [-1]))
+            count_query = count_query.where(
+                WarehouseLedgerEntry.warehouse_id.in_(allowed or [-1])
+            )
         if warehouse_id:
             query = query.where(WarehouseLedgerEntry.warehouse_id == warehouse_id)
-            count_query = count_query.where(WarehouseLedgerEntry.warehouse_id == warehouse_id)
+            count_query = count_query.where(
+                WarehouseLedgerEntry.warehouse_id == warehouse_id
+            )
         if location_id:
             query = query.where(WarehouseLedgerEntry.location_id == location_id)
-            count_query = count_query.where(WarehouseLedgerEntry.location_id == location_id)
+            count_query = count_query.where(
+                WarehouseLedgerEntry.location_id == location_id
+            )
         if project_id:
             query = query.where(WarehouseLedgerEntry.project_id == project_id)
-            count_query = count_query.where(WarehouseLedgerEntry.project_id == project_id)
+            count_query = count_query.where(
+                WarehouseLedgerEntry.project_id == project_id
+            )
         if material_id:
             query = query.where(WarehouseLedgerEntry.material_id == material_id)
-            count_query = count_query.where(WarehouseLedgerEntry.material_id == material_id)
+            count_query = count_query.where(
+                WarehouseLedgerEntry.material_id == material_id
+            )
         if start_date:
             query = query.where(WarehouseLedgerEntry.occurred_on >= start_date)
-            count_query = count_query.where(WarehouseLedgerEntry.occurred_on >= start_date)
+            count_query = count_query.where(
+                WarehouseLedgerEntry.occurred_on >= start_date
+            )
         if end_date:
             query = query.where(WarehouseLedgerEntry.occurred_on <= end_date)
-            count_query = count_query.where(WarehouseLedgerEntry.occurred_on <= end_date)
+            count_query = count_query.where(
+                WarehouseLedgerEntry.occurred_on <= end_date
+            )
         total = (await self.db.execute(count_query)).scalar_one()
         result = await self.db.execute(
-            query.order_by(WarehouseLedgerEntry.occurred_on.desc(), WarehouseLedgerEntry.id.desc())
+            query.order_by(
+                WarehouseLedgerEntry.occurred_on.desc(), WarehouseLedgerEntry.id.desc()
+            )
             .offset((page - 1) * page_size)
             .limit(page_size)
         )

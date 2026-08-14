@@ -4,17 +4,16 @@ from __future__ import annotations
 
 from datetime import date
 from io import BytesIO
-from typing import List, Optional
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Header, Query, Request
+from fastapi import APIRouter, Depends, File, Header, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.permissions import Permission, require_permission
 from app.core.errors import AppException, ErrorCode, ValidationError
+from app.core.permissions import Permission, require_permission
 from app.core.rate_limit import get_client_ip
 from app.database import get_db
 from app.models.user import User
@@ -35,6 +34,7 @@ from app.schemas.warehouse import (
     MaterialCreate,
     MaterialResponse,
     MaterialUpdate,
+    OpeningImportResult,
     OutboundCreate,
     ProjectCreate,
     ProjectResponse,
@@ -47,7 +47,6 @@ from app.schemas.warehouse import (
     SupplementUpdate,
     TransferCreate,
     UpstreamContractLookup,
-    UserScopeItem,
     UserScopeResponse,
     UserScopeUpdate,
     VoidDocumentRequest,
@@ -57,6 +56,7 @@ from app.schemas.warehouse import (
 )
 from app.services.warehouse.counts import WarehouseCountService
 from app.services.warehouse.master import WarehouseMasterService
+from app.services.warehouse.opening import WarehouseOpeningService
 from app.services.warehouse.posting import StockKey, WarehousePostingService
 from app.services.warehouse.queries import (
     WarehouseQueryService,
@@ -69,13 +69,11 @@ from app.services.warehouse.scope import WarehouseScopeService
 router = APIRouter()
 
 
-def _idempotency_key(
-    header_key: Optional[str], body_key: Optional[str]
-) -> Optional[str]:
+def _idempotency_key(header_key: str | None, body_key: str | None) -> str | None:
     return header_key or body_key
 
 
-def _request_meta(request: Request) -> tuple[Optional[str], Optional[str]]:
+def _request_meta(request: Request) -> tuple[str | None, str | None]:
     return get_client_ip(request), request.headers.get("user-agent")
 
 
@@ -88,7 +86,9 @@ async def _assert_document_scope(
         for warehouse_id in (line.source_warehouse_id, line.target_warehouse_id)
         if warehouse_id
     }
-    await WarehouseScopeService(db, current_user).assert_warehouses_access(warehouse_ids)
+    await WarehouseScopeService(db, current_user).assert_warehouses_access(
+        warehouse_ids
+    )
 
 
 def _serialize_count(count) -> CountResponse:
@@ -118,6 +118,7 @@ def _serialize_count(count) -> CountResponse:
                 counted_quantity=line.counted_quantity,
                 material_code=line.material.code if line.material else None,
                 material_name=line.material.name if line.material else None,
+                material_unit=line.material.unit if line.material else None,
                 location_name=line.location.name if line.location else None,
                 project_name=line.project.name if line.project else None,
                 adjustment_document_id=line.adjustment_document_id,
@@ -127,10 +128,12 @@ def _serialize_count(count) -> CountResponse:
     )
 
 
-@router.get("/warehouses", response_model=List[WarehouseResponse])
+@router.get("/warehouses", response_model=list[WarehouseResponse])
 async def list_warehouses(
     include_inactive: bool = False,
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     scope = WarehouseScopeService(db, current_user)
@@ -146,7 +149,9 @@ async def list_warehouses(
 @router.post("/warehouses", response_model=WarehouseResponse, status_code=201)
 async def create_warehouse(
     payload: WarehouseCreate,
-    current_user: User = Depends(require_permission(Permission.MANAGE_WAREHOUSE_MASTER)),
+    current_user: User = Depends(
+        require_permission(Permission.MANAGE_WAREHOUSE_MASTER)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     warehouse = await WarehouseMasterService(db, current_user).create_warehouse(
@@ -159,7 +164,9 @@ async def create_warehouse(
 @router.get("/warehouses/{warehouse_id}", response_model=WarehouseResponse)
 async def get_warehouse(
     warehouse_id: int,
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     await WarehouseScopeService(db, current_user).assert_warehouse_access(warehouse_id)
@@ -170,7 +177,9 @@ async def get_warehouse(
 async def update_warehouse(
     warehouse_id: int,
     payload: WarehouseUpdate,
-    current_user: User = Depends(require_permission(Permission.MANAGE_WAREHOUSE_MASTER)),
+    current_user: User = Depends(
+        require_permission(Permission.MANAGE_WAREHOUSE_MASTER)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     warehouse = await WarehouseMasterService(db, current_user).update_warehouse(
@@ -180,14 +189,32 @@ async def update_warehouse(
     return warehouse
 
 
-@router.get("/warehouses/{warehouse_id}/locations", response_model=List[LocationResponse])
+@router.delete("/warehouses/{warehouse_id}", status_code=204)
+async def delete_warehouse(
+    warehouse_id: int,
+    current_user: User = Depends(
+        require_permission(Permission.MANAGE_WAREHOUSE_MASTER)
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    await WarehouseMasterService(db, current_user).delete_warehouse(warehouse_id)
+    await db.commit()
+
+
+@router.get(
+    "/warehouses/{warehouse_id}/locations", response_model=list[LocationResponse]
+)
 async def list_locations(
     warehouse_id: int,
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     await WarehouseScopeService(db, current_user).assert_warehouse_access(warehouse_id)
-    warehouse = await WarehouseMasterService(db, current_user).get_warehouse(warehouse_id)
+    warehouse = await WarehouseMasterService(db, current_user).get_warehouse(
+        warehouse_id
+    )
     return warehouse.locations
 
 
@@ -199,7 +226,9 @@ async def list_locations(
 async def create_location(
     warehouse_id: int,
     payload: LocationCreate,
-    current_user: User = Depends(require_permission(Permission.MANAGE_WAREHOUSE_MASTER)),
+    current_user: User = Depends(
+        require_permission(Permission.MANAGE_WAREHOUSE_MASTER)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     location = await WarehouseMasterService(db, current_user).create_location(
@@ -213,7 +242,9 @@ async def create_location(
 async def update_location(
     location_id: int,
     payload: LocationUpdate,
-    current_user: User = Depends(require_permission(Permission.MANAGE_WAREHOUSE_MASTER)),
+    current_user: User = Depends(
+        require_permission(Permission.MANAGE_WAREHOUSE_MASTER)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     location = await WarehouseMasterService(db, current_user).update_location(
@@ -223,16 +254,30 @@ async def update_location(
     return location
 
 
-@router.get("/upstream-contracts", response_model=List[UpstreamContractLookup])
-async def lookup_upstream_contracts(
-    q: Optional[str] = None,
-    serial_number: Optional[int] = None,
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+@router.delete("/locations/{location_id}", status_code=204)
+async def delete_location(
+    location_id: int,
+    current_user: User = Depends(
+        require_permission(Permission.MANAGE_WAREHOUSE_MASTER)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
-    contracts = await WarehouseMasterService(db, current_user).lookup_upstream_contracts(
-        q=q, serial_number=serial_number
-    )
+    await WarehouseMasterService(db, current_user).delete_location(location_id)
+    await db.commit()
+
+
+@router.get("/upstream-contracts", response_model=list[UpstreamContractLookup])
+async def lookup_upstream_contracts(
+    q: str | None = None,
+    serial_number: int | None = None,
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    contracts = await WarehouseMasterService(
+        db, current_user
+    ).lookup_upstream_contracts(q=q, serial_number=serial_number)
     return [
         UpstreamContractLookup(
             id=item.id,
@@ -245,11 +290,13 @@ async def lookup_upstream_contracts(
     ]
 
 
-@router.get("/projects", response_model=List[ProjectResponse])
+@router.get("/projects", response_model=list[ProjectResponse])
 async def list_projects(
-    q: Optional[str] = None,
+    q: str | None = None,
     include_inactive: bool = False,
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     return await WarehouseMasterService(db, current_user).list_projects(
@@ -260,10 +307,14 @@ async def list_projects(
 @router.post("/projects", response_model=ProjectResponse, status_code=201)
 async def create_project(
     payload: ProjectCreate,
-    current_user: User = Depends(require_permission(Permission.MANAGE_WAREHOUSE_MASTER)),
+    current_user: User = Depends(
+        require_permission(Permission.MANAGE_WAREHOUSE_MASTER)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
-    project = await WarehouseMasterService(db, current_user).create_project(payload.model_dump())
+    project = await WarehouseMasterService(db, current_user).create_project(
+        payload.model_dump()
+    )
     await db.commit()
     return project
 
@@ -271,7 +322,9 @@ async def create_project(
 @router.get("/projects/{project_id}", response_model=ProjectResponse)
 async def get_project(
     project_id: int,
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     return await WarehouseMasterService(db, current_user).get_project(project_id)
@@ -281,7 +334,9 @@ async def get_project(
 async def update_project(
     project_id: int,
     payload: ProjectUpdate,
-    current_user: User = Depends(require_permission(Permission.MANAGE_WAREHOUSE_MASTER)),
+    current_user: User = Depends(
+        require_permission(Permission.MANAGE_WAREHOUSE_MASTER)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     project = await WarehouseMasterService(db, current_user).update_project(
@@ -291,23 +346,27 @@ async def update_project(
     return project
 
 
-@router.get("/materials/search", response_model=List[MaterialResponse])
+@router.get("/materials/search", response_model=list[MaterialResponse])
 async def search_materials(
     q: str = Query(..., min_length=1),
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     return await WarehouseMasterService(db, current_user).list_materials(q=q, limit=30)
 
 
-@router.get("/materials", response_model=List[MaterialResponse])
+@router.get("/materials", response_model=list[MaterialResponse])
 async def list_materials(
-    q: Optional[str] = None,
-    category: Optional[str] = None,
-    supply_type: Optional[str] = None,
-    condition: Optional[str] = None,
+    q: str | None = None,
+    category: str | None = None,
+    supply_type: str | None = None,
+    condition: str | None = None,
     include_inactive: bool = False,
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     return await WarehouseMasterService(db, current_user).list_materials(
@@ -323,10 +382,14 @@ async def list_materials(
 @router.post("/materials", response_model=MaterialResponse, status_code=201)
 async def create_material(
     payload: MaterialCreate,
-    current_user: User = Depends(require_permission(Permission.MANAGE_WAREHOUSE_MATERIALS)),
+    current_user: User = Depends(
+        require_permission(Permission.MANAGE_WAREHOUSE_MATERIALS)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
-    material = await WarehouseMasterService(db, current_user).create_material(payload.model_dump())
+    material = await WarehouseMasterService(db, current_user).create_material(
+        payload.model_dump()
+    )
     await db.commit()
     return material
 
@@ -334,7 +397,9 @@ async def create_material(
 @router.get("/materials/{material_id}", response_model=MaterialResponse)
 async def get_material(
     material_id: int,
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     return await WarehouseMasterService(db, current_user).get_material(material_id)
@@ -344,7 +409,9 @@ async def get_material(
 async def update_material(
     material_id: int,
     payload: MaterialUpdate,
-    current_user: User = Depends(require_permission(Permission.MANAGE_WAREHOUSE_MATERIALS)),
+    current_user: User = Depends(
+        require_permission(Permission.MANAGE_WAREHOUSE_MATERIALS)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     material = await WarehouseMasterService(db, current_user).update_material(
@@ -358,14 +425,19 @@ async def update_material(
 async def material_qr(
     material_id: int,
     request: Request,
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     material = await WarehouseMasterService(db, current_user).get_material(material_id)
     origin = str(request.base_url).rstrip("/")
     payload = f"{origin}/m/warehouse/materials/{material.id}"
     return QrPayloadResponse(
-        id=material.id, kind="material", payload=payload, label=f"{material.code} {material.name}"
+        id=material.id,
+        kind="material",
+        payload=payload,
+        label=f"{material.code} {material.name}",
     )
 
 
@@ -373,33 +445,46 @@ async def material_qr(
 async def location_qr(
     location_id: int,
     request: Request,
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     location = await WarehouseMasterService(db, current_user).get_location(location_id)
-    await WarehouseScopeService(db, current_user).assert_warehouse_access(location.warehouse_id)
+    await WarehouseScopeService(db, current_user).assert_warehouse_access(
+        location.warehouse_id
+    )
     origin = str(request.base_url).rstrip("/")
     payload = f"{origin}/m/warehouse/locations/{location.id}"
     return QrPayloadResponse(
-        id=location.id, kind="location", payload=payload, label=f"{location.code} {location.name}"
+        id=location.id,
+        kind="location",
+        payload=payload,
+        label=f"{location.code} {location.name}",
     )
 
 
 @router.get("/locations/{location_id}", response_model=LocationResponse)
 async def get_location(
     location_id: int,
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     location = await WarehouseMasterService(db, current_user).get_location(location_id)
-    await WarehouseScopeService(db, current_user).assert_warehouse_access(location.warehouse_id)
+    await WarehouseScopeService(db, current_user).assert_warehouse_access(
+        location.warehouse_id
+    )
     return location
 
 
-@router.get("/users/{user_id}/warehouse-scopes", response_model=List[UserScopeResponse])
+@router.get("/users/{user_id}/warehouse-scopes", response_model=list[UserScopeResponse])
 async def list_user_scopes(
     user_id: int,
-    current_user: User = Depends(require_permission(Permission.MANAGE_WAREHOUSE_MASTER)),
+    current_user: User = Depends(
+        require_permission(Permission.MANAGE_WAREHOUSE_MASTER)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     scopes = await WarehouseScopeService(db, current_user).list_scopes(user_id)
@@ -415,11 +500,13 @@ async def list_user_scopes(
     ]
 
 
-@router.put("/users/{user_id}/warehouse-scopes", response_model=List[UserScopeResponse])
+@router.put("/users/{user_id}/warehouse-scopes", response_model=list[UserScopeResponse])
 async def replace_user_scopes(
     user_id: int,
     payload: UserScopeUpdate,
-    current_user: User = Depends(require_permission(Permission.MANAGE_WAREHOUSE_MASTER)),
+    current_user: User = Depends(
+        require_permission(Permission.MANAGE_WAREHOUSE_MASTER)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     scopes = await WarehouseScopeService(db, current_user).replace_scopes(
@@ -438,9 +525,11 @@ async def replace_user_scopes(
     ]
 
 
-@router.get("/me/warehouse-scopes", response_model=List[UserScopeResponse])
+@router.get("/me/warehouse-scopes", response_model=list[UserScopeResponse])
 async def my_warehouse_scopes(
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     scope = WarehouseScopeService(db, current_user)
@@ -473,22 +562,26 @@ async def my_warehouse_scopes(
 
 @router.get("/stock-balances", response_model=StockBalanceListResponse)
 async def list_stock_balances(
-    warehouse_id: Optional[int] = None,
-    location_id: Optional[int] = None,
-    project_id: Optional[int] = None,
-    material_id: Optional[int] = None,
-    supply_type: Optional[str] = None,
-    condition: Optional[str] = None,
-    category: Optional[str] = None,
-    q: Optional[str] = None,
+    warehouse_id: int | None = None,
+    location_id: int | None = None,
+    project_id: int | None = None,
+    material_id: int | None = None,
+    supply_type: str | None = None,
+    condition: str | None = None,
+    category: str | None = None,
+    q: str | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     include_zero: bool = False,
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     if warehouse_id:
-        await WarehouseScopeService(db, current_user).assert_warehouse_access(warehouse_id)
+        await WarehouseScopeService(db, current_user).assert_warehouse_access(
+            warehouse_id
+        )
     items, total = await WarehouseQueryService(
         db, WarehouseScopeService(db, current_user)
     ).list_balances(
@@ -514,14 +607,16 @@ async def list_stock_balances(
 
 @router.get(
     "/stock-balances/materials/{material_id}",
-    response_model=List[StockBalanceResponse],
+    response_model=list[StockBalanceResponse],
 )
 async def list_material_balances(
     material_id: int,
-    warehouse_id: Optional[int] = None,
-    location_id: Optional[int] = None,
-    project_id: Optional[int] = None,
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+    warehouse_id: int | None = None,
+    location_id: int | None = None,
+    project_id: int | None = None,
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     items, _ = await WarehouseQueryService(
@@ -544,7 +639,9 @@ async def get_available_quantity(
     location_id: int,
     project_id: int,
     material_id: int,
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     await WarehouseScopeService(db, current_user).assert_warehouse_access(warehouse_id)
@@ -566,10 +663,14 @@ async def get_available_quantity(
 @router.post("/stock-balances/rebuild", response_model=RebuildResult)
 async def rebuild_balances(
     repair: bool = False,
-    current_user: User = Depends(require_permission(Permission.MANAGE_WAREHOUSE_MASTER)),
+    current_user: User = Depends(
+        require_permission(Permission.MANAGE_WAREHOUSE_MASTER)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await WarehousePostingService(db, current_user).rebuild_balances(repair=repair)
+    result = await WarehousePostingService(db, current_user).rebuild_balances(
+        repair=repair
+    )
     if repair:
         await db.commit()
     return RebuildResult(**result)
@@ -577,15 +678,17 @@ async def rebuild_balances(
 
 @router.get("/ledger", response_model=LedgerListResponse)
 async def list_ledger(
-    warehouse_id: Optional[int] = None,
-    location_id: Optional[int] = None,
-    project_id: Optional[int] = None,
-    material_id: Optional[int] = None,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
+    warehouse_id: int | None = None,
+    location_id: int | None = None,
+    project_id: int | None = None,
+    material_id: int | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     items, total = await WarehouseQueryService(
@@ -610,15 +713,18 @@ async def list_ledger(
 
 @router.get("/documents", response_model=DocumentListResponse)
 async def list_documents(
-    document_type: Optional[str] = None,
-    status: Optional[str] = None,
-    warehouse_id: Optional[int] = None,
-    material_id: Optional[int] = None,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
+    document_type: str | None = None,
+    status: str | None = None,
+    business_type: str | None = None,
+    warehouse_id: int | None = None,
+    material_id: int | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     items, total = await WarehouseQueryService(
@@ -626,6 +732,7 @@ async def list_documents(
     ).list_documents(
         document_type=document_type,
         status=status,
+        business_type=business_type,
         warehouse_id=warehouse_id,
         material_id=material_id,
         start_date=start_date,
@@ -644,7 +751,9 @@ async def list_documents(
 @router.get("/documents/{document_id}", response_model=DocumentResponse)
 async def get_document(
     document_id: int,
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     document = await WarehousePostingService(db, current_user).get_document(document_id)
@@ -657,8 +766,10 @@ async def void_document(
     document_id: int,
     payload: VoidDocumentRequest,
     request: Request,
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
-    current_user: User = Depends(require_permission(Permission.VOID_WAREHOUSE_DOCUMENT)),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+    current_user: User = Depends(
+        require_permission(Permission.VOID_WAREHOUSE_DOCUMENT)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     ip_address, user_agent = _request_meta(request)
@@ -683,10 +794,14 @@ async def void_document(
     return serialize_document(document)
 
 
-@router.get("/documents/{document_id}/supplement", response_model=List[SupplementResponse])
+@router.get(
+    "/documents/{document_id}/supplement", response_model=list[SupplementResponse]
+)
 async def get_supplements(
     document_id: int,
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     document = await WarehousePostingService(db, current_user).get_document(document_id)
@@ -698,7 +813,9 @@ async def get_supplements(
 async def upsert_supplement(
     document_id: int,
     payload: SupplementUpdate,
-    current_user: User = Depends(require_permission(Permission.MANAGE_WAREHOUSE_SUPPLEMENTS)),
+    current_user: User = Depends(
+        require_permission(Permission.MANAGE_WAREHOUSE_SUPPLEMENTS)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     document = await WarehousePostingService(db, current_user).get_document(document_id)
@@ -722,7 +839,7 @@ async def upsert_supplement(
 async def create_inbound(
     payload: InboundCreate,
     request: Request,
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
     current_user: User = Depends(require_permission(Permission.POST_WAREHOUSE_INBOUND)),
     db: AsyncSession = Depends(get_db),
 ):
@@ -737,6 +854,8 @@ async def create_inbound(
         lines=[line.model_dump() for line in payload.lines],
         reference_no=payload.reference_no,
         description=payload.description,
+        delivery_note_file=payload.delivery_note_file,
+        delivery_note_file_name=payload.delivery_note_file_name,
         idempotency_key=_idempotency_key(idempotency_key, payload.idempotency_key),
         ip_address=ip_address,
         user_agent=user_agent,
@@ -749,8 +868,10 @@ async def create_inbound(
 async def create_outbound(
     payload: OutboundCreate,
     request: Request,
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
-    current_user: User = Depends(require_permission(Permission.POST_WAREHOUSE_OUTBOUND)),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+    current_user: User = Depends(
+        require_permission(Permission.POST_WAREHOUSE_OUTBOUND)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     ip_address, user_agent = _request_meta(request)
@@ -764,6 +885,8 @@ async def create_outbound(
         lines=[line.model_dump() for line in payload.lines],
         reference_no=payload.reference_no,
         description=payload.description,
+        scrap_basis_file=payload.scrap_basis_file,
+        scrap_basis_file_name=payload.scrap_basis_file_name,
         idempotency_key=_idempotency_key(idempotency_key, payload.idempotency_key),
         ip_address=ip_address,
         user_agent=user_agent,
@@ -776,8 +899,10 @@ async def create_outbound(
 async def create_transfer(
     payload: TransferCreate,
     request: Request,
-    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
-    current_user: User = Depends(require_permission(Permission.POST_WAREHOUSE_TRANSFER)),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+    current_user: User = Depends(
+        require_permission(Permission.POST_WAREHOUSE_TRANSFER)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     ip_address, user_agent = _request_meta(request)
@@ -829,7 +954,9 @@ async def create_count(
 
 @router.get("/counts", response_model=CountListResponse)
 async def list_counts(
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     items = await WarehouseCountService(db, current_user).list_counts()
@@ -863,11 +990,15 @@ async def list_counts(
 @router.get("/counts/{count_id}", response_model=CountResponse)
 async def get_count(
     count_id: int,
-    current_user: User = Depends(require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)),
+    current_user: User = Depends(
+        require_permission(Permission.VIEW_WAREHOUSE_INVENTORY)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     count = await WarehouseCountService(db, current_user).get_count(count_id)
-    await WarehouseScopeService(db, current_user).assert_warehouse_access(count.warehouse_id)
+    await WarehouseScopeService(db, current_user).assert_warehouse_access(
+        count.warehouse_id
+    )
     return _serialize_count(count)
 
 
@@ -888,12 +1019,42 @@ async def update_count_lines(
 @router.post("/counts/{count_id}/confirm", response_model=CountResponse)
 async def confirm_count(
     count_id: int,
-    current_user: User = Depends(require_permission(Permission.CONFIRM_WAREHOUSE_COUNT)),
+    current_user: User = Depends(
+        require_permission(Permission.CONFIRM_WAREHOUSE_COUNT)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     count = await WarehouseCountService(db, current_user).confirm(count_id)
     await db.commit()
     return _serialize_count(count)
+
+
+@router.get("/opening-entries/template.xlsx")
+async def download_opening_template(
+    current_user: User = Depends(require_permission(Permission.IMPORT_WAREHOUSE_DATA)),
+    db: AsyncSession = Depends(get_db),
+):
+    workbook = await WarehouseOpeningService(db, current_user).build_template()
+    return _excel_response(workbook, "期初材料录入表.xlsx")
+
+
+@router.post("/opening-entries/import", response_model=OpeningImportResult)
+async def import_opening_entries(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_permission(Permission.IMPORT_WAREHOUSE_DATA)),
+    db: AsyncSession = Depends(get_db),
+):
+    ip_address, user_agent = _request_meta(request)
+    content = await file.read()
+    result = await WarehouseOpeningService(db, current_user).import_workbook(
+        content,
+        filename=file.filename,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await db.commit()
+    return result
 
 
 def _excel_response(workbook: Workbook, filename: str) -> StreamingResponse:
@@ -920,7 +1081,20 @@ async def export_materials(
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "物资档案"
-    sheet.append(["编码", "旧编码", "名称", "品牌", "规格", "单位", "类别", "供应", "成色", "状态"])
+    sheet.append(
+        [
+            "编码",
+            "旧编码",
+            "名称",
+            "品牌",
+            "规格",
+            "单位",
+            "类别",
+            "供应",
+            "成色",
+            "状态",
+        ]
+    )
     for item in items:
         sheet.append(
             [
@@ -950,7 +1124,9 @@ async def export_stock(
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "库存余额"
-    sheet.append(["库房", "货位", "项目", "物资编码", "物资名称", "数量", "单位", "供应", "成色"])
+    sheet.append(
+        ["库房", "货位", "项目", "物资编码", "物资名称", "数量", "单位", "供应", "成色"]
+    )
     for item in items:
         sheet.append(
             [
@@ -979,7 +1155,19 @@ async def export_ledger(
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "库存流水"
-    sheet.append(["日期", "单号", "类型", "库房", "货位", "项目", "物资编码", "物资名称", "数量变化"])
+    sheet.append(
+        [
+            "日期",
+            "单号",
+            "类型",
+            "库房",
+            "货位",
+            "项目",
+            "物资编码",
+            "物资名称",
+            "数量变化",
+        ]
+    )
     for item in items:
         sheet.append(
             [

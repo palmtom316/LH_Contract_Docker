@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from decimal import Decimal, ROUND_HALF_UP
-from typing import Iterable, Optional, Sequence
+from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
@@ -18,12 +18,12 @@ from app.models.warehouse import (
     DocumentStatus,
     DocumentType,
     Warehouse,
+    WarehouseCount,
     WarehouseDocument,
     WarehouseDocumentLine,
     WarehouseLedgerEntry,
     WarehouseLocation,
     WarehouseMaterial,
-    WarehouseCount,
     WarehouseProject,
     WarehouseStockBalance,
 )
@@ -54,7 +54,9 @@ class PlannedDelta:
     document_line_id: int
 
 
-def _insufficient_stock_error(key: StockKey, available: Decimal, requested: Decimal) -> AppException:
+def _insufficient_stock_error(
+    key: StockKey, available: Decimal, requested: Decimal
+) -> AppException:
     return AppException(
         error_code=ErrorCode.INSUFFICIENT_STOCK,
         message="库存不足",
@@ -77,19 +79,35 @@ class WarehousePostingService:
         self.user = user
         self.scope = WarehouseScopeService(db, user)
 
-    async def find_by_idempotency(self, idempotency_key: Optional[str]) -> Optional[WarehouseDocument]:
+    async def find_by_idempotency(
+        self, idempotency_key: str | None
+    ) -> WarehouseDocument | None:
         if not idempotency_key:
             return None
         result = await self.db.execute(
             select(WarehouseDocument)
             .options(
-                selectinload(WarehouseDocument.lines).selectinload(WarehouseDocumentLine.material),
-                selectinload(WarehouseDocument.lines).selectinload(WarehouseDocumentLine.source_warehouse),
-                selectinload(WarehouseDocument.lines).selectinload(WarehouseDocumentLine.source_location),
-                selectinload(WarehouseDocument.lines).selectinload(WarehouseDocumentLine.source_project),
-                selectinload(WarehouseDocument.lines).selectinload(WarehouseDocumentLine.target_warehouse),
-                selectinload(WarehouseDocument.lines).selectinload(WarehouseDocumentLine.target_location),
-                selectinload(WarehouseDocument.lines).selectinload(WarehouseDocumentLine.target_project),
+                selectinload(WarehouseDocument.lines).selectinload(
+                    WarehouseDocumentLine.material
+                ),
+                selectinload(WarehouseDocument.lines).selectinload(
+                    WarehouseDocumentLine.source_warehouse
+                ),
+                selectinload(WarehouseDocument.lines).selectinload(
+                    WarehouseDocumentLine.source_location
+                ),
+                selectinload(WarehouseDocument.lines).selectinload(
+                    WarehouseDocumentLine.source_project
+                ),
+                selectinload(WarehouseDocument.lines).selectinload(
+                    WarehouseDocumentLine.target_warehouse
+                ),
+                selectinload(WarehouseDocument.lines).selectinload(
+                    WarehouseDocumentLine.target_location
+                ),
+                selectinload(WarehouseDocument.lines).selectinload(
+                    WarehouseDocumentLine.target_project
+                ),
             )
             .where(
                 WarehouseDocument.created_by == self.user.id,
@@ -108,16 +126,20 @@ class WarehousePostingService:
         handler: str,
         business_type: str,
         lines: Sequence[dict],
-        reference_no: Optional[str] = None,
-        description: Optional[str] = None,
-        idempotency_key: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
+        reference_no: str | None = None,
+        description: str | None = None,
+        delivery_note_file: str | None = None,
+        delivery_note_file_name: str | None = None,
+        idempotency_key: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
     ) -> WarehouseDocument:
         existing = await self.find_by_idempotency(idempotency_key)
         if existing:
             return existing
-        await self.scope.assert_warehouse_access(warehouse_id, for_posting=True, action="入库")
+        await self.scope.assert_warehouse_access(
+            warehouse_id, for_posting=True, action="入库"
+        )
         document_lines = []
         for index, line in enumerate(lines, start=1):
             qty = quantize_qty(line["quantity"])
@@ -153,6 +175,8 @@ class WarehousePostingService:
             handler=handler,
             reference_no=reference_no,
             description=description,
+            delivery_note_file=delivery_note_file,
+            delivery_note_file_name=delivery_note_file_name,
             idempotency_key=idempotency_key,
             lines=document_lines,
             ip_address=ip_address,
@@ -169,16 +193,22 @@ class WarehousePostingService:
         handler: str,
         business_type: str,
         lines: Sequence[dict],
-        reference_no: Optional[str] = None,
-        description: Optional[str] = None,
-        idempotency_key: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
+        reference_no: str | None = None,
+        description: str | None = None,
+        scrap_basis_file: str | None = None,
+        scrap_basis_file_name: str | None = None,
+        idempotency_key: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
     ) -> WarehouseDocument:
         existing = await self.find_by_idempotency(idempotency_key)
         if existing:
             return existing
-        await self.scope.assert_warehouse_access(warehouse_id, for_posting=True, action="出库")
+        if business_type == "SCRAP_DISPOSAL" and not scrap_basis_file:
+            raise ValidationError(message="选择废旧处理必须上传废旧处理依据文件")
+        await self.scope.assert_warehouse_access(
+            warehouse_id, for_posting=True, action="出库"
+        )
         document_lines = []
         for index, line in enumerate(lines, start=1):
             qty = quantize_qty(line["quantity"])
@@ -214,6 +244,8 @@ class WarehousePostingService:
             handler=handler,
             reference_no=reference_no,
             description=description,
+            scrap_basis_file=scrap_basis_file,
+            scrap_basis_file_name=scrap_basis_file_name,
             idempotency_key=idempotency_key,
             lines=document_lines,
             ip_address=ip_address,
@@ -227,10 +259,10 @@ class WarehousePostingService:
         handler: str,
         reference_no: str,
         lines: Sequence[dict],
-        description: Optional[str] = None,
-        idempotency_key: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
+        description: str | None = None,
+        idempotency_key: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
     ) -> WarehouseDocument:
         existing = await self.find_by_idempotency(idempotency_key)
         if existing:
@@ -300,11 +332,11 @@ class WarehousePostingService:
         handler: str,
         reference_no: str,
         lines: Sequence[dict],
-        description: Optional[str] = None,
-        idempotency_key: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        ignore_count_id: Optional[int] = None,
+        description: str | None = None,
+        idempotency_key: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        ignore_count_id: int | None = None,
     ) -> WarehouseDocument:
         existing = await self.find_by_idempotency(idempotency_key)
         if existing:
@@ -349,8 +381,12 @@ class WarehousePostingService:
                 )
         if not document_lines:
             raise ValidationError(message="没有需要调整的盘点差异")
-        await self.scope.assert_warehouses_access(warehouse_ids, for_posting=True, action="盘点确认")
-        await self._assert_no_active_counts(warehouse_ids, ignore_count_id=ignore_count_id)
+        await self.scope.assert_warehouses_access(
+            warehouse_ids, for_posting=True, action="盘点确认"
+        )
+        await self._assert_no_active_counts(
+            warehouse_ids, ignore_count_id=ignore_count_id
+        )
         await self._assert_source_dimensions(
             [line for line in document_lines if line["source_warehouse_id"]]
         )
@@ -375,9 +411,9 @@ class WarehousePostingService:
         document_id: int,
         reason: str,
         *,
-        idempotency_key: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
+        idempotency_key: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
     ) -> WarehouseDocument:
         existing = await self.find_by_idempotency(idempotency_key)
         if existing:
@@ -421,7 +457,9 @@ class WarehousePostingService:
                     "description": f"冲销 {original.document_no} 第 {line.line_no} 行",
                 }
             )
-        await self.scope.assert_warehouses_access(warehouse_ids, for_posting=True, action="冲销")
+        await self.scope.assert_warehouses_access(
+            warehouse_ids, for_posting=True, action="冲销"
+        )
         await self._assert_no_active_counts(warehouse_ids)
 
         reversal = await self._create_and_post(
@@ -452,7 +490,10 @@ class WarehousePostingService:
             resource_name=original.document_no,
             description=f"冲销单据 {original.document_no}: {reason}",
             old_values={"status": DocumentStatus.POSTED.value},
-            new_values={"status": DocumentStatus.VOIDED.value, "reversal_id": reversal.id},
+            new_values={
+                "status": DocumentStatus.VOIDED.value,
+                "reversal_id": reversal.id,
+            },
             ip_address=ip_address,
             user_agent=user_agent,
         )
@@ -464,22 +505,34 @@ class WarehousePostingService:
         statement = (
             select(WarehouseDocument)
             .options(
-                selectinload(WarehouseDocument.lines).selectinload(WarehouseDocumentLine.material),
-                selectinload(WarehouseDocument.lines).selectinload(WarehouseDocumentLine.source_warehouse),
-                selectinload(WarehouseDocument.lines).selectinload(WarehouseDocumentLine.source_location),
-                selectinload(WarehouseDocument.lines).selectinload(WarehouseDocumentLine.source_project),
-                selectinload(WarehouseDocument.lines).selectinload(WarehouseDocumentLine.target_warehouse),
-                selectinload(WarehouseDocument.lines).selectinload(WarehouseDocumentLine.target_location),
-                selectinload(WarehouseDocument.lines).selectinload(WarehouseDocumentLine.target_project),
+                selectinload(WarehouseDocument.lines).selectinload(
+                    WarehouseDocumentLine.material
+                ),
+                selectinload(WarehouseDocument.lines).selectinload(
+                    WarehouseDocumentLine.source_warehouse
+                ),
+                selectinload(WarehouseDocument.lines).selectinload(
+                    WarehouseDocumentLine.source_location
+                ),
+                selectinload(WarehouseDocument.lines).selectinload(
+                    WarehouseDocumentLine.source_project
+                ),
+                selectinload(WarehouseDocument.lines).selectinload(
+                    WarehouseDocumentLine.target_warehouse
+                ),
+                selectinload(WarehouseDocument.lines).selectinload(
+                    WarehouseDocumentLine.target_location
+                ),
+                selectinload(WarehouseDocument.lines).selectinload(
+                    WarehouseDocumentLine.target_project
+                ),
                 selectinload(WarehouseDocument.supplements),
             )
             .where(WarehouseDocument.id == document_id)
         )
         if for_update:
             statement = statement.with_for_update()
-        result = await self.db.execute(
-            statement
-        )
+        result = await self.db.execute(statement)
         document = result.scalar_one_or_none()
         if document is None:
             raise AppException(
@@ -490,7 +543,7 @@ class WarehousePostingService:
         return document
 
     async def _assert_no_active_counts(
-        self, warehouse_ids: Iterable[int], *, ignore_count_id: Optional[int] = None
+        self, warehouse_ids: Iterable[int], *, ignore_count_id: int | None = None
     ) -> None:
         ids = {warehouse_id for warehouse_id in warehouse_ids if warehouse_id}
         if not ids:
@@ -586,16 +639,20 @@ class WarehousePostingService:
         self,
         *,
         document_type: DocumentType,
-        business_type: Optional[str],
+        business_type: str | None,
         occurred_on,
         handler: str,
-        reference_no: Optional[str],
-        description: Optional[str],
-        idempotency_key: Optional[str],
+        reference_no: str | None,
+        description: str | None,
+        idempotency_key: str | None,
         lines: Sequence[dict],
-        reversed_document_id: Optional[int] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
+        reversed_document_id: int | None = None,
+        delivery_note_file: str | None = None,
+        delivery_note_file_name: str | None = None,
+        scrap_basis_file: str | None = None,
+        scrap_basis_file_name: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
     ) -> WarehouseDocument:
         now = datetime.now(timezone.utc)
         document_no = await generate_document_no(self.db, document_type, occurred_on)
@@ -609,6 +666,10 @@ class WarehousePostingService:
             description=description,
             handler=handler,
             idempotency_key=idempotency_key,
+            delivery_note_file=delivery_note_file,
+            delivery_note_file_name=delivery_note_file_name,
+            scrap_basis_file=scrap_basis_file,
+            scrap_basis_file_name=scrap_basis_file_name,
             created_by=self.user.id,
             posted_by=self.user.id,
             posted_at=now,
@@ -661,7 +722,9 @@ class WarehousePostingService:
         await self.db.flush()
         return await self.get_document(document.id)
 
-    def _plan_deltas(self, lines: Iterable[WarehouseDocumentLine]) -> list[PlannedDelta]:
+    def _plan_deltas(
+        self, lines: Iterable[WarehouseDocumentLine]
+    ) -> list[PlannedDelta]:
         planned: list[PlannedDelta] = []
         for line in lines:
             qty = quantize_qty(line.quantity)
@@ -709,7 +772,9 @@ class WarehousePostingService:
                 raise _insufficient_stock_error(
                     item.key,
                     available=quantize_qty(balance.quantity),
-                    requested=-item.quantity_delta if item.quantity_delta < ZERO else item.quantity_delta,
+                    requested=-item.quantity_delta
+                    if item.quantity_delta < ZERO
+                    else item.quantity_delta,
                 )
             balance.quantity = next_qty
             balance.version = int(balance.version or 1) + 1
@@ -728,7 +793,9 @@ class WarehousePostingService:
             )
         await self.db.flush()
 
-    async def _lock_balances(self, keys: Sequence[StockKey]) -> dict[StockKey, WarehouseStockBalance]:
+    async def _lock_balances(
+        self, keys: Sequence[StockKey]
+    ) -> dict[StockKey, WarehouseStockBalance]:
         balances: dict[StockKey, WarehouseStockBalance] = {}
         for key in keys:
             stmt = (
@@ -742,7 +809,12 @@ class WarehousePostingService:
                     version=1,
                 )
                 .on_conflict_do_nothing(
-                    index_elements=["warehouse_id", "location_id", "project_id", "material_id"]
+                    index_elements=[
+                        "warehouse_id",
+                        "location_id",
+                        "project_id",
+                        "material_id",
+                    ]
                 )
             )
             await self.db.execute(stmt)
@@ -787,9 +859,9 @@ class WarehousePostingService:
 
     async def _assert_dimension(
         self,
-        warehouse_id: Optional[int],
-        location_id: Optional[int],
-        project_id: Optional[int],
+        warehouse_id: int | None,
+        location_id: int | None,
+        project_id: int | None,
     ) -> None:
         if not warehouse_id or not location_id or not project_id:
             raise ValidationError(message="库存维度不完整")
@@ -797,7 +869,11 @@ class WarehousePostingService:
         if warehouse is None or not warehouse.is_active:
             raise ValidationError(message="库房不存在或已停用")
         location = await self.db.get(WarehouseLocation, location_id)
-        if location is None or not location.is_active or location.warehouse_id != warehouse_id:
+        if (
+            location is None
+            or not location.is_active
+            or location.warehouse_id != warehouse_id
+        ):
             raise ValidationError(message="货位不属于该库房或已停用")
         project = await self.db.get(WarehouseProject, project_id)
         if project is None or not project.is_active:
