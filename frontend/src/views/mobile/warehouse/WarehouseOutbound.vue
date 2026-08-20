@@ -9,6 +9,9 @@
         <van-cell v-for="item in materials" :key="item.id" :title="`${item.code} ${item.name}`" :label="item.unit || ''" clickable @click="selectMaterial(item)" />
         <van-field :model-value="selectedUnit" label="单位" readonly />
         <van-field v-model="form.quantity" label="数量" placeholder="支持 +-*/，如 3+1.5" />
+        <van-field v-model="form.batch_no" label="批次" />
+        <van-field v-model="form.serial_no" label="序列号" />
+        <van-field v-model="form.heat_no" label="炉批号" />
         <van-field v-model="form.occurred_on" label="日期" readonly />
         <van-field v-model="form.handler" label="经办人" />
         <van-field :model-value="businessLabel" label="业务类型" readonly is-link @click="showBusiness = true" />
@@ -135,7 +138,7 @@ async function submit() {
       requester_name: form.value.requester_name || null,
       receiver_name: form.value.receiver_name || null,
       signed_off: true,
-      lines: [{ material_id: form.value.material_id, quantity: String(quantity) }]
+      lines: [{ material_id: form.value.material_id, quantity: String(quantity), batch_no: form.value.batch_no || null, serial_no: form.value.serial_no || null, heat_no: form.value.heat_no || null, production_date: form.value.production_date || null, expiry_date: form.value.expiry_date || null }]
     })
     showSuccessToast('出库已过账')
     router.push('/m/warehouse')

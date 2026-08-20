@@ -49,7 +49,11 @@ export function useWarehouseForm() {
 		acceptor: "",
 		qc_result: "",
 		manufacturer: "",
-		batch_no: "",
+			batch_no: "",
+			serial_no: "",
+			heat_no: "",
+			production_date: null,
+			expiry_date: null,
 		requisition_no: "",
 		work_package: "",
 		crew_name: "",
@@ -90,6 +94,9 @@ export function useWarehouseForm() {
 		}
 		if (route.params.id) {
 			form.value.material_id = Number(route.params.id);
+		}
+		if (route.query.material_id) {
+			form.value.material_id = Number(route.query.material_id);
 		}
 	}
 

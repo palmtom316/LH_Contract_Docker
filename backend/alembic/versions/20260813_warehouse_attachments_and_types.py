@@ -10,26 +10,31 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "warehouse_documents",
+    existing = {
+        column["name"]
+        for column in sa.inspect(op.get_bind()).get_columns("warehouse_documents")
+    }
+    columns = (
         sa.Column("delivery_note_file", sa.String(length=500), nullable=True),
-    )
-    op.add_column(
-        "warehouse_documents",
         sa.Column("delivery_note_file_name", sa.String(length=255), nullable=True),
-    )
-    op.add_column(
-        "warehouse_documents",
         sa.Column("scrap_basis_file", sa.String(length=500), nullable=True),
-    )
-    op.add_column(
-        "warehouse_documents",
         sa.Column("scrap_basis_file_name", sa.String(length=255), nullable=True),
     )
+    for column in columns:
+        if column.name not in existing:
+            op.add_column("warehouse_documents", column)
 
 
 def downgrade() -> None:
-    op.drop_column("warehouse_documents", "scrap_basis_file_name")
-    op.drop_column("warehouse_documents", "scrap_basis_file")
-    op.drop_column("warehouse_documents", "delivery_note_file_name")
-    op.drop_column("warehouse_documents", "delivery_note_file")
+    existing = {
+        column["name"]
+        for column in sa.inspect(op.get_bind()).get_columns("warehouse_documents")
+    }
+    for name in (
+        "scrap_basis_file_name",
+        "scrap_basis_file",
+        "delivery_note_file_name",
+        "delivery_note_file",
+    ):
+        if name in existing:
+            op.drop_column("warehouse_documents", name)

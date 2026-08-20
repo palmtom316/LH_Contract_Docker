@@ -26,7 +26,7 @@ async function load() {
 }
 
 function goInbound() {
-  router.push({ path: '/m/warehouse/inbound', query: { location_id: route.params.id } })
+  router.push({ path: '/m/warehouse/inbound', query: { location_id: route.params.id, material_id: route.query.material_id || undefined } })
 }
 
 function goInventory() {

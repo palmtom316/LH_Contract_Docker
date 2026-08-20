@@ -113,6 +113,41 @@ class WarehousePeriodService:
         )
         return period
 
+    async def open_period(self, year: int, month: int, reason: str) -> WarehousePeriod:
+        if not self.can_manage():
+            raise AppException(
+                error_code=ErrorCode.INSUFFICIENT_PERMISSIONS,
+                message="只有库房管理员可以开放库存期间",
+                status_code=403,
+            )
+        if not (reason or "").strip():
+            raise ValidationError(message="开放历史期间必须填写原因")
+        self._validate_month(year, month)
+        period = await self._get_or_create(year, month, open_if_missing=False, for_update=True)
+        created = period is None
+        if created:
+            period = await self._get_or_create(year, month, open_if_missing=True, for_update=True)
+        elif period.status == PeriodStatus.OPEN.value:
+            raise ValidationError(message="该期间已经开放")
+        now = datetime.now(timezone.utc)
+        period.status = PeriodStatus.OPEN.value
+        period.opened_by = self.user.id
+        period.opened_at = now
+        period.open_reason = reason.strip()
+        await self.db.flush()
+        await create_audit_log(
+            self.db,
+            self.user,
+            AuditAction.APPROVE,
+            ResourceType.WAREHOUSE_PERIOD,
+            resource_id=period.id,
+            resource_name=f"{year:04d}-{month:02d}",
+            description=f"开放库存期间 {year:04d}-{month:02d}: {reason.strip()}",
+            old_values={"status": PeriodStatus.CLOSED.value if not created else None},
+            new_values={"status": PeriodStatus.OPEN.value, "open_reason": reason.strip()},
+        )
+        return period
+
     async def assert_posting_allowed(self, occurred_on: date) -> WarehousePeriod:
         year, month = period_key(occurred_on)
         self._validate_month(year, month)
@@ -123,7 +158,7 @@ class WarehousePeriodService:
         period = await self._get_or_create(
             year,
             month,
-            open_if_missing=self.can_manage() or is_current,
+            open_if_missing=is_current,
             for_update=True,
         )
         if period is None:

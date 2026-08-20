@@ -126,6 +126,14 @@ export function getAvailableStock(params) {
 	});
 }
 
+export function listWarehouseUnits() {
+	return request({ url: "/warehouse/units", method: "get" });
+}
+
+export function convertWarehouseUnit(params) {
+	return request({ url: "/warehouse/units/convert", method: "get", params });
+}
+
 export function listLedger(params) {
 	return request({ url: "/warehouse/ledger", method: "get", params });
 }
@@ -205,6 +213,10 @@ export function closeWarehousePeriod(data) {
 
 export function reopenWarehousePeriod(data) {
 	return request({ url: "/warehouse/periods/reopen", method: "post", data });
+}
+
+export function openWarehousePeriod(data) {
+	return request({ url: "/warehouse/periods/open", method: "post", data });
 }
 
 export function upsertSupplement(id, data) {

@@ -40,8 +40,10 @@ QTY = Decimal("0.0001")
 ZERO = Decimal("0.0000")
 
 
-def quantize_qty(value: Decimal | int | str) -> Decimal:
-    return Decimal(value).quantize(QTY, rounding=ROUND_HALF_UP)
+def quantize_qty(value: Decimal | int | str, scale: int = 4) -> Decimal:
+    scale = max(0, min(int(scale), 4))
+    quantum = Decimal(1).scaleb(-scale)
+    return Decimal(value).quantize(quantum, rounding=ROUND_HALF_UP)
 
 
 @dataclass(frozen=True, order=True)
@@ -190,7 +192,8 @@ class WarehousePostingService:
         )
         document_lines = []
         for index, line in enumerate(lines, start=1):
-            qty = quantize_qty(line["quantity"])
+            material = await self._assert_material_trace(line)
+            qty = quantize_qty(line["quantity"], material.quantity_scale or 3)
             if qty <= ZERO:
                 raise ValidationError(message="入库数量必须大于零")
             document_lines.append(
@@ -263,7 +266,8 @@ class WarehousePostingService:
         )
         document_lines = []
         for index, line in enumerate(lines, start=1):
-            qty = quantize_qty(line["quantity"])
+            material = await self._assert_material_trace(line)
+            qty = quantize_qty(line["quantity"], material.quantity_scale or 3)
             if qty <= ZERO:
                 raise ValidationError(message="出库数量必须大于零")
             document_lines.append(
@@ -328,7 +332,8 @@ class WarehousePostingService:
         document_lines = []
         source_ids: list[int] = []
         for index, line in enumerate(lines, start=1):
-            qty = quantize_qty(line["quantity"])
+            material = await self._assert_material_trace(line)
+            qty = quantize_qty(line["quantity"], material.quantity_scale or 3)
             if qty <= ZERO:
                 raise ValidationError(message="调拨数量必须大于零")
             source = (
@@ -1042,11 +1047,17 @@ class WarehousePostingService:
 
     async def _assert_material_trace(self, line: dict) -> WarehouseMaterial:
         material = await self._assert_material(line["material_id"])
+        raw_quantity = Decimal(line["quantity"])
+        normalized_quantity = quantize_qty(raw_quantity, material.quantity_scale or 3)
+        if raw_quantity != normalized_quantity:
+            raise ValidationError(
+                message=f"物资 {material.code} 数量最多保留 {material.quantity_scale or 3} 位小数"
+            )
         if material.tracks_batch and not str(line.get("batch_no") or "").strip():
             raise ValidationError(message=f"物资 {material.code} 必须填写批次号")
         if material.tracks_serial and not str(line.get("serial_no") or "").strip():
             raise ValidationError(message=f"物资 {material.code} 必须填写序列号")
-        if material.tracks_serial and quantize_qty(line["quantity"]) != Decimal("1.0000"):
+        if material.tracks_serial and normalized_quantity != Decimal("1"):
             raise ValidationError(message=f"序列号物资 {material.code} 每行数量必须为 1")
         return material
 
@@ -1134,6 +1145,13 @@ class WarehousePostingService:
                 status_code=403,
             )
         document = await self.get_document(document_id, for_update=True)
+        warehouse_ids = {
+            warehouse_id
+            for line in document.lines
+            for warehouse_id in (line.source_warehouse_id, line.target_warehouse_id)
+            if warehouse_id
+        }
+        await self.scope.assert_warehouses_access(warehouse_ids, action="废旧处置核销")
         if document.business_type != "SCRAP_DISPOSAL":
             raise ValidationError(message="仅废旧处理单据可以核销闭环")
         if document.status != DocumentStatus.POSTED.value:
@@ -1153,6 +1171,18 @@ class WarehousePostingService:
         next_status = scrap_status or ScrapDisposalStatus.SETTLED.value
         if next_status not in {item.value for item in ScrapDisposalStatus}:
             raise ValidationError(message="废旧处置状态无效")
+        current_status = document.scrap_status or ScrapDisposalStatus.PENDING.value
+        allowed_transitions = {
+            ScrapDisposalStatus.PENDING.value: {ScrapDisposalStatus.APPROVED.value, ScrapDisposalStatus.SETTLED.value, ScrapDisposalStatus.VOIDED.value},
+            ScrapDisposalStatus.APPROVED.value: {ScrapDisposalStatus.WEIGHED.value, ScrapDisposalStatus.VOIDED.value},
+            ScrapDisposalStatus.WEIGHED.value: {ScrapDisposalStatus.SETTLED.value, ScrapDisposalStatus.VOIDED.value},
+            ScrapDisposalStatus.SETTLED.value: set(),
+            ScrapDisposalStatus.VOIDED.value: set(),
+        }
+        if next_status != current_status and next_status not in allowed_transitions[current_status]:
+            raise ValidationError(message=f"废旧处置不能从 {current_status} 直接变更为 {next_status}")
+        if next_status == ScrapDisposalStatus.WEIGHED.value and document.scrap_weight is None:
+            raise ValidationError(message="过磅阶段必须填写重量")
         if next_status == ScrapDisposalStatus.SETTLED.value:
             if not document.scrap_basis_file:
                 raise ValidationError(message="废旧核销必须保留依据文件")
@@ -1160,6 +1190,8 @@ class WarehousePostingService:
                 raise ValidationError(message="废旧核销必须填写过磅重量")
             if not document.scrap_recycler:
                 raise ValidationError(message="废旧核销必须填写回收单位")
+            if document.scrap_assessed_value is None or document.scrap_residual_value is None:
+                raise ValidationError(message="废旧核销必须填写评估价值和残值")
             document.scrap_settled_at = datetime.now(timezone.utc)
             document.scrap_settled_by = self.user.id
         document.scrap_status = next_status

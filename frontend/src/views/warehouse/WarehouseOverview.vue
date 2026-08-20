@@ -11,6 +11,9 @@
           <AppMetricCard title="库存维度" :value="String(summary.dimensions)" />
           <AppMetricCard title="物资种类" :value="String(summary.materials)" />
           <AppMetricCard title="低库存" :value="String(summary.lowStock)" />
+          <AppMetricCard title="待盘点" :value="String(summary.pendingCounts)" />
+          <AppMetricCard title="近效期" :value="String(summary.expiring)" />
+          <AppMetricCard title="长期未动" :value="String(summary.idle)" />
         </div>
       </AppSectionCard>
       <AppSectionCard v-if="userStore.canManageWarehousePeriods || periods.length">
@@ -23,6 +26,7 @@
           <el-table-column prop="month" label="月" width="80" />
           <el-table-column prop="status" label="状态" width="120" />
           <el-table-column prop="reopen_reason" label="反结账原因" min-width="180" />
+          <el-table-column prop="open_reason" label="开放原因" min-width="180" />
           <el-table-column v-if="userStore.canManageWarehousePeriods" label="操作" width="120">
             <template #default="{ row }">
               <el-button v-if="row.status === 'CLOSED'" link type="primary" @click="reopen(row)">反结账</el-button>
@@ -53,7 +57,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { closeWarehousePeriod, exportStock, listStockBalances, listWarehousePeriods, reopenWarehousePeriod } from '@/api/warehouse'
+import { closeWarehousePeriod, exportStock, getWarehouseReport, listCounts, listStockBalances, listWarehousePeriods, reopenWarehousePeriod } from '@/api/warehouse'
 import { useUserStore } from '@/stores/user'
 import WarehouseNav from './WarehouseNav.vue'
 
@@ -61,7 +65,7 @@ const userStore = useUserStore()
 const loading = ref(false)
 const items = ref([])
 const periods = ref([])
-const summary = reactive({ dimensions: 0, materials: 0, lowStock: 0 })
+const summary = reactive({ dimensions: 0, materials: 0, lowStock: 0, pendingCounts: 0, expiring: 0, idle: 0 })
 
 async function load() {
   loading.value = true
@@ -71,6 +75,10 @@ async function load() {
     summary.dimensions = res.total || 0
     summary.materials = new Set(items.value.map(item => item.material_id)).size
     summary.lowStock = items.value.filter(item => Number(item.quantity) <= Number(item.minimum_stock || 0)).length
+    const [counts, expiring, idle] = await Promise.all([listCounts(), getWarehouseReport('expiring'), getWarehouseReport('idle')])
+    summary.pendingCounts = (counts.items || []).filter(item => ['DRAFT', 'ENTERED', 'REVIEWED'].includes(item.status)).length
+    summary.expiring = (expiring.items || []).length
+    summary.idle = (idle.items || []).length
     periods.value = await listWarehousePeriods()
   } finally {
     loading.value = false

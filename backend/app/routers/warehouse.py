@@ -1230,6 +1230,21 @@ async def reopen_period(
     return period
 
 
+@router.post("/periods/open", response_model=PeriodResponse)
+async def open_period(
+    payload: PeriodActionRequest,
+    current_user: User = Depends(
+        require_permission(Permission.MANAGE_WAREHOUSE_PERIODS)
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    period = await WarehousePeriodService(db, current_user).open_period(
+        payload.year, payload.month, payload.reason or ""
+    )
+    await db.commit()
+    return period
+
+
 @router.post("/documents/{document_id}/scrap-settle", response_model=DocumentResponse)
 async def settle_scrap(
     document_id: int,
@@ -1343,7 +1358,7 @@ async def export_stock(
     sheet = workbook.active
     sheet.title = "库存余额"
     sheet.append(
-        ["库房", "货位", "项目", "物资编码", "物资名称", "数量", "单位", "供应", "成色"]
+        ["库房", "货位", "项目", "物资编码", "物资名称", "批次", "序列号", "到期日", "数量", "单位", "供应", "成色"]
     )
     for item in items:
         sheet.append(
@@ -1353,6 +1368,9 @@ async def export_stock(
                 item.project.name if item.project else item.project_id,
                 item.material.code if item.material else item.material_id,
                 item.material.name if item.material else "",
+                item.batch_no or "",
+                item.serial_no or "",
+                item.expiry_date.isoformat() if item.expiry_date else "",
                 float(item.quantity),
                 item.material.unit if item.material else "",
                 item.material.supply_type if item.material else "",
@@ -1383,6 +1401,10 @@ async def export_ledger(
             "项目",
             "物资编码",
             "物资名称",
+            "批次",
+            "序列号",
+            "业务类型",
+            "经办人",
             "数量变化",
         ]
     )
@@ -1397,6 +1419,10 @@ async def export_ledger(
                 item.project.name if item.project else item.project_id,
                 item.material.code if item.material else item.material_id,
                 item.material.name if item.material else "",
+                item.batch_no or "",
+                item.serial_no or "",
+                item.business_type or "",
+                item.handler or "",
                 float(item.quantity_delta),
             ]
         )

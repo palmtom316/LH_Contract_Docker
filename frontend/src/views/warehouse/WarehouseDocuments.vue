@@ -36,8 +36,9 @@
             <el-table-column prop="handler" label="经办人" width="120" />
             <el-table-column prop="status" label="状态" width="100" />
             <el-table-column prop="reference_no" label="依据" min-width="140" />
-            <el-table-column label="操作" width="120">
+            <el-table-column label="操作" width="150">
               <template #default="{ row }">
+                <el-button v-if="row.business_type === 'SCRAP_DISPOSAL' && row.status === 'POSTED' && row.scrap_status !== 'SETTLED'" link type="primary" @click="advanceScrap(row)">处置</el-button>
                 <el-button
                   v-if="userStore.canVoidWarehouseDocument && row.status === 'POSTED'"
                   link
@@ -64,17 +65,19 @@
         <el-form-item v-if="documentType !== 'TRANSFER'" label="项目">
           <el-select v-model="form.project_id"><el-option v-for="item in projects" :key="item.id" :label="item.name" :value="item.id" /></el-select>
         </el-form-item>
-        <el-form-item label="物资">
-          <el-select v-model="form.material_id" filterable remote :remote-method="searchMats" :loading="searching">
-            <el-option v-for="item in materials" :key="item.id" :label="`${item.code} ${item.name} / ${item.unit}`" :value="item.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="单位">{{ selectedMaterialUnit || '-' }}</el-form-item>
-        <el-form-item label="数量">
-          <FormulaInput v-model="form.quantity" :precision="3" placeholder="支持 +-*/，保留3位小数" />
-        </el-form-item>
-        <el-form-item label="批次号"><el-input v-model="form.batch_no" placeholder="选填，批次物资必填" /></el-form-item>
-        <el-form-item label="序列号"><el-input v-model="form.serial_no" placeholder="选填，单件物资必填，每行数量为1" /></el-form-item>
+        <div class="line-editor">
+          <div v-for="(line, index) in form.lines" :key="line.key" class="line-editor__row">
+            <el-select v-model="line.material_id" filterable remote :remote-method="searchMats" :loading="searching" placeholder="物资">
+              <el-option v-for="item in materials" :key="item.id" :label="`${item.code} ${item.name} / ${item.unit}`" :value="item.id" />
+            </el-select>
+            <FormulaInput v-model="line.quantity" :precision="4" placeholder="数量" />
+            <el-select v-model="line.input_unit" clearable placeholder="录入单位"><el-option v-for="unit in units" :key="unit.id" :label="unit.name" :value="unit.code" /></el-select>
+            <el-input v-model="line.batch_no" placeholder="批次" />
+            <el-input v-model="line.serial_no" placeholder="序列号" />
+            <el-button v-if="form.lines.length > 1" link type="danger" @click="removeLine(index)">删除</el-button>
+          </div>
+          <el-button link type="primary" @click="addLine">继续添加明细</el-button>
+        </div>
         <el-form-item label="日期"><el-date-picker v-model="form.occurred_on" value-format="YYYY-MM-DD" /></el-form-item>
         <el-form-item label="经办人"><el-input v-model="form.handler" /></el-form-item>
         <el-form-item v-if="documentType === 'INBOUND'" label="业务类型">
@@ -134,7 +137,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listDocuments, listLocations, listMaterials, listProjects, listWarehouses, postInbound, postOutbound, postTransfer, voidDocument } from '@/api/warehouse'
+import { convertWarehouseUnit, listDocuments, listLocations, listMaterials, listProjects, listWarehouseUnits, listWarehouses, postInbound, postOutbound, postTransfer, settleScrap, voidDocument } from '@/api/warehouse'
 import { useUserStore } from '@/stores/user'
 import { BUSINESS_TYPE_LABELS, INBOUND_BUSINESS_OPTIONS, OUTBOUND_BUSINESS_OPTIONS } from '@/constants/warehouse'
 import { evaluateQuantityExpression } from '@/utils/quantityExpression'
@@ -165,14 +168,13 @@ const materials = ref([])
 const locations = ref([])
 const sourceLocations = ref([])
 const targetLocations = ref([])
+const units = ref([])
 const inboundOptions = INBOUND_BUSINESS_OPTIONS
 const outboundOptions = OUTBOUND_BUSINESS_OPTIONS
 const form = reactive({
   warehouse_id: null,
   location_id: null,
   project_id: null,
-  material_id: null,
-  quantity: 1,
   occurred_on: todayISODate(),
   handler: userStore.user?.full_name || userStore.user?.username || '',
   business_type: 'PURCHASE',
@@ -186,8 +188,6 @@ const form = reactive({
   delivery_note_no: '',
   acceptance_no: '',
   acceptor: '',
-  batch_no: '',
-  serial_no: '',
   requisition_no: '',
   crew_name: '',
   requester_name: '',
@@ -197,9 +197,9 @@ const form = reactive({
   source_project_id: null,
   target_warehouse_id: null,
   target_location_id: null,
-  target_project_id: null
+  target_project_id: null,
+  lines: [{ key: 1, material_id: null, quantity: 1, input_unit: null, batch_no: '', serial_no: '' }]
 })
-const selectedMaterialUnit = computed(() => materials.value.find(item => item.id === form.material_id)?.unit || '')
 
 function businessLabel(value) {
   return BUSINESS_TYPE_LABELS[value] || value || '-'
@@ -210,15 +210,6 @@ function materialSummary(row) {
   if (!line) return '-'
   const unit = line.material_unit ? ` / ${line.material_unit}` : ''
   return `${line.material_code || ''} ${line.material_name || ''}${unit}`.trim()
-}
-
-function resolveQuantity() {
-  const value = evaluateQuantityExpression(form.quantity, 3)
-  const quantity = value ?? Number(form.quantity)
-  if (!Number.isFinite(quantity) || quantity <= 0) {
-    throw new Error('请输入有效数量，支持 +-*/，结果须大于 0')
-  }
-  return String(quantity)
 }
 
 async function openFile(path) {
@@ -251,15 +242,34 @@ function openCreate() {
   form.delivery_note_file_name = ''
   form.scrap_basis_file = ''
   form.scrap_basis_file_name = ''
+  form.lines = [{ key: Date.now(), material_id: null, quantity: 1, input_unit: null, batch_no: '', serial_no: '' }]
   dialogVisible.value = true
+}
+
+function addLine() {
+  form.lines.push({ key: Date.now() + form.lines.length, material_id: null, quantity: 1, input_unit: null, batch_no: '', serial_no: '' })
+}
+
+function removeLine(index) {
+  form.lines.splice(index, 1)
 }
 
 async function submit() {
   saving.value = true
   try {
-    let quantity
+    let quantities
     try {
-      quantity = resolveQuantity()
+      quantities = await Promise.all(form.lines.map(async line => {
+        const value = evaluateQuantityExpression(line.quantity, 4)
+        const quantity = value ?? Number(line.quantity)
+        if (!line.material_id || !Number.isFinite(quantity) || quantity <= 0) throw new Error('请完整填写每行物资和数量')
+        const material = materials.value.find(item => item.id === line.material_id)
+        if (line.input_unit && material?.unit && line.input_unit !== material.unit) {
+          const converted = await convertWarehouseUnit({ from_unit: line.input_unit, to_unit: material.unit, quantity })
+          return { ...line, quantity: converted.quantity }
+        }
+        return { ...line, quantity: String(quantity) }
+      }))
     } catch (error) {
       ElMessage.error(error.message || '数量无效')
       return
@@ -284,7 +294,7 @@ async function submit() {
         delivery_note_no: form.delivery_note_no || null,
         acceptance_no: form.acceptance_no || null,
         acceptor: form.acceptor || null,
-        lines: [{ material_id: form.material_id, quantity, batch_no: form.batch_no || null, serial_no: form.serial_no || null }]
+        lines: quantities.map(line => ({ material_id: line.material_id, quantity: line.quantity, batch_no: line.batch_no || null, serial_no: line.serial_no || null }))
       })
     } else if (documentType.value === 'OUTBOUND') {
       await postOutbound({
@@ -302,25 +312,25 @@ async function submit() {
         requester_name: form.requester_name || null,
         receiver_name: form.receiver_name || null,
         signed_off: true,
-        lines: [{ material_id: form.material_id, quantity, batch_no: form.batch_no || null, serial_no: form.serial_no || null }]
+        lines: quantities.map(line => ({ material_id: line.material_id, quantity: line.quantity, batch_no: line.batch_no || null, serial_no: line.serial_no || null }))
       })
     } else {
       await postTransfer({
         occurred_on: form.occurred_on,
         handler: form.handler,
         reference_no: form.reference_no,
-        lines: [{
-          material_id: form.material_id,
-          quantity,
-          batch_no: form.batch_no || null,
-          serial_no: form.serial_no || null,
+        lines: quantities.map(line => ({
+          material_id: line.material_id,
+          quantity: line.quantity,
+          batch_no: line.batch_no || null,
+          serial_no: line.serial_no || null,
           source_warehouse_id: form.source_warehouse_id,
           source_location_id: form.source_location_id,
           source_project_id: form.source_project_id,
           target_warehouse_id: form.target_warehouse_id,
           target_location_id: form.target_location_id,
           target_project_id: form.target_project_id
-        }]
+        }))
       })
     }
     ElMessage.success('已过账')
@@ -335,6 +345,22 @@ async function voidRow(row) {
   const { value } = await ElMessageBox.prompt('请填写冲销原因', '冲销单据', { inputPattern: /.+/, inputErrorMessage: '必须填写原因' })
   await voidDocument(row.id, { reason: value })
   ElMessage.success('已冲销')
+  await load()
+}
+
+async function advanceScrap(row) {
+  if (!row.scrap_status || row.scrap_status === 'PENDING') {
+    await settleScrap(row.id, { scrap_status: 'APPROVED' })
+  } else if (row.scrap_status === 'APPROVED') {
+    const { value } = await ElMessageBox.prompt('请输入过磅重量', '废旧过磅', { inputPattern: /^\d+(\.\d{1,4})?$/, inputErrorMessage: '请输入有效重量' })
+    await settleScrap(row.id, { scrap_status: 'WEIGHED', scrap_weight: value })
+  } else if (row.scrap_status === 'WEIGHED') {
+    const { value } = await ElMessageBox.prompt('请输入回收单位', '废旧核销', { inputPattern: /.+/, inputErrorMessage: '必须填写回收单位' })
+    const assessed = await ElMessageBox.prompt('请输入评估价值', '废旧核销', { inputPattern: /^\d+(\.\d{1,2})?$/, inputErrorMessage: '请输入有效金额' })
+    const residual = await ElMessageBox.prompt('请输入残值', '废旧核销', { inputPattern: /^\d+(\.\d{1,2})?$/, inputErrorMessage: '请输入有效金额' })
+    await settleScrap(row.id, { scrap_status: 'SETTLED', scrap_recycler: value, scrap_assessed_value: assessed.value, scrap_residual_value: residual.value })
+  }
+  ElMessage.success('废旧处置状态已更新')
   await load()
 }
 
@@ -353,10 +379,14 @@ watch(documentType, load)
 onMounted(async () => {
   warehouses.value = await listWarehouses()
   projects.value = await listProjects()
+  units.value = await listWarehouseUnits()
   await load()
 })
 </script>
 
 <style scoped>
 .warehouse-page { display: grid; gap: 16px; }
+.line-editor { display: grid; gap: 8px; margin-bottom: 12px; }
+.line-editor__row { display: grid; grid-template-columns: 1.4fr .8fr 1fr 1fr auto; gap: 8px; align-items: center; }
+@media (max-width: 900px) { .line-editor__row { grid-template-columns: 1fr 1fr; } }
 </style>

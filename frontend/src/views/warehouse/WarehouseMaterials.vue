@@ -46,6 +46,11 @@
         <el-form-item label="厂家"><el-input v-model="form.brand" /></el-form-item>
         <el-form-item label="规格"><el-input v-model="form.specification" /></el-form-item>
         <el-form-item label="单位"><el-input v-model="form.unit" /></el-form-item>
+        <el-form-item label="数量精度"><el-input-number v-model="form.quantity_scale" :min="0" :max="4" /></el-form-item>
+        <el-form-item label="批次追踪"><el-switch v-model="form.tracks_batch" /></el-form-item>
+        <el-form-item label="序列号"><el-switch v-model="form.tracks_serial" /></el-form-item>
+        <el-form-item label="质保天数"><el-input-number v-model="form.shelf_life_days" :min="1" /></el-form-item>
+        <el-form-item label="安全库存"><el-input-number v-model="form.minimum_stock" :min="0" :precision="4" /></el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -76,7 +81,12 @@ const form = reactive({
   name: '',
   brand: '',
   specification: '',
-  unit: ''
+  unit: '',
+  quantity_scale: 3,
+  tracks_batch: false,
+  tracks_serial: false,
+  shelf_life_days: null,
+  minimum_stock: 0
 })
 
 async function load() {

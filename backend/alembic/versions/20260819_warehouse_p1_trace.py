@@ -16,6 +16,12 @@ depends_on = None
 
 
 def upgrade() -> None:
+    inspector = sa.inspect(op.get_bind())
+    material_columns = {
+        column["name"] for column in inspector.get_columns("warehouse_materials")
+    }
+    if "quantity_scale" in material_columns and "warehouse_units" in inspector.get_table_names():
+        return
     op.add_column(
         "warehouse_materials",
         sa.Column("quantity_scale", sa.Integer(), nullable=False, server_default="3"),
@@ -250,6 +256,11 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    inspector = sa.inspect(op.get_bind())
+    if "quantity_scale" not in {
+        column["name"] for column in inspector.get_columns("warehouse_materials")
+    }:
+        return
     op.drop_table("warehouse_unit_conversions")
     op.drop_table("warehouse_units")
 

@@ -48,6 +48,13 @@ def test_business_today_uses_shanghai_calendar():
     assert business_today() == datetime.now(ZoneInfo(BUSINESS_TZ_NAME)).date()
 
 
+def test_quantity_precision_respects_material_scale():
+    from app.services.warehouse.posting import quantize_qty
+
+    assert quantize_qty("1.23456", 3) == Decimal("1.235")
+    assert quantize_qty("1.23456", 4) == Decimal("1.2346")
+
+
 def test_warehouse_admin_has_p0_permissions():
     perms = ROLE_PERMISSIONS[UserRole.WAREHOUSE_ADMIN]
     assert Permission.MANAGE_WAREHOUSE_PERIODS in perms
@@ -199,6 +206,34 @@ async def test_closed_period_blocks_storekeeper_and_reopen_is_audited(
     assert reopened.status_code == 200
     assert reopened.json()["status"] == "OPEN"
     assert reopened.json()["reopen_reason"] == "补录验收单"
+
+
+@pytest.mark.asyncio
+async def test_historical_period_requires_explicit_opening(
+    client: AsyncClient, test_db: AsyncSession, test_admin: User
+):
+    ctx = await seed_two_warehouses(test_db, test_admin)
+    denied = await client.post(
+        "/api/v1/warehouse/inbounds",
+        headers=_headers(test_admin, "historical-period-denied"),
+        json={
+            "warehouse_id": ctx.wh1.id,
+            "location_id": ctx.loc1.id,
+            "project_id": ctx.project_a.id,
+            "occurred_on": "2025-01-10",
+            "handler": "admin",
+            "business_type": "PURCHASE",
+            "lines": [{"material_id": ctx.material.id, "quantity": "1"}],
+        },
+    )
+    assert denied.status_code == 409
+    opened = await client.post(
+        "/api/v1/warehouse/periods/open",
+        headers=_headers(test_admin),
+        json={"year": 2025, "month": 1, "reason": "历史验收单补录审批"},
+    )
+    assert opened.status_code == 200
+    assert opened.json()["open_reason"] == "历史验收单补录审批"
 
 
 @pytest.mark.asyncio
@@ -391,3 +426,35 @@ async def test_cannot_clear_default_location_on_active_warehouse(
         json={"is_default": False},
     )
     assert blocked.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_turnover_report_uses_net_balance(
+    client: AsyncClient, test_db: AsyncSession, test_admin: User
+):
+    ctx = await seed_two_warehouses(test_db, test_admin)
+    for key, path, quantity in (
+        ("turnover-in", "inbounds", "10"),
+        ("turnover-out", "outbounds", "3"),
+    ):
+        payload = {
+            "warehouse_id": ctx.wh1.id,
+            "location_id": ctx.loc1.id,
+            "project_id": ctx.project_a.id,
+            "occurred_on": business_today().isoformat(),
+            "handler": "admin",
+            "business_type": "PURCHASE" if path == "inbounds" else "ISSUE",
+            "lines": [{"material_id": ctx.material.id, "quantity": quantity}],
+        }
+        response = await client.post(
+            f"/api/v1/warehouse/{path}", headers=_headers(test_admin, key), json=payload
+        )
+        assert response.status_code == 201
+    report = await client.get(
+        "/api/v1/warehouse/reports/turnover", headers=_headers(test_admin)
+    )
+    assert report.status_code == 200
+    row = report.json()["items"][0]
+    assert Decimal(row["inbound_qty"]) == Decimal("10")
+    assert Decimal(row["outbound_qty"]) == Decimal("3")
+    assert Decimal(row["quantity"]) == Decimal("7")

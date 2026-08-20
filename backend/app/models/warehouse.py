@@ -707,6 +707,9 @@ class WarehousePeriod(Base):
     reopened_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     reopened_at = Column(DateTime(timezone=True), nullable=True)
     reopen_reason = Column(Text, nullable=True)
+    opened_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    opened_at = Column(DateTime(timezone=True), nullable=True)
+    open_reason = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

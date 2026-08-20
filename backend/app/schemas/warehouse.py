@@ -506,7 +506,6 @@ class CountLineResponse(BaseModel):
     material_unit: str | None = None
     location_name: str | None = None
     project_name: str | None = None
-    adjustment_document_id: int | None = None
 
     class Config:
         from_attributes = True
@@ -610,6 +609,9 @@ class PeriodResponse(BaseModel):
     reopened_by: int | None = None
     reopened_at: datetime | None = None
     reopen_reason: str | None = None
+    opened_by: int | None = None
+    opened_at: datetime | None = None
+    open_reason: str | None = None
 
     class Config:
         from_attributes = True

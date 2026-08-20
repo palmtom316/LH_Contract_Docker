@@ -6,6 +6,8 @@
         <van-cell v-for="item in materials" :key="item.id" :title="`${item.code} ${item.name}`" :label="item.unit || ''" clickable @click="selectMaterial(item)" />
         <van-field :model-value="selectedUnit" label="单位" readonly />
         <van-field v-model="form.quantity" label="数量" placeholder="支持 +-*/" />
+        <van-field v-model="form.batch_no" label="批次" />
+        <van-field v-model="form.serial_no" label="序列号" />
         <van-field :model-value="sourceWarehouseLabel" label="调出库房" readonly is-link @click="picking = 'source_warehouse'" />
         <van-field :model-value="sourceLocationLabel" label="调出货位" readonly is-link @click="picking = 'source_location'" />
         <van-field :model-value="sourceProjectLabel" label="调出项目" readonly is-link @click="picking = 'source_project'" />
@@ -115,8 +117,10 @@ async function submit() {
       reference_no: form.value.reference_no,
       description: form.value.description,
       lines: [{
-        material_id: form.value.material_id,
-        quantity: String(quantity),
+          material_id: form.value.material_id,
+          quantity: String(quantity),
+          batch_no: form.value.batch_no || null,
+          serial_no: form.value.serial_no || null,
         source_warehouse_id: form.value.source_warehouse_id,
         source_location_id: form.value.source_location_id,
         source_project_id: form.value.source_project_id,

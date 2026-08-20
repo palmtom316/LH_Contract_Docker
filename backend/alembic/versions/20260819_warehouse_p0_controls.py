@@ -16,6 +16,12 @@ depends_on = None
 
 
 def upgrade() -> None:
+    inspector = sa.inspect(op.get_bind())
+    document_columns = {
+        column["name"] for column in inspector.get_columns("warehouse_documents")
+    }
+    if "supplier_name" in document_columns and "warehouse_periods" in inspector.get_table_names():
+        return
     op.add_column(
         "warehouse_documents",
         sa.Column("supplier_name", sa.String(length=200), nullable=True),
@@ -351,6 +357,11 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    inspector = sa.inspect(op.get_bind())
+    if "supplier_name" not in {
+        column["name"] for column in inspector.get_columns("warehouse_documents")
+    }:
+        return
     op.drop_table("warehouse_balance_repairs")
     op.drop_index("ix_warehouse_periods_status", table_name="warehouse_periods")
     op.drop_index("ix_warehouse_periods_year", table_name="warehouse_periods")

@@ -25,6 +25,10 @@
         <van-field v-model="form.acceptance_no" label="验收单号" />
         <van-field v-model="form.acceptor" label="验收人" />
         <van-field v-model="form.batch_no" label="批次" />
+        <van-field v-model="form.serial_no" label="序列号" />
+        <van-field v-model="form.heat_no" label="炉批号" />
+        <van-field v-model="form.production_date" label="生产日期" placeholder="YYYY-MM-DD" />
+        <van-field v-model="form.expiry_date" label="有效期至" placeholder="YYYY-MM-DD" />
         <van-field v-model="form.description" label="备注" type="textarea" rows="2" placeholder="只记录异常" />
         <van-cell title="可用库存" :value="available == null ? '选择维度后查询' : String(available)" />
       </van-cell-group>
@@ -148,7 +152,7 @@ async function submit() {
       acceptance_no: form.value.acceptance_no || null,
       acceptor: form.value.acceptor || null,
       batch_no: form.value.batch_no || null,
-      lines: [{ material_id: form.value.material_id, quantity: String(quantity) }]
+      lines: [{ material_id: form.value.material_id, quantity: String(quantity), batch_no: form.value.batch_no || null, serial_no: form.value.serial_no || null, heat_no: form.value.heat_no || null, production_date: form.value.production_date || null, expiry_date: form.value.expiry_date || null }]
     })
     showSuccessToast('入库已过账')
     router.push('/m/warehouse')

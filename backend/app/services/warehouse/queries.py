@@ -590,7 +590,7 @@ class WarehouseQueryService:
                     "material_name": row[4],
                     "inbound_qty": row[5],
                     "outbound_qty": row[6],
-                    "quantity": row[6],
+                    "quantity": (row[5] or 0) - (row[6] or 0),
                 }
                 for row in rows
             ]

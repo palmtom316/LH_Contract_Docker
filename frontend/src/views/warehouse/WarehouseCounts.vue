@@ -72,6 +72,12 @@
             <el-option v-for="item in warehouses" :key="item.id" :label="item.name" :value="item.id" />
           </el-select>
         </el-form-item>
+        <el-form-item label="货位">
+          <el-select v-model="createForm.location_id" clearable><el-option v-for="item in countLocations" :key="item.id" :label="item.name" :value="item.id" /></el-select>
+        </el-form-item>
+        <el-form-item label="项目">
+          <el-select v-model="createForm.project_id" clearable><el-option v-for="item in countProjects" :key="item.id" :label="item.name" :value="item.id" /></el-select>
+        </el-form-item>
         <el-form-item label="日期">
           <el-date-picker v-model="createForm.counted_on" value-format="YYYY-MM-DD" />
         </el-form-item>
@@ -85,9 +91,9 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { confirmCount, createCount, getCount, listCounts, listWarehouses, reviewCount, updateCountLines, voidCount } from '@/api/warehouse'
+import { confirmCount, createCount, getCount, listCounts, listLocations, listProjects, listWarehouses, reviewCount, updateCountLines, voidCount } from '@/api/warehouse'
 import { useUserStore } from '@/stores/user'
 import { evaluateQuantityExpression } from '@/utils/quantityExpression'
 import { todayISODate } from '@/utils/dateInput'
@@ -100,7 +106,14 @@ const warehouses = ref([])
 const current = ref(null)
 const detailVisible = ref(false)
 const createVisible = ref(false)
-const createForm = reactive({ warehouse_id: null, counted_on: todayISODate() })
+const createForm = reactive({ warehouse_id: null, location_id: null, project_id: null, counted_on: todayISODate() })
+const countLocations = ref([])
+const countProjects = ref([])
+
+watch(() => createForm.warehouse_id, async (id) => {
+  countLocations.value = id ? await listLocations(id) : []
+  if (createForm.location_id && !countLocations.value.some(item => item.id === createForm.location_id)) createForm.location_id = null
+})
 
 async function load() {
   const res = await listCounts()
@@ -150,6 +163,8 @@ async function create() {
 
 onMounted(async () => {
   warehouses.value = await listWarehouses()
+  countProjects.value = await listProjects()
+  if (warehouses.value[0]) countLocations.value = await listLocations(warehouses.value[0].id)
   await load()
 })
 </script>
