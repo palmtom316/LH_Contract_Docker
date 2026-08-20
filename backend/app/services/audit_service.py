@@ -59,6 +59,9 @@ class ResourceType:
     WAREHOUSE_MATERIAL = "物资"
     WAREHOUSE_DOCUMENT = "库房单据"
     WAREHOUSE_COUNT = "盘点"
+    WAREHOUSE_PERIOD = "库存期间"
+    WAREHOUSE_SUPPLEMENT = "业务补录"
+    WAREHOUSE_BALANCE_REPAIR = "库存对账修复"
 
 
 async def create_audit_log(

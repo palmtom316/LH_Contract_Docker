@@ -176,9 +176,15 @@ class WarehouseMasterService:
         return location
 
     async def get_location(self, location_id: int) -> WarehouseLocation:
-        location = await self.db.get(WarehouseLocation, location_id)
+        result = await self.db.execute(
+            select(WarehouseLocation)
+            .options(selectinload(WarehouseLocation.warehouse))
+            .where(WarehouseLocation.id == location_id)
+        )
+        location = result.scalar_one_or_none()
         if location is None:
             raise ResourceNotFoundError(resource_type="货位", resource_id=location_id)
+        location.warehouse_name = location.warehouse.name if location.warehouse else None
         return location
 
     async def update_location(self, location_id: int, data: dict) -> WarehouseLocation:
@@ -193,10 +199,18 @@ class WarehouseMasterService:
             await self._clear_default_location(location.warehouse_id)
             location.is_default = True
         elif "is_default" in data and data["is_default"] is False:
+            warehouse = await self.get_warehouse(location.warehouse_id)
+            if warehouse.is_active:
+                raise ValidationError(message="启用库房必须始终保留一个默认货位")
             location.is_default = False
         if "is_active" in data and data["is_active"] is not None:
+            if location.is_default and data["is_active"] is False:
+                raise ValidationError(
+                    message="不能停用库房唯一的默认货位，请先指定其他默认货位"
+                )
             location.is_active = data["is_active"]
         await self.db.flush()
+        await self._assert_active_warehouse_has_default(location.warehouse_id)
         return location
 
     async def delete_location(self, location_id: int) -> None:
@@ -457,6 +471,10 @@ class WarehouseMasterService:
             brand=(data.get("brand") or "").strip(),
             specification=(data.get("specification") or "").strip(),
             unit=data["unit"].strip(),
+            quantity_scale=data.get("quantity_scale") or 3,
+            tracks_batch=bool(data.get("tracks_batch")),
+            tracks_serial=bool(data.get("tracks_serial")),
+            shelf_life_days=data.get("shelf_life_days"),
             minimum_stock=data.get("minimum_stock") or 0,
             description=data.get("description"),
             identity_key=identity,
@@ -515,6 +533,14 @@ class WarehouseMasterService:
             material.specification = (data["specification"] or "").strip()
         if data.get("unit"):
             material.unit = data["unit"].strip()
+        if data.get("quantity_scale") is not None:
+            material.quantity_scale = data["quantity_scale"]
+        if "tracks_batch" in data and data["tracks_batch"] is not None:
+            material.tracks_batch = bool(data["tracks_batch"])
+        if "tracks_serial" in data and data["tracks_serial"] is not None:
+            material.tracks_serial = bool(data["tracks_serial"])
+        if "shelf_life_days" in data:
+            material.shelf_life_days = data["shelf_life_days"]
         if "minimum_stock" in data and data["minimum_stock"] is not None:
             material.minimum_stock = data["minimum_stock"]
         if "description" in data:
@@ -608,3 +634,13 @@ class WarehouseMasterService:
         )
         for location in result.scalars().all():
             location.is_default = False
+
+    async def _assert_active_warehouse_has_default(self, warehouse_id: int) -> None:
+        warehouse = await self.get_warehouse(warehouse_id)
+        if not warehouse.is_active:
+            return
+        defaults = [
+            loc for loc in warehouse.locations if loc.is_default and loc.is_active
+        ]
+        if len(defaults) != 1:
+            raise ValidationError(message="启用库房必须始终有且只有一个默认货位")

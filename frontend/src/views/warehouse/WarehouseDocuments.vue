@@ -73,6 +73,8 @@
         <el-form-item label="数量">
           <FormulaInput v-model="form.quantity" :precision="3" placeholder="支持 +-*/，保留3位小数" />
         </el-form-item>
+        <el-form-item label="批次号"><el-input v-model="form.batch_no" placeholder="选填，批次物资必填" /></el-form-item>
+        <el-form-item label="序列号"><el-input v-model="form.serial_no" placeholder="选填，单件物资必填，每行数量为1" /></el-form-item>
         <el-form-item label="日期"><el-date-picker v-model="form.occurred_on" value-format="YYYY-MM-DD" /></el-form-item>
         <el-form-item label="经办人"><el-input v-model="form.handler" /></el-form-item>
         <el-form-item v-if="documentType === 'INBOUND'" label="业务类型">
@@ -80,6 +82,11 @@
             <el-option v-for="item in inboundOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
+        <el-form-item v-if="documentType === 'INBOUND'" label="供应商"><el-input v-model="form.supplier_name" /></el-form-item>
+        <el-form-item v-if="documentType === 'INBOUND'" label="采购订单"><el-input v-model="form.purchase_order_no" /></el-form-item>
+        <el-form-item v-if="documentType === 'INBOUND'" label="送货单号"><el-input v-model="form.delivery_note_no" /></el-form-item>
+        <el-form-item v-if="documentType === 'INBOUND'" label="验收单号"><el-input v-model="form.acceptance_no" /></el-form-item>
+        <el-form-item v-if="documentType === 'INBOUND'" label="验收人"><el-input v-model="form.acceptor" /></el-form-item>
         <el-form-item v-if="documentType === 'INBOUND'" label="送货单">
           <WarehouseAttachmentField v-model="form.delivery_note_file" v-model:file-name="form.delivery_note_file_name" button-text="上传送货单或拍照" />
         </el-form-item>
@@ -88,6 +95,10 @@
             <el-option v-for="item in outboundOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
+        <el-form-item v-if="documentType === 'OUTBOUND'" label="领料申请"><el-input v-model="form.requisition_no" /></el-form-item>
+        <el-form-item v-if="documentType === 'OUTBOUND'" label="班组"><el-input v-model="form.crew_name" /></el-form-item>
+        <el-form-item v-if="documentType === 'OUTBOUND'" label="领料人"><el-input v-model="form.requester_name" /></el-form-item>
+        <el-form-item v-if="documentType === 'OUTBOUND'" label="接收人"><el-input v-model="form.receiver_name" /></el-form-item>
         <el-form-item v-if="documentType === 'OUTBOUND' && form.business_type === 'SCRAP_DISPOSAL'" label="废旧处理依据" required>
           <WarehouseAttachmentField v-model="form.scrap_basis_file" v-model:file-name="form.scrap_basis_file_name" button-text="上传审批文件或拍照" />
         </el-form-item>
@@ -127,6 +138,7 @@ import { listDocuments, listLocations, listMaterials, listProjects, listWarehous
 import { useUserStore } from '@/stores/user'
 import { BUSINESS_TYPE_LABELS, INBOUND_BUSINESS_OPTIONS, OUTBOUND_BUSINESS_OPTIONS } from '@/constants/warehouse'
 import { evaluateQuantityExpression } from '@/utils/quantityExpression'
+import { todayISODate } from '@/utils/dateInput'
 import { openProtectedFile } from '@/utils/protectedFiles'
 import FormulaInput from '@/components/FormulaInput.vue'
 import WarehouseAttachmentField from '@/components/WarehouseAttachmentField.vue'
@@ -161,7 +173,7 @@ const form = reactive({
   project_id: null,
   material_id: null,
   quantity: 1,
-  occurred_on: new Date().toISOString().slice(0, 10),
+  occurred_on: todayISODate(),
   handler: userStore.user?.full_name || userStore.user?.username || '',
   business_type: 'PURCHASE',
   reference_no: '',
@@ -169,6 +181,17 @@ const form = reactive({
   delivery_note_file_name: '',
   scrap_basis_file: '',
   scrap_basis_file_name: '',
+  supplier_name: '',
+  purchase_order_no: '',
+  delivery_note_no: '',
+  acceptance_no: '',
+  acceptor: '',
+  batch_no: '',
+  serial_no: '',
+  requisition_no: '',
+  crew_name: '',
+  requester_name: '',
+  receiver_name: '',
   source_warehouse_id: null,
   source_location_id: null,
   source_project_id: null,
@@ -256,7 +279,12 @@ async function submit() {
         reference_no: form.reference_no,
         delivery_note_file: form.delivery_note_file || null,
         delivery_note_file_name: form.delivery_note_file_name || null,
-        lines: [{ material_id: form.material_id, quantity }]
+        supplier_name: form.supplier_name || null,
+        purchase_order_no: form.purchase_order_no || null,
+        delivery_note_no: form.delivery_note_no || null,
+        acceptance_no: form.acceptance_no || null,
+        acceptor: form.acceptor || null,
+        lines: [{ material_id: form.material_id, quantity, batch_no: form.batch_no || null, serial_no: form.serial_no || null }]
       })
     } else if (documentType.value === 'OUTBOUND') {
       await postOutbound({
@@ -269,7 +297,12 @@ async function submit() {
         reference_no: form.reference_no,
         scrap_basis_file: form.scrap_basis_file || null,
         scrap_basis_file_name: form.scrap_basis_file_name || null,
-        lines: [{ material_id: form.material_id, quantity }]
+        requisition_no: form.requisition_no || null,
+        crew_name: form.crew_name || null,
+        requester_name: form.requester_name || null,
+        receiver_name: form.receiver_name || null,
+        signed_off: true,
+        lines: [{ material_id: form.material_id, quantity, batch_no: form.batch_no || null, serial_no: form.serial_no || null }]
       })
     } else {
       await postTransfer({
@@ -279,6 +312,8 @@ async function submit() {
         lines: [{
           material_id: form.material_id,
           quantity,
+          batch_no: form.batch_no || null,
+          serial_no: form.serial_no || null,
           source_warehouse_id: form.source_warehouse_id,
           source_location_id: form.source_location_id,
           source_project_id: form.source_project_id,

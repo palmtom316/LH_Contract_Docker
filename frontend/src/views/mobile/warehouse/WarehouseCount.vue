@@ -30,10 +30,11 @@ import { showSuccessToast } from 'vant'
 import { ActionSheet as VanActionSheet, Button as VanButton, Cell as VanCell, CellGroup as VanCellGroup, Field as VanField } from 'vant'
 import { createCount, getMyWarehouseScopes, updateCountLines } from '@/api/warehouse'
 import { evaluateQuantityExpression } from '@/utils/quantityExpression'
+import { todayISODate } from '@/utils/dateInput'
 
 const warehouses = ref([])
 const warehouseId = ref(null)
-const countedOn = ref(new Date().toISOString().slice(0, 10))
+const countedOn = ref(todayISODate())
 const current = ref(null)
 const creating = ref(false)
 const showWarehouse = ref(false)

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import AppException
 from app.core.permissions import Permission, has_any_permission
 from app.models.contract_downstream import (
     ContractDownstream,
@@ -38,6 +39,7 @@ from app.models.zero_hour_labor import (
     ZeroHourLaborPayable,
     ZeroHourLaborPayment,
 )
+from app.models.warehouse import WarehouseDocument, WarehouseDocumentLine
 
 
 EXPENSE_VIEW_ALL_ROLES = frozenset(
@@ -170,6 +172,11 @@ FILE_ACCESS_RULES: tuple[FileAccessRule, ...] = (
         fields=("file_path", "file_key"),
         permissions=(Permission.VIEW_EXPENSES,),
     ),
+    FileAccessRule(
+        model=WarehouseDocument,
+        fields=("delivery_note_file", "scrap_basis_file"),
+        permissions=(Permission.VIEW_WAREHOUSE_INVENTORY,),
+    ),
 )
 
 
@@ -234,11 +241,47 @@ async def user_can_access_file_path(path: str, db: AsyncSession, current_user: U
             continue
 
         conditions = [getattr(rule.model, field).in_(candidates) for field in rule.fields]
-        result = await db.execute(select(rule.model).where(or_(*conditions)).limit(1))
-        record = result.scalar_one_or_none()
-        if not record:
-            continue
-        if _record_allows_user(record, rule, current_user):
+        query = select(rule.model).where(or_(*conditions))
+        if rule.model is WarehouseDocument:
+            query = query.limit(20)
+        else:
+            query = query.limit(1)
+        result = await db.execute(query)
+        records = result.scalars().all() if rule.model is WarehouseDocument else [result.scalar_one_or_none()]
+        for record in records:
+            if not record:
+                continue
+            if not _record_allows_user(record, rule, current_user):
+                continue
+            if rule.model is WarehouseDocument and not await _warehouse_document_in_scope(
+                db, current_user, record
+            ):
+                continue
             return True
 
     return False
+
+
+async def _warehouse_document_in_scope(
+    db: AsyncSession, current_user: User, document: WarehouseDocument
+) -> bool:
+    from app.services.warehouse.scope import WarehouseScopeService
+
+    result = await db.execute(
+        select(WarehouseDocumentLine).where(
+            WarehouseDocumentLine.document_id == document.id
+        )
+    )
+    warehouse_ids = {
+        warehouse_id
+        for line in result.scalars().all()
+        for warehouse_id in (line.source_warehouse_id, line.target_warehouse_id)
+        if warehouse_id
+    }
+    try:
+        await WarehouseScopeService(db, current_user).assert_warehouses_access(
+            warehouse_ids
+        )
+    except AppException:
+        return False
+    return True

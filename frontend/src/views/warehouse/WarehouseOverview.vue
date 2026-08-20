@@ -13,6 +13,24 @@
           <AppMetricCard title="低库存" :value="String(summary.lowStock)" />
         </div>
       </AppSectionCard>
+      <AppSectionCard v-if="userStore.canManageWarehousePeriods || periods.length">
+        <template #header>库存期间</template>
+        <template #actions>
+          <el-button v-if="userStore.canManageWarehousePeriods" @click="closeCurrent">结账本月</el-button>
+        </template>
+        <el-table :data="periods" border>
+          <el-table-column prop="year" label="年" width="90" />
+          <el-table-column prop="month" label="月" width="80" />
+          <el-table-column prop="status" label="状态" width="120" />
+          <el-table-column prop="reopen_reason" label="反结账原因" min-width="180" />
+          <el-table-column v-if="userStore.canManageWarehousePeriods" label="操作" width="120">
+            <template #default="{ row }">
+              <el-button v-if="row.status === 'CLOSED'" link type="primary" @click="reopen(row)">反结账</el-button>
+              <el-button v-else link type="danger" @click="closeRow(row)">结账</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </AppSectionCard>
       <AppSectionCard>
         <template #header>库存明细</template>
         <AppDataTable>
@@ -35,13 +53,14 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { exportStock, listStockBalances } from '@/api/warehouse'
+import { closeWarehousePeriod, exportStock, listStockBalances, listWarehousePeriods, reopenWarehousePeriod } from '@/api/warehouse'
 import { useUserStore } from '@/stores/user'
 import WarehouseNav from './WarehouseNav.vue'
 
 const userStore = useUserStore()
 const loading = ref(false)
 const items = ref([])
+const periods = ref([])
 const summary = reactive({ dimensions: 0, materials: 0, lowStock: 0 })
 
 async function load() {
@@ -52,9 +71,29 @@ async function load() {
     summary.dimensions = res.total || 0
     summary.materials = new Set(items.value.map(item => item.material_id)).size
     summary.lowStock = items.value.filter(item => Number(item.quantity) <= Number(item.minimum_stock || 0)).length
+    periods.value = await listWarehousePeriods()
   } finally {
     loading.value = false
   }
+}
+
+async function closeRow(row) {
+  await closeWarehousePeriod({ year: row.year, month: row.month })
+  ElMessage.success('期间已结账')
+  await load()
+}
+
+async function closeCurrent() {
+  const now = new Date()
+  await closeWarehousePeriod({ year: now.getFullYear(), month: now.getMonth() + 1 })
+  ElMessage.success('本月已结账')
+  await load()
+}
+
+async function reopen(row) {
+  await reopenWarehousePeriod({ year: row.year, month: row.month, reason: '管理员反结账补录' })
+  ElMessage.success('期间已反结账')
+  await load()
 }
 
 async function downloadStock() {

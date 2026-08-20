@@ -28,7 +28,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { showFailToast, showSuccessToast } from 'vant'
+import { showConfirmDialog, showFailToast, showSuccessToast } from 'vant'
 import { ActionSheet as VanActionSheet, Button as VanButton, Cell as VanCell, CellGroup as VanCellGroup, Field as VanField, Form as VanForm } from 'vant'
 import { listLocations, postTransfer } from '@/api/warehouse'
 import { evaluateQuantityExpression } from '@/utils/quantityExpression'
@@ -99,6 +99,14 @@ async function submit() {
     showFailToast('请输入有效数量，支持 +-*/')
     return
   }
+  try {
+    await showConfirmDialog({
+      title: '确认调拨',
+      message: `物资 ${materialKeyword.value || form.value.material_id}\n数量 ${quantity} ${selectedUnit.value}\n从 ${sourceWarehouseLabel.value}/${sourceLocationLabel.value}/${sourceProjectLabel.value}\n到 ${targetWarehouseLabel.value}/${targetLocationLabel.value}/${targetProjectLabel.value}`
+    })
+  } catch {
+    return
+  }
   submitting.value = true
   try {
     await postTransfer({
@@ -121,7 +129,7 @@ async function submit() {
     router.push('/m/warehouse')
   } catch (error) {
     const data = error.response?.data
-    if (data?.error_code === '7003') showFailToast(`库存不足，当前可用 ${data.data?.available ?? ''}`)
+    if (data?.error_code === '7003') showFailToast(`库存不足，当前可用 ${data.data?.available ?? ''}，请刷新、改库位或联系管理员`)
   } finally {
     submitting.value = false
   }

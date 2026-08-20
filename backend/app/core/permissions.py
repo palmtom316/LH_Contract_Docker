@@ -98,6 +98,9 @@ class Permission(str, Enum):
     IMPORT_WAREHOUSE_DATA = "import_warehouse_data"
     EXPORT_WAREHOUSE_DATA = "export_warehouse_data"
     VIEW_WAREHOUSE_REPORTS = "view_warehouse_reports"
+    MANAGE_WAREHOUSE_PERIODS = "manage_warehouse_periods"
+    REPAIR_WAREHOUSE_BALANCES = "repair_warehouse_balances"
+    SETTLE_WAREHOUSE_SCRAP = "settle_warehouse_scrap"
 
 
 # Role-Permission Mapping
@@ -230,6 +233,9 @@ ROLE_PERMISSIONS: dict[UserRole, Set[Permission]] = {
         Permission.IMPORT_WAREHOUSE_DATA,
         Permission.EXPORT_WAREHOUSE_DATA,
         Permission.VIEW_WAREHOUSE_REPORTS,
+        Permission.MANAGE_WAREHOUSE_PERIODS,
+        Permission.REPAIR_WAREHOUSE_BALANCES,
+        Permission.SETTLE_WAREHOUSE_SCRAP,
     },
 
     # 公司库管 - 仅授权库房入库/出库/调拨/盘点录入与导出

@@ -33,6 +33,13 @@ export function formatDateInputDisplay(isoValue?: string | null): string {
   return `${match[1]}/${match[2]}/${match[3]}`
 }
 
+export function todayISODate(now: Date = new Date()): string {
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export function parseFlexibleDateInput(raw?: string | null): ParsedFlexibleDate | null {
   if (!raw) return null
 

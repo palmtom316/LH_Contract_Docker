@@ -23,6 +23,7 @@ from app.models.warehouse import (
 )
 from app.services.audit_service import AuditAction, ResourceType, create_audit_log
 from app.services.warehouse.codes import format_sequence
+from app.services.warehouse.periods import WarehousePeriodService
 from app.services.warehouse.posting import WarehousePostingService, quantize_qty
 from app.services.warehouse.scope import WarehouseScopeService
 
@@ -33,6 +34,7 @@ class WarehouseCountService:
         self.user = user
         self.scope = WarehouseScopeService(db, user)
         self.posting = WarehousePostingService(db, user)
+        self.periods = WarehousePeriodService(db, user)
 
     async def create_count(
         self,
@@ -43,6 +45,7 @@ class WarehouseCountService:
         project_id: Optional[int] = None,
         description: Optional[str] = None,
         idempotency_key: Optional[str] = None,
+        reopened_from_id: Optional[int] = None,
     ) -> WarehouseCount:
         if idempotency_key:
             existing = await self.db.execute(
@@ -57,6 +60,44 @@ class WarehouseCountService:
             if existing_count is not None:
                 return await self.get_count(existing_count.id)
         await self.scope.assert_warehouse_access(warehouse_id, for_posting=True, action="盘点")
+        await self.posting.lock_warehouses([warehouse_id])
+        await self.periods.assert_posting_allowed(counted_on)
+        existing_active = await self.db.execute(
+            select(WarehouseCount.id).where(
+                WarehouseCount.warehouse_id == warehouse_id,
+                WarehouseCount.status.in_(
+                    (
+                        CountStatus.DRAFT.value,
+                        CountStatus.ENTERED.value,
+                        CountStatus.REVIEWED.value,
+                    )
+                ),
+            ).limit(1)
+        )
+        if existing_active.scalar_one_or_none() is not None:
+            raise AppException(
+                error_code=ErrorCode.WAREHOUSE_CONFLICT,
+                message="该库房已有进行中的盘点",
+                detail="请先完成、复核或作废现有盘点后再创建",
+                status_code=409,
+            )
+        snapshot_at = datetime.now(timezone.utc)
+        query = (
+            select(WarehouseStockBalance)
+            .where(WarehouseStockBalance.warehouse_id == warehouse_id)
+            .order_by(
+                WarehouseStockBalance.location_id,
+                WarehouseStockBalance.project_id,
+                WarehouseStockBalance.material_id,
+            )
+            .with_for_update()
+        )
+        if location_id:
+            query = query.where(WarehouseStockBalance.location_id == location_id)
+        if project_id:
+            query = query.where(WarehouseStockBalance.project_id == project_id)
+        balances = (await self.db.execute(query)).scalars().all()
+
         count_no = await self._next_count_no(counted_on)
         count = WarehouseCount(
             count_no=count_no,
@@ -64,23 +105,18 @@ class WarehouseCountService:
             location_id=location_id,
             project_id=project_id,
             counted_on=counted_on,
+            snapshot_at=snapshot_at,
+            snapshot_source="stock_balances",
             status=CountStatus.DRAFT.value,
             description=description,
             idempotency_key=idempotency_key,
             created_by=self.user.id,
+            reopened_from_id=reopened_from_id,
         )
         self.db.add(count)
         await self.db.flush()
 
-        query = select(WarehouseStockBalance).where(
-            WarehouseStockBalance.warehouse_id == warehouse_id
-        )
-        if location_id:
-            query = query.where(WarehouseStockBalance.location_id == location_id)
-        if project_id:
-            query = query.where(WarehouseStockBalance.project_id == project_id)
-        result = await self.db.execute(query)
-        for balance in result.scalars().all():
+        for balance in balances:
             self.db.add(
                 WarehouseCountLine(
                     count_id=count.id,
@@ -88,6 +124,9 @@ class WarehouseCountService:
                     location_id=balance.location_id,
                     project_id=balance.project_id,
                     material_id=balance.material_id,
+                    batch_no=balance.batch_no or "",
+                    serial_no=balance.serial_no or "",
+                    expiry_date=balance.expiry_date,
                     book_quantity=quantize_qty(balance.quantity),
                     counted_quantity=None,
                 )
@@ -100,7 +139,12 @@ class WarehouseCountService:
             ResourceType.WAREHOUSE_COUNT,
             resource_id=count.id,
             resource_name=count.count_no,
-            new_values={"warehouse_id": warehouse_id, "counted_on": str(counted_on)},
+            new_values={
+                "warehouse_id": warehouse_id,
+                "counted_on": str(counted_on),
+                "snapshot_at": snapshot_at.isoformat(),
+                "snapshot_source": "stock_balances",
+            },
         )
         return await self.get_count(count.id)
 
@@ -110,13 +154,23 @@ class WarehouseCountService:
             count.warehouse_id, for_posting=True, action="盘点录入"
         )
         if count.status not in {CountStatus.DRAFT.value, CountStatus.ENTERED.value}:
-            raise ValidationError(message="已确认的盘点不能再改实盘数量")
+            raise AppException(
+                error_code=ErrorCode.COUNT_NOT_EDITABLE,
+                message="已确认或已作废的盘点不能再改实盘数量",
+                status_code=409,
+            )
         line_map = {line.id: line for line in count.lines}
         for payload in lines:
             line = line_map.get(payload["id"])
             if line is None:
                 raise ValidationError(message=f"盘点明细不存在: {payload['id']}")
             line.counted_quantity = quantize_qty(payload["counted_quantity"])
+            if "variance_reviewed" in payload:
+                line.variance_reviewed = bool(payload["variance_reviewed"])
+            else:
+                line.variance_reviewed = True
+            if "variance_note" in payload:
+                line.variance_note = payload.get("variance_note")
         count.status = CountStatus.ENTERED.value
         await self.db.flush()
         return await self.get_count(count.id)
@@ -134,6 +188,8 @@ class WarehouseCountService:
             )
         if count.status == CountStatus.VOIDED.value:
             raise ValidationError(message="已作废的盘点不能确认")
+        await self.posting.lock_warehouses([count.warehouse_id])
+        await self.periods.assert_posting_allowed(count.counted_on)
 
         adjustment_lines = []
         for line in count.lines:
@@ -142,6 +198,8 @@ class WarehouseCountService:
             delta = quantize_qty(line.counted_quantity) - quantize_qty(line.book_quantity)
             if delta == Decimal("0"):
                 continue
+            if not line.variance_reviewed:
+                raise ValidationError(message="存在未复核的盘点差异，请先完成差异复核")
             adjustment_lines.append(
                 {
                     "material_id": line.material_id,
@@ -149,6 +207,9 @@ class WarehouseCountService:
                     "warehouse_id": line.warehouse_id,
                     "location_id": line.location_id,
                     "project_id": line.project_id,
+                    "batch_no": line.batch_no or "",
+                    "serial_no": line.serial_no or "",
+                    "expiry_date": line.expiry_date,
                 }
             )
 
@@ -185,6 +246,79 @@ class WarehouseCountService:
             new_values={"adjustment_document_id": count.adjustment_document_id},
         )
         return await self.get_count(count.id)
+
+    async def review(self, count_id: int, notes: str | None = None) -> WarehouseCount:
+        count = await self.get_count(count_id, for_update=True)
+        await self.scope.assert_warehouse_access(
+            count.warehouse_id, for_posting=True, action="盘点复核"
+        )
+        if count.status not in {CountStatus.ENTERED.value, CountStatus.REVIEWED.value}:
+            raise ValidationError(message="只有已录入的盘点可以复核差异")
+        for line in count.lines:
+            if line.counted_quantity is None:
+                raise ValidationError(message="存在未录入实盘数量的明细")
+            delta = quantize_qty(line.counted_quantity) - quantize_qty(line.book_quantity)
+            if delta != Decimal("0"):
+                line.variance_reviewed = True
+        count.status = CountStatus.REVIEWED.value
+        count.reviewed_by = self.user.id
+        count.reviewed_at = datetime.now(timezone.utc)
+        count.review_notes = notes
+        await self.db.flush()
+        await create_audit_log(
+            self.db,
+            self.user,
+            AuditAction.UPDATE,
+            ResourceType.WAREHOUSE_COUNT,
+            resource_id=count.id,
+            resource_name=count.count_no,
+            description=f"复核盘点差异 {count.count_no}",
+        )
+        return await self.get_count(count.id)
+
+    async def void(self, count_id: int, reason: str) -> WarehouseCount:
+        count = await self.get_count(count_id, for_update=True)
+        await self.scope.assert_warehouse_access(
+            count.warehouse_id, for_posting=True, action="盘点作废"
+        )
+        if not (reason or "").strip():
+            raise ValidationError(message="作废盘点必须填写原因")
+        if count.status == CountStatus.CONFIRMED.value:
+            raise ValidationError(message="已确认的盘点不能作废，请冲销调整单")
+        if count.status == CountStatus.VOIDED.value:
+            return count
+        count.status = CountStatus.VOIDED.value
+        count.void_reason = reason.strip()
+        count.voided_by = self.user.id
+        count.voided_at = datetime.now(timezone.utc)
+        await self.db.flush()
+        await create_audit_log(
+            self.db,
+            self.user,
+            AuditAction.UPDATE,
+            ResourceType.WAREHOUSE_COUNT,
+            resource_id=count.id,
+            resource_name=count.count_no,
+            description=f"作废盘点 {count.count_no}: {reason.strip()}",
+        )
+        return await self.get_count(count.id)
+
+    async def reopen(self, count_id: int, description: str | None = None) -> WarehouseCount:
+        original = await self.get_count(count_id, for_update=True)
+        await self.scope.assert_warehouse_access(
+            original.warehouse_id, for_posting=True, action="重新开放盘点"
+        )
+        if original.status not in {CountStatus.VOIDED.value, CountStatus.CONFIRMED.value}:
+            raise ValidationError(message="只有已作废或已确认的盘点可以重新开放")
+        return await self.create_count(
+            warehouse_id=original.warehouse_id,
+            counted_on=original.counted_on,
+            location_id=original.location_id,
+            project_id=original.project_id,
+            description=description or f"重新开放 {original.count_no}",
+            idempotency_key=None,
+            reopened_from_id=original.id,
+        )
 
     async def get_count(self, count_id: int, *, for_update: bool = False) -> WarehouseCount:
         statement = (

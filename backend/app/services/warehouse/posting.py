@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+import json
 from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
 
@@ -13,11 +14,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.errors import AppException, ErrorCode, ValidationError
+from app.core.permissions import Permission, has_permission
 from app.models.user import User
 from app.models.warehouse import (
+    CountStatus,
     DocumentStatus,
     DocumentType,
+    ScrapDisposalStatus,
     Warehouse,
+    WarehouseBalanceRepair,
     WarehouseCount,
     WarehouseDocument,
     WarehouseDocumentLine,
@@ -45,6 +50,8 @@ class StockKey:
     location_id: int
     project_id: int
     material_id: int
+    batch_no: str = ""
+    serial_no: str = ""
 
 
 @dataclass(frozen=True)
@@ -59,18 +66,53 @@ def _insufficient_stock_error(
 ) -> AppException:
     return AppException(
         error_code=ErrorCode.INSUFFICIENT_STOCK,
-        message="库存不足",
-        detail="当前维度可用库存不足，请刷新后重试",
+        message=f"库存不足，当前可用 {quantize_qty(available)}",
+        detail="当前维度可用库存不足，请刷新后改库位或联系管理员",
         status_code=409,
         data={
             "warehouse_id": key.warehouse_id,
             "location_id": key.location_id,
             "project_id": key.project_id,
             "material_id": key.material_id,
+            "batch_no": key.batch_no,
+            "serial_no": key.serial_no,
             "available": str(quantize_qty(available)),
             "requested": str(quantize_qty(requested)),
         },
     )
+
+
+def _trace_fields(line: dict) -> dict:
+    return {
+        "batch_no": str(line.get("batch_no") or "").strip(),
+        "serial_no": str(line.get("serial_no") or "").strip(),
+        "heat_no": (str(line.get("heat_no")).strip() if line.get("heat_no") else None),
+        "production_date": line.get("production_date"),
+        "expiry_date": line.get("expiry_date"),
+    }
+
+
+VOUCHER_FIELDS = (
+    "supplier_name",
+    "purchase_order_no",
+    "delivery_note_no",
+    "acceptance_no",
+    "acceptor",
+    "qc_result",
+    "manufacturer",
+    "batch_no",
+    "requisition_no",
+    "work_package",
+    "crew_name",
+    "requester_name",
+    "receiver_name",
+    "signed_off",
+    "scrap_weight",
+    "scrap_assessed_value",
+    "scrap_disposal_method",
+    "scrap_recycler",
+    "scrap_residual_value",
+)
 
 
 class WarehousePostingService:
@@ -78,6 +120,11 @@ class WarehousePostingService:
         self.db = db
         self.user = user
         self.scope = WarehouseScopeService(db, user)
+
+    def _period_service(self):
+        from app.services.warehouse.periods import WarehousePeriodService
+
+        return WarehousePeriodService(self.db, self.user)
 
     async def find_by_idempotency(
         self, idempotency_key: str | None
@@ -130,6 +177,7 @@ class WarehousePostingService:
         description: str | None = None,
         delivery_note_file: str | None = None,
         delivery_note_file_name: str | None = None,
+        voucher: dict | None = None,
         idempotency_key: str | None = None,
         ip_address: str | None = None,
         user_agent: str | None = None,
@@ -157,6 +205,7 @@ class WarehousePostingService:
                     "target_location_id": line.get("location_id") or location_id,
                     "target_project_id": line.get("project_id") or project_id,
                     "description": line.get("description"),
+                    **_trace_fields(line),
                 }
             )
         await self._assert_target_dimensions(document_lines)
@@ -168,6 +217,7 @@ class WarehousePostingService:
         await self._assert_no_active_counts(
             [line["target_warehouse_id"] for line in document_lines]
         )
+        await self._period_service().assert_posting_allowed(occurred_on)
         return await self._create_and_post(
             document_type=DocumentType.INBOUND,
             business_type=business_type,
@@ -177,6 +227,7 @@ class WarehousePostingService:
             description=description,
             delivery_note_file=delivery_note_file,
             delivery_note_file_name=delivery_note_file_name,
+            voucher=voucher,
             idempotency_key=idempotency_key,
             lines=document_lines,
             ip_address=ip_address,
@@ -197,6 +248,7 @@ class WarehousePostingService:
         description: str | None = None,
         scrap_basis_file: str | None = None,
         scrap_basis_file_name: str | None = None,
+        voucher: dict | None = None,
         idempotency_key: str | None = None,
         ip_address: str | None = None,
         user_agent: str | None = None,
@@ -226,6 +278,7 @@ class WarehousePostingService:
                     "target_location_id": None,
                     "target_project_id": None,
                     "description": line.get("description"),
+                    **_trace_fields(line),
                 }
             )
         await self._assert_source_dimensions(document_lines)
@@ -237,6 +290,7 @@ class WarehousePostingService:
         await self._assert_no_active_counts(
             [line["source_warehouse_id"] for line in document_lines]
         )
+        await self._period_service().assert_posting_allowed(occurred_on)
         return await self._create_and_post(
             document_type=DocumentType.OUTBOUND,
             business_type=business_type,
@@ -246,6 +300,10 @@ class WarehousePostingService:
             description=description,
             scrap_basis_file=scrap_basis_file,
             scrap_basis_file_name=scrap_basis_file_name,
+            voucher=voucher,
+            scrap_status=ScrapDisposalStatus.PENDING.value
+            if business_type == "SCRAP_DISPOSAL"
+            else None,
             idempotency_key=idempotency_key,
             lines=document_lines,
             ip_address=ip_address,
@@ -300,6 +358,7 @@ class WarehousePostingService:
                     "target_location_id": line["target_location_id"],
                     "target_project_id": line["target_project_id"],
                     "description": line.get("description"),
+                    **_trace_fields(line),
                 }
             )
         await self.scope.assert_warehouses_access(
@@ -312,6 +371,7 @@ class WarehousePostingService:
         await self._assert_no_active_counts(
             source_ids + [line["target_warehouse_id"] for line in document_lines]
         )
+        await self._period_service().assert_posting_allowed(occurred_on)
         return await self._create_and_post(
             document_type=DocumentType.TRANSFER,
             business_type="TRANSFER",
@@ -361,6 +421,7 @@ class WarehousePostingService:
                         "target_location_id": line["location_id"],
                         "target_project_id": line["project_id"],
                         "description": line.get("description") or "盘盈",
+                        **_trace_fields(line),
                     }
                 )
             else:
@@ -377,6 +438,7 @@ class WarehousePostingService:
                         "target_location_id": None,
                         "target_project_id": None,
                         "description": line.get("description") or "盘亏",
+                        **_trace_fields(line),
                     }
                 )
         if not document_lines:
@@ -393,6 +455,7 @@ class WarehousePostingService:
         await self._assert_target_dimensions(
             [line for line in document_lines if line["target_warehouse_id"]]
         )
+        await self._period_service().assert_posting_allowed(occurred_on)
         return await self._create_and_post(
             document_type=DocumentType.COUNT_ADJUSTMENT,
             business_type="COUNT_ADJUSTMENT",
@@ -455,12 +518,18 @@ class WarehousePostingService:
                     "target_project_id": line.source_project_id,
                     "original_document_line_id": line.id,
                     "description": f"冲销 {original.document_no} 第 {line.line_no} 行",
+                    "batch_no": line.batch_no or "",
+                    "serial_no": line.serial_no or "",
+                    "heat_no": line.heat_no,
+                    "production_date": line.production_date,
+                    "expiry_date": line.expiry_date,
                 }
             )
         await self.scope.assert_warehouses_access(
             warehouse_ids, for_posting=True, action="冲销"
         )
         await self._assert_no_active_counts(warehouse_ids)
+        await self._period_service().assert_posting_allowed(original.occurred_on)
 
         reversal = await self._create_and_post(
             document_type=DocumentType.REVERSAL,
@@ -548,9 +617,16 @@ class WarehousePostingService:
         ids = {warehouse_id for warehouse_id in warehouse_ids if warehouse_id}
         if not ids:
             return
+        await self.lock_warehouses(ids)
         query = select(WarehouseCount.id).where(
             WarehouseCount.warehouse_id.in_(ids),
-            WarehouseCount.status.in_(("DRAFT", "ENTERED")),
+            WarehouseCount.status.in_(
+                (
+                    CountStatus.DRAFT.value,
+                    CountStatus.ENTERED.value,
+                    CountStatus.REVIEWED.value,
+                )
+            ),
         )
         if ignore_count_id is not None:
             query = query.where(WarehouseCount.id != ignore_count_id)
@@ -563,40 +639,80 @@ class WarehousePostingService:
                 status_code=409,
             )
 
-    async def get_available(self, key: StockKey) -> Decimal:
-        result = await self.db.execute(
-            select(WarehouseStockBalance.quantity).where(
-                WarehouseStockBalance.warehouse_id == key.warehouse_id,
-                WarehouseStockBalance.location_id == key.location_id,
-                WarehouseStockBalance.project_id == key.project_id,
-                WarehouseStockBalance.material_id == key.material_id,
+    async def lock_warehouses(self, warehouse_ids: Iterable[int]) -> None:
+        ids = sorted({warehouse_id for warehouse_id in warehouse_ids if warehouse_id})
+        for warehouse_id in ids:
+            result = await self.db.execute(
+                select(Warehouse.id)
+                .where(Warehouse.id == warehouse_id)
+                .with_for_update()
             )
+            if result.scalar_one_or_none() is None:
+                raise AppException(
+                    error_code=ErrorCode.WAREHOUSE_NOT_FOUND,
+                    message="库房不存在",
+                    status_code=404,
+                )
+
+    async def get_available(self, key: StockKey) -> Decimal:
+        query = select(func.coalesce(func.sum(WarehouseStockBalance.quantity), 0)).where(
+            WarehouseStockBalance.warehouse_id == key.warehouse_id,
+            WarehouseStockBalance.location_id == key.location_id,
+            WarehouseStockBalance.project_id == key.project_id,
+            WarehouseStockBalance.material_id == key.material_id,
         )
-        value = result.scalar_one_or_none()
+        if key.batch_no:
+            query = query.where(WarehouseStockBalance.batch_no == key.batch_no)
+        if key.serial_no:
+            query = query.where(WarehouseStockBalance.serial_no == key.serial_no)
+        value = (await self.db.execute(query)).scalar_one()
         return quantize_qty(value or ZERO)
 
-    async def rebuild_balances(self, *, repair: bool = False) -> dict:
+    async def rebuild_balances(
+        self,
+        *,
+        repair: bool = False,
+        reason: str | None = None,
+    ) -> dict:
+        if repair and not (
+            self.user.is_superuser
+            or has_permission(self.user, Permission.REPAIR_WAREHOUSE_BALANCES)
+        ):
+            raise AppException(
+                error_code=ErrorCode.INSUFFICIENT_PERMISSIONS,
+                message="只有库房管理员可以执行库存对账修复",
+                status_code=403,
+            )
+        if repair and not (reason or "").strip():
+            raise ValidationError(message="库存对账修复必须填写原因")
         totals = await self.db.execute(
             select(
                 WarehouseLedgerEntry.warehouse_id,
                 WarehouseLedgerEntry.location_id,
                 WarehouseLedgerEntry.project_id,
                 WarehouseLedgerEntry.material_id,
+                WarehouseLedgerEntry.batch_no,
+                WarehouseLedgerEntry.serial_no,
                 func.coalesce(func.sum(WarehouseLedgerEntry.quantity_delta), 0),
             ).group_by(
                 WarehouseLedgerEntry.warehouse_id,
                 WarehouseLedgerEntry.location_id,
                 WarehouseLedgerEntry.project_id,
                 WarehouseLedgerEntry.material_id,
+                WarehouseLedgerEntry.batch_no,
+                WarehouseLedgerEntry.serial_no,
             )
         )
         ledger_map = {
-            StockKey(row[0], row[1], row[2], row[3]): quantize_qty(row[4])
+            StockKey(row[0], row[1], row[2], row[3], row[4] or "", row[5] or ""): quantize_qty(row[6])
             for row in totals.all()
         }
-        existing = await self.db.execute(select(WarehouseStockBalance))
+        existing = await self.db.execute(
+            select(WarehouseStockBalance).with_for_update()
+        )
         balances = existing.scalars().all()
         mismatches = 0
+        differences: list[dict] = []
         seen: set[StockKey] = set()
         for balance in balances:
             key = StockKey(
@@ -604,11 +720,26 @@ class WarehousePostingService:
                 balance.location_id,
                 balance.project_id,
                 balance.material_id,
+                balance.batch_no or "",
+                balance.serial_no or "",
             )
             seen.add(key)
             expected = ledger_map.get(key, ZERO)
-            if quantize_qty(balance.quantity) != expected:
+            current = quantize_qty(balance.quantity)
+            if current != expected:
                 mismatches += 1
+                differences.append(
+                    {
+                        "warehouse_id": key.warehouse_id,
+                        "location_id": key.location_id,
+                        "project_id": key.project_id,
+                        "material_id": key.material_id,
+                        "batch_no": key.batch_no,
+                        "serial_no": key.serial_no,
+                        "current": str(current),
+                        "expected": str(expected),
+                    }
+                )
                 if repair:
                     balance.quantity = expected
                     balance.version = int(balance.version or 1) + 1
@@ -616,6 +747,18 @@ class WarehousePostingService:
             if key in seen:
                 continue
             mismatches += 1
+            differences.append(
+                {
+                    "warehouse_id": key.warehouse_id,
+                    "location_id": key.location_id,
+                    "project_id": key.project_id,
+                    "material_id": key.material_id,
+                    "batch_no": key.batch_no,
+                    "serial_no": key.serial_no,
+                    "current": str(ZERO),
+                    "expected": str(expected),
+                }
+            )
             if repair:
                 self.db.add(
                     WarehouseStockBalance(
@@ -623,16 +766,47 @@ class WarehousePostingService:
                         location_id=key.location_id,
                         project_id=key.project_id,
                         material_id=key.material_id,
+                        batch_no=key.batch_no,
+                        serial_no=key.serial_no,
                         quantity=expected,
                         version=1,
                     )
                 )
-        if repair:
-            await self.db.flush()
+        record = WarehouseBalanceRepair(
+            dry_run=not repair,
+            repaired=bool(repair),
+            reason=(reason or "").strip() or None,
+            dimensions=len(set(seen) | set(ledger_map)),
+            mismatches=mismatches,
+            differences=json.dumps(differences, ensure_ascii=False),
+            created_by=self.user.id,
+        )
+        self.db.add(record)
+        await self.db.flush()
+        await create_audit_log(
+            self.db,
+            self.user,
+            AuditAction.UPDATE if repair else AuditAction.VIEW,
+            ResourceType.WAREHOUSE_BALANCE_REPAIR,
+            resource_id=record.id,
+            resource_name=f"mismatches={mismatches}",
+            description=(
+                f"{'执行' if repair else '预览'}库存对账修复，差异 {mismatches} 条"
+            ),
+            new_values={
+                "repair": repair,
+                "mismatches": mismatches,
+                "reason": record.reason,
+            },
+        )
         return {
-            "dimensions": len(set(seen) | set(ledger_map)),
+            "id": record.id,
+            "dimensions": record.dimensions,
             "mismatches": mismatches,
-            "repaired": repair,
+            "repaired": bool(repair),
+            "dry_run": not repair,
+            "reason": record.reason,
+            "differences": differences,
         }
 
     async def _create_and_post(
@@ -651,11 +825,14 @@ class WarehousePostingService:
         delivery_note_file_name: str | None = None,
         scrap_basis_file: str | None = None,
         scrap_basis_file_name: str | None = None,
+        voucher: dict | None = None,
+        scrap_status: str | None = None,
         ip_address: str | None = None,
         user_agent: str | None = None,
     ) -> WarehouseDocument:
         now = datetime.now(timezone.utc)
         document_no = await generate_document_no(self.db, document_type, occurred_on)
+        voucher_values = self._voucher_values(voucher)
         document = WarehouseDocument(
             document_no=document_no,
             document_type=document_type.value,
@@ -670,17 +847,19 @@ class WarehousePostingService:
             delivery_note_file_name=delivery_note_file_name,
             scrap_basis_file=scrap_basis_file,
             scrap_basis_file_name=scrap_basis_file_name,
+            scrap_status=scrap_status,
             created_by=self.user.id,
             posted_by=self.user.id,
             posted_at=now,
             reversed_document_id=reversed_document_id,
+            **voucher_values,
         )
         self.db.add(document)
         await self.db.flush()
 
         created_lines: list[WarehouseDocumentLine] = []
         for line in lines:
-            await self._assert_material(line["material_id"])
+            await self._assert_material_trace(line)
             row = WarehouseDocumentLine(
                 document_id=document.id,
                 line_no=line["line_no"],
@@ -693,6 +872,11 @@ class WarehousePostingService:
                 target_location_id=line.get("target_location_id"),
                 target_project_id=line.get("target_project_id"),
                 original_document_line_id=line.get("original_document_line_id"),
+                batch_no=str(line.get("batch_no") or ""),
+                serial_no=str(line.get("serial_no") or ""),
+                heat_no=line.get("heat_no"),
+                production_date=line.get("production_date"),
+                expiry_date=line.get("expiry_date"),
                 description=line.get("description"),
             )
             self.db.add(row)
@@ -736,6 +920,8 @@ class WarehousePostingService:
                             line.source_location_id,
                             line.source_project_id,
                             line.material_id,
+                            line.batch_no or "",
+                            line.serial_no or "",
                         ),
                         quantity_delta=-qty,
                         document_line_id=line.id,
@@ -749,6 +935,8 @@ class WarehousePostingService:
                             line.target_location_id,
                             line.target_project_id,
                             line.material_id,
+                            line.batch_no or "",
+                            line.serial_no or "",
                         ),
                         quantity_delta=qty,
                         document_line_id=line.id,
@@ -779,6 +967,8 @@ class WarehousePostingService:
             balance.quantity = next_qty
             balance.version = int(balance.version or 1) + 1
             line = line_map[item.document_line_id]
+            if item.quantity_delta > ZERO and line.expiry_date:
+                balance.expiry_date = line.expiry_date
             self.db.add(
                 WarehouseLedgerEntry(
                     document_id=line.document_id,
@@ -787,6 +977,9 @@ class WarehousePostingService:
                     location_id=item.key.location_id,
                     project_id=item.key.project_id,
                     material_id=item.key.material_id,
+                    batch_no=item.key.batch_no,
+                    serial_no=item.key.serial_no,
+                    expiry_date=line.expiry_date,
                     quantity_delta=item.quantity_delta,
                     occurred_on=occurred_on,
                 )
@@ -805,6 +998,8 @@ class WarehousePostingService:
                     location_id=key.location_id,
                     project_id=key.project_id,
                     material_id=key.material_id,
+                    batch_no=key.batch_no,
+                    serial_no=key.serial_no,
                     quantity=ZERO,
                     version=1,
                 )
@@ -814,6 +1009,8 @@ class WarehousePostingService:
                         "location_id",
                         "project_id",
                         "material_id",
+                        "batch_no",
+                        "serial_no",
                     ]
                 )
             )
@@ -825,6 +1022,8 @@ class WarehousePostingService:
                     WarehouseStockBalance.location_id == key.location_id,
                     WarehouseStockBalance.project_id == key.project_id,
                     WarehouseStockBalance.material_id == key.material_id,
+                    WarehouseStockBalance.batch_no == key.batch_no,
+                    WarehouseStockBalance.serial_no == key.serial_no,
                 )
                 .with_for_update()
             )
@@ -839,6 +1038,16 @@ class WarehousePostingService:
                 message="物资不存在或已归档",
                 status_code=404,
             )
+        return material
+
+    async def _assert_material_trace(self, line: dict) -> WarehouseMaterial:
+        material = await self._assert_material(line["material_id"])
+        if material.tracks_batch and not str(line.get("batch_no") or "").strip():
+            raise ValidationError(message=f"物资 {material.code} 必须填写批次号")
+        if material.tracks_serial and not str(line.get("serial_no") or "").strip():
+            raise ValidationError(message=f"物资 {material.code} 必须填写序列号")
+        if material.tracks_serial and quantize_qty(line["quantity"]) != Decimal("1.0000"):
+            raise ValidationError(message=f"序列号物资 {material.code} 每行数量必须为 1")
         return material
 
     async def _assert_source_dimensions(self, lines: Sequence[dict]) -> None:
@@ -878,3 +1087,91 @@ class WarehousePostingService:
         project = await self.db.get(WarehouseProject, project_id)
         if project is None or not project.is_active:
             raise ValidationError(message="项目不存在或已停用")
+
+    @staticmethod
+    def _voucher_values(voucher: dict | None) -> dict:
+        payload = voucher or {}
+        values: dict = {}
+        for field in VOUCHER_FIELDS:
+            if field in payload:
+                values[field] = payload[field]
+        if "signed_off" in values:
+            values["signed_off"] = bool(values["signed_off"])
+        for money_field in (
+            "scrap_assessed_value",
+            "scrap_residual_value",
+        ):
+            if values.get(money_field) is not None:
+                amount = Decimal(values[money_field]).quantize(Decimal("0.01"))
+                if amount < ZERO:
+                    raise ValidationError(message="残值或评估价值不能为负数")
+                values[money_field] = amount
+        if values.get("scrap_weight") is not None:
+            weight = quantize_qty(values["scrap_weight"])
+            if weight < ZERO:
+                raise ValidationError(message="过磅重量不能为负数")
+            values["scrap_weight"] = weight
+        return values
+
+    async def settle_scrap(
+        self,
+        document_id: int,
+        *,
+        scrap_weight: Decimal | None = None,
+        scrap_assessed_value: Decimal | None = None,
+        scrap_disposal_method: str | None = None,
+        scrap_recycler: str | None = None,
+        scrap_residual_value: Decimal | None = None,
+        scrap_status: str | None = None,
+    ) -> WarehouseDocument:
+        if not (
+            self.user.is_superuser
+            or has_permission(self.user, Permission.SETTLE_WAREHOUSE_SCRAP)
+        ):
+            raise AppException(
+                error_code=ErrorCode.INSUFFICIENT_PERMISSIONS,
+                message="无权核销废旧处置",
+                status_code=403,
+            )
+        document = await self.get_document(document_id, for_update=True)
+        if document.business_type != "SCRAP_DISPOSAL":
+            raise ValidationError(message="仅废旧处理单据可以核销闭环")
+        if document.status != DocumentStatus.POSTED.value:
+            raise ValidationError(message="已冲销单据不能核销废旧处置")
+        updates = self._voucher_values(
+            {
+                "scrap_weight": scrap_weight,
+                "scrap_assessed_value": scrap_assessed_value,
+                "scrap_disposal_method": scrap_disposal_method,
+                "scrap_recycler": scrap_recycler,
+                "scrap_residual_value": scrap_residual_value,
+            }
+        )
+        for key, value in updates.items():
+            if value is not None:
+                setattr(document, key, value)
+        next_status = scrap_status or ScrapDisposalStatus.SETTLED.value
+        if next_status not in {item.value for item in ScrapDisposalStatus}:
+            raise ValidationError(message="废旧处置状态无效")
+        if next_status == ScrapDisposalStatus.SETTLED.value:
+            if not document.scrap_basis_file:
+                raise ValidationError(message="废旧核销必须保留依据文件")
+            if document.scrap_weight is None:
+                raise ValidationError(message="废旧核销必须填写过磅重量")
+            if not document.scrap_recycler:
+                raise ValidationError(message="废旧核销必须填写回收单位")
+            document.scrap_settled_at = datetime.now(timezone.utc)
+            document.scrap_settled_by = self.user.id
+        document.scrap_status = next_status
+        await self.db.flush()
+        await create_audit_log(
+            self.db,
+            self.user,
+            AuditAction.APPROVE,
+            ResourceType.WAREHOUSE_DOCUMENT,
+            resource_id=document.id,
+            resource_name=document.document_no,
+            description=f"废旧处置状态变更为 {next_status}",
+            new_values={"scrap_status": next_status},
+        )
+        return await self.get_document(document.id)

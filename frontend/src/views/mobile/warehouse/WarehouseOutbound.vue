@@ -24,6 +24,11 @@
           </template>
         </van-field>
         <input ref="fileInput" class="hidden-file" type="file" accept=".pdf,.jpg,.jpeg,.png,image/*" capture="environment" @change="onFileChange">
+        <van-field v-model="form.requisition_no" label="领料申请" />
+        <van-field v-model="form.work_package" label="分部分项" />
+        <van-field v-model="form.crew_name" label="班组" />
+        <van-field v-model="form.requester_name" label="领料人" />
+        <van-field v-model="form.receiver_name" label="接收人" />
         <van-cell title="可用库存" :value="available == null ? '-' : String(available)" />
       </van-cell-group>
       <div class="wh-form__submit">
@@ -40,7 +45,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { showFailToast, showSuccessToast } from 'vant'
+import { showConfirmDialog, showFailToast, showSuccessToast } from 'vant'
 import { ActionSheet as VanActionSheet, Button as VanButton, Cell as VanCell, CellGroup as VanCellGroup, Field as VanField, Form as VanForm } from 'vant'
 import { postOutbound } from '@/api/warehouse'
 import { uploadFile } from '@/api/common'
@@ -104,6 +109,14 @@ async function submit() {
     showFailToast('选择废旧处理必须上传废旧处理依据文件')
     return
   }
+  try {
+    await showConfirmDialog({
+      title: '确认出库',
+      message: `库房 ${warehouseLabel.value}\n货位 ${locationLabel.value}\n项目 ${projectLabel.value}\n物资 ${materialKeyword.value || form.value.material_id}\n数量 ${quantity} ${selectedUnit.value}`
+    })
+  } catch {
+    return
+  }
   submitting.value = true
   try {
     await postOutbound({
@@ -116,6 +129,12 @@ async function submit() {
       reference_no: form.value.reference_no,
       scrap_basis_file: form.value.scrap_basis_file || null,
       scrap_basis_file_name: form.value.scrap_basis_file_name || null,
+      requisition_no: form.value.requisition_no || null,
+      work_package: form.value.work_package || null,
+      crew_name: form.value.crew_name || null,
+      requester_name: form.value.requester_name || null,
+      receiver_name: form.value.receiver_name || null,
+      signed_off: true,
       lines: [{ material_id: form.value.material_id, quantity: String(quantity) }]
     })
     showSuccessToast('出库已过账')
@@ -123,7 +142,7 @@ async function submit() {
   } catch (error) {
     const data = error.response?.data
     if (data?.error_code === '7003') {
-      showFailToast(`库存不足，当前可用 ${data.data?.available ?? ''}，请刷新后重试`)
+      showFailToast(`库存不足，当前可用 ${data.data?.available ?? ''}，请刷新、改库位或联系管理员`)
     }
   } finally {
     submitting.value = false

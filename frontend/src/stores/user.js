@@ -224,6 +224,18 @@ export const useUserStore = defineStore("user", {
 			if (state.user.is_superuser) return true;
 			return state.permissions.includes("import_warehouse_data");
 		},
+		canManageWarehousePeriods: (state) => {
+			if (state.user.is_superuser) return true;
+			return state.permissions.includes("manage_warehouse_periods");
+		},
+		canRepairWarehouseBalances: (state) => {
+			if (state.user.is_superuser) return true;
+			return state.permissions.includes("repair_warehouse_balances");
+		},
+		canSettleWarehouseScrap: (state) => {
+			if (state.user.is_superuser) return true;
+			return state.permissions.includes("settle_warehouse_scrap");
+		},
 	},
 
 	actions: {

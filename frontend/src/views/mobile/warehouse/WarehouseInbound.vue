@@ -19,7 +19,13 @@
           </template>
         </van-field>
         <input ref="fileInput" class="hidden-file" type="file" accept=".pdf,.jpg,.jpeg,.png,image/*" capture="environment" @change="onFileChange">
-        <van-field v-model="form.description" label="备注" type="textarea" rows="2" />
+        <van-field v-model="form.supplier_name" label="供应商" />
+        <van-field v-model="form.purchase_order_no" label="采购订单" />
+        <van-field v-model="form.delivery_note_no" label="送货单号" />
+        <van-field v-model="form.acceptance_no" label="验收单号" />
+        <van-field v-model="form.acceptor" label="验收人" />
+        <van-field v-model="form.batch_no" label="批次" />
+        <van-field v-model="form.description" label="备注" type="textarea" rows="2" placeholder="只记录异常" />
         <van-cell title="可用库存" :value="available == null ? '选择维度后查询' : String(available)" />
       </van-cell-group>
       <div class="wh-form__submit">
@@ -36,7 +42,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { showFailToast, showSuccessToast } from 'vant'
+import { showConfirmDialog, showFailToast, showSuccessToast } from 'vant'
 import { ActionSheet as VanActionSheet, Button as VanButton, Cell as VanCell, CellGroup as VanCellGroup, Field as VanField, Form as VanForm } from 'vant'
 import { postInbound } from '@/api/warehouse'
 import { uploadFile } from '@/api/common'
@@ -115,6 +121,14 @@ async function submit() {
     showFailToast('请输入有效数量，支持 +-*/')
     return
   }
+  try {
+    await showConfirmDialog({
+      title: '确认入库',
+      message: `库房 ${warehouseLabel.value}\n货位 ${locationLabel.value}\n项目 ${projectLabel.value}\n物资 ${materialKeyword.value || form.value.material_id}\n数量 ${quantity} ${selectedUnit.value}`
+    })
+  } catch {
+    return
+  }
   submitting.value = true
   try {
     await postInbound({
@@ -128,6 +142,12 @@ async function submit() {
       description: form.value.description,
       delivery_note_file: form.value.delivery_note_file || null,
       delivery_note_file_name: form.value.delivery_note_file_name || null,
+      supplier_name: form.value.supplier_name || null,
+      purchase_order_no: form.value.purchase_order_no || null,
+      delivery_note_no: form.value.delivery_note_no || null,
+      acceptance_no: form.value.acceptance_no || null,
+      acceptor: form.value.acceptor || null,
+      batch_no: form.value.batch_no || null,
       lines: [{ material_id: form.value.material_id, quantity: String(quantity) }]
     })
     showSuccessToast('入库已过账')
@@ -135,7 +155,7 @@ async function submit() {
   } catch (error) {
     const data = error.response?.data
     if (data?.error_code === '7003') {
-      showFailToast(`库存不足，当前可用 ${data.data?.available ?? ''}`)
+      showFailToast(`库存不足，当前可用 ${data.data?.available ?? ''}，请刷新、改库位或联系管理员`)
     }
   } finally {
     submitting.value = false

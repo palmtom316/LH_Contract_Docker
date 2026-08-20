@@ -17,12 +17,28 @@
               <template #default="{ row }">
                 <el-button link type="primary" @click="openCount(row)">录入</el-button>
                 <el-button
-                  v-if="userStore.canConfirmWarehouseCount && row.status !== 'CONFIRMED'"
+                  v-if="userStore.canConfirmWarehouseCount && ['ENTERED', 'REVIEWED'].includes(row.status)"
+                  link
+                  type="warning"
+                  @click="review(row)"
+                >
+                  复核
+                </el-button>
+                <el-button
+                  v-if="userStore.canConfirmWarehouseCount && !['CONFIRMED', 'VOIDED'].includes(row.status)"
                   link
                   type="success"
                   @click="confirm(row)"
                 >
                   确认
+                </el-button>
+                <el-button
+                  v-if="userStore.canConfirmWarehouseCount && !['CONFIRMED', 'VOIDED'].includes(row.status)"
+                  link
+                  type="danger"
+                  @click="voidRow(row)"
+                >
+                  作废
                 </el-button>
               </template>
             </el-table-column>
@@ -71,9 +87,10 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { confirmCount, createCount, getCount, listCounts, listWarehouses, updateCountLines } from '@/api/warehouse'
+import { confirmCount, createCount, getCount, listCounts, listWarehouses, reviewCount, updateCountLines, voidCount } from '@/api/warehouse'
 import { useUserStore } from '@/stores/user'
 import { evaluateQuantityExpression } from '@/utils/quantityExpression'
+import { todayISODate } from '@/utils/dateInput'
 import FormulaInput from '@/components/FormulaInput.vue'
 import WarehouseNav from './WarehouseNav.vue'
 
@@ -83,7 +100,7 @@ const warehouses = ref([])
 const current = ref(null)
 const detailVisible = ref(false)
 const createVisible = ref(false)
-const createForm = reactive({ warehouse_id: null, counted_on: new Date().toISOString().slice(0, 10) })
+const createForm = reactive({ warehouse_id: null, counted_on: todayISODate() })
 
 async function load() {
   const res = await listCounts()
@@ -110,6 +127,18 @@ async function saveLines() {
 async function confirm(row) {
   await confirmCount(row.id)
   ElMessage.success('盘点已确认并过账')
+  await load()
+}
+
+async function review(row) {
+  await reviewCount(row.id)
+  ElMessage.success('差异已复核')
+  await load()
+}
+
+async function voidRow(row) {
+  await voidCount(row.id, { reason: '现场盘点作废后重新开放' })
+  ElMessage.success('盘点已作废')
   await load()
 }
 

@@ -186,7 +186,7 @@ async def test_rebuild_balances_matches_ledger(test_db: AsyncSession, test_admin
 
     check = await service.rebuild_balances(repair=False)
     assert check["mismatches"] == 1
-    repaired = await service.rebuild_balances(repair=True)
+    repaired = await service.rebuild_balances(repair=True, reason="测试对账修复")
     await test_db.commit()
     assert repaired["repaired"] is True
     qty = await _qty(test_db, ctx.wh1.id, ctx.loc1.id, ctx.project_a.id, ctx.material.id)

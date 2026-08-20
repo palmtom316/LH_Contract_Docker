@@ -61,6 +61,11 @@ from app.models.warehouse import (
     WarehouseCount,
     WarehouseCountLine,
     WarehouseBusinessSupplement,
+    WarehouseBusinessSupplementHistory,
+    WarehousePeriod,
+    WarehouseBalanceRepair,
+    WarehouseUnit,
+    WarehouseUnitConversion,
 )
 
 __all__ = [
@@ -121,4 +126,9 @@ __all__ = [
     "WarehouseCount",
     "WarehouseCountLine",
     "WarehouseBusinessSupplement",
+    "WarehouseBusinessSupplementHistory",
+    "WarehousePeriod",
+    "WarehouseBalanceRepair",
+    "WarehouseUnit",
+    "WarehouseUnitConversion",
 ]

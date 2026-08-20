@@ -1,6 +1,6 @@
 <template>
   <div class="wh-scan">
-    <p>首期二维码只标识物资，不含库存或价格。扫码后仍需确认库房、货位、项目和业务类型。</p>
+    <p>先扫物资码，再扫货位码。扫货位后自动带出所属库房，提交前仍需确认项目和数量。</p>
     <video v-if="supported" ref="videoRef" class="wh-scan__video" playsinline muted autoplay />
     <van-button v-if="supported" block type="primary" @click="start">打开摄像头扫码</van-button>
     <van-notice-bar v-else title="当前浏览器不支持扫码，请改用物资搜索。" />

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   formatDateInputDisplay,
   isValidDateParts,
-  parseFlexibleDateInput
+  parseFlexibleDateInput,
+  todayISODate
 } from '@/utils/dateInput'
 
 describe('parseFlexibleDateInput', () => {
@@ -44,6 +45,13 @@ describe('parseFlexibleDateInput', () => {
 
   it('rejects incomplete values', () => {
     expect(parseFlexibleDateInput('2026/04')).toBeNull()
+  })
+})
+
+describe('todayISODate', () => {
+  it('uses local calendar date instead of UTC ISO date', () => {
+    const chinaMidnight = new Date(2026, 7, 19, 0, 30, 0)
+    expect(todayISODate(chinaMidnight)).toBe('2026-08-19')
   })
 })
 

@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.errors import AppException, ErrorCode, ValidationError
+from app.core.timezone import business_today
 from app.models.user import User
 from app.models.warehouse import (
     CATEGORY_LABELS,
@@ -239,7 +240,7 @@ class WarehouseOpeningService:
                     projects[0].code,
                     projects[0].name,
                     None,
-                    date.today().isoformat(),
+                    business_today().isoformat(),
                     self.user.full_name or self.user.username,
                     "",
                 ]
@@ -385,7 +386,7 @@ class WarehouseOpeningService:
         created_materials: dict[str, WarehouseMaterial] = {}
         errors: list[dict] = []
         grouped: dict[tuple, list[dict]] = defaultdict(list)
-        today = date.today()
+        today = business_today()
         default_handler = self.user.full_name or self.user.username or "期初导入"
 
         for offset, raw in enumerate(rows[1:], start=2):

@@ -183,6 +183,54 @@ export function confirmCount(id) {
 	return request({ url: `/warehouse/counts/${id}/confirm`, method: "post" });
 }
 
+export function reviewCount(id, data = {}) {
+	return request({ url: `/warehouse/counts/${id}/review`, method: "post", data });
+}
+
+export function voidCount(id, data) {
+	return request({ url: `/warehouse/counts/${id}/void`, method: "post", data });
+}
+
+export function reopenCount(id, data = {}) {
+	return request({ url: `/warehouse/counts/${id}/reopen`, method: "post", data });
+}
+
+export function listWarehousePeriods() {
+	return request({ url: "/warehouse/periods", method: "get" });
+}
+
+export function closeWarehousePeriod(data) {
+	return request({ url: "/warehouse/periods/close", method: "post", data });
+}
+
+export function reopenWarehousePeriod(data) {
+	return request({ url: "/warehouse/periods/reopen", method: "post", data });
+}
+
+export function upsertSupplement(id, data) {
+	return request({
+		url: `/warehouse/documents/${id}/supplement`,
+		method: "put",
+		data,
+	});
+}
+
+export function settleScrap(id, data) {
+	return request({
+		url: `/warehouse/documents/${id}/scrap-settle`,
+		method: "post",
+		data,
+	});
+}
+
+export function rebuildBalances(data = { repair: false }) {
+	return request({
+		url: "/warehouse/stock-balances/rebuild",
+		method: "post",
+		data,
+	});
+}
+
 export function exportStock() {
 	return request({
 		url: "/warehouse/exports/stock.xlsx",
@@ -223,4 +271,19 @@ export function importOpeningEntries(file) {
 		method: "post",
 		data: formData,
 	});
+}
+
+export function getWarehouseReport(kind) {
+	return request({
+		url: `/warehouse/reports/${kind}`,
+		method: "get",
+	});
+}
+
+export function listUnits() {
+	return request({ url: "/warehouse/units", method: "get" });
+}
+
+export function convertUnit(params) {
+	return request({ url: "/warehouse/units/convert", method: "get", params });
 }

@@ -5,7 +5,7 @@
       <van-cell title="编码" :value="location?.code || '-'" />
       <van-cell title="库房" :value="location?.warehouse_name || String(location?.warehouse_id || '-')" />
     </van-cell-group>
-    <van-button block type="primary" @click="goInbound">从此货位入库</van-button>
+    <van-button block type="primary" @click="goInbound">扫货位后继续入库</van-button>
     <van-button block plain type="primary" @click="goInventory">查看库存</van-button>
   </div>
 </template>
